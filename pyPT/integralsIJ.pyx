@@ -66,9 +66,9 @@ cdef double Inm_outer(double x,  void * params) nogil:
     Compute the outer integral for I_nm(k).
     """
     # define the variables and initialize the integration
-    cdef gsl_integration_workspace * w
+    cdef gsl_integration_cquad_workspace * w
     cdef double result, error
-    w = gsl_integration_workspace_alloc(1000)
+    w = gsl_integration_cquad_workspace_alloc(1000)
 
     # update the value of x in the function parameters
     cdef fparams * p = (<fparams *> params)
@@ -80,10 +80,10 @@ cdef double Inm_outer(double x,  void * params) nogil:
     F.params = p
 
     # do the integration
-    gsl_integration_qags(&F, log(p.kmin), log(p.kmax), 0, 1e-5, 1000, w, &result, &error)
+    gsl_integration_cquad(&F, log(p.kmin), log(p.kmax), 0, 1e-5, w, &result, &error, NULL)
 
     # free the integration workspace
-    gsl_integration_workspace_free(w)
+    gsl_integration_cquad_workspace_free(w)
     return result
 #end Inm_outer
 
@@ -153,11 +153,12 @@ cdef class I_nm:
             F = <gsl_function *>malloc(sizeof(gsl_function))
             F.function = &Inm_outer
             F.params = params
-            
+
             # do the integration and store the output
             gsl_integration_qags(F, -1., 1., 0, 1e-5, 1000, w, &result, &error)
             output[i] = result / (2.*M_PI)**2
-            
+            with gil:
+                print "     result = %f" %output[i]
             # free all of the memory we allocated
             gsl_integration_workspace_free(w)
             free(params)

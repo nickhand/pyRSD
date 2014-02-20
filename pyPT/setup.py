@@ -3,17 +3,21 @@ from distutils.extension import Extension
 from Cython.Distutils import build_ext
 import cython_gsl
 import numpy 
+import Cython.Compiler.Options
+Cython.Compiler.Options.annotate = True
 
 ext_modules = [
     Extension("integralsIJ", ["integralsIJ.pyx"],
               libraries=cython_gsl.get_libraries(),
     		  library_dirs=[cython_gsl.get_library_dir()],
-              include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include()]),
+              include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include()],
+              extra_compile_args=['-fopenmp'],
+              extra_link_args=['-fopenmp'],),
   Extension("power_dm", ["power_dm.pyx"],
             libraries=cython_gsl.get_libraries(),
   		  library_dirs=[cython_gsl.get_library_dir()],
             include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include()]),
-    Extension("kernels", ["kernels.pyx"])
+    Extension("kernels", ["kernels.pyx"]),
     ]
 
 

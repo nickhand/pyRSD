@@ -157,8 +157,7 @@ cdef class I_nm:
             # do the integration and store the output
             gsl_integration_qags(F, -1., 1., 0, 1e-5, 1000, w, &result, &error)
             output[i] = result / (2.*M_PI)**2
-            with gil:
-                print "     result = %f" %output[i]
+
             # free all of the memory we allocated
             gsl_integration_workspace_free(w)
             free(params)

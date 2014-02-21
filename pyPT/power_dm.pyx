@@ -111,7 +111,8 @@ cdef class spectrum:
         
         # compute each term separately
         Plin = self.Plin_func(k, 0.) 
-        return 2*self.f*self.D**2 * (Plin + 2*self.D**2 *(I01s + I10s + 3*k**2*(J01s + J10s)*Plin))
+        fact = 2.*self.f*self.D**2
+        return fact*Plin, fact*2.*self.D**2*(I01s + I10s + 3*k**2*(J01s + J10s)*Plin)
     #end P01
     
     #---------------------------------------------------------------------------

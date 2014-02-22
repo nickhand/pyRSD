@@ -132,7 +132,7 @@ cdef class power_eh:
         value of sigma_8, which is sigma_r at r = 8/h Mpc
         """
         self.P0_nw = 1.
-        I_dk = lambda k: k**2*self.Pk_nowiggles(k, 0.)*self.w_tophat(k, 8./self.pdict['h'])**2
+        I_dk = lambda k: k**2*self.Pk_nowiggles(k, 0.)*self.w_tophat(k, 8.)**2
         I = quad(I_dk, 0, np.inf)
         self.P0_nw = (self.pdict['sigma_8']**2)*(2*np.pi**2)/I[0]
     #end compute_P0_nw
@@ -144,7 +144,7 @@ cdef class power_eh:
         value of sigma_8, which is sigma_r at r = 8/h Mpc
         """
         self.P0_full = 1.
-        I_dk = lambda k: k**2*self.Pk_full(k, 0.)*self.w_tophat(k, 8./self.pdict['h'])**2
+        I_dk = lambda k: k**2*self.Pk_full(k, 0.)*self.w_tophat(k, 8.)**2
         I = quad(I_dk, 0, np.inf)
         self.P0_full = (self.pdict['sigma_8']**2)*(2*np.pi**2)/I[0]
     #end compute_P0_full

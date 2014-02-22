@@ -58,6 +58,51 @@ cdef class spectrum:
         else:
             x = np.array(x)
         return x   
+    #---------------------------------------------------------------------------
+    cpdef P_dv(self, k_hMpc):
+        """
+        The 1-loop correlation between density and velocity divergence.
+        """
+        # handle both scalar and array inputs
+        k = self._vectorize(k_hMpc)
+        
+        # compute the Inm integrals in parallel
+        I01s = self.Inm_parallel(0, 1, k)
+        
+        J01 = integralsIJ.J_nm(0, 1, self.klin, self.Plin)
+        J01s = np.array([J01.evaluate(ik, self.kmin, self.kmax) for ik in k])
+        
+        Plin = self.Plin_func(k, 0.) 
+        P11  = -self.f*self.conformalH*Plin
+        P22  = -2*self.f*self.conformalH*I01s
+        P13  = -3*self.f*self.conformalH*k*k*Plin*J01s
+        
+        return self.D**2*P11 + self.D**4*(P22 + 2*P13)
+    #end P_dv
+    
+    #---------------------------------------------------------------------------
+    cpdef P_vv(self, k_hMpc):
+        """
+        The 1-loop autocorrelation of velocity divergence.
+        """
+        # handle both scalar and array inputs
+        k = self._vectorize(k_hMpc)
+        
+        # compute the Inm integrals in parallel
+        I11s = self.Inm_parallel(1, 1, k)
+        
+        J11 = integralsIJ.J_nm(1, 1, self.klin, self.Plin)
+        J11s = np.array([J11.evaluate(ik, self.kmin, self.kmax) for ik in k])
+        
+        fact = (self.f*self.conformalH)**2
+        Plin = self.Plin_func(k, 0.) 
+        P11  = fact*Plin
+        P22  = 2*fact*I11s
+        P13  = 3*fact*k*k*Plin*J11s
+        
+        return self.D**2*P11 + self.D**4*(P22 + 2*P13)
+    #end P_v
+    
     #---------------------------------------------------------------------------    
     cpdef P00(self, k_hMpc):
         """
@@ -99,22 +144,17 @@ cdef class spectrum:
         """
         # handle both scalar and array inputs
         k = self._vectorize(k_hMpc)
-          
-        # compute the Inm integrals in parallel
-        I01s = self.Inm_parallel(0, 1, k)
-        I10s = self.Inm_parallel(1, 0, k)
+        
+        # compute the I00 integrals in parallel
+        I00s = self.Inm_parallel(0, 0, k)
         
         # compute the J00 integrals in serial
-        J01 = integralsIJ.J_nm(0, 1, self.klin, self.Plin)
-        J01s = np.array([J01.evaluate(ik, self.kmin, self.kmax) for ik in k])
-        
-        J10 = integralsIJ.J_nm(1, 0, self.klin, self.Plin)
-        J10s = np.array([J10.evaluate(ik, self.kmin, self.kmax) for ik in k])
-        
-        # compute each term separately
+        J00 = integralsIJ.J_nm(0, 0, self.klin, self.Plin)
+        J00s = np.array([J00.evaluate(ik, self.kmin, self.kmax) for ik in k])
+
         Plin = self.Plin_func(k, 0.) 
         fact = 2.*self.f*self.D**2
-        return fact*(Plin + 2.*self.D**2*(I01s + I10s + 3*k*k*(J01s + J10s)*Plin))
+        return fact*(Plin + 4.*self.D**2*(I00s + 3*k*k*J00s*Plin))
     #end P01
     
     #---------------------------------------------------------------------------

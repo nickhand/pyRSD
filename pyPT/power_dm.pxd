@@ -6,11 +6,13 @@ cdef class spectrum:
     cdef readonly int num_threads
     cdef readonly double kmin, kmax
     cdef np.ndarray klin, Plin
-    cdef readonly double D, f
+    cdef readonly double D, f, conformalH
     cdef object Plin_func
     
     # functions
     cpdef P00(self, k)
+    cpdef P_dv(self, k_hMpc)
+    cpdef P_vv(self, k_hMpc)
     cpdef P01(self, k)
     cpdef P11(self, k)
     cpdef P11_scalar(self, k)

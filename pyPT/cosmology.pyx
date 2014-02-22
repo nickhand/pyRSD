@@ -69,7 +69,7 @@ cdef class power_eh:
         
         Parameters
         ----------
-        z : float or numpy.ndarray
+        z : {float, np.ndarray}
             the redshift to compute the function at
         """
         return self.pdict['omega_m_0']*(1.+z)**3./self.E(z)**2.
@@ -82,7 +82,7 @@ cdef class power_eh:
         
         Parameters
         ----------
-        z : float or numpy.ndarray
+        z : {float, np.ndarray}
             the redshift to compute the function at
         """
         return self.pdict['omega_l_0']/self.E(z)**2
@@ -161,7 +161,7 @@ cdef class power_eh:
 
         Parameters
         ----------
-        k_hMpc : {float, numpy.ndarray}
+        k_hMpc : {float, np.ndarray}
             the wavenumber in units of h / Mpc
         z : float
             the redshift to compute the spectrum at
@@ -194,7 +194,7 @@ cdef class power_eh:
 
         Parameters
         ----------
-        k_hMpc : {float, numpy.ndarray}
+        k_hMpc : {float, np.ndarray}
             the wavenumber in units of h / Mpc
         z : float
             the redshift to compute the spectrum at

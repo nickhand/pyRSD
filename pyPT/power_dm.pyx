@@ -52,21 +52,21 @@ cdef class spectrum:
     #end __init__
         
     #---------------------------------------------------------------------------    
-    cpdef P00(self, k):
+    cpdef P00(self, k_hMpc):
         """
         The isotropic, zero-order term in the power expansion, corresponding
         to the density field autocorrelation
         
         Parameters
         ----------
-        k : {float, np.ndarray}
-            the wavenumber(s) in 1/Mpc to compute the power at
+        k_hMpc : {float, np.ndarray}
+            the wavenumber(s) in h/Mpc to compute the power at
         """
         # handle both scalar and array inputs
-        if np.isscalar(k):
-            k = np.array([k])
+        if np.isscalar(k_hMpc):
+            k = np.array([k_hMpc])
         else:
-            k = np.array(k)
+            k = np.array(k_hMpc)
           
         # compute the I00 integrals in parallel
         I00s = self.Inm_parallel(0, 0, k)
@@ -90,14 +90,14 @@ cdef class spectrum:
         
         Parameters
         ----------
-        k : {float, np.ndarray}
-            the wavenumber(s) in 1/Mpc to compute the power at
+        k_hMpc : {float, np.ndarray}
+            the wavenumber(s) in h/Mpc to compute the power at
         """
         # handle both scalar and array inputs
-        if np.isscalar(k):
-            k = np.array([k])
+        if np.isscalar(k_hMpc):
+            k = np.array([k_hMpc])
         else:
-            k = np.array(k)
+            k = np.array(k_hMpc)
           
         # compute the Inm integrals in parallel
         I01s = self.Inm_parallel(0, 1, k)

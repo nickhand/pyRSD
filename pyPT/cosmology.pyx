@@ -1,3 +1,6 @@
+#!python
+#cython: boundscheck=False
+#cython: wraparound=False
 """
  cosmology.pyx
  pyPT: cosmology module
@@ -9,7 +12,6 @@
 import cosmo_dict
 import numpy as np
 cimport numpy as np
-from cython_gsl cimport *
 from scipy.integrate import quad
 
 cdef class power_eh:
@@ -126,7 +128,7 @@ cdef class power_eh:
     #---------------------------------------------------------------------------
     def compute_P0_nw(self):
         """
-        Compute the power spectrum normalization based on the
+        Compute the normalization "no-wiggles" power spectrum based on the
         value of sigma_8, which is sigma_r at r = 8/h Mpc
         """
         self.P0_nw = 1.
@@ -138,7 +140,7 @@ cdef class power_eh:
     #---------------------------------------------------------------------------
     def compute_P0_full(self):
         """
-        Compute the power spectrum normalization based on the
+        Compute the normalization of the full power spectrum based on the
         value of sigma_8, which is sigma_r at r = 8/h Mpc
         """
         self.P0_full = 1.
@@ -147,30 +149,29 @@ cdef class power_eh:
         self.P0_full = (self.pdict['sigma_8']**2)*(2*np.pi**2)/I[0]
     #end compute_P0_full
     
-    
     #-------------------------------------------------------------------------------
-    cpdef Pk_full(self, k, z):
+    cpdef Pk_full(self, k_hMpc, z):
         """
-        Uses the specified transfer function to define an approximation 
-        to the linear power spectrum, appropriately normalized via sigma8, 
-        at redshift z. The primordial spectrum is assumed to be proportional 
-        to k^n
+        Compute the CDM + baryon linear power spectrum using the full 
+        Eisenstein and Hu transfer function fit, appropriately normalized 
+        via sigma_8, at redshift z. The primordial spectrum is assumed 
+        to be proportional to k^n.
         
-        Uses equation 25 of Eisenstein & Hu (EH) 1999 to compute P(k)
+        Calls the function TFfit_onek() from the tf_fit.c code.
 
         Parameters
         ----------
-        k : numpy.ndarray or float
-            the wavenumber in units of 1 / Mpc
+        k_hMpc : {float, numpy.ndarray}
+            the wavenumber in units of h / Mpc
         z : float
             the redshift to compute the spectrum at
         
         Returns
         -------
-        P_k : numpy.ndarray or float
-            linear matter power spectrum in units of Mpc**3
+        P_k : numpy.ndarray
+            full, linear power spectrum in units of Mpc^3/h^3
         """
-        k = self._vectorize(k)
+        k = self._vectorize(k_hMpc)
         
         # compute P0 if it is not yet computed
         if self.P0_full == 0.:
@@ -178,13 +179,32 @@ cdef class power_eh:
         
         Tfull = self.Tk_full(k)
         fg = self.growth_factor(z)
-        Pk = self.P0_full * k**self.pdict['n_s'] * (Tfull*fg)**2 
-        
-        return Pk
+        return self.P0_full * k**self.pdict['n_s'] * (Tfull*fg)**2 
+    #end Pk_full
     
-    cpdef Pk_nowiggles(self, k, z):
+    #---------------------------------------------------------------------------
+    cpdef Pk_nowiggles(self, k_hMpc, z):
+        """
+        Compute the CDM + baryon linear power spectrum with no oscillatory 
+        features using the "no-wiggles" Eisenstein and Hu transfer function fit, 
+        appropriately normalized via sigma_8, at redshift z. The primordial 
+        spectrum is assumed to be proportional to k^n.
         
-        k = self._vectorize(k)
+        Calls the function TFnowiggles() from the tf_fit.c code.
+
+        Parameters
+        ----------
+        k_hMpc : {float, numpy.ndarray}
+            the wavenumber in units of h / Mpc
+        z : float
+            the redshift to compute the spectrum at
+        
+        Returns
+        -------
+        P_k : numpy.ndarray
+            no-wiggle, linear power spectrum in units of Mpc^3/h^3
+        """
+        k = self._vectorize(k_hMpc)
         
         # compute P0 if it is not yet computed
         if self.P0_nw == 0.:
@@ -192,12 +212,15 @@ cdef class power_eh:
         
         Tfull = self.Tk_nowiggles(k)
         fg = self.growth_factor(z)
-        Pk = self.P0_nw * k**self.pdict['n_s'] * (Tfull*fg)**2 
-        
-        return Pk
+        return self.P0_nw * k**self.pdict['n_s'] * (Tfull*fg)**2 
+    #end Pk_nowiggles
     
-    cpdef Tk_full(self, np.ndarray k):
-        
+    #---------------------------------------------------------------------------
+    cpdef np.ndarray Tk_full(self, np.ndarray k):
+        """
+        Wrapper function to call TFfit_onek() from tf_fit.c and compute the 
+        full EH transfer function. 
+        """
         cdef float baryon_piece, cdm_piece, this_Tk
         cdef int N = k.shape[0]
         cdef np.ndarray[double, ndim=1] output = np.empty(N)
@@ -205,12 +228,16 @@ cdef class power_eh:
         
         for i in xrange(N):
             this_Tk = TFfit_onek(k[i]*self.pdict['h'], &baryon_piece, &cdm_piece)
-            output[i] = <double>this_Tk
-            
+            output[i] = <double>this_Tk   
         return output
-
-    cpdef Tk_nowiggles(self, np.ndarray k):
-
+    #end Tk_full
+    
+    #---------------------------------------------------------------------------
+    cpdef np.ndarray Tk_nowiggles(self, np.ndarray k):
+        """
+        Wrapper function to call TFnowiggles() from tf_fit.c and compute the 
+        no-wiggle EH transfer function. 
+        """
         cdef float this_Tk
         cdef int N = k.shape[0]
         cdef np.ndarray[double, ndim=1] output = np.empty(N)
@@ -222,6 +249,9 @@ cdef class power_eh:
                                   self.pdict['h'], self.pdict['Tcmb_0'], k[i])
             output[i] = <double>this_Tk
         return output
+    #end Tk_nowiggles
+    #---------------------------------------------------------------------------
+#endclass power_eh
 
         
     

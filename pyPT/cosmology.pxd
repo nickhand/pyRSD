@@ -17,7 +17,6 @@ cdef extern from "tf_fit.c":
 cdef class power_eh:
     
     cdef readonly object pdict
-    cdef float f_baryon
     cdef double P0_full, P0_nw
     
     cpdef E(self, z)
@@ -27,7 +26,7 @@ cdef class power_eh:
     cpdef growth_factor(self, z)
     cpdef Pk_full(self, k, z)
     cpdef Pk_nowiggles(self, k, z)
-    cpdef Tk_full(self, np.ndarray k)
-    cpdef Tk_nowiggles(self, np.ndarray k)
+    cpdef np.ndarray Tk_full(self, np.ndarray k)
+    cpdef np.ndarray Tk_nowiggles(self, np.ndarray k)
     
     

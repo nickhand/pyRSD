@@ -12,4 +12,10 @@ cdef class spectrum:
     # functions
     cpdef P00(self, k)
     cpdef P01(self, k)
+    cpdef P11(self, k)
+    cpdef P11_scalar(self, k)
+    cpdef P11_vector(self, k)
+    cpdef P02(self, k_hMpc, sigma_02)
+    cpdef P02_no_vel(self, k_hMpc)
+    cpdef P02_with_vel(self, k_hMpc, sigma_02)
     cdef np.ndarray Inm_parallel(self, int n, int m, np.ndarray[double, ndim=1] k)

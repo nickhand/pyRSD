@@ -20,6 +20,7 @@ cdef class power_eh:
     cdef double P0_full, P0_nw
     
     cpdef E(self, z)
+    cpdef H(self, z)
     cpdef omega_m_z(self, z)
     cpdef omega_l_z(self, z)
     cpdef growth_rate(self, z)

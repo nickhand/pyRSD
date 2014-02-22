@@ -45,6 +45,19 @@ cdef class power_eh:
         else:
             x = np.array(x)
         return x
+    #---------------------------------------------------------------------------
+    cpdef H(self, z):
+        """
+        The value of the Hubble constant at redshift z in km/s/Mpc
+        
+        Parameters
+        ----------
+        z : {float, np.ndarray}
+            the redshift to compute the function at
+        """
+        return 100.*self.pdict['h']*self.E(z)
+    #end H
+    
     #----------------------------------------------------------------------------
     cpdef E(self, z):
          """

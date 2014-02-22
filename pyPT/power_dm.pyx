@@ -13,7 +13,7 @@
 cimport integralsIJ
 import numpy as np
 cimport numpy as np
-from cosmology import linear_power
+from cosmology import power_eh
 
 
 cdef class spectrum:
@@ -42,12 +42,13 @@ cdef class spectrum:
         self.num_threads = num_threads
         
         # initialze the linear power spectrum module
-        p = linear_power(tf='EH_full', cosmo_params=cosmo_params)
+        p = power_eh(cosmo_params)
         self.klin = np.logspace(-5, 1, 10000)
-        self.Plin = p.P_k(self.klin, 0.)
+        self.Plin = p.Pk_full(self.klin, 0.)
+        
         self.D = p.growth_factor(z)
         self.f = p.growth_rate(z)
-        self.Plin_func = p.P_k
+        self.Plin_func = p.Pk_full
     #end __init__
         
     #---------------------------------------------------------------------------    
@@ -112,7 +113,7 @@ cdef class spectrum:
         # compute each term separately
         Plin = self.Plin_func(k, 0.) 
         fact = 2.*self.f*self.D**2
-        return fact*Plin, fact*2.*self.D**2*(I01s + I10s + 3*k**2*(J01s + J10s)*Plin)
+        return fact*(Plin + 2.*self.D**2*(I01s + I10s + 3*k**2*(J01s + J10s)*Plin))
     #end P01
     
     #---------------------------------------------------------------------------

@@ -9,10 +9,12 @@
 import cosmo_dict
 import numpy as np
 cimport numpy as np
+from cython_gsl cimport *
+from scipy.integrate import quad
 
-cdef class cosmology:
+cdef class power_eh:
     
-    def __init__(self, *args, **kwargs):
+    def __cinit__(self, *args, **kwargs):
         """
         Inputs should specify the necessay cosmological parameters. 
         
@@ -26,6 +28,8 @@ cdef class cosmology:
         """
         # set up the cosmo dict
         self.pdict = cosmo_dict.params(*args, **kwargs)
+        self.P0_full = 0.
+        self.P0_nw = 0.
         
         # initialize the TF parameters
         TFset_parameters(self.pdict['omega_m_0']*self.pdict['h']**2,
@@ -109,5 +113,116 @@ cdef class cosmology:
         om_l_0 = self.pdict['omega_l_0']
         norm = 2.5*om_m_0/(om_m_0**(4./7.) - om_l_0 + (1.+0.5*om_m_0)*(1.+om_l_0/70.))
         return 2.5*om_m/(om_m**(4./7.)-om_l+(1.+0.5*om_m)*(1.+om_l/70.))/(norm*(1+z))
-
     #end growth_factor
+    
+    #---------------------------------------------------------------------------
+    def w_tophat(self, k, r):
+        """
+        The k-space Fourier transform of a spherical tophat.
+        """
+        return 3.*(np.sin(k*r)-k*r*np.cos(k*r))/(k*r)**3
+    #end w_tophat
+
+    #---------------------------------------------------------------------------
+    def compute_P0_nw(self):
+        """
+        Compute the power spectrum normalization based on the
+        value of sigma_8, which is sigma_r at r = 8/h Mpc
+        """
+        self.P0_nw = 1.
+        I_dk = lambda k: k**2*self.Pk_nowiggles(k, 0.)*self.w_tophat(k, 8./self.pdict['h'])**2
+        I = quad(I_dk, 0, np.inf)
+        self.P0_nw = (self.pdict['sigma_8']**2)*(2*np.pi**2)/I[0]
+    #end compute_P0_nw
+    
+    #---------------------------------------------------------------------------
+    def compute_P0_full(self):
+        """
+        Compute the power spectrum normalization based on the
+        value of sigma_8, which is sigma_r at r = 8/h Mpc
+        """
+        self.P0_full = 1.
+        I_dk = lambda k: k**2*self.Pk_full(k, 0.)*self.w_tophat(k, 8./self.pdict['h'])**2
+        I = quad(I_dk, 0, np.inf)
+        self.P0_full = (self.pdict['sigma_8']**2)*(2*np.pi**2)/I[0]
+    #end compute_P0_full
+    
+    
+    #-------------------------------------------------------------------------------
+    cpdef Pk_full(self, k, z):
+        """
+        Uses the specified transfer function to define an approximation 
+        to the linear power spectrum, appropriately normalized via sigma8, 
+        at redshift z. The primordial spectrum is assumed to be proportional 
+        to k^n
+        
+        Uses equation 25 of Eisenstein & Hu (EH) 1999 to compute P(k)
+
+        Parameters
+        ----------
+        k : numpy.ndarray or float
+            the wavenumber in units of 1 / Mpc
+        z : float
+            the redshift to compute the spectrum at
+        
+        Returns
+        -------
+        P_k : numpy.ndarray or float
+            linear matter power spectrum in units of Mpc**3
+        """
+        k = self._vectorize(k)
+        
+        # compute P0 if it is not yet computed
+        if self.P0_full == 0.:
+            self.compute_P0_full()
+        
+        Tfull = self.Tk_full(k)
+        fg = self.growth_factor(z)
+        Pk = self.P0_full * k**self.pdict['n_s'] * (Tfull*fg)**2 
+        
+        return Pk
+    
+    cpdef Pk_nowiggles(self, k, z):
+        
+        k = self._vectorize(k)
+        
+        # compute P0 if it is not yet computed
+        if self.P0_nw == 0.:
+            self.compute_P0_nw()
+        
+        Tfull = self.Tk_nowiggles(k)
+        fg = self.growth_factor(z)
+        Pk = self.P0_nw * k**self.pdict['n_s'] * (Tfull*fg)**2 
+        
+        return Pk
+    
+    cpdef Tk_full(self, np.ndarray k):
+        
+        cdef float baryon_piece, cdm_piece, this_Tk
+        cdef int N = k.shape[0]
+        cdef np.ndarray[double, ndim=1] output = np.empty(N)
+        cdef int i
+        
+        for i in xrange(N):
+            this_Tk = TFfit_onek(k[i]*self.pdict['h'], &baryon_piece, &cdm_piece)
+            output[i] = <double>this_Tk
+            
+        return output
+
+    cpdef Tk_nowiggles(self, np.ndarray k):
+
+        cdef float this_Tk
+        cdef int N = k.shape[0]
+        cdef np.ndarray[double, ndim=1] output = np.empty(N)
+        cdef int i
+
+        for i in xrange(N):
+            this_Tk = TFnowiggles(self.pdict['omega_m_0'], 
+                                  self.pdict['omega_b_0']/self.pdict['omega_m_0'],  
+                                  self.pdict['h'], self.pdict['Tcmb_0'], k[i])
+            output[i] = <double>this_Tk
+        return output
+
+        
+    
+    

@@ -13,9 +13,10 @@
 cimport integralsIJ
 import numpy as np
 cimport numpy as np
-from cosmology import power_eh
+import cosmology
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import quad
+import cosmo_dict
 
 def sigmav_lin(z, cosmo_params="Planck13"):
     r"""
@@ -30,18 +31,19 @@ def sigmav_lin(z, cosmo_params="Planck13"):
     cosmo_params : {str, dict}
         the cosmological parameters to use
     """
+    cosmo = cosmo_dict.params(cosmo_params)
+    
     # compute the integral at z = 0
-    p = power_eh(cosmo_params)
-    Plin_func = p.Pk_full # this is in units of Mpc^3/h^3
-    integrand = lambda k: Plin_func(k, 0.)
+    Plin_func = cosmology.Pk_full # this is in units of Mpc^3/h^3
+    integrand = lambda k: Plin_func(k, 0., cosmo=cosmo)
     ans = quad(integrand, 0, np.inf, epsabs=0., epsrel=1e-4)
     sigmav_sq = ans[0]/3./(2*np.pi**2)
     
     # multiply by fDH/h to get units of km/s
-    D = p.growth_factor(z)
-    f = p.growth_rate(z)
-    conformalH = p.H(z)/(1+z)
-    return np.sqrt(sigmav_sq)*f*D*conformalH/p.pdict['h']
+    D = cosmology.growth_factor(z, cosmo)
+    f = cosmology.growth_rate(z, cosmo)
+    conformalH = cosmology.H(z, cosmo)/(1+z)
+    return np.sqrt(sigmav_sq)*f*D*conformalH/cosmo['h']
 #end sigmav_lin
     
 cdef class spectrum:
@@ -70,16 +72,15 @@ cdef class spectrum:
         self.num_threads     = num_threads
         
         # initialze the linear power spectrum module
-        p         = power_eh(cosmo_params)
         self.klin = np.logspace(-5, 1, 10000)
-        self.Plin = p.Pk_full(self.klin, 0.)
+        self.Plin = cosmology.Pk_full(self.klin, 0., cosmo=cosmo_params)
         
         # now compute useful quantities for later use
-        self.D          = p.growth_factor(z)
-        self.f          = p.growth_rate(z)
-        self.conformalH = p.H(z)/(1.+z)
-        self.Plin_func  = p.Pk_full
-        self.sigma_v     = sigmav_lin(z, cosmo_params)
+        self.D          = cosmology.growth_factor(z, cosmo=cosmo_params)
+        self.f          = cosmology.growth_rate(z, cosmo=cosmo_params)
+        self.conformalH = cosmology.H(z, cosmo=cosmo_params)/(1.+z)
+        self.sigma_v    = sigmav_lin(z, cosmo_params)
+        self.cosmo      = cosmo_dict.params(cosmo_params)
     #end __cinit__
     #---------------------------------------------------------------------------
     def _vectorize(self, x):
@@ -102,7 +103,7 @@ cdef class spectrum:
         J01 = integralsIJ.J_nm(0, 1, self.klin, self.Plin)
         J01s = np.array([J01.evaluate(ik, self.kmin, self.kmax) for ik in k])
         
-        Plin = self.Plin_func(k, 0.) 
+        Plin = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         P11  = -self.f*self.conformalH*Plin
         P22  = -2*self.f*self.conformalH*I01s
         P13  = -3*self.f*self.conformalH*k*k*Plin*J01s
@@ -125,7 +126,7 @@ cdef class spectrum:
         J11s = np.array([J11.evaluate(ik, self.kmin, self.kmax) for ik in k])
         
         fact = (self.f*self.conformalH)**2
-        Plin = self.Plin_func(k, 0.) 
+        Plin = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         P11  = fact*Plin
         P22  = 2*fact*I11s
         P13  = 3*fact*k*k*Plin*J11s
@@ -155,7 +156,7 @@ cdef class spectrum:
         J00s = np.array([J00.evaluate(ik, self.kmin, self.kmax) for ik in k])
         
         # compute each term separately
-        P11 = self.Plin_func(k, 0.) 
+        P11 = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         P22 = 2*I00s
         P13 = 3*k**2*P11*J00s
         
@@ -182,7 +183,7 @@ cdef class spectrum:
         J00 = integralsIJ.J_nm(0, 0, self.klin, self.Plin)
         J00s = np.array([J00.evaluate(ik, self.kmin, self.kmax) for ik in k])
 
-        Plin = self.Plin_func(k, 0.) 
+        Plin = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         fact = 2.*self.f*self.D**2
         return fact*(Plin + 4.*self.D**2*(I00s + 3*k*k*J00s*Plin))
     #end P01
@@ -224,7 +225,7 @@ cdef class spectrum:
         J00s = np.array([J00.evaluate(ik, self.kmin, self.kmax) for ik in k])
         
         # compute each term separately
-        Plin = self.Plin_func(k, 0.) 
+        Plin = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         return self.f**2*self.D**2*(Plin + self.D**2*(8.*I00s + 18.*J00s*k*k*Plin))
     #end P11_scalar
     
@@ -240,7 +241,7 @@ cdef class spectrum:
         I31s = self.Inm_parallel(3, 1, k)
         
         # compute each term separately
-        Plin = self.Plin_func(k, 0.) 
+        Plin = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         return self.f**2*self.D**4*I31s
     #end P11_vector
     
@@ -288,7 +289,7 @@ cdef class spectrum:
         J20s = np.array([J20.evaluate(ik, self.kmin, self.kmax) for ik in k])
         
         # compute each term separately
-        Plin = self.Plin_func(k, 0.) 
+        Plin = cosmology.Pk_full(k, 0., cosmo=self.cosmo) 
         P02_mu2 = self.f**2*self.D**4*(I02s + 2*k*k*J02s*Plin)
         P02_mu4 = self.f**2*self.D**4*(I20s + 2*k*k*J20s*Plin)
         

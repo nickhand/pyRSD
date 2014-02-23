@@ -15,7 +15,9 @@ ext_modules = [
               include_dirs=[numpy.get_include()]),
     Extension("kernels", ["kernels.pyx"]),
     Extension("cosmology", ["cosmology.pyx"],
-              include_dirs=[numpy.get_include()]),
+              libraries=cython_gsl.get_libraries(),
+	          library_dirs=[cython_gsl.get_library_dir()],
+              include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include()]),
     ]
 
 

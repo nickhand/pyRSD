@@ -7,7 +7,7 @@ cdef class spectrum:
     cdef readonly double kmin, kmax
     cdef np.ndarray klin, Plin
     cdef readonly double D, f, conformalH, sigma_v
-    cdef object Plin_func
+    cdef readonly object cosmo
     
     # functions
     cpdef P00(self, k)

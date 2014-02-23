@@ -14,8 +14,36 @@ cimport integralsIJ
 import numpy as np
 cimport numpy as np
 from cosmology import power_eh
+from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.integrate import quad
 
-
+def sigmav_lin(z, cosmo_params="Planck13"):
+    r"""
+    Compute the velocity dispersion in linear theory, in km/s. The integral
+    is given by: 
+        sigma_v^2 = (fDH)^2 \int d^3k Plin(k, z=0) / k^2 
+        
+    Parameters
+    ----------
+    z : {float, np.ndarray}
+        the redshift to compute the velocity dispersion at
+    cosmo_params : {str, dict}
+        the cosmological parameters to use
+    """
+    # compute the integral at z = 0
+    p = power_eh(cosmo_params)
+    Plin_func = p.Pk_full # this is in units of Mpc^3/h^3
+    integrand = lambda k: Plin_func(k, 0.)
+    ans = quad(integrand, 0, np.inf, epsabs=0., epsrel=1e-4)
+    sigmav_sq = ans[0]/3./(2*np.pi**2)
+    
+    # multiply by fDH/h to get units of km/s
+    D = p.growth_factor(z)
+    f = p.growth_rate(z)
+    conformalH = p.H(z)/(1+z)
+    return np.sqrt(sigmav_sq)*f*D*conformalH/p.pdict['h']
+#end sigmav_lin
+    
 cdef class spectrum:
         
     def __cinit__(self, z, kmin=1e-3, kmax=1., num_threads=1, cosmo_params='Planck13'):
@@ -39,18 +67,20 @@ cdef class spectrum:
             pre-defined cosmology from parameters module. Default is Planck 2013.
         """
         self.kmin, self.kmax = kmin, kmax
-        self.num_threads = num_threads
+        self.num_threads     = num_threads
         
         # initialze the linear power spectrum module
-        p = power_eh(cosmo_params)
+        p         = power_eh(cosmo_params)
         self.klin = np.logspace(-5, 1, 10000)
         self.Plin = p.Pk_full(self.klin, 0.)
         
-        self.D = p.growth_factor(z)
-        self.f = p.growth_rate(z)
+        # now compute useful quantities for later use
+        self.D          = p.growth_factor(z)
+        self.f          = p.growth_rate(z)
         self.conformalH = p.H(z)/(1.+z)
-        self.Plin_func = p.Pk_full
-    #end __init__
+        self.Plin_func  = p.Pk_full
+        self.sigma_v     = sigmav_lin(z, cosmo_params)
+    #end __cinit__
     #---------------------------------------------------------------------------
     def _vectorize(self, x):
         if np.isscalar(x):
@@ -274,7 +304,7 @@ cdef class spectrum:
         # handle both scalar and array inputs
         k = self._vectorize(k_hMpc)
           
-        sigma_v = 1.0
+        sigma_v = self.sigma_v
         P00 = self.P00(k)
         vel_terms = sigma_v**2 + (sigma_02/(self.f*self.conformalH*self.D))**2
         

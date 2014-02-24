@@ -13,15 +13,9 @@ cdef extern from "tf_fit.c":
     float TFnowiggles(float omega0, float f_baryon, float hubble,
     		float Tcmb, float k_hmpc) nogil
     float TFzerobaryon(float omega0, float hubble, float Tcmb, float k_hmpc) nogil
-    
-
-
-cpdef H(object z, object cosmo=*)
-cpdef E(object z, object cosmo=*)
-cpdef omega_m_z(object z, object cosmo=*)
-cpdef omega_l_z(object z, object cosmo=*)
-cpdef growth_rate(object z, object cosmo=*) 
-cpdef growth_factor(object z, object cosmo=*)
-cpdef Pk_full(object k_hMpc, object z, object cosmo=*)
-cpdef Pk_nowiggles(object k_hMpc, object z, object cosmo=*)
-cpdef sigma_r(object r_Mpch, object z, bint normed=*, object tf=*, object cosmo=*)
+ 
+cpdef growth_function(object z, bint normed=*, object params=*)   
+cpdef growth_rate(object z, object params=*)
+cpdef Pk_full(object k_hMpc, object z, object params=*)
+cpdef Pk_nowiggles(object k_hMpc, object z, object params=*)
+cpdef mass_variance(object r_Mpch, object z, bint normed=*, object tf=*, object params=*)

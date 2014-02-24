@@ -1,0 +1,5 @@
+cpdef vectorize(object x)
+cpdef H(object z, object params=*)
+cpdef E(object z, object params=*)
+cpdef omega_m_z(object z, object params=*)
+cpdef omega_l_z(object z, object params=*)

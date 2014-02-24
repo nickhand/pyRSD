@@ -10,15 +10,12 @@
  contact: nhand@berkeley.edu
  creation date: 02/17/2014
 """
-#import kernels_cy
+from pyPT.power cimport kernels
 from libc.math cimport exp, sqrt, log, M_PI
-from cython_gsl cimport *
-from kernels cimport *
-from cython import parallel
-import cython
-
 from libc.stdlib cimport malloc, free
+from cython import parallel
 
+from cython_gsl cimport *
 import numpy as np
 cimport numpy as np
 
@@ -47,7 +44,7 @@ cdef double Inm_inner(double lnq,  void * params) nogil:
         
     q = exp(lnq)
     k_minus_q = sqrt(q*q + p.k*p.k - 2.*p.k*q*p.x)
-    kern = f_kernel(p.n, p.m, q/p.k, p.x)
+    kern = kernels.f_kernel(p.n, p.m, q/p.k, p.x)
     
     # get the spline values for the linear power spectrum, making sure
     # we are within the interpolation domain
@@ -176,7 +173,7 @@ cdef double Jnm_integrand(double lnq,  void * params) nogil:
     cdef double power = 0.
     cdef fparams * p = (<fparams *> params)
     q = exp(lnq)
-    kern = g_kernel(p.n, p.m, q/p.k)
+    kern = kernels.g_kernel(p.n, p.m, q/p.k)
 
     # get the spline values for the linear power spectrum, making sure
     # we are within the interpolation domain

@@ -7,8 +7,8 @@
  creation date: 02/21/2014
 """
 import os
-import parameters
-import constants as c
+from . import parameters
+from . import constants as c
 
 #-------------------------------------------------------------------------------
 class Cosmology(object):

@@ -9,9 +9,8 @@
  contact: nhand@berkeley.edu
  creation date: 02/21/2014
 """
-from cosmo import Cosmology
-cimport cosmo_tools
-cimport gsl_tools
+from .cosmo import Cosmology
+from pyPT.cosmology cimport cosmo_tools, gsl_tools
 
 import numpy as np
 cimport numpy as np

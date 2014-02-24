@@ -8,7 +8,7 @@
 """
 import numpy as np
 cimport numpy as np
-from cosmo import Cosmology
+from .cosmo import Cosmology
 
 #-------------------------------------------------------------------------------
 cpdef vectorize(object x):

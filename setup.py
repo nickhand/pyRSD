@@ -42,7 +42,7 @@ def makeExtension(extName):
         extra_compile_args = cargs,
         extra_link_args = largs,
         libraries=cython_gsl.get_libraries(),
-        library_dirs=[cython_gsl.get_library_dir()],
+        library_dirs=[cython_gsl.get_library_dir(), '.'],
         include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
         )
 
@@ -60,7 +60,7 @@ setup(
   author_email='nicholas.adam.hand@gmail.com',
   packages=['pyPT', 'pyPT.cosmology', 'pyPT.power'],
   ext_modules=extensions,
-  include_dirs = [cython_gsl.get_include()],
+  include_dirs = [cython_gsl.get_include(), '.'],
   cmdclass = {'build_ext': build_ext},
   description='python package for redshift space power spectra using perturbation theory',
   long_description=open('README.md').read()

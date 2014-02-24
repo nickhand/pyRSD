@@ -11,8 +11,8 @@
  creation date: 02/17/2014
 """
 from pyPT.power cimport integralsIJ
-from pyPT.cosmology cimport cosmo_tools
-from ..cosmology import cosmo, linear_growth
+from pyPT.cosmology cimport cosmo_tools, linear_growth
+from ..cosmology import cosmo
 
 import numpy as np
 cimport numpy as np
@@ -37,13 +37,13 @@ def sigmav_lin(z, cosmo_params="Planck1_lens_WP_highL"):
         cosmo_params = cosmo.Cosmology(cosmo_params)
     
     # compute the integral at z = 0
-    Plin_func = linear_growth.Pk_full # this is in units of Mpc^3/h^3
-    integrand = lambda k: Plin_func(k, 0., params=cosmo_params)
+    # power is in units of Mpc^3/h^3
+    integrand = lambda k: linear_growth.Pk_full(k, 0., params=cosmo_params)
     ans = quad(integrand, 0, np.inf, epsabs=0., epsrel=1e-4)
     sigmav_sq = ans[0]/3./(2*np.pi**2)
     
     # multiply by fDH/h to get units of km/s
-    D = linear_growth.growth_function(z, params=cosmo_params)
+    D = linear_growth.growth_function(z, normed=True, params=cosmo_params)
     f = linear_growth.growth_rate(z, params=cosmo_params)
     conformalH = cosmo_tools.H(z, params=cosmo_params)/(1+z)
     return np.sqrt(sigmav_sq)*f*D*conformalH/cosmo_params.h
@@ -83,7 +83,7 @@ cdef class spectrum:
         self.Plin = linear_growth.Pk_full(self.klin, 0., params=self.cosmo)
         
         # now compute useful quantities for later use
-        self.D          = linear_growth.growth_function(z, params=self.cosmo)
+        self.D          = linear_growth.growth_function(z, normed=True, params=self.cosmo)
         self.f          = linear_growth.growth_rate(z, params=self.cosmo)
         self.conformalH = cosmo_tools.H(z,  params=self.cosmo)/(1.+z)
         self.sigma_v    = sigmav_lin(z, cosmo_params=self.cosmo)

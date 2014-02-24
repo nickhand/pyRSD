@@ -1,6 +1,6 @@
 cimport numpy as np
 
-cdef extern from "tf_fit.c":
+cdef extern from "pyPT/cosmology/tf_fit.c":
     
     void TFset_parameters(float omega0hh, float f_baryon, float Tcmb) nogil
     float TFfit_onek(float k, float *tf_baryon, float *tf_cdm) nogil

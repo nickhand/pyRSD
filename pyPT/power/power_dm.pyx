@@ -43,7 +43,7 @@ def sigmav_lin(z, cosmo_params="Planck1_lens_WP_highL"):
     sigmav_sq = ans[0]/3./(2*np.pi**2)
     
     # multiply by fDH/h to get units of km/s
-    D = linear_growth.growth_factor(z, params=cosmo_params)
+    D = linear_growth.growth_function(z, params=cosmo_params)
     f = linear_growth.growth_rate(z, params=cosmo_params)
     conformalH = cosmo_tools.H(z, params=cosmo_params)/(1+z)
     return np.sqrt(sigmav_sq)*f*D*conformalH/cosmo_params.h
@@ -83,10 +83,10 @@ cdef class spectrum:
         self.Plin = linear_growth.Pk_full(self.klin, 0., params=self.cosmo)
         
         # now compute useful quantities for later use
-        self.D          = linear_growth.growth_factor(z, params=self.cosmo)
+        self.D          = linear_growth.growth_function(z, params=self.cosmo)
         self.f          = linear_growth.growth_rate(z, params=self.cosmo)
         self.conformalH = cosmo_tools.H(z,  params=self.cosmo)/(1.+z)
-        self.sigma_v    = sigmav_lin(z, params=self.cosmo)
+        self.sigma_v    = sigmav_lin(z, cosmo_params=self.cosmo)
 
     #end __cinit__
     #---------------------------------------------------------------------------

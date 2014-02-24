@@ -79,7 +79,7 @@ cdef class spectrum:
         self.num_threads     = num_threads
         
         # initialze the linear power spectrum module
-        self.klin = np.logspace(-5, 1, 10000)
+        self.klin = np.logspace(np.log(kmin), np.log(kmax), 10000, base=np.e)
         self.Plin = linear_growth.Pk_full(self.klin, 0., params=self.cosmo)
         
         # now compute useful quantities for later use

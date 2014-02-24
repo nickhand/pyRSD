@@ -25,14 +25,22 @@ def scandir(dir, files=[]):
             scandir(path, files)
     return files
 
+
+parallel_exts = ['integralsIJ']
 # generate an Extension object from its dotted name
 def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"
+    
+    cargs = ["-O3", "-Wall"]
+    largs = ['-g']
+    if any(par_ext in extName for par_ext in parallel_exts):
+        cargs.append('-fopenmp')
+        largs.append('-fopenmp')
     return Extension(
         extName,
         [extPath],
-        extra_compile_args = ["-O3", "-Wall", '-fopenmp'],
-        extra_link_args = ['-g', '-fopenmp'],
+        extra_compile_args = cargs,
+        extra_link_args = largs,
         libraries=cython_gsl.get_libraries(),
         library_dirs=[cython_gsl.get_library_dir()],
         include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]

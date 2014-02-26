@@ -4,7 +4,7 @@
 """
  gsl_tools.pyx
  cosmology: internal module for functons that need to call GSL functions, 
-            usually for fast numerical integration
+            usually for numerical integration
  
  author: Nick Hand
  contact: nhand@berkeley.edu
@@ -14,6 +14,52 @@ from libc.math cimport pow, cos, sin, M_PI, sqrt
 cimport numpy as np
 import numpy as np
 from cython_gsl cimport *
+
+#-------------------------------------------------------------------------------
+cpdef np.ndarray compute_dlnsdlnm_integral(np.ndarray r, object params):
+    """
+    Internal method for use by hmf module that computes
+    the integral for dlnsigma/dlnmass. 
+
+    Notes
+    -----
+    Uses the GSL CQUAD integrator and calls 'dlnsdlnm_integrand' to 
+    evaluate the integral. Should NOT be called by the user.  
+    """
+
+    cdef int N = r.shape[0], i
+    cdef np.ndarray[double, ndim=1] output = np.empty(N)
+    cdef gsl_function F
+    cdef double fparams[6]
+    
+    cdef double rmin = np.amin(r)
+    cdef double rmax = np.amax(r)
+
+    # set up the integration
+    cdef gsl_integration_cquad_workspace * w
+    cdef double result, error
+    w = gsl_integration_cquad_workspace_alloc(1000)
+
+    F.function = &dlnsdlnm_integrand
+    F.params = fparams
+
+    # these are the function parameters in common
+    fparams[1] = params.h
+    fparams[2] = params.n
+
+    # initialize the transfer function parameters
+    TFset_parameters(params.omegam*params.h*params.h, params.omegab/params.omegam, params.Tcmb)
+
+    # do the integration
+    for i in xrange(N):
+       fparams[0] = r[i]
+       gsl_integration_cquad(&F, 1e-3/rmax, 100./rmin, 0., 1e-5, w, &result, &error, NULL)
+       output[i] = result
+
+    # free the integration workspace
+    gsl_integration_cquad_workspace_free(w)
+
+    return output
 
 #-------------------------------------------------------------------------------
 cpdef np.ndarray compute_sigma_integral(np.ndarray r, object params, object tf):
@@ -170,4 +216,15 @@ cdef double growth_function_integrand(double a, void *params) nogil:
 #end growth_function_integrand
 
 #-------------------------------------------------------------------------------
-                
+cdef double dlnsdlnm_integrand(double k, void *params) nogil:
+    
+    cdef float baryon_piece, cdm_piece
+    cdef double r  = (<double*> params)[0]
+    cdef double h  = (<double*> params)[1]
+    cdef double ns = (<double*> params)[2]
+
+    cdef double Tk = <double>TFfit_onek(k*h, &baryon_piece, &cdm_piece)
+    cdef double dW2dm = (sin(k*r)-k*r*cos(k*r))*(sin(k*r)*(1.-3./(k*k*r*r))+3*cos(k*r)/(k*r))
+    
+    return dW2dm*(Tk*Tk)*pow(k, ns)/(k*k)
+#end dlnsdlm_integrand               

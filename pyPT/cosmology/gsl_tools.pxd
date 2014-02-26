@@ -10,12 +10,13 @@ cdef extern from "pyPT/cosmology/tf_fit.c":
 # the integral wrappers    
 cpdef np.ndarray compute_sigma_integral(np.ndarray r, object params, object tf)
 cpdef np.ndarray compute_growth_integral(np.ndarray z, object params)
+cpdef np.ndarray compute_dlnsdlnm_integral(np.ndarray r, object params)
 
 # the relevant integrands
 cdef double sigma2_integrand_full(double k, void *params) nogil
 cdef double sigma2_integrand_nw(double k, void *params) nogil
 cdef double growth_function_integrand(double a, void *params) nogil
-
+cdef double dlnsdlnm_integrand(double k, void *params) nogil
     
 
     

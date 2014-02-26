@@ -246,4 +246,26 @@ cpdef mass_variance(object r_Mpch, object z, bint normed=True,
     return np.sqrt(sigma0*Dz*Dz)/norm
 #end mass_variance
 #-------------------------------------------------------------------------------
+cpdef dlnsdlnm(object r_Mpch, object sigma0=None, object params="Planck1_lens_WP_highL"):
+
+    # make cosmo parameter dictionary
+    if not isinstance(params, Cosmology):
+        params = Cosmology(params)
+        
+    # compute the mass variance if it is not provided
+    if sigma0 is None:
+        sigma0 = mass_variance(r_Mpch, 0., normed=True, tf="full", params=params)
+        
+    # vectorize the radius input
+    r = cosmo_tools.vectorize(r_Mpch)
+
+    # compute the integral, (unnormalized)
+    dlnsdlnm_int = gsl_tools.compute_dlnsdlnm_integral(r, params)
     
+    # normalize now
+    norm = (mass_variance(8., 0., normed=False, params=params)/params.sigma_8)**2
+    
+    dlnsdlnm = 3./(2*sigma0**2*np.pi**2*r**4) * (dlnsdlnm_int/norm)
+    
+    return dlnsdlnm
+#end dlnsdlnm

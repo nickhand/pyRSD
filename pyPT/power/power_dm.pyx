@@ -49,9 +49,9 @@ def sigmav_lin(z, cosmo_params="Planck1_lens_WP_highL"):
     return np.sqrt(sigmav_sq)*f*D*conformalH/cosmo_params.h
 #end sigmav_lin
     
-cdef class spectrum:
+cdef class Spectrum:
         
-    def __cinit__(self, z, kmin=1e-3, kmax=1., num_threads=1, cosmo_params="Planck1_lens_WP_highL"):
+    def __init__(self, z, kmin=1e-3, kmax=1., num_threads=1, cosmo_params="Planck1_lens_WP_highL"):
         """
         Parameters
         ----------

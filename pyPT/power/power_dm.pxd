@@ -1,6 +1,6 @@
 cimport numpy as np
 
-cdef class spectrum:
+cdef class Spectrum:
     
     # variables
     cdef readonly int num_threads

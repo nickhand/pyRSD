@@ -95,4 +95,47 @@ cpdef omega_l_z(object z, object params='Planck1_lens_WP_highL'):
         params = Cosmology(params)   
     return params.omegal/E(z, params=params)**2
 #end omega_l_z
- 
+
+#-------------------------------------------------------------------------------
+cpdef mass_to_radius(M, mean_dens):
+    """
+    Calculate radius of a region of space from its mass.
+    
+    Parameters
+    ----------
+    M : {float, np.ndarray}
+        the masses
+        
+    mean_dens : float
+        the mean density of the universe
+        
+    Returns
+    ------
+    R : {float, np.ndarray}
+        The corresponding radii to M
+    """
+    return (3.*M/(4.*np.pi*mean_dens))**(1./3.)
+#end mass_to_radius
+
+#-------------------------------------------------------------------------------
+cpdef radius_to_mass(R, mean_dens):
+    """
+    Calculates mass of a region of space from its radius
+
+    Parameters
+    ----------
+    R : {float, np.ndarray}
+        the radii
+
+    mean_dens : float
+        the mean density of the universe
+
+    Returns
+    ------
+    M : {float, np.ndarray}
+        The masses corresponding to the radii
+    """
+    return 4*np.pi*R**3*mean_dens/3
+#end radius_to_mass
+
+#------------------------------------------------------------------------------- 

@@ -185,8 +185,11 @@ class Cosmology(object):
             elif isinstance(args[0], dict):
                 _current = dict(args[0], **kwargs)
             else:
-                raise ValueError("Argument must be a string or dictionary. Valid strings:" + \
-                            "\n%s" %([x()['name'] for x in parameters.available]))
+                if args[0] is None:
+                    _current = {}
+                else:
+                    raise ValueError("Argument must be a string or dictionary. Valid strings:" + \
+                                "\n%s" %([x()['name'] for x in parameters.available]))
         else:
             _current = kwargs
         

@@ -211,7 +211,8 @@ class functionator(trapolator):
                 ok[s] = True
         if not all(ok):
             print 'Warning: functionator called out-of bounds'
-            print (~ok).nonzero()
+            inds = (~ok).nonzero()
+            print x[inds]
         return y
 
     def valid(self, x):

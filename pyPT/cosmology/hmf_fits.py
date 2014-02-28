@@ -16,9 +16,8 @@ class Multiplicity(object):
                  'SMT': '_fsigma_SMT',
                  'Jenkins': '_fsigma_Jenkins',
                  'Warren': '_fsigma_Warren',
-                 'Tinker_unnorm': '_fsigma_Tinker_unnorm',
-                 'Tinker_norm': '_fsigma_Tinker_norm',
-                 'Tinker_norm2': '_fsigma_Tinker_norm2'}
+                 'Tinker': '_fsigma_Tinker',
+                 'Tinker_norm': '_fsigma_Tinker_norm'}
     
     def __init__(self, hmf, cut=True):
         self.hmf = hmf
@@ -99,7 +98,7 @@ class Multiplicity(object):
     #end _fsigma_Warren
     
     #---------------------------------------------------------------------------
-    def _fsigma_Tinker_unnorm(self):
+    def _fsigma_Tinker(self):
         """
         Calculate f(sigma) for the unnormalized (divergent at low mass)
         Tinker form. This is f(sigma) from Tinker et al. 2008.
@@ -182,14 +181,14 @@ class Multiplicity(object):
                 fsigma[np.logical_or(self.hmf.lnsigma / np.log(10) < -0.2 ,
                                   self.hmf.lnsigma / np.log(10) > 0.4)] = np.NaN
         return fsigma
-    #end _fsigma_Tinker_unnorm
+    #end _fsigma_Tinker
     
     #---------------------------------------------------------------------------
     def _fsigma_Tinker_norm(self):
         """
         Calculate f(sigma) for the non-divergent Tinker form. This has been
         normalized such that the dark matter has an average bias of unity, 
-        integrated over the mass function. 
+        integrated over the mass function (from Tinker et al. 2010)
 
         Tinker, J., et al., 2010. ApJ 724, 878-886.
         http://iopscience.iop.org/0004-637X/724/2/878
@@ -258,24 +257,17 @@ class Multiplicity(object):
                                
         # interpolate between the delta_virs
         # to get the correct value
-        # alpha_func = spline(delta_virs, alpha_array)
-        # beta_func  = spline(delta_virs, beta_array)
-        # gamma_func = spline(delta_virs, gamma_array)
-        # phi_func   = spline(delta_virs, phi_array)
-        # eta_func   = spline(delta_virs, eta_array)
-        # 
-        # alpha_0 = alpha_func(self.hmf.delta_halo)
-        # beta_0  = beta_func(self.hmf.delta_halo)
-        # gamma_0 = gamma_func(self.hmf.delta_halo)
-        # phi_0   = phi_func(self.hmf.delta_halo)
-        # eta_0   = eta_func(self.hmf.delta_halo)
-
-        alpha_0 = alpha_array[index]
-        beta_0  = beta_array[index]
-        gamma_0 = gamma_array[index]
-        phi_0   = phi_array[index]
-        eta_0   = eta_array[index]
-
+        alpha_func = spline(delta_virs, alpha_array)
+        beta_func  = spline(delta_virs, beta_array)
+        gamma_func = spline(delta_virs, gamma_array)
+        phi_func   = spline(delta_virs, phi_array)
+        eta_func   = spline(delta_virs, eta_array)
+        
+        alpha_0 = alpha_func(self.hmf.delta_halo)
+        beta_0  = beta_func(self.hmf.delta_halo)
+        gamma_0 = gamma_func(self.hmf.delta_halo)
+        phi_0   = phi_func(self.hmf.delta_halo)
+        eta_0   = eta_func(self.hmf.delta_halo)
 
         z     = self.hmf.z if self.hmf.z < 3 else 3.
         alpha = alpha_0
@@ -296,109 +288,8 @@ class Multiplicity(object):
                 fnu[np.logical_or(self.hmf.lnsigma / np.log(10) < -0.2 ,
                                   self.hmf.lnsigma / np.log(10) > 0.4)] = np.NaN
         return nu*fnu
-    #end _fsigma_Tinker_unnorm
+    #end _fsigma_Tinker_norm
     #---------------------------------------------------------------------------
-    def _fsigma_Tinker_norm2(self):
-        """
-        Calculate g(sigma) for the non-divergent Tinker form from 
-        Appendix C of Tinker et al. 2008.
-         
-        Tinker, J., et al., 2008. ApJ 688, 709-728.
-        http://iopscience.iop.org/0004-637X/688/2/709
-
-        Notes
-        -----
-        Only valid for :math:`-0.6<\log_{10}\sigma^{-1}<0.4`
-        """
-        # The Tinker function is a bit tricky - we use the code from
-        # http://cosmo.nyu.edu/~tinker/massfunction/MF_code.tar to aid us.
-        delta_virs = np.array([200, 300, 400, 600, 800, 1200, 1600, 2400, 3200])
-        
-        if self.hmf.delta_halo in delta_virs:
-            index = np.where(delta_virs == self.hmf.delta_halo)[0]
-        else:
-            raise ValueError("delta_halo = %s is invalid; must be one of %s" %(self.hmf.delta_halo, delta_virs))
-        B_array = np.array([ 0.482,
-                             0.466,
-                             0.494,
-                             0.494,
-                             0.496,
-                             0.450,
-                             0.466,
-                             0.429,
-                             0.388])
-
-        d_array = np.array([ 1.97,
-                             2.06,
-                             2.30,
-                             2.56,
-                             2.83,
-                             2.92,
-                             3.29,
-                             3.37,
-                             3.30])
-
-        e_array = np.array([ 1.00,
-                             0.99,
-                             0.93,
-                             0.93,
-                             0.96,
-                             1.04,
-                             1.07,
-                             1.12,
-                             1.16])
-
-        f_array = np.array([ 0.51,
-                             0.48,
-                             0.48,
-                             0.45,
-                             0.44,
-                             0.40,
-                             0.40,
-                             0.36,
-                             0.33])
-        
-        g_array = np.array([ 1.228,
-                             1.310,
-                             1.403,
-                             1.553,
-                             1.702,
-                             1.907,
-                             2.138,
-                             2.394,
-                             2.572 ])
-                               
-        # interpolate between the delta_virs
-        # to get the correct value
-        # alpha_func = spline(delta_virs, alpha_array)
-        # beta_func  = spline(delta_virs, beta_array)
-        # gamma_func = spline(delta_virs, gamma_array)
-        # phi_func   = spline(delta_virs, phi_array)
-        # eta_func   = spline(delta_virs, eta_array)
-        # 
-        # alpha_0 = alpha_func(self.hmf.delta_halo)
-        # beta_0  = beta_func(self.hmf.delta_halo)
-        # gamma_0 = gamma_func(self.hmf.delta_halo)
-        # phi_0   = phi_func(self.hmf.delta_halo)
-        # eta_0   = eta_func(self.hmf.delta_halo)
-
-        B = B_array[index]
-        d = d_array[index]
-        e = e_array[index]
-        f = f_array[index]
-        g = g_array[index]
-        
-        gsigma = B*((self.hmf.sigma/e)**(-d) + self.hmf.sigma**(-f))*np.exp(-g/self.hmf.sigma**2)
-
-        if self.cut:
-            if self.hmf.z == 0.:
-                gsigma[np.logical_or(self.hmf.lnsigma / np.log(10) < -0.6 ,
-                                  self.hmf.lnsigma / np.log(10) > 0.4)] = np.NaN
-            else:
-                gsigma[np.logical_or(self.hmf.lnsigma / np.log(10) < -0.2 ,
-                                  self.hmf.lnsigma / np.log(10) > 0.4)] = np.NaN
-        return gsigma
-    #end _fsigma_Tinker_norm2
 #endclass Multiplicity
 
 

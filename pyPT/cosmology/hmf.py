@@ -74,9 +74,11 @@ class HaloMassFunction(object):
         The cosmology to default to for missing parameters. Default is 
         ``"Planck1_lens_WP_highL"``.
     
-    powerlaw_M : float, optional
+    powerlaw_M : {float, ``None``}, optional
         The maximum mass to use in the power-law fit to the low mass end of the
-        mass function [units :math:`M_\odot h^{-1}`]. Default is 1e12.
+        mass function [units :math:`M_\odot h^{-1}`]. Default is 1e12. If
+        ``None``, the spline fit will not use a power law extrapolation at 
+        low mass.
         
     Attributes
     ----------
@@ -126,12 +128,18 @@ class HaloMassFunction(object):
         The cumulative mass function above `M`, ``len=len(M)``
         [units :math:`h^3 Mpc^{-3}`]
         
-    exp_cutoff_M : float
+    mgtm : array_like, read-only
+        The total mass in haloes `> M`, ``len=len(M)`` 
+        [units :math:`M_\odot h^2 Mpc^{-3}`]
+        
+    exp_cutoff_M : {float, ``None``}
         The minimum mass to use in the exponential fit to the high mass end of the
         mass function [units :math:`M_\odot h^{-1}`]. Default is the mass
-        where :math: ``4 \sigma(M, z) = \delta_c``.
+        where :math: ``4 \sigma(M, z) = \delta_c``. If ``None``, the spline
+        fit will not use an exponential extrapolation at high mass.
+        
     """
-    def __init__(self, M=None, z=0., mf_fit="Tinker_unnorm", delta_h=200.,
+    def __init__(self, M=None, z=0., mf_fit="Tinker", delta_h=200.,
                     delta_wrt='mean', delta_c=1.686, cut_fit=True,
                     params=None, force_flat=False, default="Planck1_lens_WP_highL",
                     powerlaw_M=1e12):
@@ -254,9 +262,13 @@ class HaloMassFunction(object):
     @powerlaw_M.setter
     def powerlaw_M(self, val):
         
+        if val != None and val <= 0.:
+             raise ValueError("Low-mass power law mass must be greater than zero")
         if hasattr(self, 'exp_cutoff_M'):
-            if val > self.exp_cutoff_M:
-                raise ValueError("Low-mass power law mass cannot be greater than exponential cutoff mass")
+            if val != None and self.exp_cutoff_M != None:
+                if val > self.exp_cutoff_M:
+                    raise ValueError("Low-mass power law mass cannot be greater than exponential cutoff mass")
+        
         self.__powerlaw_M = val
         try:
             del self.__spline
@@ -275,9 +287,13 @@ class HaloMassFunction(object):
     @exp_cutoff_M.setter
     def exp_cutoff_M(self, val):
         
+        if val != None and val <= 0.:
+             raise ValueError("Exponential cutoff mass must be greater than zero")
         if hasattr(self, 'powerlaw_M'):
-            if val < self.powerlaw_M:
-                raise ValueError("Exponential cutoff mass cannot be smaller than low-mass power law mass")
+            if val != None and self.powerlaw_M != None:
+                if val < self.powerlaw_M:
+                    raise ValueError("Exponential cutoff mass cannot be smaller than low-mass power law mass")        
+        
         self.__exp_cutoff_M = val
         try:
             del self.__spline
@@ -359,6 +375,7 @@ class HaloMassFunction(object):
         except:
            pass
 
+    #---------------------------------------------------------------------------
     @property
     def _dlnsdlnm(self):
         """
@@ -384,6 +401,7 @@ class HaloMassFunction(object):
         except:
            pass
 
+    #---------------------------------------------------------------------------
     @property
     def sigma(self):
         """
@@ -405,6 +423,7 @@ class HaloMassFunction(object):
         except:
            pass
 
+    #---------------------------------------------------------------------------
     @property
     def lnsigma(self):
         """
@@ -423,7 +442,7 @@ class HaloMassFunction(object):
            del self.fsigma
         except:
            pass
-
+    #---------------------------------------------------------------------------
     @property
     def fsigma(self):
         """
@@ -443,16 +462,17 @@ class HaloMassFunction(object):
            del self.dndm
         except:
            pass
-
+    #---------------------------------------------------------------------------
     @property
     def dndm(self):
         """
-        The number density of haloes, ``len=len(M)`` [units :math:`h^4 M_\odot^{-1} Mpc^{-3}`]
+        The number density of haloes, ``len=len(M)`` 
+        [units :math:`h^4 M_\odot^{-1} Mpc^{-3}`]
         """
         try:
            return self.__dndm
         except:
-           self.__dndm = self.fsigma*self.cosmo.mean_dens*np.abs(self._dlnsdlnm) / self.M**2
+           self.__dndm = self.fsigma*self.cosmo.mean_dens*np.abs(self._dlnsdlnm)/self.M**2
            return self.__dndm
 
     @dndm.deleter
@@ -464,7 +484,7 @@ class HaloMassFunction(object):
            del self.__spline
         except:
            pass            
-            
+    #---------------------------------------------------------------------------     
     @property
     def dndlnm(self):
         """
@@ -482,11 +502,12 @@ class HaloMassFunction(object):
            del self.__dndlnm
         except:
            pass
-
+    #---------------------------------------------------------------------------
     @property
     def dndlog10m(self):
         """
-        The differential mass function in terms of log of `M`, ``len=len(M)`` [units :math:`h^3 Mpc^{-3}`]
+        The differential mass function in terms of log of `M`, ``len=len(M)``,
+        [units :math:`h^3 Mpc^{-3}`]
         """
         try:
            return self.__dndlog10m
@@ -500,163 +521,102 @@ class HaloMassFunction(object):
            del self.__dndlog10m
         except:
            pass
-
-    def _ngtm(self):
+    #---------------------------------------------------------------------------
+    def _xgtm(self, calc='ngtm'):
         """
-        Calculate n(>m).
+        Calculate either n(>m) or mass in halos >m
         """
         # set M and mass_function within computed range
         M = self.M[np.logical_not(np.isnan(self.dndlnm))]
-        self.sample()
-
-        newM = np.concatenate( (M[:-1], 10**(np.linspace(np.log10(M[0]), 18, 1000))) )
-        mass_function = self.dndlnm_spline(newM)
-
-        # Calculate the cumulative integral (backwards) of mass_function (Adding on the upper integral)
-        ngtm = intg.cumtrapz(mass_function[::-1], dx=np.log(newM[1]) - np.log(newM[0]))[::-1]
-
-        # We need to set ngtm back in the original length vector with nans where they were originally
-        if len(M) < len(self.M):
-            ngtm_temp = np.zeros_like(self.dndlnm)
-            ngtm_temp[:] = np.nan
-            ngtm_temp[np.logical_not(np.isnan(self.dndlnm))] = ngtm[:len(M)]
-            ngtm = ngtm_temp
+        dlogM = np.log10(M[1]) - np.log10(M[0])
+        newM = np.concatenate( (M[:-1], 10**(np.arange(np.log10(M[-1]), 18, dlogM))) )
+        
+        # we cut the mass array
+        if (M[-1] < self.M[-1]):        
+            mass_function = self.dndlnm_spline(newM)
         else:
-            ngtm = ngtm[:len(M)]
+            # try to calculate the hmf as far as we can normally
+            new_mf   = copy.deepcopy(self)
+            new_mf.M = np.log10(newM)
+            mf       = new_mf.dndlnm
+            m_upper  = new_mf.M
+             
+            # we couldn't go down all the way, so find the largest mass and 
+            # use that as the exponential cutoff mass for the spline fit
+            if np.isnan(mf[-1]):
+                m_good = m_upper[~np.isnan(mf)]
+                m_max = np.amax(m_good)
+                new_mf.exp_cutoff_M = m_max
+            else:
+                new_mf.exp_cutoff_M = None
+                            
+            mass_function = new_mf.dndlnm_spline(newM)
+            
+        # Calculate the cumulative integral (backwards) of mass_function
+        if calc == 'ngtm':
+            xgtm = intg.cumtrapz(mass_function[::-1], x=np.log10(newM), initial=0.)[::-1]
+        else:
+            xgtm = intg.cumtrapz(mass_function[::-1]*newM[::-1], x=np.log10(newM), initial=0.)[::-1]
 
-        return ngtm
-    #end _ngtm
+        # We need to set ngtm back in the original length vector with nans where 
+        # they were originally
+        if len(M) < len(self.M):
+            xgtm_temp = np.zeros_like(self.dndlnm)
+            xgtm_temp[:] = np.nan
+            xgtm_temp[np.logical_not(np.isnan(self.dndlnm))] = xgtm[:len(M)]
+            xgtm = xgtm_temp
+        else:
+            xgtm = xgtm[:len(M)]
+
+        return xgtm
+    #end _xgtm
     
     #---------------------------------------------------------------------------
     @property
     def ngtm(self):
         """
-        The cumulative mass function above `M`, ``len=len(M)`` [units :math:`h^3 Mpc^{-3}`]
+        The cumulative mass function above `M`, ``len=len(M)``,
+        [units :math:`h^3 Mpc^{-3}`]
         """
         try:
-           return self.__ngtm
+            return self.__ngtm
         except:
-           self.__ngtm = self._ngtm()
-           return self.__ngtm
+            self.__ngtm = self._xgtm(calc='ngtm')
+            return self.__ngtm
 
     @ngtm.deleter
     def ngtm(self):
         try:
-           del self.__ngtm
+            del self.__ngtm
         except:
-           pass
-
+            pass
+    #---------------------------------------------------------------------------
     @property
     def mgtm(self):
         """
         Mass in haloes `>M`, ``len=len(M)`` [units :math:`M_\odot h^2 Mpc^{-3}`]
         """
         try:
-           return self.__mgtm
+            return self.__mgtm
         except:
-           M = self.M[np.logical_not(np.isnan(self.dndlnm))]
-           mass_function = self.dndlnm[np.logical_not(np.isnan(self.dndlnm))]
-
-           # Calculate the mass function (and its integral) from the highest M up to 10**18
-           if M[-1] < 10 ** 18:
-               m_upper, mf = self._upper_ngtm(M, np.log(mass_function), M[-1] < self.M[-1])
-               int_upper = intg.simps(np.exp(mf + m_upper) , dx=m_upper[2] - m_upper[1], even='first')
-           else:
-               int_upper = 0
-
-           # Calculate the cumulative integral (backwards) of mass_function (Adding on the upper integral)
-           self.__mgtm = np.concatenate((intg.cumtrapz(mass_function[::-1] * M[::-1], dx=np.log(M[1]) - np.log(M[0]))[::-1], np.zeros(1))) + int_upper
-
-           # We need to set ngtm back in the original length vector with nans where they were originally
-           if len(self.__mgtm) < len(self.M):
-               mgtm_temp = np.zeros_like(self.dndlnm)
-               mgtm_temp[:] = np.nan
-               mgtm_temp[np.logical_not(np.isnan(self.dndlnm))] = self.__mgtm
-               self.__mgtm = mgtm_temp
-           return self.__mgtm
+            self.__mgtm = self._xgtm(calc='mgtm')
+            return self.__mgtm
+    
     @mgtm.deleter
     def mgtm(self):
         try:
-           del self.__mgtm
+            del self.__mgtm
         except:
-           pass
-
-    @property
-    def nltm(self):
-        """
-        Inverse cumulative mass function, ``len=len(M)`` [units :math:`h^3 Mpc^{-3}`]
-        """
-        try:
-           return self.__nltm
-        except:
-           # set M and mass_function within computed range
-           M = self.M[np.logical_not(np.isnan(self.dndlnm))]
-           mass_function = self.dndlnm[np.logical_not(np.isnan(self.dndlnm))]
-
-           # Calculate the mass function (and its integral) from 10**3 up to lowest M
-           if M[0] > 10 ** 3:
-               m_lower, mf = self._lower_ngtm(M, np.log(mass_function), M[0] > self.M[0])
-
-               int_lower = intg.simps(np.exp(mf), dx=m_lower[2] - m_lower[1], even='first')
-           else:
-               int_lower = 0
-
-           # Calculate the cumulative integral of mass_function (Adding on the lower integral)
-           self.__nltm = np.concatenate((np.zeros(1), intg.cumtrapz(mass_function, dx=np.log(M[1]) - np.log(M[0])))) + int_lower
-
-           # We need to set ngtm back in the original length vector with nans where they were originally
-           if len(self.__nltm) < len(self.M):
-               nltm_temp = np.zeros_like(self.dndlnm)
-               nltm_temp[:] = np.nan
-               nltm_temp[np.logical_not(np.isnan(self.dndlnm))] = self.__nltm
-               self.__nltm = nltm_temp
-
-           return self.__nltm
-    @nltm.deleter
-    def nltm(self):
-        try:
-           del self.__nltm
-        except:
-           pass
-
-    @property
-    def mltm(self):
-        """
-        Total mass in haloes `<M`, ``len=len(M)`` [units :math:`M_\odot h^2 Mpc^{-3}`]
-        """
-        try:
-           return self.__mltm
-        except:
-           # Set M within calculated range
-           M = self.M[np.logical_not(np.isnan(self.dndlnm))]
-           mass_function = self.dndlnm[np.logical_not(np.isnan(self.dndlnm))]
-
-           # Calculate the mass function (and its integral) from 10**3 up to lowest M
-           if M[0] > 10 ** 3:
-               m_lower, mf = self._lower_ngtm(M, np.log(mass_function), M[0] > self.M[0])
-
-               int_lower = intg.simps(np.exp(mf + m_lower), dx=m_lower[2] - m_lower[1], even='first')
-           else:
-               int_lower = 0
-
-           # Calculate the cumulative integral of mass_function (Adding on the lower integral)
-           self.__mltm = np.concatenate((np.zeros(1), intg.cumtrapz(mass_function * M, dx=np.log(M[1]) - np.log(M[0])))) + int_lower
-
-           # We need to set ngtm back in the original length vector with nans where they were originally
-           if len(self.__mltm) < len(self.M):
-               nltm_temp = np.zeros_like(self.dndlnm)
-               nltm_temp[:] = np.nan
-               nltm_temp[np.logical_not(np.isnan(self.dndlnm))] = self.__mltm
-               self.__mltm = nltm_temp
-
-           return self.__mltm
-          
+            pass
+                      
     #----------------------------------------------------------------------------
     def _fit_exponential_cutoff(self, M, mf):
         """
         Fit the high-mass end of the HMF with an exponential cutoff in mass 
         and return a functionator.powerLawExtrapolator object. 
         """
+        if self.exp_cutoff_M is None: return None
+        
         # find if we have high mass values computed already
         inds = np.where(M > self.exp_cutoff_M)[0]
         
@@ -685,6 +645,8 @@ class HaloMassFunction(object):
         Fit the low-mass end of the HMF with a power law and return a
         functionator.powerLawExtrapolator object. 
         """
+        if self.powerlaw_M is None: return None
+        
         # find if we have high mass values computed already
         inds = np.where(M < self.powerlaw_M)[0]
         
@@ -725,16 +687,22 @@ class HaloMassFunction(object):
         # now do the middle spline interpolation 
         new_mf = copy.deepcopy(self)
         new_mf.cut_fit = False
-        new_mf.M = np.linspace(np.log10(self.powerlaw_M), np.log10(self.exp_cutoff_M), 500)
+        
+        m_min = self.powerlaw_M if self.powerlaw_M != None else 5e2
+        m_max = self.exp_cutoff_M if self.exp_cutoff_M != None else 5e18
+        new_mf.M = np.linspace(np.log10(m_min), np.log10(m_max), 500)
         mf_middle = new_mf.dndm
         m_middle = new_mf.M
         
-        spline_interp = functionator.splineLogInterpolator(m_middle, mf_middle,
-                                                            min_x=self.powerlaw_M,
-                                                            max_x=self.exp_cutoff_M)
+
+        spline_interp = functionator.splineInterpolator(m_middle, mf_middle,
+                                                        min_x=m_min,
+                                                        max_x=m_max)
         
         # get the whole combined function
-        self.__spline = functionator.functionator(ops=[lo_extrap, spline_interp, hi_extrap])
+        ops = [lo_extrap, spline_interp, hi_extrap]
+        ops = [op for op in ops if op != None]
+        self.__spline = functionator.functionator(ops=ops)
     #end _compute_dndm_spline
     
     #---------------------------------------------------------------------------
@@ -777,3 +745,4 @@ class HaloMassFunction(object):
     #end dndlnm_spline
     
     #---------------------------------------------------------------------------
+#endclass HaloMassFunction

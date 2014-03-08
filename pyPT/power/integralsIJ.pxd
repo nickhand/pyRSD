@@ -5,9 +5,9 @@ cimport numpy as np
 cdef class I_nm:
     
     # variables
-    cdef gsl_spline *spline
-    cdef gsl_interp_accel *acc
-    cdef readonly int n, m
+    cdef gsl_spline *spline1, *spline2
+    cdef gsl_interp_accel *acc1, *acc2
+    cdef public int n, m
     
     # functions
     #cpdef evaluate(self, double k, double kmin, double kmax)
@@ -19,8 +19,8 @@ cdef class J_nm:
     # variables
     cdef gsl_spline *spline
     cdef gsl_interp_accel *acc
-    cdef gsl_integration_workspace *w
-    cdef readonly int n, m
+    cdef gsl_integration_cquad_workspace *w
+    cdef public int n, m
 
     # functions
-    cpdef evaluate(self, double k, double kmin, double kmax)
+    cpdef evaluate(self, np.ndarray[double, ndim=1] k, double kmin, double kmax)

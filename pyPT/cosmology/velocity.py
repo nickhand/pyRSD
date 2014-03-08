@@ -11,18 +11,16 @@ import scipy.integrate as intgr
 import numpy as np
 
 #-------------------------------------------------------------------------------
-def sigmav_lin(z, cosmo_params="Planck1_lens_WP_highL"):
+def sigmav_lin(cosmo_params="Planck1_lens_WP_highL"):
     """
     Compute the velocity dispersion in linear theory, in units of Mpc/h (need
-    to multiply by f*H_conformal*D to get units of km/s). The integral is 
+    to multiply by f*H_conformal to get units of km/s). The integral is 
     given by: 
     
     .. math:: sigma_v^2 = (1/3) * \int d^3k Plin(k, z=0) / k^2 
         
     Parameters
     ----------
-    z : {float, array_like}
-        The redshift to compute the velocity dispersion at
     cosmo_params : {str, dict, cosmo.Cosmology}
         The cosmological parameters to use. Default is Planck 2013 parameters.
     """

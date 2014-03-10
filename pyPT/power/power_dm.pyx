@@ -82,8 +82,8 @@ class Spectrum(object):
             is ``False``.
         """
         # initialize the cosmology parameters
-        self.cosmo           = cosmo_params
         self.cosmo_kwargs    = cosmo_kwargs
+        self.cosmo           = cosmo_params
         self.kmin, self.kmax = kmin, kmax
         self.num_threads     = num_threads
         self.include_2loop   = include_2loop

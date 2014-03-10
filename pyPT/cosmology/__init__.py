@@ -1,5 +1,5 @@
 import cosmo_tools
-import linear_growth
+import growth
 import parameters
 import constants
 import hmf

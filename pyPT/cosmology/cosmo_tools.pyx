@@ -12,11 +12,7 @@ from .cosmo import Cosmology
 
 #-------------------------------------------------------------------------------
 cpdef vectorize(object x):
-    if np.isscalar(x):
-        x = np.array([x])
-    else:
-        x = np.array(x)
-    return x
+    return np.array(x, copy=False, ndmin=1)
 #end vectorize
 
 #-------------------------------------------------------------------------------

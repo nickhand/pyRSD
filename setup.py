@@ -36,9 +36,13 @@ def makeExtension(extName):
     if any(par_ext in extName for par_ext in parallel_exts):
         cargs.append('-fopenmp')
         largs.append('-fopenmp')
+    
+    sourceFiles = [extPath]
+    if 'growth' in extPath:
+        sourceFiles += ['pyPT/cosmology/power.c', 'pyPT/cosmology/transfer.c']
     return Extension(
         extName,
-        [extPath],
+        sourceFiles,
         extra_compile_args = cargs,
         extra_link_args = largs,
         libraries=cython_gsl.get_libraries(),

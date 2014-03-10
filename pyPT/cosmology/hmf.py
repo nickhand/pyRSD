@@ -9,7 +9,7 @@
 import numpy as np
 import copy
 from .cosmo import Cosmology
-from . import hmf_fits, functionator, linear_growth, cosmo_tools
+from . import hmf_fits, functionator, growth, cosmo_tools
 
 import scipy.integrate as intg
 import scipy.optimize
@@ -182,8 +182,7 @@ class HaloMassFunction(object):
         """
         def objective(M):
             R = cosmo_tools.mass_to_radius(M*1e14, self.cosmo.mean_dens)
-            sigma = linear_growth.mass_variance(R, self.z, normed=True, 
-                                                    tf='full', params=self.cosmo)
+            sigma = growth.mass_variance(R, self.z, normed=True, tf='EH', params=self.cosmo)
             return 4.*sigma - self.delta_c
             
         M = scipy.optimize.brentq(objective, 1e-4, 1e5)
@@ -362,8 +361,7 @@ class HaloMassFunction(object):
         try:
            return self.__sigma_0
         except:
-           self.__sigma_0 = linear_growth.mass_variance(self.R, 0., normed=True, 
-                                                        tf='full', params=self.cosmo)
+           self.__sigma_0 = growth.mass_variance(self.R, 0., normed=True, tf='EH', params=self.cosmo)
            return self.__sigma_0
 
     @_sigma_0.deleter
@@ -390,7 +388,7 @@ class HaloMassFunction(object):
         try:
            return self.__dlnsdlnm
         except:
-           self.__dlnsdlnm = linear_growth.dlnsdlnm(self.R, sigma0=self._sigma_0, params=self.cosmo)
+           self.__dlnsdlnm = growth.dlnsdlnm(self.R, sigma0=self._sigma_0, tf="EH", params=self.cosmo)
            return self.__dlnsdlnm
 
     @_dlnsdlnm.deleter
@@ -410,8 +408,7 @@ class HaloMassFunction(object):
         try:
            return self.__sigma
         except:
-           self.__sigma = self._sigma_0*linear_growth.growth_function(self.z, 
-                                                normed=True, params=self.cosmo)
+           self.__sigma = self._sigma_0*growth.growth_function(self.z, normed=True, params=self.cosmo)
            return self.__sigma
 
     @sigma.deleter

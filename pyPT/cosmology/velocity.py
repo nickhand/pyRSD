@@ -6,7 +6,7 @@
  contact: nhand@berkeley.edu
  creation date: 02/27/2014
 """
-from . import bias, hmf, cosmo_tools, cosmo, linear_growth
+from . import bias, hmf, cosmo_tools, cosmo, growth
 import scipy.integrate as intgr
 import numpy as np
 

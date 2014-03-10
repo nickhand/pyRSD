@@ -12,7 +12,7 @@
  creation date: 02/17/2014
 """
 from pyPT.power cimport integralsIJ
-from pyPT.cosmology cimport cosmo_tools, linear_growth 
+from pyPT.cosmology cimport cosmo_tools, growth 
 from ..cosmology import cosmo, velocity, hmf
 from pyPT.power import power_1loop
 
@@ -33,6 +33,7 @@ class Spectrum(object):
                        kmax=KMAX, 
                        num_threads=1, 
                        cosmo_params="Planck1_lens_WP_highL", 
+                       cosmo_kwargs={'default':"Planck1_lens_WP_highL", 'force_flat':False},
                        mass_function_kwargs={'mf_fit' : 'Tinker'}, 
                        bias_model='Tinker',
                        include_2loop=False):
@@ -62,6 +63,10 @@ class Spectrum(object):
         cosmo_params : {str, dict, cosmo.Cosmology}
             The cosmological parameters to use. Default is Planck DR1 + lensing
             + WP + high L 2013 parameters.
+        
+        cosmo_kwargs : dict, optional
+            Keyword arguments to pass to the cosmo.Cosmology class. Possible 
+            keywords include ``default`` and ``force_flat``.
             
         mass_function_kwargs : dict, optional
             The keyword arguments to pass to the hmf.HaloMassFunction object
@@ -77,14 +82,14 @@ class Spectrum(object):
             is ``False``.
         """
         # initialize the cosmology parameters
-        self.cosmo = cosmo_params
-            
+        self.cosmo           = cosmo_params
+        self.cosmo_kwargs    = cosmo_kwargs
         self.kmin, self.kmax = kmin, kmax
         self.num_threads     = num_threads
         self.include_2loop   = include_2loop
         self.k               = np.array(k, copy=False, ndmin=1)
         
-        # compute the linear wavenumber and power spectrum for interpolation purposes
+        # wavenumbers for interpolation purposes
         self.klin_interp = np.logspace(np.log(1e-8), np.log(1e5), 1e4, base=np.e)
                     
         # save useful quantitues for later
@@ -143,10 +148,26 @@ class Spectrum(object):
     @cosmo.setter
     def cosmo(self, val):
         if not isinstance(val, cosmo.Cosmology):
-            self.__cosmo = cosmo.Cosmology(val)
+            self.__cosmo = cosmo.Cosmology(val, **self.cosmo_kwargs)
         else:
             self.__cosmo = val
             
+        # basically delete everything
+        del self.hmf
+        del self.two_loop
+        pattern = re.compile("_Spectrum__(f|D|conformalH|Plin_interp|I|J|sigma_lin)")
+        for k in self.__dict__.keys():
+            if pattern.match(k): del self.__dict__[k]
+        self._delete_all()
+    #--------------------------------------------------------------------------
+    @property
+    def cosmo_kwargs(self):
+        return self.__cosmo_kwargs
+    
+    @cosmo_kwargs.setter
+    def cosmo_kwargs(self, val):
+        self.__cosmo_kwargs = val
+        
         # basically delete everything
         del self.hmf
         del self.two_loop
@@ -326,7 +347,7 @@ class Spectrum(object):
         try:
             return self.__D
         except:
-            self.__D = linear_growth.growth_function(self.z, normed=True, params=self.cosmo)
+            self.__D = growth.growth_function(self.z, normed=True, params=self.cosmo)
             return self.__D
     #---------------------------------------------------------------------------
     @property
@@ -334,7 +355,7 @@ class Spectrum(object):
         try:
             return self.__f
         except:
-            self.__f = linear_growth.growth_rate(self.z, params=self.cosmo)
+            self.__f = growth.growth_rate(self.z, params=self.cosmo)
             return self.__f
     #---------------------------------------------------------------------------
     @property
@@ -385,7 +406,7 @@ class Spectrum(object):
         try:
             return self.__Plin
         except:
-            self.__Plin = linear_growth.Pk_full(self.k, 0., params=self.cosmo) 
+            self.__Plin = growth.Pk_full(self.k, 0., params=self.cosmo) 
             return self.__Plin
     #---------------------------------------------------------------------------
     @property
@@ -393,7 +414,7 @@ class Spectrum(object):
         try:
             return self.__Plin_interp
         except:
-            self.__Plin_interp = linear_growth.Pk_full(self.klin_interp, 0., params=self.cosmo)
+            self.__Plin_interp = growth.Pk_lin(self.klin_interp, 0., tf='EH', params=self.cosmo)
             return self.__Plin_interp
     #---------------------------------------------------------------------------        
     @property

@@ -26,7 +26,7 @@ def scandir(dir, files=[]):
     return files
 
 
-parallel_exts = ['integralsIJ']
+parallel_exts = ['integralsIJ', 'integralsK']
 # generate an Extension object from its dotted name
 def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"

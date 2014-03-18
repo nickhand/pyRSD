@@ -1,10 +1,9 @@
 #!python
 #cython: cdivision=True
 """
- kernels.pyx
- pyPT: Cython from libc.math cimport sqrtmodule defining the kernels of the 
-       relevant integrals in the PT expansion. Kernel and integral expressions 
-       given in Appendix D of Vlah et al. 2012.
+ kernelsIJ.pyx
+ pyPT: cython module defining the kernels of the integrals I_nm and J_nm. 
+       Kernel and integral expressions given in Appendix D of Vlah et al. 2012.
  
  author: Nick Hand
  contact: nhand@berkeley.edu

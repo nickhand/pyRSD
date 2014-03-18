@@ -3,15 +3,14 @@
 #cython: wraparound=False
 #cython: cdivision=True
 """
- integralsIJ.pyx
- pyPT: Cython code for the integrals I_nm(k), J_nm(k) from Appendix D 
-       of Vlah et al. 2012
+ integralsK.pyx
+ pyPT: classes to compute the integrals K_nm(k) from Vlah et al. 2013
  
  author: Nick Hand
  contact: nhand@berkeley.edu
- creation date: 02/17/2014
+ creation date: 03/10/2014
 """
-from pyPT.power cimport kernelsIJ
+from pyPT.power cimport kernelsK
 from libc.math cimport exp, sqrt, log, M_PI
 from libc.stdlib cimport malloc, free
 from cython import parallel
@@ -26,13 +25,14 @@ cdef struct fparams:
     double lnq
     int n
     int m
+    bint s
     gsl_spline * spline1, *spline2
     gsl_interp_accel * acc1, *acc2
     
 #-------------------------------------------------------------------------------
-cdef double Inm_inner(double x,  void * params) nogil:
+cdef double Knm_inner(double x,  void * params) nogil:
     """
-    The integrand of the inner integral for I_nm(k), which is the
+    The integrand of the inner integral for K_nm(k), which is the
     integral over x = cos(theta)
     """
     cdef double k_minus_q, kern, q
@@ -45,7 +45,7 @@ cdef double Inm_inner(double x,  void * params) nogil:
     
     q = exp(p.lnq)
     k_minus_q = sqrt(q*q + p.k*p.k - 2.*p.k*q*x)
-    kern = kernelsIJ.f_kernel(p.n, p.m, q/p.k, x)
+    kern = kernelsK.kernel(p.n, p.m, p.s, q/p.k, x)
         
     # get the spline values for the linear power spectrum, making sure
     # we are within the interpolation domain
@@ -58,12 +58,12 @@ cdef double Inm_inner(double x,  void * params) nogil:
         power2 = 0.
     
     return q*q*q*kern*power1*power2
-#end Inm_inner
+#end Knm_inner
     
 #-------------------------------------------------------------------------------
-cdef double Inm_outer(double lnq,  void * params) nogil:
+cdef double Knm_outer(double lnq,  void * params) nogil:
     """
-    Compute the outer integral for I_nm(k).
+    Compute the outer integral for K_nm(k).
     """
     # define the variables and initialize the integration
     cdef gsl_integration_cquad_workspace * w
@@ -78,7 +78,7 @@ cdef double Inm_outer(double lnq,  void * params) nogil:
     
     # set up the gsl function for the inner integral
     cdef gsl_function F 
-    F.function = &Inm_inner
+    F.function = &Knm_inner
     F.params = p
     
     # do the integration
@@ -91,12 +91,12 @@ cdef double Inm_outer(double lnq,  void * params) nogil:
     # free the integration workspace
     gsl_integration_cquad_workspace_free(w)
     return result
-#end Inm_outer
+#end Knm_outer
 
 #-------------------------------------------------------------------------------
-cdef class I_nm:
+cdef class K_nm:
     
-    def __cinit__(self, n, m, k1, P1, k2=None, P2=None):
+    def __cinit__(self, n, m, s, k1, P1, k2=None, P2=None):
         cdef np.ndarray xarr, yarr
         self.acc1, self.acc2 = NULL, NULL
         self.spline1, self.spline2 = NULL, NULL
@@ -126,6 +126,7 @@ cdef class I_nm:
         # store the index
         self.n = n
         self.m = m
+        self.s = s
         
         # turn off the error handler
         gsl_set_error_handler_off()
@@ -143,8 +144,8 @@ cdef class I_nm:
         if self.acc2 != NULL:
             gsl_interp_accel_free(self.acc2)
     #end __dealloc__
-            
-    #---------------------------------------------------------------------------
+    
+    #---------------------------------------------------------------------------        
     cpdef evaluate(self, np.ndarray[double, ndim=1] k, double kmin, double kmax, int num_threads):
         
         cdef double result = 0.
@@ -164,7 +165,8 @@ cdef class I_nm:
             params         = <fparams *>malloc(sizeof(fparams))
             params.lnq     = 0.
             params.n       = self.n
-            params.m       = self.m        
+            params.m       = self.m   
+            params.s       = self.s     
             params.spline1 = self.spline1
             params.acc1    = self.acc1
             params.spline2 = self.spline2
@@ -176,7 +178,7 @@ cdef class I_nm:
         
             # allocate and set up the function to pass to the integrator
             F = <gsl_function *>malloc(sizeof(gsl_function))
-            F.function = &Inm_outer
+            F.function = &Knm_outer
         
             for i in parallel.prange(N):
                 
@@ -202,108 +204,5 @@ cdef class I_nm:
     #end evaluate
     #---------------------------------------------------------------------------
     
-#endclass I_nm
-
-#-------------------------------------------------------------------------------
-cdef double Jnm_integrand(double lnq,  void * params) nogil:
-    """
-    Compute the integral for J_nm(k).
-    """
-    cdef double q, kern
-    cdef double power
-    cdef fparams * p = (<fparams *> params)
-    q = exp(lnq)
-    kern = kernelsIJ.g_kernel(p.n, p.m, q/p.k)
-
-    # get the spline values for the linear power spectrum, making sure
-    # we are within the interpolation domain
-    power = gsl_spline_eval(p.spline1, q, p.acc1)
-    if gsl_isnan(power):
-        power = 0.
-        
-    return q*kern*power
-#end Jnm_integand
-    
-#-------------------------------------------------------------------------------
-cdef class J_nm:
-    
-    def __cinit__(self, n, m, klin, Plin):
-        cdef np.ndarray xarr, yarr
-        
-        # check the input values
-        if (n + m > 2): 
-            raise ValueError("kernel g_nm must have n, m such that n + m < 3")
-            
-        self.acc = NULL
-        self.spline = NULL
-        self.w = NULL
-        
-        # set up the power spline
-        xarr = np.ascontiguousarray(klin, dtype=np.double)
-        yarr = np.ascontiguousarray(Plin, dtype=np.double)
-
-        # set up the spline
-        self.spline = gsl_spline_alloc(gsl_interp_cspline, xarr.shape[0])
-        self.acc = gsl_interp_accel_alloc()
-        gsl_spline_init(self.spline, <double*>xarr.data, <double*>yarr.data, xarr.shape[0])
-    
-        # set up the integration workspace
-        self.w = gsl_integration_cquad_workspace_alloc(1000)
-        
-        # store the index
-        self.n = n
-        self.m = m
-        
-        # turn off the error handler
-        gsl_set_error_handler_off()
-    #end __cinit__
-    
-    #---------------------------------------------------------------------------
-    def __dealloc__(self):
-        if self.spline != NULL:
-            gsl_spline_free(self.spline)
-        if self.acc != NULL:
-            gsl_interp_accel_free(self.acc)
-        if self.w != NULL:
-            gsl_integration_cquad_workspace_free(self.w)
-    #end __dealloc__        
-    
-    #---------------------------------------------------------------------------
-    cpdef evaluate(self, np.ndarray[double, ndim=1] k, double kmin, double kmax):
-        
-        cdef double result, error
-        cdef int N = k.shape[0]
-        cdef int i, status
-        cdef const char * reason
-        cdef np.ndarray[double, ndim=1] output = np.empty(N)
-        cdef fparams params
-        cdef gsl_function F
-        
-        # set up the params to pass and the pointer
-        params.lnq = 0. # this is not needed here
-        params.n = self.n
-        params.m = self.m        
-        params.spline1 = self.spline
-        params.acc1 = self.acc
-        params.spline2 = NULL
-        params.acc2 = NULL
-
-        # now set up the gsl integrating function
-        F.function = &Jnm_integrand
-        
-        for i in xrange(N):
-            params.k = k[i]
-            F.params = &params
-            
-            status = gsl_integration_cquad(&F, log(kmin), log(kmax), 0, 1e-4, self.w, &result, &error, NULL)
-            if status:
-                reason = gsl_strerror(status)
-                print "Warning: %s" %reason
-            
-            output[i] = result / (2.*M_PI**2)
-        return output
-    #end evaluate
-    #----------------------------------------------------------------------------
-    
-#endclass J_nm  
+#endclass K_nm
 #-------------------------------------------------------------------------------

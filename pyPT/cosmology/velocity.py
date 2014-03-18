@@ -29,7 +29,7 @@ def sigmav_lin(cosmo_params="Planck1_lens_WP_highL"):
     
     # compute the integral at z = 0
     # power is in units of Mpc^3/h^3
-    integrand = lambda k: linear_growth.Pk_full(k, 0., params=cosmo_params)
+    integrand = lambda k: growth.Pk_lin(k, 0., tf='EH', params=cosmo_params)
     ans = intgr.quad(integrand, 0, np.inf, epsabs=0., epsrel=1e-4)
     sigmav_sq = ans[0]/3./(2*np.pi**2)
     
@@ -112,7 +112,7 @@ def sigma_bv2(mf, bias_model):
     def integrand(lnM):
         M = np.exp(lnM) # in units of M_sun/h
         R = cosmo_tools.mass_to_radius(M, mf.cosmo.mean_dens) # in Mpc/h
-        sigma = linear_growth.mass_variance(R, mf.z, params=mf.cosmo)
+        sigma = growth.mass_variance(R, mf.z, tf='EH', params=mf.cosmo)
         b = bias_func(sigma, mf.delta_c, *bias_args)
         return mf.dndlnm_spline(M)*M*b*sigma_evrard(M, mf.z, mf.cosmo)**2
         
@@ -146,7 +146,7 @@ def sigma_bv4(mf, bias_model):
     def integrand(lnM):
         M = np.exp(lnM) # in units of M_sun/h
         R = cosmo_tools.mass_to_radius(M, mf.cosmo.mean_dens) # in Mpc/h
-        sigma = linear_growth.mass_variance(R, mf.z, params=mf.cosmo)
+        sigma = growth.mass_variance(R, mf.z, tf='EH', params=mf.cosmo)
         b = bias_func(sigma, mf.delta_c, *bias_args)
         return mf.dndlnm_spline(M)*M*b*sigma_evrard(M, mf.z, mf.cosmo)**4
         

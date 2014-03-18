@@ -164,15 +164,12 @@ void sigma_r(double *r, double z, int numr, int normed, double *sigma)
 {
     int i;
     double result, error;
-    double norm, growth;
+    double norm;
     
     // set up the gsl function and integration workspace
     gsl_integration_cquad_workspace * work = gsl_integration_cquad_workspace_alloc(1000);
     gsl_function F;
     F.function = &sigma2_integrand;
-    
-    // compute the normed growth function for this redshift 
-    D_plus(&z, 1, 1, &growth);
     
     // compute the normalization at r = 8 Mpc/h
     if (normed) {
@@ -185,7 +182,7 @@ void sigma_r(double *r, double z, int numr, int normed, double *sigma)
     for (i=0; i < numr; i++) {
         F.params = &r[i];
         gsl_integration_cquad(&F, 1e-3/r[i], 100./r[i], 0., 1e-5, work, &result, &error, NULL);
-        sigma[i] = growth*norm*sqrt(result);
+        sigma[i] = sqrt(result)*sqrt(norm);
     }
     
     // free the integration workspace

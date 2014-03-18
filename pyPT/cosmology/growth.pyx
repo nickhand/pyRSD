@@ -256,7 +256,7 @@ cpdef mass_variance(object r_Mpch, object z, bint normed=True,
     # compute the growth function
     Dz = growth_function(z, normed=True, params=params)
     
-    # compute sigma at Z
+    # compute sigma at z = 0, then multiply by the growth function
     sigma_r(<double *>rarr.data, 0., N, 1, <double *>output.data)
     
     return Dz*output

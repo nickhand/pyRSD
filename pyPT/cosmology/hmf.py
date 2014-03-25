@@ -610,7 +610,7 @@ class HaloMassFunction(object):
     def _fit_exponential_cutoff(self, M, mf):
         """
         Fit the high-mass end of the HMF with an exponential cutoff in mass 
-        and return a functionator.powerLawExtrapolator object. 
+        and return a functionator.exponentialExtrapolator object. 
         """
         if self.exp_cutoff_M is None: return None
         

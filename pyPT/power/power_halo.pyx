@@ -11,12 +11,11 @@
  contact: nhand@berkeley.edu
  creation date: 03/10/2014
 """
-from pyPT.power cimport integralsK
+from pyPT.power cimport integralsK, integralsIJ
 from pyPT.cosmology cimport growth, cosmo_tools
 from pyPT.power import power_dm
 
 import re
-import scipy.integrate as intgr
 import numpy as np
 cimport numpy as np
 
@@ -130,8 +129,6 @@ class HaloSpectrum(power_dm.DMSpectrum):
     @b1.setter
     def b1(self, val):
         self._b1 = val
-        if hasattr(self, 'oneloop_interp'):
-            self.oneloop_interp.b1 = val
             
         # delete terms depending on the bias
         pattern = re.compile("_P[01234]{2}_hh[a-z_]*")
@@ -152,8 +149,6 @@ class HaloSpectrum(power_dm.DMSpectrum):
     @b2_00.setter
     def b2_00(self, val):
         self._b2_00 = val
-        if hasattr(self, 'oneloop_interp'):
-            self.oneloop_interp.b2_00 = val
             
         # delete terms depending on the bias
         pattern = re.compile("_P[01234]{2}_hh[a-z_]*")
@@ -181,37 +176,40 @@ class HaloSpectrum(power_dm.DMSpectrum):
             if pattern.match(k): del self.__dict__[k]
     #---------------------------------------------------------------------------
     @property
-    def oneloop_interp(self):
+    def bs(self):
         """
-        Attribute holding a ``Halo1LoopInterp`` class for interpolation 
-        purposes when computing 2-loop terms.
+        The quadratic, nonlocal tidal bias factor
         """
         try:
-            return self._oneloop_interp
+            return self._bs
         except:
-            self._oneloop_interp = Halo1LoopInterp(self.b1, self.b2_00, self.z, 
-                                                    self.cosmo, self.kmin, 
-                                                    self.kmax, k=np.logspace(-4, 1, 500), 
-                                                    num_threads=self.num_threads)
-            return self._oneloop_interp
-    
-    @oneloop_interp.deleter
-    def oneloop_interp(self):
-        try:
-            del self._oneloop_interp
-        except:
-            pass  
+            raise ValueError("Must specify quadratic, nonlocal tidal bias 'bs' attribute.")
+            
+    @bs.setter
+    def bs(self, val):
+        self._bs = val
+            
+        # delete terms depending on the bias
+        pattern = re.compile("_P[01234]{2}_hh[a-z_]*")
+        for k in self.__dict__.keys():
+            if pattern.match(k): del self.__dict__[k]
     #---------------------------------------------------------------------------
     @property
-    def K(self):
-        """
-        The instance of the ``K`` integrals.
-        """
+    def base_spectra(self):
         try:
-            return self._K
+            return self._base_spectra
         except:
-            self._K = integralsK.K_nm(0, 0, False, self.klin_interp, self.Plin_interp, k2=None, P2=None)
-            return self._K
+            self._base_spectra = HaloBaseSpectra(self.b1, self.b2_00, self.bs, 
+                                                self.z, self._kmin, self._kmax, 
+                                                self.cosmo, self.num_threads)
+            return self._base_spectra
+            
+    @base_spectra.deleter
+    def base_spectra(self):
+        try:
+            del self._base_spectra
+        except:
+            pass
     #---------------------------------------------------------------------------
     # INTEGRAL ATTRIBUTES (READ-ONLY)
     #---------------------------------------------------------------------------
@@ -220,9 +218,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K00
         except:
-            self.K.n, self.K.m = 0, 0
-            self.K.s = False
-            self._K00 = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 0, 0
+            self.base_spectra.K.s = False
+            self._K00 = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K00
     #---------------------------------------------------------------------------
     @property
@@ -230,9 +228,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K00s
         except:
-            self.K.n, self.K.m = 0, 0
-            self.K.s = True
-            self._K00s = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 0, 0
+            self.base_spectra.K.s = True
+            self._K00s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K00s
     #---------------------------------------------------------------------------
     @property
@@ -240,9 +238,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K01
         except:
-            self.K.n, self.K.m = 0, 1
-            self.K.s = False
-            self._K01 = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 0, 1
+            self.base_spectra.K.s = False
+            self._K01 = self.base_spectra.K.evaluate(self.k,self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K01
     #---------------------------------------------------------------------------
     @property
@@ -250,9 +248,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K01s
         except:
-            self.K.n, self.K.m = 0, 1
-            self.K.s = True
-            self._K01s = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 0, 1
+            self.base_spectra.K.s = True
+            self._K01s = self.base_spectra.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
             return self._K01s
     #---------------------------------------------------------------------------
     @property
@@ -260,9 +258,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K02s
         except:
-            self.K.n, self.K.m = 0, 2
-            self.K.s = True
-            self._K02s = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 0, 2
+            self.base_spectra.K.s = True
+            self._K02s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K02s
     #---------------------------------------------------------------------------
     @property
@@ -270,9 +268,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K10
         except:
-            self.K.n, self.K.m = 1, 0
-            self.K.s = False
-            self._K10 = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 1, 0
+            self.base_spectra.K.s = False
+            self._K10 = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K10
     #---------------------------------------------------------------------------
     @property
@@ -280,9 +278,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K10s
         except:
-            self.K.n, self.K.m = 1, 0
-            self.K.s = True
-            self._K10s = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 1, 0
+            self.base_spectra.K.s = True
+            self._K10s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K10s
     #---------------------------------------------------------------------------
     @property
@@ -290,9 +288,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K11
         except:
-            self.K.n, self.K.m = 1, 1
-            self.K.s = False
-            self._K11 = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 1, 1
+            self.base_spectra.K.s = False
+            self._K11 = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K11
     #---------------------------------------------------------------------------
     @property
@@ -300,9 +298,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K11s
         except:
-            self.K.n, self.K.m = 1, 1
-            self.K.s = True
-            self._K11s = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 1, 1
+            self.base_spectra.K.s = True
+            self._K11s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K11s
     #---------------------------------------------------------------------------
     @property
@@ -310,9 +308,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20_a
         except:
-            self.K.n, self.K.m = 2, 0
-            self.K.s = False
-            self._K20_a = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 2, 0
+            self.base_spectra.K.s = False
+            self._K20_a = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K20_a
     #---------------------------------------------------------------------------
     @property
@@ -320,9 +318,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20s_a
         except:
-            self.K.n, self.K.m = 2, 0
-            self.K.s = True
-            self._K20s_a = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 2, 0
+            self.base_spectra.K.s = True
+            self._K20s_a = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K20s_a
     #---------------------------------------------------------------------------
     @property
@@ -330,9 +328,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20_b
         except:
-            self.K.n, self.K.m = 2, 1
-            self.K.s = False
-            self._K20_b = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 2, 1
+            self.base_spectra.K.s = False
+            self._K20_b = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K20_b
     #---------------------------------------------------------------------------
     @property
@@ -340,52 +338,10 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20s_b
         except:
-            self.K.n, self.K.m = 2, 1
-            self.K.s = True
-            self._K20s_b = self.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self.base_spectra.K.n, self.base_spectra.K.m = 2, 1
+            self.base_spectra.K.s = True
+            self._K20s_b = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
             return self._K20s_b
-    #---------------------------------------------------------------------------
-    # INTERMEDIATE POWER TERMS
-    #---------------------------------------------------------------------------
-    @property
-    def Pdv(self):
-        """
-        The l-loop density-divergence cross correlation. 
-        """
-        A = self.f*self.conformalH
-        P11  = -A*self.Plin
-        P22  = -2*A*self.I01
-        P13  = -3*A*self.k**2*self.Plin*self.J01
-
-        return self.D**2*P11 + self.D**4*(P22 + 2*P13)
-    #---------------------------------------------------------------------------
-    @property
-    def B11(self):
-        """
-        The power spectrum of <div*density|density>. This has mu angular
-        dependence. 
-        """
-        term1 = 6.*self.k*self.Plin*self.J10
-        term2 = 2./self.k*self.I22
-        return self.D**4*(self.f*self.conformalH)**2 * (term1 + term2)
-    #---------------------------------------------------------------------------
-    @property
-    def C11(self):
-        """
-        The power spectrum of <div*density|div*density>. The first term returned
-        is isotropic and the second returned has mu^2 dependence.
-        """
-        fac = (self.f*self.conformalH/self.k)**2
-        return fac*self.I31, fac*self.I13
-    #---------------------------------------------------------------------------
-    @property
-    def B12(self):
-        """
-        The power spectrum of <div*density|div*div>. The first term returned
-        has mu dependence and the second returned has mu^3 dependence.
-        """
-        fac = (self.f*self.conformalH/self.k)**3
-        return fac*self.I03, fac*self.I30
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)
     #---------------------------------------------------------------------------
@@ -398,11 +354,12 @@ class HaloSpectrum(power_dm.DMSpectrum):
             return self._P00_hm
         except:
             # first make sure biases are available
-            b1 = self.b1
+            b1    = self.b1
             b2_00 = self.b2_00
+            bs    = self.bs
             
             self._P00_hm = power_dm.PowerTerm()
-            self._P00_hm.total.mu0 = b1*self.P00.total.mu0 + self.D**4 * b2_00*(self.K00 + self.K00s)
+            self._P00_hm.total.mu0 = b1*self.P00.total.mu0 + self.D**4 * (b2_00*self.K00 + bs*self.K00s)
             return self._P00_hm
     #---------------------------------------------------------------------------
     @property
@@ -429,12 +386,13 @@ class HaloSpectrum(power_dm.DMSpectrum):
             return self._P00_hh_no_stoch
         except:
             # first make sure biases are available
-            b1 = self.b1
+            b1    = self.b1
             b2_00 = self.b2_00
+            bs    = self.bs
             
             self._P00_hh_no_stoch = power_dm.PowerTerm()
             term1 = b1**2 * self.P00.total.mu0
-            term2 = 2*b1*self.D**4*b2_00*(self.K00 + self.K00s)
+            term2 = 2*b1*self.D**4 * (b2_00*self.K00 + bs*self.K00s)
             self._P00_hh_no_stoch.total.mu0 = term1 + term2
             
             return self._P00_hh_no_stoch
@@ -449,18 +407,20 @@ class HaloSpectrum(power_dm.DMSpectrum):
             return self._P01_hh
         except:
             # first make sure biases are available
-            b1 = self.b1
+            b1    = self.b1
             b2_01 = self.b2_01
+            bs    = self.bs
             
             self._P01_hh = power_dm.PowerTerm()
 
             # do mu^2 terms?
             if self.max_mu >= 2:
                 
+                A = 2.*self.f*self.D**4
                 term1 = b1**2 * self.P01.total.mu2
-                term2 = -2.*b1*(1. - b1)/self.conformalH * self.Pdv
-                term3 = -2.*self.f*self.D**2 * b2_01*(self.K10 + self.K10s)
-                term4 = -2.*self.f*self.D**2 * b1*b2_01*(self.K11 + self.K11s)
+                term2 = -2*b1*(1. - b1)*self.Pdv
+                term3 =  A*(b2_01*self.K10 + bs*self.K10s)
+                term4 = A*b1*(b2_01*self.K11 + bs*self.K11s)
         
                 self._P01_hh.total.mu2 = term1 + term2 + term3 + term4
             return self._P01_hh
@@ -475,8 +435,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
             return self._P02_hh
         except:
             # first make sure biases are available
-            b1 = self.b1
+            b1    = self.b1
             b2_00 = self.b2_00
+            bs    = self.bs
             
             self._P02_hh = power_dm.PowerTerm()
             
@@ -485,14 +446,14 @@ class HaloSpectrum(power_dm.DMSpectrum):
                 
                 term1_mu2 = b1*self.P02.no_velocity.mu2            
                 term2_mu2 =  -(self.f*self.D*self.k*self.sigma_lin)**2 * self.P00_hh_no_stoch.total.mu0
-                term3_mu2 = (self.D**2*self.f)**2 * b2_00*(self.K20_a + self.K20s_a)
+                term3_mu2 = (self.D**2*self.f)**2 * (b2_00*self.K20_a + bs*self.K20s_a)
                 self._P02_hh.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4:
                     
                     term1_mu4 = b1*self.P02.no_velocity.mu4
-                    term2_mu4 = (self.D**2*self.f)**2 * b2_00*(self.K20_b + self.K20s_b)
+                    term2_mu4 = (self.D**2*self.f)**2 * (b2_00*self.K20_b + bs*self.K20s_b)
                     self._P02_hh.total.mu4 = term1_mu4 + term2_mu4
             return self._P02_hh
     #---------------------------------------------------------------------------
@@ -512,21 +473,18 @@ class HaloSpectrum(power_dm.DMSpectrum):
             b1 = self.b1
             
             self._P11_hh = power_dm.PowerTerm()
-            C11_mu0, C11_mu2 = self.C11
-
+ 
             # do mu^2 terms?
             if self.max_mu >= 2:
                 
-                term1_mu2 = self.P11.total.mu2
-                term2_mu2 = (b1**2 - 1.)*(self.k/self.conformalH)**2 * C11_mu0
-                self._P11_hh.total.mu2 = term1_mu2 + term2_mu2
+                self._P11_hh.total.mu2 = b1**2 * (self.I04 + self.I40)
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4:
                     
                     term1_mu4 = self.P11.total.mu4
-                    term2_mu4 = 2*(b1-1.)*(self.k/self.conformalH**2)*self.B11
-                    term3_mu4 = (b1**2 - 1.)*(self.k/self.conformalH)**2 * C11_mu2
+                    term2_mu4 = 2.*(b1-1.)* (self.f*self.D**2)**2 * (6.*self.k**2*self.Plin*self.J10 + 2.*self.I22)
+                    term3_mu4 =  (b1**2 - 1.)*(self.I14 + self.I41)
 
                     self._P11_hh.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
             return self._P11_hh
@@ -562,22 +520,15 @@ class HaloSpectrum(power_dm.DMSpectrum):
             
             self._P12_hh = power_dm.PowerTerm()
             
-            B12_mu, B12_mu3 = self.B12
-            
             # do mu^4 terms?
             if self.max_mu >= 4:
-                
-                term1_mu4 = self.P12.total.mu4
-                term2_mu4 = -(self.k/self.conformalH)**3 * (b1 - 1.) * B12_mu
-                term3_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_lin)**2 * (self.P01_hh.total.mu2 - self.P01.total.mu2)
-                self._P12_hh.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
+                term1_mu4 = self.f**3 * self.D**4 * (self.I12 - b1*self.I03 + 2*self.k**2 * self.J02*self.Plin)
+                term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P01_hh.total.mu2
+                self._P12_hh.total.mu4 = term1_mu4 + term2_mu4
                 
                 # do mu^6 terms?
                 if self.max_mu >= 6:
-                    
-                    term1_mu6 = self.P12.total.mu6
-                    term2_mu6 = -(self.k/self.conformalH)**3 * (b1 - 1.) * B12_mu3
-                    self._P12_hh.total.mu6 = term1_mu6 + term2_mu6
+                    self._P12_hh.total.mu6 = self.f**3 * self.D**4 * (self.I21 - b1*self.I30 + 2*self.k**2*self.J20*self.Plin)
             
             return self._P12_hh
     #---------------------------------------------------------------------------
@@ -628,7 +579,12 @@ class HaloSpectrum(power_dm.DMSpectrum):
             
                 term1 = self.P22.no_velocity.mu4
                 term2 = -0.25*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu2 + self.P02_hh.total.mu2)
-                term3 = self.oneloop_interp.convolve('P22bar_mu4', 'P00_hh', self.k)
+                
+                A = 0.25 * self.k**4
+                convolve_mu0 = self.base_spectra.convolve('k1loop', 'P22bar_mu0', 'k1loop', 'P00_hh', self.k)
+                convolve_mu2 = self.base_spectra.convolve('k1loop', 'P22bar_mu2', 'k1loop', 'P00_hh', self.k)
+                convolve_mu4 = self.base_spectra.convolve('k1loop', 'P22bar_mu4', 'k1loop', 'P00_hh', self.k)
+                term3 = A*(convolve_mu0 + (1./3)*convolve_mu2 + (1./5)*convolve_mu4)
                 
                 self._P22_hh.total.mu4 = term1 + term2 + term3
                 
@@ -637,17 +593,12 @@ class HaloSpectrum(power_dm.DMSpectrum):
                     
                     term1 = self.P22.no_velocity.mu6
                     term2 = -0.25*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu4 + self.P02_hh.total.mu4)
-                    term3 = self.oneloop_interp.convolve('P22bar_mu6', 'P00_hh', self.k)
-
-                    self._P22_hh.total.mu6 = term1 + term2 + term3
+                    self._P22_hh.total.mu6 = term1 + term2
                 
                     # do mu^8 terms?
                     if self.max_mu >= 8:
+                        self._P22_hh.total.mu8 = self.P22.no_velocity.mu8
                         
-                        term1 = self.P22.no_velocity.mu8
-                        term2 = self.oneloop_interp.convolve('P22bar_mu8', 'P00_hh', self.k)
-
-                        self._P22_hh.total.mu8 = term1 + term2 
             return self._P22_hh
     #---------------------------------------------------------------------------
     @property
@@ -668,10 +619,10 @@ class HaloSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 4:
                 
                 term1 = -0.5*b1*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu2
-                A = (1./12)*(b1*(self.f*self.D*self.k)**2)**2*self.P00_hh_no_stoch.total.mu0
+                A = (1./12)*( b1*(self.f*self.D*self.k)**2 )**2 * self.P00_hh_no_stoch.total.mu0
                 
                 # compute velocity kurtosis (in Mpc/h)
-                vel_kurtosis = self.oneloop_interp.vel_kurtosis * (self.cosmo.h / (self.f*self.conformalH*self.D))**4
+                vel_kurtosis = self.base_spectra.vel_kurtosis / (self.f*self.D)**4
                 term2 = A*(3*self.sigma_lin**4 + vel_kurtosis)
                 
                 # save the total
@@ -752,121 +703,57 @@ class HaloSpectrum(power_dm.DMSpectrum):
 #enclass HaloPowerSpectrum       
 
 #-------------------------------------------------------------------------------
-class Halo1LoopInterp(power_dm.DM1LoopInterp):
+class HaloBaseSpectra(power_dm.DMBaseSpectra):
     """
-    A class to hold one loop terms for interpolation purposes.
+    Class to holding base power spectra to be used for splines in the 
+    computation of PT integrals.
     """
-    def __init__(self, b1, b2_00, *args, **kwargs):
+    def __init__(self, b1, b2_00, bs, *args, **kwargs):
         
         self.b1    = b1
         self.b2_00 = b2_00
+        self.bs    = bs
         
-        # initalize the dark matter object
-        super(Halo1LoopInterp, self).__init__(*args, **kwargs)
+        # initalize the dark matter power spectrum
+        super(HaloBaseSpectra, self).__init__(*args, **kwargs)
     #---------------------------------------------------------------------------
     @property
-    def b1(self):
+    def K(self):
         """
-        The linear bias factor.
+        The instance of the ``K`` integrals.
         """
-        return self._b1
-            
-    @b1.setter
-    def b1(self, val):
-        self._b1 = val
-        
         try:
-            del self._P00_hh
+            return self._K
         except:
-            pass
-    #---------------------------------------------------------------------------
-    @property
-    def b2_00(self):
-        """
-        The quadratic, local bias used for the P00_hh term.
-        """
-        return self._b2_00
-            
-    @b2_00.setter
-    def b2_00(self, val):
-        self._b2_00 = val
-        
-        try:
-            del self._P00_hh
-        except:
-            pass
-    #---------------------------------------------------------------------------
-    @property
-    def kmin(self):
-        return self._kmin
-
-    @kmin.setter
-    def kmin(self, val):
-        self._kmin = val
-
-        pattern = re.compile("_(I23|I32|I33|K00|K00s|P22bar.|P00_hh|vel_kurtosis)")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
-    #---------------------------------------------------------------------------
-    @property
-    def kmax(self):
-        return self._kmax
-
-    @kmax.setter
-    def kmax(self, val):
-        self._kmax = val
-
-        pattern = re.compile("_(I23|I32|I33|K00|K00s|P22bar.|P00_hh|vel_kurtosis)")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
-    #---------------------------------------------------------------------------
-    @property
-    def K00(self):
-        try:
-            return self._K00
-        except:
-            K = integralsK.K_nm(0, 0, False, self.k, self.Plin, k2=None, P2=None)
-            self._K00 = K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
-            return self._K00
-    #---------------------------------------------------------------------------
-    @property
-    def K00s(self):
-        try:
-            return self._K00s
-        except:
-            K = integralsK.K_nm(0, 0, True, self.k, self.Plin, k2=None, P2=None)
-            self._K00s = K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
-            return self._K00s
+            self._K = integralsK.K_nm(0, 0, False, self.klin, self.Plin, k2=None, P2=None)
+            return self._K
     #---------------------------------------------------------------------------
     @property
     def P00_hh(self):
         """
-        The isotropic, halo-halo power spectrum, without any stochasticity term.
+        The isotropic halo power term, with no stochasticity.
         """
         try:
             return self._P00_hh
-        except:
-
-            term1 = self.b1**2 * self.Pdd
-            term2 = 2*self.b1*self.D**4 * self.b2_00*(self.K00 + self.K00s)
+        except:    
+            b1    = self.b1
+            b2_00 = self.b2_00
+            bs    = self.bs
             
+            # compute K00
+            self.K.n, self.K.m = 0, 0
+            self.K.s = False
+            K00 = self.K.evaluate(self.k1loop, self.kmin_lin, self.kmax_lin, self.num_threads)
+            
+            # compute K00s
+            self.K.n, self.K.m = 0, 0
+            self.K.s = True
+            K00s = self.K.evaluate(self.k1loop, self.kmin_lin, self.kmax_lin, self.num_threads)
+            
+            term1 = b1**2 * self.Pdd
+            term2 = 2*b1*self.D**4 * (b2_00*K00 + bs*K00s)
             self._P00_hh = term1 + term2
+
             return self._P00_hh
     #---------------------------------------------------------------------------
-    @property
-    def vel_kurtosis(self):
-        """
-        Compute the velocity kurtosis <v_parallel^4>, using the 1-loop divergence
-        auto spectra Pvv
-        """
-        try:
-            return self._vel_kurtosis
-        except:
-            # evaluate the integral
-            integrand = self.P22bar_mu4 + (1./3)*self.P22bar_mu6 + (1./5)*self.P22bar_mu8
-            self._vel_kurtosis = 0.5*intgr.simps(self.k**3 * integrand, x=np.log(self.k)) / (2*np.pi**2)
-            return self._vel_kurtosis
-    #---------------------------------------------------------------------------
-#endclass Halo1LoopInterp        
-
-#-------------------------------------------------------------------------------
+        

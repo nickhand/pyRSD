@@ -34,6 +34,8 @@ cdef double f_kernel(int n, int m, double r, double x) nogil:
             return f12(r, x)
         elif m == 3:  
             return f13(r, x) 
+        elif m == 4:
+            return f14(r, x)
     elif n == 2:
         if m == 0:
             return f20(r, x)
@@ -55,6 +57,8 @@ cdef double f_kernel(int n, int m, double r, double x) nogil:
     elif n == 4:
         if m == 0:
             return f40(r, x)
+        elif m == 1:
+            return f41(r, x)
 #end f_kernel
 
 #-------------------------------------------------------------------------------
@@ -132,6 +136,12 @@ cdef double f04(double r, double x) nogil:
 
 cdef double f40(double r, double x) nogil:
     return 0.5*(x*x - 1) / (1 + r*r - 2*r*x)
+
+cdef double f14(double r, double x) nogil:
+    return 0.5*(3*x*x - 1) / (r*r)
+
+cdef double f41(double r, double x) nogil:
+    return 0.5*(1 - 3*x*x + 2*x/r) / (1 + r*r - 2*r*x)
 #-------------------------------------------------------------------------------
 
 # define the g_nm(r) kernels

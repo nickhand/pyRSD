@@ -67,7 +67,7 @@ cdef double h03(double r, double x) nogil:
     return 0.5*(x*x - 1.)/(1. + r*r - 2.*r*x)
 
 cdef double h04(double r, double x) nogil:
-    return 0.5*(1. - 3.*x*x + 2.*x/r)/(1. + r*r - 2.*r*x)
+    return 0.5*(0.5 - 1.5*x*x + x/r)/(1. + r*r - 2.*r*x)
 
 cdef double kurtosis(double r, double x) nogil:
     return 1./(r*r*(1. + r*r - 2.*r*x))

@@ -67,7 +67,7 @@ cdef double Inm_outer(double lnq,  void * params) nogil:
     """
     # define the variables and initialize the integration
     cdef gsl_integration_cquad_workspace * w
-    cdef double result, error
+    cdef double result, error, q
     cdef int status
     cdef const char * reason
     w = gsl_integration_cquad_workspace_alloc(1000)
@@ -86,7 +86,8 @@ cdef double Inm_outer(double lnq,  void * params) nogil:
     if status and status != GSL_EDIVERGE:
         reason = gsl_strerror(status)
         with gil:
-            print "Warning: %s" %reason
+            q = exp(p.lnq)
+            print "Warning at q = %e: %s" %(q, reason)
             
     # free the integration workspace
     gsl_integration_cquad_workspace_free(w)

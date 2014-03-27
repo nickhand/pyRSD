@@ -10,7 +10,7 @@
  contact: nhand@berkeley.edu
  creation date: 03/04/2014
 """
-from pyPT.power cimport integralsIJ
+from pyPT.power import integralsPT
 from pyPT.cosmology cimport cosmo_tools, growth 
 from ..cosmology import cosmo
 
@@ -62,11 +62,11 @@ cpdef Pdd_1loop(k_hMpc, z, kmin=KMIN, kmax=KMAX, num_threads=1,
     Plin = growth.Pk_lin(klin, 0., tf="EH", params=cosmo)
     
     # compute the Inm integrals in parallel
-    I = integralsIJ.I_nm(0, 0, klin, Plin, k2=None, P2=None)
+    I = integralsPT.I_nm(0, 0, klin, Plin, k2=None, P2=None)
     I00 = I.evaluate(k, kmin, kmax, num_threads)
 
     # compute the Jnm integrals too
-    J = integralsIJ.J_nm(0, 0, klin, Plin)
+    J = integralsPT.J_nm(0, 0, klin, Plin)
     J00 = J.evaluate(k, kmin, kmax)
     
     # the velocity and growth factors
@@ -125,11 +125,11 @@ cpdef Pdv_1loop(k_hMpc, z, kmin=KMIN, kmax=KMAX, num_threads=1,
     Plin = growth.Pk_lin(klin, 0., tf='EH', params=cosmo)
     
     # compute the Inm integrals in parallel
-    I = integralsIJ.I_nm(0, 1, klin, Plin, k2=None, P2=None)
+    I = integralsPT.I_nm(0, 1, klin, Plin, k2=None, P2=None)
     I01 = I.evaluate(k, kmin, kmax, num_threads)
 
     # compute the Jnm integrals too
-    J = integralsIJ.J_nm(0, 1, klin, Plin)
+    J = integralsPT.J_nm(0, 1, klin, Plin)
     J01 = J.evaluate(k, kmin, kmax)
     
     # the velocity and growth factors
@@ -190,11 +190,11 @@ cpdef Pvv_1loop(k_hMpc, z, kmin=KMIN, kmax=KMAX, num_threads=1,
     Plin = growth.Pk_lin(klin, 0., tf='EH', params=cosmo)
 
     # compute the Inm integrals in parallel
-    I = integralsIJ.I_nm(1, 1, klin, Plin, k2=None, P2=None)
+    I = integralsPT.I_nm(1, 1, klin, Plin, k2=None, P2=None)
     I11 = I.evaluate(k, kmin, kmax, num_threads)
 
     # compute the Jnm integrals too
-    J = integralsIJ.J_nm(1, 1, klin, Plin)
+    J = integralsPT.J_nm(1, 1, klin, Plin)
     J11 = J.evaluate(k, kmin, kmax)
 
     # the velocity and growth factors

@@ -11,7 +11,7 @@
  contact: nhand@berkeley.edu
  creation date: 03/10/2014
 """
-from pyPT.power cimport integralsK, integralsIJ
+from pyPT.power import integralsPT
 from pyPT.cosmology cimport growth, cosmo_tools
 from pyPT.power import power_dm
 
@@ -28,6 +28,8 @@ class HaloSpectrum(power_dm.DMSpectrum):
         # initalize the dark matter power spectrum
         super(HaloSpectrum, self).__init__(**kwargs)
         
+        # don't violate galilean invariance
+        self.include_2loop = False
         self.stoch_model = stoch_model
         self.stoch_args  = stoch_args
         
@@ -194,23 +196,6 @@ class HaloSpectrum(power_dm.DMSpectrum):
         for k in self.__dict__.keys():
             if pattern.match(k): del self.__dict__[k]
     #---------------------------------------------------------------------------
-    @property
-    def base_spectra(self):
-        try:
-            return self._base_spectra
-        except:
-            self._base_spectra = HaloBaseSpectra(self.b1, self.b2_00, self.bs, 
-                                                self.z, self._kmin, self._kmax, 
-                                                self.cosmo, self.num_threads)
-            return self._base_spectra
-            
-    @base_spectra.deleter
-    def base_spectra(self):
-        try:
-            del self._base_spectra
-        except:
-            pass
-    #---------------------------------------------------------------------------
     # INTEGRAL ATTRIBUTES (READ-ONLY)
     #---------------------------------------------------------------------------
     @property
@@ -218,9 +203,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K00
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 0, 0
-            self.base_spectra.K.s = False
-            self._K00 = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K00 = self.integrals.I('k00', 0)
             return self._K00
     #---------------------------------------------------------------------------
     @property
@@ -228,9 +211,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K00s
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 0, 0
-            self.base_spectra.K.s = True
-            self._K00s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K00s = self.integrals.I('k00s', 0)
             return self._K00s
     #---------------------------------------------------------------------------
     @property
@@ -238,9 +219,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K01
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 0, 1
-            self.base_spectra.K.s = False
-            self._K01 = self.base_spectra.K.evaluate(self.k,self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K01 = self.integrals.I('k01', 0)
             return self._K01
     #---------------------------------------------------------------------------
     @property
@@ -248,9 +227,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K01s
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 0, 1
-            self.base_spectra.K.s = True
-            self._K01s = self.base_spectra.K.evaluate(self.k, self.kmin, self.kmax, self.num_threads)
+            self._K01s = self.integrals.I('k01s', 0)
             return self._K01s
     #---------------------------------------------------------------------------
     @property
@@ -258,9 +235,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K02s
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 0, 2
-            self.base_spectra.K.s = True
-            self._K02s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K02s = self.integrals.I('k02s', 0)
             return self._K02s
     #---------------------------------------------------------------------------
     @property
@@ -268,9 +243,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K10
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 1, 0
-            self.base_spectra.K.s = False
-            self._K10 = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K10 = self.integrals.I('k10', 0)
             return self._K10
     #---------------------------------------------------------------------------
     @property
@@ -278,9 +251,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K10s
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 1, 0
-            self.base_spectra.K.s = True
-            self._K10s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K10s = self.integrals.I('k10s', 0)
             return self._K10s
     #---------------------------------------------------------------------------
     @property
@@ -288,9 +259,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K11
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 1, 1
-            self.base_spectra.K.s = False
-            self._K11 = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K11 = self.integrals.I('k11', 0)
             return self._K11
     #---------------------------------------------------------------------------
     @property
@@ -298,19 +267,15 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K11s
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 1, 1
-            self.base_spectra.K.s = True
-            self._K11s = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
-            return self._K11s
+            self._K00 = self.integrals.I('k00', 0)
+            return self._K00
     #---------------------------------------------------------------------------
     @property
     def K20_a(self):
         try:
             return self._K20_a
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 2, 0
-            self.base_spectra.K.s = False
-            self._K20_a = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K20_a = self.integrals.I('k20_a', 0)
             return self._K20_a
     #---------------------------------------------------------------------------
     @property
@@ -318,9 +283,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20s_a
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 2, 0
-            self.base_spectra.K.s = True
-            self._K20s_a = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K20s_a = self.integrals.I('k20s_a', 0)
             return self._K20s_a
     #---------------------------------------------------------------------------
     @property
@@ -328,9 +291,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20_b
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 2, 1
-            self.base_spectra.K.s = False
-            self._K20_b = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K20_b = self.integrals.I('k20_b', 0)
             return self._K20_b
     #---------------------------------------------------------------------------
     @property
@@ -338,9 +299,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self._K20s_b
         except:
-            self.base_spectra.K.n, self.base_spectra.K.m = 2, 1
-            self.base_spectra.K.s = True
-            self._K20s_b = self.base_spectra.K.evaluate(self.k, self.base_spectra.kmin_lin, self.base_spectra.kmax_lin, self.num_threads)
+            self._K20s_b = self.integrals.I('k20s_b', 0)
             return self._K20s_b
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)
@@ -359,7 +318,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
             bs    = self.bs
             
             self._P00_hm = power_dm.PowerTerm()
-            self._P00_hm.total.mu0 = b1*self.P00.total.mu0 + self.D**4 * (b2_00*self.K00 + bs*self.K00s)
+            self._P00_hm.total.mu0 = b1*self.P00.total.mu0 + (b2_00*self.K00 + bs*self.K00s)
             return self._P00_hm
     #---------------------------------------------------------------------------
     @property
@@ -392,7 +351,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
             
             self._P00_hh_no_stoch = power_dm.PowerTerm()
             term1 = b1**2 * self.P00.total.mu0
-            term2 = 2*b1*self.D**4 * (b2_00*self.K00 + bs*self.K00s)
+            term2 = 2*b1*(b2_00*self.K00 + bs*self.K00s)
             self._P00_hh_no_stoch.total.mu0 = term1 + term2
             
             return self._P00_hh_no_stoch
@@ -416,11 +375,10 @@ class HaloSpectrum(power_dm.DMSpectrum):
             # do mu^2 terms?
             if self.max_mu >= 2:
                 
-                A = 2.*self.f*self.D**4
                 term1 = b1**2 * self.P01.total.mu2
                 term2 = -2*b1*(1. - b1)*self.Pdv
-                term3 =  A*(b2_01*self.K10 + bs*self.K10s)
-                term4 = A*b1*(b2_01*self.K11 + bs*self.K11s)
+                term3 =  2.*self.f*(b2_01*self.K10 + bs*self.K10s)
+                term4 = 2.*self.f*b1*(b2_01*self.K11 + bs*self.K11s)
         
                 self._P01_hh.total.mu2 = term1 + term2 + term3 + term4
             return self._P01_hh
@@ -446,14 +404,14 @@ class HaloSpectrum(power_dm.DMSpectrum):
                 
                 term1_mu2 = b1*self.P02.no_velocity.mu2            
                 term2_mu2 =  -(self.f*self.D*self.k*self.sigma_lin)**2 * self.P00_hh_no_stoch.total.mu0
-                term3_mu2 = (self.D**2*self.f)**2 * (b2_00*self.K20_a + bs*self.K20s_a)
+                term3_mu2 = self.f**2 * (b2_00*self.K20_a + bs*self.K20s_a)
                 self._P02_hh.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4:
                     
                     term1_mu4 = b1*self.P02.no_velocity.mu4
-                    term2_mu4 = (self.D**2*self.f)**2 * (b2_00*self.K20_b + bs*self.K20s_b)
+                    term2_mu4 = self.f**2 * (b2_00*self.K20_b + bs*self.K20s_b)
                     self._P02_hh.total.mu4 = term1_mu4 + term2_mu4
             return self._P02_hh
     #---------------------------------------------------------------------------
@@ -477,14 +435,25 @@ class HaloSpectrum(power_dm.DMSpectrum):
             # do mu^2 terms?
             if self.max_mu >= 2:
                 
-                self._P11_hh.total.mu2 = b1**2 * (self.I04 + self.I40)
+                # this is C11 at 2-loop order
+                I1 = self.integrals.I('h01', 1, ('dd', 'vv'))
+                I2 = self.integrals.I('h03', 1, ('dv', 'dv'))
+                self._P11_hh.total.mu2 = (self.f*b1)**2 * (I1 + I2)
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4:
+                    Plin = self.D**2 * self.Plin
                     
+                    # first term is mu^4 part of P11
                     term1_mu4 = self.P11.total.mu4
-                    term2_mu4 = 2.*(b1-1.)* (self.f*self.D**2)**2 * (6.*self.k**2*self.Plin*self.J10 + 2.*self.I22)
-                    term3_mu4 =  (b1**2 - 1.)*(self.I14 + self.I41)
+                    
+                    # second term is B11 coming from P11
+                    term2_mu4 = 2*(b1-1)*self.f**2 * (6.*self.k**2*Plin*self.J10 + 2*self.I22)
+                    
+                    # third term is mu^4 part of C11 (at 2-loop)
+                    I1 = self.integrals.I('h02', 1, ('dd', 'vv'))
+                    I2 = self.integrals.I('h04', 1, ('dv', 'dv'))
+                    term3_mu4 =  (b1**2 - 1)*self.f**2 * (I1 + I2)
 
                     self._P11_hh.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
             return self._P11_hh
@@ -522,13 +491,14 @@ class HaloSpectrum(power_dm.DMSpectrum):
             
             # do mu^4 terms?
             if self.max_mu >= 4:
-                term1_mu4 = self.f**3 * self.D**4 * (self.I12 - b1*self.I03 + 2*self.k**2 * self.J02*self.Plin)
+                Plin = self.D**2 * self.Plin
+                term1_mu4 = self.f**3 * (self.I12 - b1*self.I03 + 2*self.k**2 * self.J02*Plin)
                 term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P01_hh.total.mu2
                 self._P12_hh.total.mu4 = term1_mu4 + term2_mu4
                 
                 # do mu^6 terms?
                 if self.max_mu >= 6:
-                    self._P12_hh.total.mu6 = self.f**3 * self.D**4 * (self.I21 - b1*self.I30 + 2*self.k**2*self.J20*self.Plin)
+                    self._P12_hh.total.mu6 = self.f**3 * (self.I21 - b1*self.I30 + 2*self.k**2*self.J20*Plin)
             
             return self._P12_hh
     #---------------------------------------------------------------------------
@@ -577,22 +547,25 @@ class HaloSpectrum(power_dm.DMSpectrum):
             # do mu^4 terms?
             if self.max_mu >= 4:
             
+                # 1-loop P22bar
                 term1 = self.P22.no_velocity.mu4
-                term2 = -0.25*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu2 + self.P02_hh.total.mu2)
                 
-                A = 0.25 * self.k**4
-                convolve_mu0 = self.base_spectra.convolve('k1loop', 'P22bar_mu0', 'k1loop', 'P00_hh', self.k)
-                convolve_mu2 = self.base_spectra.convolve('k1loop', 'P22bar_mu2', 'k1loop', 'P00_hh', self.k)
-                convolve_mu4 = self.base_spectra.convolve('k1loop', 'P22bar_mu4', 'k1loop', 'P00_hh', self.k)
-                term3 = A*(convolve_mu0 + (1./3)*convolve_mu2 + (1./5)*convolve_mu4)
+                # add convolution to P22bar
+                term2 = 0.5*(self.f*self.k)**4 * (b1**2 * self.Pdd) * self.integrals.sigmasq_k**2
                 
-                self._P22_hh.total.mu4 = term1 + term2 + term3
+                # b1 * P02_bar
+                term3 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu2)
+                
+                # sigma^4 x P00_hh
+                term4 = 0.25*(self.k*self.f*self.D*self.sigma_lin)**4 * self.P00_hh_no_stoch.total.mu0
+                
+                self._P22_hh.total.mu4 = term1 + term2 + term3 + term4
                 
                 # do mu^6 terms?
                 if self.max_mu >= 6:
                     
                     term1 = self.P22.no_velocity.mu6
-                    term2 = -0.25*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu4 + self.P02_hh.total.mu4)
+                    term2 = -0.5*b1*(self.k*self.f*self.D*self.sigma_lin)**2 * self.P02.no_velocity.mu4
                     self._P22_hh.total.mu6 = term1 + term2
                 
                     # do mu^8 terms?
@@ -618,14 +591,14 @@ class HaloSpectrum(power_dm.DMSpectrum):
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
+                # contribution from P02[mu^2]
                 term1 = -0.5*b1*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu2
-                A = (1./12)*( b1*(self.f*self.D*self.k)**2 )**2 * self.P00_hh_no_stoch.total.mu0
                 
-                # compute velocity kurtosis (in Mpc/h)
-                vel_kurtosis = self.base_spectra.vel_kurtosis / (self.f*self.D)**4
+                # contribution here from P00_hh * vel^4
+                A = (1./12)*(self.f*self.D*self.k)**4 * self.P00_hh_no_stoch.total.mu0
+                vel_kurtosis = self.integrals.vel_kurtosis / self.D**4
                 term2 = A*(3*self.sigma_lin**4 + vel_kurtosis)
                 
-                # save the total
                 self._P04_hh.total.mu4 = term1 + term2
             
                 # do mu^6 terms?
@@ -638,13 +611,9 @@ class HaloSpectrum(power_dm.DMSpectrum):
     def P_mu0(self):
         """
         The full halo power spectrum term with no angular dependence. Contributions
-        from P00_hh
+        from P00_hh.
         """
-        try:
-            return self._P_mu0
-        except:
-            self._P_mu0 = self.P00_hh.total.mu0
-            return self._P_mu0
+        return self._P_mu0
     #---------------------------------------------------------------------------
     @property
     def P_mu2(self):
@@ -652,38 +621,25 @@ class HaloSpectrum(power_dm.DMSpectrum):
         The full halo power spectrum term with mu^2 angular dependence. Contributions
         from P01_hh, P11_hh, and P02_hh.
         """
-        try:
-            return self._P_mu2
-        except:
-            self._P_mu2 = self.P01_hh.total.mu2 + self.P11_hh.total.mu2 + self.P02_hh.total.mu2
-            return self._P_mu2
+        return self.P01_hh.total.mu2 + self.P11_hh.total.mu2 + self.P02_hh.total.mu2
     #---------------------------------------------------------------------------
     @property
     def P_mu4(self):
         """
         The full halo power spectrum term with mu^4 angular dependence. Contributions
-        from P11_hh, P02_hh, P12_hh, P03_hh, P13_hh, P22_hh, and P04_hh
+        from P11_hh, P02_hh, P12_hh, P03_hh, P13_hh, P22_hh, and P04_hh.
         """
-        try:
-            return self._P_mu4
-        except:
-            self._P_mu4 = self.P11_hh.total.mu4 + self.P02_hh.total.mu4 + \
-                            self.P12_hh.total.mu4 + self.P22_hh.total.mu4 + \
-                            self.P03_hh.total.mu4 + self.P13_hh.total.mu4 + self.P04_hh.total.mu4
-            return self._P_mu4
+        return self.P11_hh.total.mu4 + self.P02_hh.total.mu4 + self.P12_hh.total.mu4 + \
+                self.P22_hh.total.mu4 + self.P03_hh.total.mu4 + self.P13_hh.total.mu4 + \
+                self.P04_hh.total.mu4
     #---------------------------------------------------------------------------
     @property
     def P_mu6(self):
         """
         The full halo power spectrum term with mu^6 angular dependence. Contributions
-        from P12_hh, P22_hh, P13_hh, P04_hh
+        from P12_hh, P13_hh, P22_hh.
         """
-        try:
-            return self._P_mu6
-        except:
-            self._P_mu6 = self.P12_hh.total.mu6 + self.P22_hh.total.mu6 + \
-                            self.P13_hh.total.mu6 + self.P04_hh.total.mu6
-            return self._P_mu6
+        return self.P12_hh.total.mu6 + self.P22_hh.total.mu6 + self.P13_hh.total.mu6
     #---------------------------------------------------------------------------
     @property
     def P_mu8(self):
@@ -702,58 +658,4 @@ class HaloSpectrum(power_dm.DMSpectrum):
     #---------------------------------------------------------------------------
 #enclass HaloPowerSpectrum       
 
-#-------------------------------------------------------------------------------
-class HaloBaseSpectra(power_dm.DMBaseSpectra):
-    """
-    Class to holding base power spectra to be used for splines in the 
-    computation of PT integrals.
-    """
-    def __init__(self, b1, b2_00, bs, *args, **kwargs):
-        
-        self.b1    = b1
-        self.b2_00 = b2_00
-        self.bs    = bs
-        
-        # initalize the dark matter power spectrum
-        super(HaloBaseSpectra, self).__init__(*args, **kwargs)
-    #---------------------------------------------------------------------------
-    @property
-    def K(self):
-        """
-        The instance of the ``K`` integrals.
-        """
-        try:
-            return self._K
-        except:
-            self._K = integralsK.K_nm(0, 0, False, self.klin, self.Plin, k2=None, P2=None)
-            return self._K
-    #---------------------------------------------------------------------------
-    @property
-    def P00_hh(self):
-        """
-        The isotropic halo power term, with no stochasticity.
-        """
-        try:
-            return self._P00_hh
-        except:    
-            b1    = self.b1
-            b2_00 = self.b2_00
-            bs    = self.bs
-            
-            # compute K00
-            self.K.n, self.K.m = 0, 0
-            self.K.s = False
-            K00 = self.K.evaluate(self.k1loop, self.kmin_lin, self.kmax_lin, self.num_threads)
-            
-            # compute K00s
-            self.K.n, self.K.m = 0, 0
-            self.K.s = True
-            K00s = self.K.evaluate(self.k1loop, self.kmin_lin, self.kmax_lin, self.num_threads)
-            
-            term1 = b1**2 * self.Pdd
-            term2 = 2*b1*self.D**4 * (b2_00*K00 + bs*K00s)
-            self._P00_hh = term1 + term2
-
-            return self._P00_hh
-    #---------------------------------------------------------------------------
         

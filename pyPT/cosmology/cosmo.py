@@ -10,6 +10,7 @@ import os
 from . import parameters
 from . import constants as c
 
+
 #-------------------------------------------------------------------------------
 class Cosmology(object):
     """
@@ -23,9 +24,9 @@ class Cosmology(object):
     Currently, only several combinations of the density parameters are valid:
     
     1. 'omegab' and 'omegac'
-    2. 'omegam'
-    3. 'omegab_h2' and 'omegac_h2'
-    4. None of them
+    #. 'omegab_h2' and 'omegac_h2'
+    #. 'omegam'
+    #. None of them
     
     If more than enough density parameters are supplied, the parameters will
     be used in this order.
@@ -33,27 +34,11 @@ class Cosmology(object):
     
     # A dictionary of bounds for each parameter
     # This also forms a list of all parameters possible
-    _bounds = {"sigma_8"  : [0.1, 10],
-               "n"        : [-3, 4],
-               "w"        : [-1.5, 0],
-               "Tcmb"    : [0, 10.0],
-               "Y_he"     : [0, 1],
-               "N_eff"    : [1, 10],
-               "z_reion"  : [2, 1000],
-               'z_star'   : [2, 1e10], 
-               'delta_c'  : [1, 1000], 
-               "tau"      : [0, 1],
-               "h"        : [0.05, 5],
-               "H0"       : [5, 500],
-               "omegab"   : [0, 1],
-               "omegac"   : [0, 2],
-               "omegal"   : [0, 2],
-               "omegar"   : [0, 2],
-               "omegam"   : [0, 3],
-               "omegab_h2": [0, 1],
-               "omegac_h2": [0, 2],
-               "age"      : [0., 100.]}
-    
+    _cp = ['sigma_8', 'n', 'w', 'cs2_lam', 'Tcmb', 'Y_he', 'N_nu', 'N_nu_massive', 
+            'z_reion', 'tau', 'delta_c', 'h', 'H0', 'omegan', 'omegam', 'omegal',
+            'omegab', 'omegac', 'omegab_h2', 'omegac_h2', 'omegan_h2', 'z_star',
+            'age', 'flat', 'default']
+            
     def __init__(self, *args, **kwargs):
         """
         Initialize the parameters. 
@@ -69,69 +54,54 @@ class Cosmology(object):
                 default : {str, NoneType}, default = "Planck1_lens_WP_highL"
                     The name of a default cosmology to use from the parameters 
                     module
-                force_flat : {bool}, default = False
+                flat : {bool}, default = False
                     If True, enforce a flat cosmology. This will modify 'omegal' 
                     only and never 'omegam'
             and the parameter keywords are:
 
-                1. 'sigma_8': The normalization; mass variance in top-hat spheres with R = 8 Mpc/h
-                2. 'n': The spectral index
-                3. 'w': The dark-energy equation of state
-                4. 'Tcmb': Temperature of the CMB
-                5. 'Y_he': Helium fraction
-                6. 'N_eff': Number of massless neutrino species
-                7. 'z_reion': Redshift of reionization
-                8. 'z_star' : Redshift of the surface of last scattering
-                9. 'delta_c': The criticial ovedensity for collapse
-                10. 'tau': Optical depth at reionization
-                11. 'delta_c': The critical overdensity for collapse
-                12. 'h': The hubble parameter
-                12. 'H0': The hubble constant
-                13. 'omegam': The normalized density of matter
-                14. 'omegal': The normalized density of dark energy
-                15. 'omegab': The normalized baryon density
-                16. 'omegac': The normalized CDM density
-                17. 'omegar : The normalized radiation density
-                17. 'omegab_h2': The physical baryon density
-                18. 'omegac_h2': The physical CDM density
-                19. 'flat' : Whether to set force_flat = True
-                    
+            1. ``sigma_8``: Mass variance in top-hat spheres with :math:`R=8Mpc h^{-1}`
+            #. ``n``: The spectral index
+            #. ``w``: The dark-energy equation of state
+            #. ``cs2_lam``: The constant comoving sound speed of dark energy
+            #. ``Tcmb``: Temperature of the CMB
+            #. ``Y_he``: Helium fraction
+            #. ``N_nu``: Number of massless neutrino species
+            #. ``N_nu_massive``: Number of massive neutrino species
+            #. ``z_reion``: Redshift of reionization
+            #. ``z_star`` : Redshift of the surface of last scattering
+            #. ``tau``: Optical depth at reionization
+            #. ``delta_c``: The critical overdensity for collapse
+            #. ``h``: The hubble parameter
+            #. ``H0``: The hubble constant
+            #. ``omegan``: The normalized density of neutrinos
+            #. ``omegam``: The normalized density of matter
+            #. ``omegal``: The normalized density of dark energy
+            #. ``omegab``: The normalized baryon density
+            #. ``omegac``: The normalized CDM density
+            #. ``omegab_h2``: The normalized baryon density times ``h**2``
+            #. ``omegac_h2``: The normalized CDM density times ``h**2``
+            #. ``omegan_h2``: The normalized neutrino density times ``h**2``
+            
         """
         # can only handle one positional 
         if len(args) > 2:
             raise TypeError("Expected at most 1 positional argument, got 2")
         
         # set the default cosmology parameter
-        self.default = kwargs.pop('default', 'Planck1_lens_WP_highL')
+        try:
+            self.default = args[0].pop('default')
+        except:
+            self.default = kwargs.pop('default', 'Planck1_lens_WP_highL')
 
         # set the base, updating the extra parameters with the default set
         if self.default is not None:
             self.__base = parameters.get_cosmology_from_string(self.default)
-            
-        # Set some simple parameters
-        self.force_flat = kwargs.pop('force_flat', False)
-        
+                    
         # critical density in units of h^2 M_sun / Mpc^3
         self.crit_dens = 3*(100.*c.km/c.second/c.Mpc)**2/(8*c.pi*c.G)/(c.M_sun/c.Mpc**3)
         
         self.update(*args, **kwargs)
     #end __init__
-    
-    #---------------------------------------------------------------------------
-    def _check_bounds(self, item, low=None, high=None):
-        """
-        Check the bounds a specified parameter
-        """
-        if low is not None and high is not None:
-            if self.__dict__[item] < low or self.__dict__[item] > high:
-                raise ValueError("%s must be between %s and %s" %(item, low, high))
-        elif low is not None:
-            if self.__dict__[item] < low:
-                raise ValueError("%s must be greater than %s" %(item, low))
-        elif high is not None:
-            if self.__dict__[item] > high:
-                raise ValueError("%s must be less than %s" %(item, high))
-    #end _check_bounds
     
     #---------------------------------------------------------------------------
     def __str__(self):
@@ -145,8 +115,8 @@ class Cosmology(object):
         """
         Return the allowable input parameters
         """
-        for k in sorted(Cosmology._bounds.keys(), key=str.lower):
-            print "%s : %s" %(k.ljust(12), Cosmology._bounds[k])
+        for k in sorted(Cosmology._cp, key=str.lower):
+            print "%s" %(k.ljust(12))
     #end allowable
     
     #---------------------------------------------------------------------------
@@ -154,7 +124,7 @@ class Cosmology(object):
         """
         Print out the string names of the available cosmologies
         """
-        print("Valid cosmologies:\n%s" %([x()['name'] for x in parameters.available]))
+        print("Valid cosmologies:\n%s" %([x.func_name for x in parameters.available]))
     #end available
         
     #---------------------------------------------------------------------------
@@ -189,7 +159,7 @@ class Cosmology(object):
                     _current = {}
                 else:
                     raise ValueError("Argument must be a string or dictionary. Valid strings:" + \
-                                "\n%s" %([x()['name'] for x in parameters.available]))
+                                "\n%s" %([x.func_name for x in parameters.available]))
         else:
             _current = kwargs
         
@@ -198,24 +168,16 @@ class Cosmology(object):
     
     #---------------------------------------------------------------------------   
     def _set_params(self, input_params):
-        
-        input_params.pop('reference', None)
-        input_params.pop('name', None)
-        
-        flat = input_params.pop('flat', None)
-        if flat is not None:
-            self.force_flat = flat
-        
-        # check the input parameter keys       
-        for k in input_params:
-            if k not in Cosmology._bounds:
-                raise ValueError("'%s' is not a valid parameter for Cosmology" %k)
-                             
+            
+        # remove any incorrect parameters
+        input_params = {k:v for k, v in input_params.iteritems() if k in Cosmology._cp}
+                                             
         #-----------------------------------------------------------------------
         # set the parameters with no other dependencies
         #-----------------------------------------------------------------------
-        easy_params = ["sigma_8", "n", 'w', 'Tcmb', 'Y_he', "N_eff",
-                        "z_reion", "tau", 'delta_c', "z_star", "age"]
+        easy_params = ["sigma_8", "n", 'w', 'cs2_lam', 'Tcmb', 'Y_he', "N_nu", 
+                        "N_nu_massive", 'z_star', "z_reion", "tau", 'delta_c', 
+                        "age", "flat"]
         for p in easy_params:
             if p in input_params:
                 self.__dict__.update({p : input_params.pop(p)})
@@ -243,49 +205,73 @@ class Cosmology(object):
         if not hasattr(self, "h") and self.default is not None:
             self.H0 = self.__base["H0"]
             self.h = self.H0 / 100.
+        #-----------------------------------------------------------------------
+        # set massive neutrinos contribution
+        #-----------------------------------------------------------------------
+        if "omegan" in input_params and "omegan_h2" in input_params:
+            if input_params['omegan'] != input_params["omegan_h2"] / self.h**2:
+                raise AttributeError("omegan and omegan_h2 specified inconsistently")
+
+        if "omegan" in input_params:
+            self.omegan = input_params.pop("omegan")
+            self.omegan_h2 = self.omegan * self.h**2
+
+        if "omegan_h2" in input_params:
+            self.omegan_h2 = input_params.pop("omegan_h2")
+            self.omegan = self.omegan_h2 / self.h**2
+
+        if not hasattr(self, "omegan_h2") and self.default is not None:
+            self.omegan_h2 = self.__base["omegan_h2"]
+            self.omegan = self.omegan_h2 / self.h**2
             
         ### now the do the omega parameters
         #-----------------------------------------------------------------------
         
         # first compute default omega radiation, assuming N_eff massless neutrinos
-        
-        if self.default is not None:
-            
+        try:
             # Compute photon density from Tcmb
             constant = c.a_rad/c.c_light**2
             rho_crit = self.crit_dens * self.h**2 * (c.M_sun/c.Mpc**3) # now in g/cm^3
             omega_gam =  constant*self.Tcmb**4 / rho_crit
 
-            # compute neutrino omega, assuming N_eff massless neutrinos
-            omega_nu = 7./8.*(4./11)**(4./3)*self.N_eff*omega_gam
+            # compute neutrino omega, assuming N_nu massless neutrinos + omegan from massive neutrinos
+            omega_nu = 7./8.*(4./11)**(4./3)*self.N_nu*omega_gam + self.omegan
         
-        # set the radiation density first
-        if "omegar" in input_params:
-            self.omegar = input_params.pop("omegar")
-        else:
-            if self.default is None:
-                self.omegar = 0.
-            else:
-                self.omegar = omega_gam + omega_nu
-            
+            self.omegar = omega_gam + omega_nu
+        except:
+            self.omegar = 0.
+                
         if "omegal" in input_params:
             self.omegal = input_params.pop("omegal")
+        
+        # make sure omega matters are specified correctly
+        if all(k in input_params for k in ['omegam', 'omegac', 'omegab']):
+            omm = input_params['omegam']
+            omb = input_params["omegab"]
+            omc = input_params["omegac"]
+            if omm != (omb + omc):
+                raise AttributeError("input omegam not equal to input omegac + omegab")
+                
+        if all(k in input_params for k in ['omegam', 'omegac_h2', 'omegab_h2']):
+            tmp = (input_params["omegab_h2"] + input_params['omegac_h2'])/self.h**2
+            if input_params['omegam'] != tmp:
+                raise AttributeError("input omegam not equal to input (omegac_h2 + omegab_h2)/h**2")
 
         # make sure the omega matters are one of well-defined cases
-        if 'omegab' and 'omegac' in input_params:
+        if all(k in input_params for k in ['omegab', 'omegac']):
             for k in ['omegam', 'omegab_h2', 'omegac_h2']:
                 input_params.pop(k, None)
-            
-        if 'omegam' in input_params:
-            for k in ['omegab', 'omegac', 'omegab_h2', 'omegac_h2']:
-                input_params.pop(k, None)
                 
-        if 'omegab_h2' and 'omegac_h2' in input_params:
+        if all(k in input_params for k in ['omegab_h2', 'omegac_h2']):
             for k in ['omegam', 'omegab', 'omegac']:
                 input_params.pop(k, None)
         
+        if 'omegam' in input_params:
+            for k in ['omegab', 'omegac', 'omegab_h2', 'omegac_h2']:
+                input_params.pop(k, None)
+                        
         if len(input_params) == 0:
-            if self.force_flat and hasattr(self, "omegal"):
+            if self.flat and hasattr(self, "omegal"):
                 self.omegam = 1 - self.omegal - self.omegar
                 self.omegak = 0.
             elif self.default is not None:
@@ -295,18 +281,15 @@ class Cosmology(object):
                 self.omegac = self.omegac_h2 / self.h**2
                 self.omegam = self.omegab + self.omegac
                 
-        elif "omegab" in input_params and "omegac" in input_params and len(input_params) == 2:
+        elif all(k in input_params for k in ['omegab', 'omegac']) and len(input_params) == 2:
             self.omegab = input_params["omegab"]
             self.omegac = input_params["omegac"]
             self.omegam = self.omegab + self.omegac
             if hasattr(self, "h"):
                 self.omegab_h2 = self.omegab * self.h**2
                 self.omegac_h2 = self.omegac * self.h**2
-
-        elif "omegam" in input_params and len(input_params) == 1:
-            self.omegam = input_params["omegam"]
-
-        elif "omegab_h2" in input_params and "omegac_h2" in input_params and len(input_params) == 2:
+    
+        elif all(k in input_params for k in ['omegab_h2', 'omegac_h2']) and len(input_params) == 2:
             if not hasattr(self, 'h'):
                 raise AttributeError("You need to specify h as well")
             self.omegab_h2 = input_params["omegab_h2"]
@@ -315,26 +298,73 @@ class Cosmology(object):
             self.omegac = self.omegac_h2 / self.h**2
             self.omegam = self.omegab + self.omegac
 
+        elif "omegam" in input_params and len(input_params) == 1:
+            self.omegam = input_params["omegam"]
+            self.omegab_h2 = self.omegac_h2 = 0.
+            self.omegab = self.omegac = 0.
+
         else:
             raise AttributeError("Input values for omega* arguments are invalid" + str(input_params))
 
         if hasattr(self, "omegam"):
             self.mean_dens = self.crit_dens*self.omegam
-            if self.force_flat:
+            if self.flat:
                 self.omegal = 1 - self.omegam - self.omegar
                 self.omegak = 0.
             elif self.default is not None and not hasattr(self, "omegal"):
                 self.omegal = self.__base["omegal"]
 
-            if hasattr(self, "omegal") and not self.force_flat:
+            if hasattr(self, "omegal") and not self.flat:
                 self.omegak = 1 - self.omegal - self.omegam - self.omegar
 
-        # check all the parameter values
-        for k, v in Cosmology._bounds.iteritems():
-            if k in self.__dict__:
-                self._check_bounds(k, v[0], v[1])
     #end update
-    
+    #---------------------------------------------------------------------------
+    def camb_dict(self):
+        """
+        Collect parameters into a dictionary suitable for camb.
+        
+        Returns
+        -------
+        dict
+            Dictionary of values appropriate for camb
+        """
+        map = {"w" : "w",
+               "Tcmb" : "temp_cmb",
+               "Y_he" : "helium_fraction",
+               "tau" : "re_optical_depth",
+               "N_nu" : "massless_neutrinos",
+               "N_nu_massive" : "massive_neutrinos",
+               "omegab_h2" : "ombh2",
+               "omegac_h2" : "omch2",
+               "omegan_h2" : "omnuh2",
+               "H0" : "hubble",
+               "omegak" : "omk",
+               "cs2_lam" : "cs2_lam",
+               "n" : "scalar_spectral_index(1)"}
+
+        return_dict = {}
+        for k, v in self.__dict__.iteritems():
+            if k in map:
+                return_dict.update({map[k]: v})
+
+        return return_dict
+    #---------------------------------------------------------------------------
+    def dict(self):
+        """
+        Collect parameters defining this cosmology in dictionary form.
+        """
+        return_dict = {k:self.__dict__[k] for k in self.keys() if k not in ['omegar', 'omegak']}
+        
+        # remove parameters with duplicate info
+        pairs = [('h', 'H0'), ('omegab', 'omegab_h2'), ('omegac', 'omegac_h2'), 
+                    ('omegan', 'omegan_h2')]
+        for pair in pairs:
+            if pair[0] in return_dict and pair[1] in return_dict:
+                del return_dict[pair[1]]
+        if 'omegab' in return_dict and 'omegac' in return_dict:
+            if 'omegam' in return_dict:
+                del return_dict['omegam']
+        return return_dict
     #---------------------------------------------------------------------------
     def keys(self):
         """
@@ -342,7 +372,7 @@ class Cosmology(object):
         """
         params = []
         for k in sorted(self.__dict__.keys(), key=str.lower):
-            if k not in ['default', 'force_flat', '_Cosmology__base', 'mean_dens', 'crit_dens']:
+            if k not in ['default', '_Cosmology__base', 'mean_dens', 'crit_dens']:
                 params.append(k)
         return params
     #end keys
@@ -419,7 +449,7 @@ class Cosmology(object):
                 except:
                     raise ValueError("Variable replacement error in line %s" %line)
             
-            if line[0] in Cosmology._bounds.keys():
+            if line[0] in Cosmology._cp:
                 D[line[0]] = eval(line[1])
 
         if clear_current:

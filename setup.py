@@ -31,7 +31,7 @@ parallel_exts = ['integralsIJ', 'integralsK']
 def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"
     
-    cargs = ["-O3", "-Wall"]
+    cargs = ["-O3", '-w']
     largs = ['-g']
     if any(par_ext in extName for par_ext in parallel_exts):
         cargs.append('-fopenmp')
@@ -39,7 +39,7 @@ def makeExtension(extName):
     
     sourceFiles = [extPath]
     if 'growth' in extPath:
-        sourceFiles += ['pyPT/cosmology/power.c', 'pyPT/cosmology/transfer.c']
+        sourceFiles += ['pyPT/cosmology/power_tools.c', 'pyPT/cosmology/transfer.c']
     return Extension(
         extName,
         sourceFiles,
@@ -62,7 +62,7 @@ setup(
   version='0.1',
   author='Nick Hand',
   author_email='nicholas.adam.hand@gmail.com',
-  packages=['pyPT', 'pyPT.cosmology', 'pyPT.power'],
+  packages=['pyPT', 'pyPT.cosmology', 'pyPT.rsd'],
   ext_modules=extensions,
   include_dirs = [cython_gsl.get_include(), '.'],
   cmdclass = {'build_ext': build_ext},

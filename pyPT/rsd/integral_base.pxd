@@ -5,8 +5,10 @@ cimport numpy as np
 cdef class integral2D:
     
     # variables
-    cdef gsl_spline *spline1, *spline2
-    cdef gsl_interp_accel *acc1, *acc2
+    cdef gsl_spline *spline1
+    cdef gsl_spline *spline2
+    cdef gsl_interp_accel *acc1
+    cdef gsl_interp_accel *acc2
     cdef public const char * kernel_name
     cdef double kmin, kmax
     cdef int num_threads 

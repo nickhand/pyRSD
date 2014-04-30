@@ -6,36 +6,9 @@
  contact: nhand@berkeley.edu
  creation date: 02/27/2014
 """
-from . import bias, hmf, cosmo_tools, cosmo, growth
+from . import bias, hmf, cosmo_tools, cosmo
 import scipy.integrate as intgr
 import numpy as np
-
-#-------------------------------------------------------------------------------
-def sigmav_lin(cosmo_params="Planck1_lens_WP_highL"):
-    """
-    Compute the velocity dispersion in linear theory, in units of Mpc/h (need
-    to multiply by f*H_conformal to get units of km/s). The integral is 
-    given by: 
-    
-    .. math:: sigma_v^2 = (1/3) * \int d^3k Plin(k, z=0) / k^2 
-        
-    Parameters
-    ----------
-    cosmo_params : {str, dict, cosmo.Cosmology}
-        The cosmological parameters to use. Default is Planck 2013 parameters.
-    """
-    if not isinstance(cosmo_params, cosmo.Cosmology):
-        cosmo_params = cosmo.Cosmology(cosmo_params)
-    
-    # compute the integral at z = 0
-    # power is in units of Mpc^3/h^3
-    integrand = lambda k: growth.Pk_lin(k, 0., tf='EH', params=cosmo_params)
-    ans = intgr.quad(integrand, 0, np.inf, epsabs=0., epsrel=1e-4)
-    sigmav_sq = ans[0]/3./(2*np.pi**2)
-    
-    # this has units of Mpc/h
-    return np.sqrt(sigmav_sq)
-#end sigmav_lin
 
 #-------------------------------------------------------------------------------
 def sigma_evrard(M_Msunh, z, params):
@@ -112,7 +85,7 @@ def sigma_bv2(mf, bias_model):
     def integrand(lnM):
         M = np.exp(lnM) # in units of M_sun/h
         R = cosmo_tools.mass_to_radius(M, mf.cosmo.mean_dens) # in Mpc/h
-        sigma = growth.mass_variance(R, mf.z, tf='EH', params=mf.cosmo)
+        sigma = mf._power.sigma_r(R, mf.z)
         b = bias_func(sigma, mf.delta_c, *bias_args)
         return mf.dndlnm_spline(M)*M*b*sigma_evrard(M, mf.z, mf.cosmo)**2
         
@@ -146,7 +119,7 @@ def sigma_bv4(mf, bias_model):
     def integrand(lnM):
         M = np.exp(lnM) # in units of M_sun/h
         R = cosmo_tools.mass_to_radius(M, mf.cosmo.mean_dens) # in Mpc/h
-        sigma = growth.mass_variance(R, mf.z, tf='EH', params=mf.cosmo)
+        sigma = mf._power.sigma_r(R, mf.z)
         b = bias_func(sigma, mf.delta_c, *bias_args)
         return mf.dndlnm_spline(M)*M*b*sigma_evrard(M, mf.z, mf.cosmo)**4
         

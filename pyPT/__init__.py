@@ -1,2 +1,2 @@
+import rsd
 import cosmology
-import power

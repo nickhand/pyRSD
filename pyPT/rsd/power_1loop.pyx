@@ -10,7 +10,7 @@
  contact: nhand@berkeley.edu
  creation date: 03/04/2014
 """
-from pyPT.power import integralsPT
+from pyPT.rsd import integralsPT
 from pyPT.cosmology cimport cosmo_tools, growth 
 from ..cosmology import cosmo
 

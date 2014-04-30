@@ -9,7 +9,7 @@
 import numpy as np
 import copy
 from .cosmo import Cosmology
-from . import hmf_fits, functionator, growth, cosmo_tools
+from . import hmf_fits, functionator, growth, cosmo_tools, power
 
 import scipy.integrate as intg
 import scipy.optimize
@@ -139,21 +139,26 @@ class HaloMassFunction(object):
         fit will not use an exponential extrapolation at high mass.
         
     """
-    def __init__(self, M=None, z=0., mf_fit="Tinker", delta_h=200.,
-                    delta_wrt='mean', delta_c=1.686, cut_fit=True,
-                    params=None, force_flat=False, default="Planck1_lens_WP_highL",
-                    powerlaw_M=1e12):
+    def __init__(self, M=None, 
+                       z=0., 
+                       mf_fit="Tinker", 
+                       delta_h=200.,
+                       delta_wrt='mean', 
+                       delta_c=1.686, 
+                       cut_fit=True,
+                       cosmo={'default':"Planck1_lens_WP_highL", 'force_flat': True}, 
+                       powerlaw_M=1e12):
         
         if M is None:
             M = np.linspace(8, 15, 1001)
 
-        # store the cosmology parameters
-        if params is None:
-            params = default
-
         # cosmology will be read only so cannot update once initialized
-        self._cosmo = Cosmology(params, force_flat=force_flat, default=default)
-
+        if isinstance(cosmo, Cosmology):
+            self._cosmo = cosmo
+        else:
+            self._cosmo = Cosmology(**cosmo)
+        self._power = power.Power(transfer_fit="EH", cosmo=self.cosmo)
+        
         # Set all given parameters.
         self.mf_fit       = mf_fit
         self.M            = M
@@ -182,7 +187,7 @@ class HaloMassFunction(object):
         """
         def objective(M):
             R = cosmo_tools.mass_to_radius(M*1e14, self.cosmo.mean_dens)
-            sigma = growth.mass_variance(R, self.z, normed=True, tf='EH', params=self.cosmo)
+            sigma = self._power.sigma_r(R, self.z)
             return 4.*sigma - self.delta_c
             
         M = scipy.optimize.brentq(objective, 1e-4, 1e5)
@@ -361,7 +366,7 @@ class HaloMassFunction(object):
         try:
            return self.__sigma_0
         except:
-           self.__sigma_0 = growth.mass_variance(self.R, 0., normed=True, tf='EH', params=self.cosmo)
+           self.__sigma_0 = self._power.sigma_r(self.R, 0.)
            return self.__sigma_0
 
     @_sigma_0.deleter
@@ -388,7 +393,7 @@ class HaloMassFunction(object):
         try:
            return self.__dlnsdlnm
         except:
-           self.__dlnsdlnm = growth.dlnsdlnm(self.R, sigma0=self._sigma_0, tf="EH", params=self.cosmo)
+           self.__dlnsdlnm = self._power.dlnsdlnm(self.R, sigma0=self._sigma_0)
            return self.__dlnsdlnm
 
     @_dlnsdlnm.deleter

@@ -12,27 +12,29 @@
  creation date: 02/17/2014
 """
 from pyPT.cosmology cimport growth, cosmo_tools
-from ..cosmology import cosmo, velocity, hmf
-from pyPT.power import integralsPT
+from ..cosmology import velocity, hmf, power
+from ..cosmology.cosmo import Cosmology
+from pyPT.rsd import integralsPT
  
 
 import scipy.interpolate as interp
 import numpy as np
 cimport numpy as np
-import re
-import copy
 
 class DMSpectrum(object):
+    
+    _power_atts = ['_P00', '_P01', '_P11', '_P02', '_P12', 'P22', '_P03', 
+                    '_P13', '_P04', '_Pdd', '_Pdv', '_Pvv']
     
     def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),
                        z=0., 
                        num_threads=1, 
-                       cosmo_params="Planck1_lens_WP_highL", 
-                       cosmo_kwargs={'default':"Planck1_lens_WP_highL", 'force_flat':False},
+                       cosmo={'default':"Planck1_lens_WP_highL", 'force_flat': True}, 
                        mass_function_kwargs={'mf_fit' : 'Tinker'}, 
                        bias_model='Tinker',
                        include_2loop=False,
-                       linear_power=None,
+                       transfer_fit="EH",
+                       camb_kwargs={},
                        max_mu=4):
         """
         Parameters
@@ -47,13 +49,9 @@ class DMSpectrum(object):
         num_threads : int, optional
             The number of threads to use in parallel computation. Default = 1.
             
-        cosmo_params : {str, dict, cosmo.Cosmology}
+        cosmo : {dict, Cosmology}
             The cosmological parameters to use. Default is Planck DR1 + lensing
             + WP + high L 2013 parameters.
-        
-        cosmo_kwargs : dict, optional
-            Keyword arguments to pass to the cosmo.Cosmology class. Possible 
-            keywords include ``default`` and ``force_flat``.
             
         mass_function_kwargs : dict, optional
             The keyword arguments to pass to the hmf.HaloMassFunction object
@@ -68,97 +66,234 @@ class DMSpectrum(object):
             If ``True``, include 2-loop contributions in the model terms. Default
             is ``False``.
             
-        linear_power : str, optional
-            The name of file name holding the linear power spectrum to use. If
-            ``None``, analytic Eisenstein + Hu fit is used. 
+        transfer_fit : str, optional
+            The name of the transfer function fit to use. Default is ``CAMB``
+            and the options are {``CAMB``, ``EH``, ``EH_no_wiggles``, 
+            ``EH_no_baryons``, ``BBKS``, ``Bond_Efs``}
+        
+        camb_kwargs : dict, optional
+            Keyword arguments to pass to to ``Power`` object. 
         
         max_mu : {0, 2, 4, 6, 8}, optional
             Only compute angular terms up to mu**(``max_mu``). Default is 4.
         """
-        # initialize the cosmology parameters
-        self.max_mu          = max_mu
-        self.cosmo_kwargs    = cosmo_kwargs
-        self.cosmo           = cosmo_params
-        self.num_threads     = num_threads
-        self.include_2loop   = include_2loop
-        self.k               = np.array(k, copy=False, ndmin=1)
-        self.linear_power    = linear_power
-                    
+        if isinstance(cosmo, Cosmology):
+            self._cosmo = cosmo
+        else:
+            self._cosmo     = Cosmology(**cosmo)
+        self._max_mu        = max_mu
+        self._num_threads   = num_threads
+        self._include_2loop = include_2loop
+        self.__k            = np.array(k, copy=False, ndmin=1)
+        self._transfer_fit  = transfer_fit
+        self._camb_kwargs   = camb_kwargs
+        self._z             = z 
+        
         # save useful quantitues for later
-        self.z                    = z 
         self.mass_function_kwargs = mass_function_kwargs
         self.bias_model           = bias_model
         
     #end __init__
     #---------------------------------------------------------------------------
-    def _delete_all(self):
+    def _delete_power(self):
         """
-        Delete all integral and power spectra attributes.
+        Delete all power spectra attributes.
         """
-        pattern = re.compile("_[IJP]([0-9]*|lin|_mu[0-9]+)")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
+        atts = [a for a in DMSpectrum._power_atts if a in self.__dict__]
+        for a in atts:
+            del self.__dict__[a]
     #---------------------------------------------------------------------------
-    # SET ATTRIBUTES
+    def update(self, **kwargs):
+        """
+        Update the parameters in an optimal manner.
+        """
+        cpdict = self._cosmo.dict()
+
+        # first update the cosmology
+        cp = {k:v for k, v in kwargs.iteritems() if k in Cosmology._cp}
+        if cp:
+            true_cp = {}
+            for k, v in cp.iteritems():
+                if k not in cpdict:
+                    true_cp[k] = v
+                elif k in cpdict:
+                    if v != cpdict[k]:
+                        true_cp[k] = v
+                        
+            # delete the entries we've used from kwargs
+            for k in cp:
+                del kwargs[k]
+                
+            # now actually update the classes depending on cosmology
+            cpdict.update(true_cp)
+            self._cosmo = Cosmology(**cpdict)
+            self.integrals.update(**cpdict)
+            self.power_lin.update(**cpdict)
+            
+            # delete everything 
+            del self.f, self.D, self.conformalH, self.hmf
+            self._delete_power()
+                
+        # now do any other parameters
+        for key, val in kwargs.iteritems():
+            if "_" + key not in self.__dict__:
+                print "WARNING: %s is not a valid parameter for the %s class" %(str(key), self.__class__.__name__)
+            else:
+                if np.any(getattr(self, key) != val):
+                    setattr(self, '_' + key, val)
+                
+            # keywords affecting the transfer function
+            if key in ['transfer_fit', 'camb_kwargs']:
+                d = {key: val}
+                if key == 'camb_kwargs':
+                    d = val
+                self.power_lin.update(**d)
+                self.integrals.update(**d)
+                
+            # do redshift-dependent quantites
+            elif key == 'z':
+                del self.f, self.D, self.conformalH, self.hmf
+                self.integrals.update(**{key:val})
+                if hasattr(self, 'mass_function_kwargs'):
+                    self.mass_function_kwargs['z'] = val
+            elif key == 'num_threads':
+                self._integrals.update(**{key:val})
+
+        # delete the power attributes, if any of these changed
+        attrbs = ['transfer_fit', 'camb_kwargs', 'z', 'max_mu', 'include_2loop']
+        if any(key in attrbs for key in kwargs):
+            self._delete_power()
+    #---------------------------------------------------------------------------
+    # READ-ONLY ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
     def k(self):
-        return self._k
+        return self.__k
 
-    @k.setter
-    def k(self, val):
-        self._k = val
-        self._delete_all()
     #---------------------------------------------------------------------------
     @property
     def z(self):
         return self._z
-    
-    @z.setter
-    def z(self, val):
-        self._z = val
-        if hasattr(self, 'mass_function_kwargs'):
-            self.mass_function_kwargs['z'] = val
-        
-        del self.hmf
-        pattern = re.compile("_((f|D|conformalH)|P[0-9_]+[A-Za-z0-9_]+)")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
     #---------------------------------------------------------------------------
     @property
     def cosmo(self):
         return self._cosmo
-    
-    @cosmo.setter
-    def cosmo(self, val):
-        if not isinstance(val, cosmo.Cosmology):
-            self._cosmo = cosmo.Cosmology(val, **self.cosmo_kwargs)
-        else:
-            self._cosmo = val
-            
-        # basically delete everything
-        del self.hmf
-        del self.integrals
-        pattern = re.compile("_(f|D|conformalH|Plin_interp|sigma_lin)")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
-        self._delete_all()
-    #--------------------------------------------------------------------------
+    #---------------------------------------------------------------------------
     @property
-    def cosmo_kwargs(self):
-        return self._cosmo_kwargs
-    
-    @cosmo_kwargs.setter
-    def cosmo_kwargs(self, val):
-        self._cosmo_kwargs = val
+    def transfer_fit(self):
+        return self._transfer_fit
+
+    #---------------------------------------------------------------------------
+    @property
+    def camb_kwargs(self):
+        return self._camb_kwargs
+    #---------------------------------------------------------------------------
+    @property
+    def max_mu(self):
+        return self._max_mu
+    #---------------------------------------------------------------------------
+    @property
+    def include_2loop(self):
+        return self._include_2loop
+    #---------------------------------------------------------------------------
+    @property
+    def D(self):
+        try:
+            return self._D
+        except AttributeError:
+            self._D = growth.growth_function(self.z, normed=True, params=self.cosmo)
+            return self._D
+
+    @D.deleter
+    def D(self):
+        try:
+            del self._D
+        except AttributeError:
+            pass
+    #---------------------------------------------------------------------------
+    @property
+    def f(self):
+        try:
+            return self._f
+        except AttributeError:
+            self._f = growth.growth_rate(self.z, params=self.cosmo)
+            return self._f
+
+    @f.deleter
+    def f(self):
+        try:
+            del self._f
+        except AttributeError:
+            pass
+    #---------------------------------------------------------------------------
+    @property
+    def conformalH(self):
+        try:
+            return self._conformalH
+        except AttributeError:
+            self._conformalH = cosmo_tools.H(self.z,  params=self.cosmo)/(1.+self.z)
+            return self._conformalH
+
+    @conformalH.deleter
+    def conformalH(self):
+        try:
+            del self._conformalH
+        except AttributeError:
+            pass
+    #---------------------------------------------------------------------------
+    @property
+    def hmf(self):
+        try:
+            return self._hmf
+        except AttributeError:
+            self._hmf = hmf.HaloMassFunction(cosmo=self.cosmo, **self.mass_function_kwargs)
+            return self._hmf
+
+    @hmf.deleter
+    def hmf(self):
+        try:
+            del self._hmf
+            del self.sigma_v2
+            del self.sigma_bv2
+            del self.sigma_bv4
+        except AttributeError:
+            pass
+    #---------------------------------------------------------------------------
+    @property
+    def integrals(self):
+        try:
+            return self._integrals
+        except AttributeError:
+            self._integrals = integralsPT.Integrals(self.k, self.z, self.cosmo, 
+                                                    self._num_threads, self.transfer_fit, 
+                                                    self.camb_kwargs)
+            return self._integrals
+    #---------------------------------------------------------------------------
+    @property
+    def power_lin(self):
+        try:
+            return self._power_lin
+        except AttributeError:
+            self._power_lin = power.Power(k=self.k, z=0., transfer_fit=self.transfer_fit, 
+                                            cosmo=self.cosmo, **self.camb_kwargs)
+            return self._power_lin
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_lin(self):
+        """
+        The dark matter velocity dispersion, as evaluated in linear theory 
+        [units: Mpc/h]
+        """
+        try: 
+            return self._sigma_lin
+        except:
+            return np.sqrt(self.integrals.sigmasq)
         
-        # basically delete everything
-        del self.hmf
-        del self.integrals
-        pattern = re.compile("_(f|D|conformalH|Plin_interp|sigma_lin)")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
-        self._delete_all()
+    @sigma_lin.setter
+    def sigma_lin(self, val):
+        self._sigma_lin = val
+    #---------------------------------------------------------------------------
+    # SET ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
     def bias_model(self):
@@ -172,21 +307,6 @@ class DMSpectrum(object):
         del self.sigma_bv4
     #---------------------------------------------------------------------------
     @property
-    def max_mu(self):
-        return self._max_mu
-    
-    @max_mu.setter
-    def max_mu(self, val):
-        if val not in [0, 2, 4, 6, 8]:
-            raise ValueError("Maximum mu value must be one of [0, 2, 4, 6, 8]")
-        self._max_mu = val
-        
-        # delete all power spectra terms
-        pattern = re.compile("_[P]([0-9]{2}[_a-z]*|_mu[0-9]{2})")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
-    #---------------------------------------------------------------------------
-    @property
     def mass_function_kwargs(self):
         return self._mass_function_kwargs
     
@@ -196,18 +316,6 @@ class DMSpectrum(object):
         self._mass_function_kwargs['z'] = self.z
         
         del self.hmf
-    #---------------------------------------------------------------------------
-    @property
-    def include_2loop(self):
-        return self._include_2loop
-    
-    @include_2loop.setter
-    def include_2loop(self, val):
-        self._include_2loop = val
-        
-        pattern = re.compile("_P(11|02|12|22|03|13|04|_mu[2468])[_a-z]*")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
     #---------------------------------------------------------------------------
     @property
     def sigma_v2(self):
@@ -224,7 +332,7 @@ class DMSpectrum(object):
         """
         try:
             return self._sigma_v2
-        except:
+        except AttributeError:
             self._sigma_v2 = velocity.sigma_v2(self.hmf)
             return self._sigma_v2
     
@@ -232,15 +340,15 @@ class DMSpectrum(object):
     def sigma_v2(self, val):
         self._sigma_v2 = val
         
-        pattern = re.compile("_P(01|03|_mu[46])")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
+        atts = ['_P01', '_P03']
+        for a in atts:
+            if a in self.__dict__: del self.__dict__[a]
     
     @sigma_v2.deleter
     def sigma_v2(self):
         try:
             del self._sigma_v2
-        except:
+        except AttributeError:
             pass
     #---------------------------------------------------------------------------
     @property 
@@ -259,7 +367,7 @@ class DMSpectrum(object):
         """
         try:
             return self._sigma_bv2
-        except:
+        except AttributeError:
             self._sigma_bv2 = velocity.sigma_bv2(self.hmf, self.bias_model)
             return self._sigma_bv2
     
@@ -267,15 +375,15 @@ class DMSpectrum(object):
     def sigma_bv2(self, val):
         self._sigma_bv2 = val
         
-        pattern = re.compile("_P(02|12|13|22|_mu[2468])")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
+        atts = ['_P02', '_P12', '_P13', '_P22']
+        for a in atts:
+            if a in self.__dict__: del self.__dict__[a]
     
     @sigma_bv2.deleter
     def sigma_bv2(self):
         try:
             del self._sigma_bv2
-        except:
+        except AttributeError:
             pass
     #---------------------------------------------------------------------------
     @property 
@@ -294,7 +402,7 @@ class DMSpectrum(object):
         """
         try:
             return self._sigma_bv4
-        except:
+        except AttributeError:
             self._sigma_bv4 = velocity.sigma_bv4(self.hmf, self.bias_model)
             return self._sigma_bv4
             
@@ -302,287 +410,14 @@ class DMSpectrum(object):
     def sigma_bv4(self, val):
         self._sigma_bv4 = val
         
-        pattern = re.compile("_P(04|_mu[46])")
-        for k in self.__dict__.keys():
-            if pattern.match(k): del self.__dict__[k]
+        if hasattr(self, '_P04'): del self.__dict__['_P04']
     
     @sigma_bv4.deleter
     def sigma_bv4(self):
         try:
             del self._sigma_bv4
-        except:
+        except AttributeError:
             pass
-    #---------------------------------------------------------------------------
-    # READ-ONLY ATTRIBUTES
-    #---------------------------------------------------------------------------
-    @property
-    def _kmin(self):
-        return np.amin(self.k)
-
-    #---------------------------------------------------------------------------
-    @property
-    def _kmax(self):
-        return np.amax(self.k)
-    #---------------------------------------------------------------------------
-    @property
-    def D(self):
-        try:
-            return self._D
-        except:
-            self._D = growth.growth_function(self.z, normed=True, params=self.cosmo)
-            return self._D
-    #---------------------------------------------------------------------------
-    @property
-    def Plin(self):
-        try:
-            return self._Plin
-        except:
-            if self.linear_power is None:
-                self._Plin = growth.Pk_lin(self.k, 0., tf='EH', params=self.cosmo) 
-            else:
-                Plin_data = np.loadtxt(self.linear_power)
-                spline = interp.InterpolatedUnivariateSpline(Plin_data[:,0], Plin_data[:,1])
-                self._Plin = spline(self.k)
-            return self._Plin
-    #---------------------------------------------------------------------------
-    @property
-    def f(self):
-        try:
-            return self._f
-        except:
-            self._f = growth.growth_rate(self.z, params=self.cosmo)
-            return self._f
-    #---------------------------------------------------------------------------
-    @property
-    def conformalH(self):
-        try:
-            return self._conformalH
-        except:
-            self._conformalH = cosmo_tools.H(self.z,  params=self.cosmo)/(1.+self.z)
-            return self._conformalH
-    #---------------------------------------------------------------------------
-    @property
-    def hmf(self):
-        try:
-            return self._hmf
-        except:
-            self._hmf = hmf.HaloMassFunction(**self.mass_function_kwargs)
-            return self._hmf
-    
-    @hmf.deleter
-    def hmf(self):
-        try:
-            del self._hmf
-        except:
-            pass
-        del self.sigma_v2
-        del self.sigma_bv2
-        del self.sigma_bv4
-    #---------------------------------------------------------------------------
-    @property
-    def integrals(self):
-        try:
-            return self._integrals
-        except:
-            self._integrals = integralsPT.Integrals(self.k, self.z, self.cosmo, self.num_threads)
-            return self._integrals
-            
-    @integrals.deleter
-    def integrals(self):
-        try:
-            del self._integrals
-        except:
-            pass
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_lin(self):
-        """
-        The dark matter velocity dispersion, as evaluated in linear theory 
-        [units: Mpc/h]
-        """
-        try:
-            return self._sigma_lin
-        except:
-            self._sigma_lin = velocity.sigmav_lin(cosmo_params=self.cosmo)
-            return self._sigma_lin 
-    #---------------------------------------------------------------------------
-    # LINEAR-ORDER INTEGRAL ATTRIBUTES (READ-ONLY)
-    #---------------------------------------------------------------------------
-    @property
-    def I00(self):
-        try:
-            return self._I00
-        except:
-            self._I00 = self.integrals.I('f00', 0)
-            return self._I00
-    #---------------------------------------------------------------------------
-    @property
-    def I01(self):
-        try:
-            return self._I01
-        except:
-            self._I01 = self.integrals.I('f01', 0)
-            return self._I01
-    #---------------------------------------------------------------------------
-    @property
-    def I10(self):
-        try:
-            return self._I10
-        except:
-            self._I10 = self.integrals.I('f10', 0)
-            return self._I10
-    #---------------------------------------------------------------------------
-    @property
-    def I11(self):
-        try:
-            return self._I11
-        except:
-            self._I11 = self.integrals.I('f11', 0)
-            return self._I11
-    #---------------------------------------------------------------------------
-    @property
-    def I02(self):
-        try:
-            return self._I02
-        except:
-            self._I02 = self.integrals.I('f02', 0)
-            return self._I02
-    #---------------------------------------------------------------------------
-    @property
-    def I20(self):
-        try:
-            return self._I20
-        except:
-            self._I20 = self.integrals.I('f20', 0)
-            return self._I20
-    #---------------------------------------------------------------------------
-    @property
-    def I12(self):
-        try:
-            return self._I12
-        except:
-            self._I12 = self.integrals.I('f12', 0)
-            return self._I12
-    #---------------------------------------------------------------------------
-    @property
-    def I21(self):
-        try:
-            return self._I21
-        except:
-            self._I21 = self.integrals.I('f21', 0)
-            return self._I21
-    #---------------------------------------------------------------------------
-    @property
-    def I22(self):
-        try:
-            return self._I22
-        except:
-            self._I22 = self.integrals.I('f22', 0)
-            return self._I22
-    #---------------------------------------------------------------------------
-    @property
-    def I03(self):
-        try:
-            return self._I03
-        except:
-            self._I03 = self.integrals.I('f03', 0)
-            return self._I03
-    #---------------------------------------------------------------------------
-    @property
-    def I30(self):
-        try:
-            return self._I30
-        except:
-            self._I30 = self.integrals.I('f30', 0)
-            return self._I30
-    #---------------------------------------------------------------------------
-    @property
-    def I31(self):
-        try:
-            return self._I31
-        except:
-            self._I31 = self.integrals.I('f31', 0)
-            return self._I31
-    #---------------------------------------------------------------------------
-    @property
-    def I13(self):
-        try:
-            return self._I13
-        except:
-            self._I13 = self.integrals.I('f13', 0)
-            return self._I13
-    #---------------------------------------------------------------------------
-    @property
-    def I23(self):
-        try:
-            return self._I23
-        except:
-            self._I23 = self.integrals.I('f23', 0)
-            return self._I23
-    #---------------------------------------------------------------------------
-    @property
-    def I32(self):
-        try:
-            return self._I32
-        except:
-            self._I32 = self.integrals.I('f32', 0)
-            return self._I32
-    #---------------------------------------------------------------------------
-    @property
-    def I33(self):
-        try:
-            return self._I33
-        except:
-            self._I33 = self.integrals.I('f33', 0)
-            return self._I33
-    #---------------------------------------------------------------------------
-    @property
-    def J00(self):
-        try:
-            return self._J00
-        except:
-            self._J00 = self.integrals.J('g00')
-            return self._J00
-    #---------------------------------------------------------------------------
-    @property
-    def J01(self):
-        try:
-            return self._J01
-        except:
-            self._J01 = self.integrals.J('g01')
-            return self._J01
-    #---------------------------------------------------------------------------
-    @property
-    def J10(self):
-        try:
-            return self._J10
-        except:
-            self._J10 = self.integrals.J('g10')
-            return self._J10
-    #---------------------------------------------------------------------------
-    @property
-    def J11(self):
-        try:
-            return self._J11
-        except:
-            self._J11 = self.integrals.J('g11')
-            return self._J11
-    #---------------------------------------------------------------------------
-    @property
-    def J20(self):
-        try:
-            return self._J20
-        except:
-            self._J20 = self.integrals.J('g20')
-            return self._J20
-    #---------------------------------------------------------------------------
-    @property
-    def J02(self):
-        try:
-            return self._J02
-        except:
-            self._J02 = self.integrals.J('g02')
-            return self._J02
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)
     #---------------------------------------------------------------------------
@@ -630,8 +465,11 @@ class DMSpectrum(object):
         """
         The 1-loop component of the auto-correlation of density
         """
-        P22  = 2.*self.I00
-        P13  = 6.*self.k**2*self.J00*(self.D**2 * self.Plin)
+        I00 = self.integrals.I('f00', 0)
+        J00 = self.integrals.J('g00')
+        
+        P22  = 2.*I00
+        P13  = 6.*self.k**2*J00*(self.D**2 * self.power_lin.power)
         return P22 + P13
     #---------------------------------------------------------------------------
     @property
@@ -640,8 +478,11 @@ class DMSpectrum(object):
         The 1-loop component of the cross-correlation of density and velocity 
         divergence.
         """
-        P22  = 2.*self.I01
-        P13  = 6.*self.k**2*self.J01*(self.D**2 * self.Plin)
+        I01 = self.integrals.I('f01', 0)
+        J01 = self.integrals.J('g01')
+        
+        P22  = 2.*I01
+        P13  = 6.*self.k**2*J01*(self.D**2 * self.power_lin.power)
         return P22 + P13
     #---------------------------------------------------------------------------
     @property
@@ -649,8 +490,11 @@ class DMSpectrum(object):
         """
         The 1-loop component of the auto-correlation of velocity divergence.
         """
-        P22  = 2.*self.I11
-        P13  = 6.*self.k**2*self.J11*(self.D**2 * self.Plin)
+        I11 = self.integrals.I('f11', 0)
+        J11 = self.integrals.J('g11')
+        
+        P22  = 2.*I11
+        P13  = 6.*self.k**2*J11*(self.D**2 * self.power_lin.power)
         return P22 + P13
     #---------------------------------------------------------------------------
     @property
@@ -660,8 +504,8 @@ class DMSpectrum(object):
         """
         try:
             return self._Pdd
-        except:
-            self._Pdd = (self.D**2*self.Plin + self._Pdd_1loop)
+        except AttributeError:
+            self._Pdd = (self.D**2*self.power_lin.power + self._Pdd_1loop)
             return self._Pdd
     #---------------------------------------------------------------------------
     @property
@@ -672,8 +516,13 @@ class DMSpectrum(object):
         """
         try:
             return self._Pdv
-        except:
-            self._Pdv = (-self.f) * (self.D**2*self.Plin + self._Pdv_1loop)
+        except AttributeError:
+            
+            # check for any user-loaded values
+            if hasattr(self, '_Pdv_loaded'):
+                self._Pdv = self._Pdv_loaded
+            else:
+                self._Pdv = (-self.f) * (self.D**2*self.power_lin.power + self._Pdv_1loop)
             return self._Pdv
     #---------------------------------------------------------------------------
     @property
@@ -683,8 +532,8 @@ class DMSpectrum(object):
         """
         try:
             return self._Pvv
-        except:
-            self._Pvv = (self.f**2) * (self.D**2*self.Plin + self._Pvv_1loop)
+        except AttributeError:
+            self._Pvv = (self.f**2) * (self.D**2*self.power_lin.power + self._Pvv_1loop)
             return self._Pvv
     #---------------------------------------------------------------------------
     @property
@@ -695,12 +544,22 @@ class DMSpectrum(object):
         """
         try:
             return self._P00
-        except:
+        except AttributeError:
             self._P00 = PowerTerm()
-            P11 = self.D**2 * self.Plin
-            P22 = 2*self.I00
-            P13 = 6*self.k**2*self.J00*P11
-            self._P00.total.mu0 = P11 + P22 + P13
+            
+            # check and return any user-loaded values
+            if hasattr(self, '_P00_mu0_loaded'):
+                self._P00.total.mu0 = self._P00_mu0_loaded
+            else:
+                # the necessary integrals 
+                I00 = self.integrals.I('f00', 0)
+                J00 = self.integrals.J('g00')
+            
+                P11 = self.D**2 * self.power_lin.power
+                P22 = 2*I00
+                P13 = 6*self.k**2*J00*P11
+                self._P00.total.mu0 = P11 + P22 + P13
+            
             return self._P00
     #---------------------------------------------------------------------------
     @property
@@ -711,10 +570,21 @@ class DMSpectrum(object):
         """
         try:
             return self._P01
-        except:
+        except AttributeError:
             self._P01 = PowerTerm()
-            Plin = self.D**2 * self.Plin
-            self._P01.total.mu2 = 2*self.f*(Plin + 4.*(self.I00 + 3*self.k**2*self.J00*Plin))
+            
+            # check and return any user-loaded values
+            if hasattr(self, '_P01_mu2_loaded'):
+                self._P01.total.mu2 = self._P01_mu2_loaded
+            else:
+                
+                # the necessary integrals 
+                I00 = self.integrals.I('f00', 0)
+                J00 = self.integrals.J('g00')
+            
+                Plin = self.D**2 * self.power_lin.power
+                self._P01.total.mu2 = 2*self.f*(Plin + 4.*(I00 + 3*self.k**2*J00*Plin))
+            
             return self._P01
     #---------------------------------------------------------------------------
     @property
@@ -727,42 +597,60 @@ class DMSpectrum(object):
         """
         try:
             return self._P11
-        except:
+        except AttributeError:
             self._P11 = PowerTerm()
             
             # do mu^2 terms?
             if self.max_mu >= 2:
                 
-                # do the vector part, contribution mu^2 and mu^4 terms
-                if not self.include_2loop:
-                    Pvec = self.f**2 * self.I31
+                # check and return any user-loaded values
+                if hasattr(self, '_P11_mu2_loaded'):
+                    Pvec = self._P11_mu2_loaded
+                    self._P11.vector.mu2 = self._P11.total.mu2 = Pvec
+                    self._P11.vector.mu4 = self._P11.vector.mu4 = -Pvec
                 else:
-                    I1 = self.integrals.I('h01', 1, ('dd', 'vv'))
-                    I2 = self.integrals.I('h03', 1, ('dv', 'dv'))
-                    Pvec = self.f**2 * (I1 + I2)
+                    
+                    # do the vector part, contributing mu^2 and mu^4 terms
+                    if not self.include_2loop:
+                        Pvec = self.f**2 * self.integrals.I('f31', 0)
+                    else:
+                        I1 = self.integrals.I('h01', 1, ('dd', 'vv'))
+                        I2 = self.integrals.I('h03', 1, ('dv', 'dv'))
+                        Pvec = self.f**2 * (I1 + I2)
                 
-                # save the mu^2 vector term
-                self._P11.vector.mu2 = self._P11.total.mu2 = Pvec
-                self._P11.vector.mu4 = self._P11.vector.mu4 = -Pvec
+                    # save the mu^2 vector term
+                    self._P11.vector.mu2 = self._P11.total.mu2 = Pvec
+                    self._P11.vector.mu4 = self._P11.vector.mu4 = -Pvec
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4: 
-                        
-                    # compute the scalar mu^4 contribution
-                    if self.include_2loop:
-                        I1 = self.integrals.I('h02', 1, ('dd', 'vv'))
-                        I2 = self.integrals.I('h04', 1, ('dv', 'dv'))
-                        C11_contrib = I1 + I2
+                      
+                    # check and return any user-loaded values
+                    if hasattr(self, '_P11_mu4_loaded'):
+                        self._P11.total.mu4 = self._P11_mu4_loaded
                     else:
-                        C11_contrib = self.I13
-                        
-                    Plin = self.D**2 * self.Plin
-                    part2 = 2*self.I11 + 4*self.I22 + 6*self.k**2 * (self.J11 + 2*self.J10)*Plin
-                    P_scalar = self.f**2 * (Plin + part2 + C11_contrib) - self._P11.vector.mu4
+                          
+                        # compute the scalar mu^4 contribution
+                        if self.include_2loop:
+                            I1 = self.integrals.I('h02', 1, ('dd', 'vv'))
+                            I2 = self.integrals.I('h04', 1, ('dv', 'dv'))
+                            C11_contrib = I1 + I2
+                        else:
+                            C11_contrib = self.integrals.I('f13', 0)
                     
-                    # save the scalar/vector mu^4 terms
-                    self._P11.scalar.mu4 = P_scalar
-                    self._P11.total.mu4 = self._P11.scalar.mu4 + self._P11.vector.mu4
+                        # the necessary integrals 
+                        I11 = self.integrals.I('f11', 0)
+                        I22 = self.integrals.I('f22', 0)
+                        J11 = self.integrals.J('g11')
+                        J10 = self.integrals.J('g10')
+                    
+                        Plin = self.D**2 * self.power_lin.power
+                        part2 = 2*I11 + 4*I22 + 6*self.k**2 * (J11 + 2*J10)*Plin
+                        P_scalar = self.f**2 * (Plin + part2 + C11_contrib) - self._P11.vector.mu4
+                    
+                        # save the scalar/vector mu^4 terms
+                        self._P11.scalar.mu4 = P_scalar
+                        self._P11.total.mu4 = self._P11.scalar.mu4 + self._P11.vector.mu4
             
             return self._P11
     #---------------------------------------------------------------------------
@@ -775,15 +663,19 @@ class DMSpectrum(object):
         """
         try:
             return self._P02
-        except:
+        except AttributeError:
             self._P02 = PowerTerm()
             
             # do mu^2 terms?
             if self.max_mu >= 2:        
-                Plin = self.D**2 * self.Plin
+                Plin = self.D**2 * self.power_lin.power
+                
+                # the necessary integrals 
+                I02 = self.integrals.I('f02', 0)
+                J02 = self.integrals.J('g02')
     
                 # the nmu^2 no velocity terms
-                self._P02.no_velocity.mu2 = self.f**2 * (self.I02 + 2*self.k**2*self.J02*Plin)
+                self._P02.no_velocity.mu2 = self.f**2 * (I02 + 2*self.k**2*J02*Plin)
                 
                 # the mu^2 terms depending on velocity (velocities in Mpc/h)
                 sigma_lin = self.sigma_lin
@@ -800,7 +692,11 @@ class DMSpectrum(object):
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4: 
-                    self._P02.total.mu4 = self._P02.no_velocity.mu4 = self.f**2 * (self.I20 + 2*self.k**2*self.J20*Plin)
+                    
+                    # the necessary integrals 
+                    I20 = self.integrals.I('f20', 0)
+                    J20 = self.integrals.J('g20')
+                    self._P02.total.mu4 = self._P02.no_velocity.mu4 = self.f**2 * (I20 + 2*self.k**2*J20*Plin)
                     
             return self._P02
     #---------------------------------------------------------------------------
@@ -814,15 +710,20 @@ class DMSpectrum(object):
         """
         try:
             return self._P12
-        except:
+        except AttributeError:
             self._P12 = PowerTerm()
             
             # do mu^4 terms?
             if self.max_mu >= 4:
-                Plin = self.D**2 * self.Plin
+                Plin = self.D**2 * self.power_lin.power
+                
+                # the necessary integrals 
+                I12 = self.integrals.I('f12', 0)
+                I03 = self.integrals.I('f03', 0)
+                J02 = self.integrals.J('g02')
                 
                 # do the mu^4 terms that don't depend on velocity
-                self._P12.no_velocity.mu4 = self.f**3 * (self.I12 - self.I03 + 2*self.k**2*self.J02*Plin)
+                self._P12.no_velocity.mu4 = self.f**3 * (I12 - I03 + 2*self.k**2*J02*Plin)
             
                 # now do mu^4 terms depending on velocity (velocities in Mpc/h)
                 sigma_lin = self.sigma_lin  
@@ -840,7 +741,12 @@ class DMSpectrum(object):
                 # do mu^6 terms?
                 if self.max_mu >= 6:
                     
-                    self._P12.no_velocity.mu6 = self.f**3 * (self.I21 - self.I30 + 2*self.k**2*self.J20*Plin)
+                    # the necessary integrals 
+                    I21 = self.integrals.I('f21', 0)
+                    I30 = self.integrals.I('f30', 0)
+                    J20 = self.integrals.J('g20')
+                    
+                    self._P12.no_velocity.mu6 = self.f**3 * (I21 - I30 + 2*self.k**2*J20*Plin)
                     self._P12.total.mu6 = self._P12.no_velocity.mu6
             
             return self._P12
@@ -854,7 +760,7 @@ class DMSpectrum(object):
         """
         try:
             return self._P22
-        except:
+        except AttributeError:
             self._P22 = PowerTerm()
             
             # velocity terms come in at 2-loop here
@@ -865,14 +771,17 @@ class DMSpectrum(object):
                 sigma_22  = self.sigma_bv2 * self.cosmo.h / (self.f*self.conformalH*self.D) 
                 sigsq_eff = sigma_lin**2 + sigma_22**2
                 
+                J02 = self.integrals.J('g02')
+                J20 = self.integrals.J('g20')
+                
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
-                Plin = self.D**2 * self.Plin
+                Plin = self.D**2 * self.power_lin.power
                 
                 # 1-loop or 2-loop terms from <v^2 | v^2 > 
                 if not self.include_2loop:
-                    self._P22.no_velocity.mu4 = 1./16*self.f**4 * self.I23
+                    self._P22.no_velocity.mu4 = 1./16*self.f**4 * self.integrals.I('f23', 0)
                 else:
                     I23_2loop = self.integrals.I('f23', 1, ('vv', 'vv'))
                     self._P22.no_velocity.mu4 = 1./16*self.f**4 * I23_2loop
@@ -881,7 +790,7 @@ class DMSpectrum(object):
                 if self.include_2loop:
                                
                     # one more 2-loop term for <v^2 | v^2>
-                    extra_vv_mu4 = (self.f*self.k)**4 * Plin*self.J02**2
+                    extra_vv_mu4 = (self.f*self.k)**4 * Plin*J02**2
                     
                     # term from <v^2 | d v^2>
                     extra_vdv_mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
@@ -904,7 +813,7 @@ class DMSpectrum(object):
                     
                     # 1-loop or 2-loop terms that don't depend on velocity
                     if not self.include_2loop:
-                        self._P22.no_velocity.mu6 = 1./8*self.f**4 * self.I32
+                        self._P22.no_velocity.mu6 = 1./8*self.f**4 * self.integrals.I('f32', 0)
                     else:
                         I32_2loop = self.integrals.I('f32', 1, ('vv', 'vv'))
                         self._P22.no_velocity.mu6 = 1./8*self.f**4 * I32_2loop
@@ -916,7 +825,7 @@ class DMSpectrum(object):
                         extra_vdv_mu6 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
                         
                         # one more 2-loop term for <v^2 | v^2>
-                        extra_vv_mu6  = 2*(self.f*self.k)**4 * Plin*self.J02*self.J20
+                        extra_vv_mu6  = 2*(self.f*self.k)**4 * Plin*J02*J20
                         
                         # save the totals
                         extra = extra_vv_mu6 + extra_vdv_mu6 
@@ -930,13 +839,13 @@ class DMSpectrum(object):
                         
                         # 1-loop or 2-loop terms that don't depend on velocity
                         if not self.include_2loop:
-                            self._P22.no_velocity.mu8 = 1./16*self.f**4 * self.I33
+                            self._P22.no_velocity.mu8 = 1./16*self.f**4 * self.integrals.I('f33', 0)
                         else:
                             I33_2loop = self.integrals.I('f33', 1, ('vv', 'vv'))
                             self._P22.no_velocity.mu8 = 1./16*self.f**4 * I33_2loop
                             
                             # extra 2 loop term from modeling <v^2|v^2>
-                            self._P22.no_velocity.mu8 += (self.f*self.k)**4 * Plin*self.J20**2
+                            self._P22.no_velocity.mu8 += (self.f*self.k)**4 * Plin*J20**2
                             
                         self._P22.total.mu8 = self._P22.no_velocity.mu8
                         
@@ -950,12 +859,12 @@ class DMSpectrum(object):
         """
         try:
             return self._P03
-        except:
+        except AttributeError:
             self._P03 = PowerTerm()
             
             # do mu^4 terms?
             if self.max_mu >= 4:
-                Plin = self.D**2 * self.Plin
+                Plin = self.D**2 * self.power_lin.power
                 
                 # only terms depending on velocity here (velocities in Mpc/h)
                 sigma_lin = self.sigma_lin 
@@ -981,9 +890,9 @@ class DMSpectrum(object):
         """
         try:
             return self._P13
-        except:
+        except AttributeError:
             self._P13 = PowerTerm()
-            Plin = self.D**2 * self.Plin
+            Plin = self.D**2 * self.power_lin.power
             
             # compute velocity weighting in Mpc/h
             sigma_lin = self.sigma_lin 
@@ -1026,7 +935,7 @@ class DMSpectrum(object):
         """
         try:
             return self._P04
-        except:
+        except AttributeError:
             self._P04 = PowerTerm()
             
             # only 2-loop terms here...
@@ -1042,11 +951,11 @@ class DMSpectrum(object):
                     
                     # do P04 mu^4 terms depending on velocity
                     P04_vel_mu4_1 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
-                    P04_vel_mu4_2 = 0.25*(self.f*self.k)**4 * (self.D*sigsq_eff)**2 * self.P00.total.mu0
+                    P04_vel_mu4_2 = 0.25*(self.f*self.k)**4 * (self.D**2*sigsq_eff)**2 * self.P00.total.mu0
                     self.P04.with_velocity.mu4 = P04_vel_mu4_1 + P04_vel_mu4_2
                     
                     # do P04 mu^4 terms without vel dependence
-                    self.P04.no_velocity.mu4 = 1./12.*self.f**4 * self.P00.total.mu0*self.integrals.vel_kurtosis
+                    self.P04.no_velocity.mu4 = 1./12.*(self.f*self.k)**4 * self.P00.total.mu0*self.integrals.vel_kurtosis
                 
                     # save the total
                     self.P04.total.mu4 = self.P04.with_velocity.mu4 + self.P04.no_velocity.mu4
@@ -1060,10 +969,27 @@ class DMSpectrum(object):
                         
             return self._P04
     #---------------------------------------------------------------------------
+    def power(self, mu):
+        """
+        Return the redshift space power spectrum at the specified value of mu, 
+        including terms up to mu**max_mu
+        """
+        if self.max_mu == 0:
+            return self.P_mu0
+        elif self.max_mu == 2:
+            return self.P_mu0 + mu**2 * self.P_mu2
+        elif self.max_mu == 4:
+            return self.P_mu0 + mu**2 * self.P_mu2 + mu**4 * self.P_mu4
+        elif self.max_mu == 6:
+            return self.P_mu0 + mu**2 * self.P_mu2 + mu**4 * self.P_mu4 + mu**6 * self.P_mu6 
+        elif self.max_mu == 8:
+            raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
+    #end monopole
+    #---------------------------------------------------------------------------
     def monopole(self):
         """
         The monopole moment of the power spectrum. Include mu terms up to 
-        mu^max_mu.
+        mu**max_mu.
         """
         if self.max_mu == 0:
             return self.P_mu0
@@ -1074,14 +1000,13 @@ class DMSpectrum(object):
         elif self.max_mu == 6:
             return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4 + (1./7)*self.P_mu6
         elif self.max_mu == 8:
-            return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4 + (1./7)*self.P_mu6 + (1./9)*self.P_mu8
-
+            raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
     #end monopole
     #---------------------------------------------------------------------------
     def quadrupole(self):
         """
         The quadrupole moment of the power spectrum. Include mu terms up to 
-        mu^max_mu.
+        mu**max_mu.
         """
         if self.max_mu == 2:
             return (2./3)*self.P_mu2
@@ -1090,21 +1015,8 @@ class DMSpectrum(object):
         elif self.max_mu == 6:
             return (2./3)*self.P_mu2 + (4./7)*self.P_mu4 + (10./21)*self.P_mu6
         elif self.max_mu == 8:
-            return (2./3)*self.P_mu2 + (4./7)*self.P_mu4 + (10./21)*self.P_mu6 + (40./99)*self.P_mu8
+            raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
     #end quadrupole
-    #---------------------------------------------------------------------------
-    def hexadecapole(self):
-        """
-        The hexadecapole moment of the power spectrum. Include mu terms up to 
-        mu^max_mu.
-        """
-        if self.max_mu == 4:
-            return (8./35)*self.P_mu4
-        elif self.max_mu == 6:
-            return (8./35)*self.P_mu4 + (24./77)*self.P_mu6
-        elif self.max_mu == 8:
-            return (8./35)*self.P_mu4 + (24./77)*self.P_mu6 + (48./143)*self.P_mu8
-    #end hexadecapole
     #---------------------------------------------------------------------------
     def load(self, k_data, power_data, power_term, mu_term, errs=None):
         """
@@ -1117,36 +1029,43 @@ class DMSpectrum(object):
         
         power_name = "_%s" %power_term
         if hasattr(self, power_name):
-            power_attr = getattr(self, power_name)
-        else:
-            if mu_term is not None:
-                
-                # initialize the object so other mu terms are not zero
-                getattr(self, power_term)
-                power_attr = self.__dict__[power_name]
+            del self.__dict__[power_name]
         
         if errs is not None:
-            w = 1./np.array(errs)**2
+            w = 1./np.array(errs)
         else:
             w = None
         s = interp.InterpolatedUnivariateSpline(k_data, power_data, w=w)
         power_interp = s(self.k)
         
         if mu_term is not None:
-            power_attr = getattr(power_attr, 'total')
-            setattr(power_attr, mu_term, power_interp)
+            setattr(self, "%s_%s_loaded" %(power_name, mu_term), power_interp)
         else:
-            setattr(self, power_name, power_interp)
+            setattr(self, "%s_loaded" %power_name, power_interp)
             
     #end load
     #---------------------------------------------------------------------------
-    def unload(self, power_term):
+    def unload(self, power_term, mu_term):
         """
         Delete the given power attribute, as specified by power_term.
         """
         power_name = "_%s" %power_term
+        
+        # first delete the power term
         if hasattr(self, power_name):
             del self.__dict__[power_name]
+            
+        # also delete the z = 0 stored variabels
+        if mu_term is not None:
+            try:
+                del self.__dict__["%s_%s" %(power_name, mu_term)]
+            except AttributeError:
+                pass
+        else:
+            try:
+                del self.__dict__["%s" %power_name]
+            except AttributeError:
+                pass
     #end load
     #---------------------------------------------------------------------------
 #endclass DMSpectrum 

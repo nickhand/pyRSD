@@ -11,7 +11,7 @@
  contact: nhand@berkeley.edu
  creation date: 02/17/2014
 """
-from pyPT.power cimport kernels
+from pyPT.rsd cimport kernels
 from libc.math cimport exp, sqrt, log, M_PI
 from libc.stdlib cimport malloc, free
 from cython import parallel
@@ -25,8 +25,10 @@ cdef struct fparams:
     double k
     double lnq
     const char* kernel_name
-    gsl_spline * spline1, *spline2
-    gsl_interp_accel * acc1, *acc2
+    gsl_spline *spline1
+    gsl_spline *spline2
+    gsl_interp_accel *acc1
+    gsl_interp_accel *acc2
     
 #-------------------------------------------------------------------------------
 cdef double inner2D(double x,  void * params) nogil:

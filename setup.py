@@ -46,7 +46,7 @@ def makeExtension(extName):
         sourceFiles,
         extra_compile_args = cargs,
         extra_link_args = largs,
-        libraries=cython_gsl.get_libraries(),
+        libraries=cython_gsl.get_libraries() + ['.'],
         library_dirs=[cython_gsl.get_library_dir(), '.'],
         include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
         )

@@ -10,7 +10,7 @@
  creation date: 02/21/2014
 """
 from .cosmo import Cosmology
-from pyPT.cosmology cimport cosmo_tools
+from pyRSD.cosmology cimport cosmo_tools
 import numpy as np
 cimport numpy as np
     

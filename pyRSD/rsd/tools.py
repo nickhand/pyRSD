@@ -61,8 +61,8 @@ def stochasticity(bias, z):
     # check redshift value
     z_keys_str = sorted(lambdas.keys())
     z_keys = np.array(z_keys_str, dtype=float)
-    if z > np.amax(z_keys): raise ValuError("Cannot determine stochasticity for z > %s" %np.amax(z_keys))
-    if z < np.amin(z_keys): raise ValuError("Cannot determine stochasticity for z < %s" %np.amin(z_keys))
+    if z > np.amax(z_keys): raise ValueError("Cannot determine stochasticity for z > %s" %np.amax(z_keys))
+    if z < np.amin(z_keys): raise ValueError("Cannot determine stochasticity for z < %s" %np.amin(z_keys))
 
     # determine the z indices
     redshift_lambdas = {}
@@ -139,8 +139,8 @@ def b2_00(bias, z):
     # check redshift value
     z_keys_str = sorted(biases.keys())
     z_keys = np.array(z_keys_str, dtype=float)
-    if z > np.amax(z_keys): raise ValuError("Cannot determine b2_00 for z > %s" %np.amax(z_keys))
-    if z < np.amin(z_keys): raise ValuError("Cannot determine b2_00 for z < %s" %np.amin(z_keys))
+    if z > np.amax(z_keys): raise ValueError("Cannot determine b2_00 for z > %s" %np.amax(z_keys))
+    if z < np.amin(z_keys): raise ValueError("Cannot determine b2_00 for z < %s" %np.amin(z_keys))
 
     # determine the z indices
     redshift_biases = {}
@@ -200,8 +200,8 @@ def b2_01(bias, z):
     # check redshift value
     z_keys_str = sorted(biases.keys())
     z_keys = np.array(z_keys_str, dtype=float)
-    if z > np.amax(z_keys): raise ValuError("Cannot determine b2_00 for z > %s" %np.amax(z_keys))
-    if z < np.amin(z_keys): raise ValuError("Cannot determine b2_00 for z < %s" %np.amin(z_keys))
+    if z > np.amax(z_keys): raise ValueError("Cannot determine b2_00 for z > %s" %np.amax(z_keys))
+    if z < np.amin(z_keys): raise ValueError("Cannot determine b2_00 for z < %s" %np.amin(z_keys))
 
     # determine the z indices
     redshift_biases = {}

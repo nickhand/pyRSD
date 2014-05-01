@@ -39,7 +39,7 @@ def makeExtension(extName):
     
     sourceFiles = [extPath]
     if 'growth' in extPath:
-        sourceFiles += ['pyPT/cosmology/power_tools.c', 'pyPT/cosmology/transfer.c']
+        sourceFiles += ['pyRSD/cosmology/power_tools.c', 'pyRSD/cosmology/transfer.c']
     return Extension(
         extName,
         sourceFiles,
@@ -51,18 +51,18 @@ def makeExtension(extName):
         )
 
 # get the list of extensions
-extNames = scandir("pyPT")
+extNames = scandir("pyRSD")
 
 # and build up the set of Extension objects
 extensions = [makeExtension(name) for name in extNames]
 
 # finally, we can pass all this to distutils
 setup(
-  name="pyPT",
-  version='0.1',
+  name="pyRSD",
+  version='1.0',
   author='Nick Hand',
   author_email='nicholas.adam.hand@gmail.com',
-  packages=['pyPT', 'pyPT.cosmology', 'pyPT.rsd'],
+  packages=['pyPT', 'pyRSD.cosmology', 'pyRSD.rsd'],
   ext_modules=extensions,
   include_dirs = [cython_gsl.get_include(), '.'],
   cmdclass = {'build_ext': build_ext},

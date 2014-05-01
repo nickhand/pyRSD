@@ -11,8 +11,8 @@
  contact: nhand@berkeley.edu
  creation date: 03/10/2014
 """
-from pyPT.rsd import integralsPT, power_dm, tools
-from pyPT.cosmology cimport growth, cosmo_tools
+from . import integralsPT, power_dm, tools
+from pyRSD.cosmology cimport growth, cosmo_tools
 
 import numpy as np
 cimport numpy as np

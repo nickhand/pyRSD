@@ -11,7 +11,7 @@ cimport numpy as np
 import numpy as np
 from .cosmo import Cosmology
 from . import camb, functionator
-from pyPT.cosmology cimport cosmo_tools
+from pyRSD.cosmology cimport cosmo_tools
 import os
 
 if not os.environ.has_key("CAMB_DIR"):

@@ -11,7 +11,7 @@
  contact: nhand@berkeley.edu
  creation date: 02/17/2014
 """
-from pyPT.rsd cimport kernels
+from pyRSD.rsd cimport kernels
 from libc.math cimport exp, sqrt, log, M_PI
 from libc.stdlib cimport malloc, free
 from cython import parallel

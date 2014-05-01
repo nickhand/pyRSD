@@ -11,12 +11,11 @@
  contact: nhand@berkeley.edu
  creation date: 02/17/2014
 """
-from pyPT.cosmology cimport growth, cosmo_tools
+from pyRSD.cosmology cimport growth, cosmo_tools
 from ..cosmology import velocity, hmf, power
 from ..cosmology.cosmo import Cosmology
-from pyPT.rsd import integralsPT
+from . import integralsPT
  
-
 import scipy.interpolate as interp
 import numpy as np
 cimport numpy as np

@@ -27,6 +27,8 @@ def scandir(dir, files=[]):
     return files
     
 parallel_exts = ['integralsIJ', 'integralsK']
+
+cwd = os.getcwd()
 # generate an Extension object from its dotted name
 def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"
@@ -46,9 +48,9 @@ def makeExtension(extName):
         sourceFiles,
         extra_compile_args = cargs,
         extra_link_args = largs,
-        libraries=cython_gsl.get_libraries() + ['.'],
-        library_dirs=[cython_gsl.get_library_dir(), '.'],
-        include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
+        libraries=cython_gsl.get_libraries(),
+        library_dirs=[cython_gsl.get_library_dir(), cwd],
+        include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), cwd]
         )
 
 # get the list of extensions
@@ -65,7 +67,7 @@ setup(
   author_email='nicholas.adam.hand@gmail.com',
   packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
   ext_modules=extensions,
-  include_dirs = [cython_gsl.get_include(), '.'],
+  include_dirs = [cython_gsl.get_include()],
   cmdclass = {'build_ext': build_ext},
   description='python package for redshift space power spectra using perturbation theory',
   long_description=open('README.md').read()

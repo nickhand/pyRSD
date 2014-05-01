@@ -11,5 +11,5 @@ cdef extern from "pyRSD/cosmology/power_tools.h":
     void unnormalized_transfer(double *k, double z, int numk, double *transfer) nogil
     double normalize_power() nogil
     void nonlinear_power(double *k, double z, int numk, double *Delta_L, double *power) nogil
-    void unnormalized_sigma_r(double *r, double z, int numr, double *sigma) nogil
+    #void unnormalized_sigma_r(double *r, double z, int numr, double *sigma) nogil
     void dlnsdlnm_integral(double *r, int numr, double *output) nogil

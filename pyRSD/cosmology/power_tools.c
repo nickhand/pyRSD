@@ -14,8 +14,8 @@
 #include <gsl/gsl_integration.h>
 #include <gsl/gsl_sys.h>
 #include <gsl/gsl_errno.h>
-#include "transfer.h"
 #include "power_tools.h"
+#include "transfer.h"
 
 double transfer_ratio; 
 

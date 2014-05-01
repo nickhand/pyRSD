@@ -44,7 +44,7 @@ def cython(source, depends):
     
 parallel_exts = ['integralsIJ', 'integralsK']
 # generate an Extension object from its dotted name
-def makeExtension(extName, force_cythonize=False):
+def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"
     
     cargs = ["-O3", '-w']
@@ -77,7 +77,7 @@ def makeExtension(extName, force_cythonize=False):
 extNames = scandir("pyRSD")
 
 # and build up the set of Extension objects
-extensions = [makeExtension(name, args.cythonize) for name in extNames]
+extensions = [makeExtension(name) for name in extNames]
 
 # finally, we can pass all this to distutils
 setup(

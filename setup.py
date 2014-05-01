@@ -10,6 +10,7 @@ from setuptools import setup, Extension
 from distutils.dep_util import newer, newer_group
 import os, sys
 import numpy
+import argparse
 
 # setup the cc and cxx flags
 os.environ['CC']  = "/usr/bin/gcc"
@@ -43,7 +44,7 @@ def cython(source, depends):
     
 parallel_exts = ['integralsIJ', 'integralsK']
 # generate an Extension object from its dotted name
-def makeExtension(extName):
+def makeExtension(extName, force_cythonize=False):
     extPath = extName.replace(".", os.path.sep)+".pyx"
     
     cargs = ["-O3", '-w']
@@ -58,7 +59,9 @@ def makeExtension(extName):
 
     depends = []
     if len(sourceFiles) > 1: depends = sourceFiles[1:]
-    cython(sourceFiles[0], depends)
+    
+    if force_cythonize:
+        cython(sourceFiles[0], depends)
 
     return Extension(
         extName,
@@ -70,22 +73,35 @@ def makeExtension(extName):
         include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
         )
 
-# get the list of extensions
-extNames = scandir("pyRSD")
+def main(args):
+    
+    # get the list of extensions
+    extNames = scandir("pyRSD")
 
-# and build up the set of Extension objects
-extensions = [makeExtension(name) for name in extNames]
+    # and build up the set of Extension objects
+    extensions = [makeExtension(name, args.cythonize) for name in extNames]
 
-# finally, we can pass all this to distutils
-setup(
-  name="pyRSD",
-  version='1.0',
-  author='Nick Hand',
-  author_email='nicholas.adam.hand@gmail.com',
-  packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
-  ext_modules=extensions,
-  include_dirs = [cython_gsl.get_include(), '.'],
-  cmdclass = {'build_ext': build_ext},
-  description='python package for redshift space power spectra using perturbation theory',
-  long_description=open('README.md').read()
-)
+    # finally, we can pass all this to distutils
+    setup(
+      name="pyRSD",
+      version='1.0',
+      author='Nick Hand',
+      author_email='nicholas.adam.hand@gmail.com',
+      packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
+      ext_modules=extensions,
+      include_dirs = [cython_gsl.get_include(), '.'],
+      cmdclass = {'build_ext': build_ext},
+      description='python package for redshift space power spectra using perturbation theory',
+      long_description=open('README.md').read()
+    )
+
+if __name__ == '__main__':
+    
+    # parse the input arguments
+    parser = argparse.ArgumentParser(description="run the setup")
+    
+    h = 'whether to force cythonize old modules; default=False'
+    parser.add_argument('--cythonize', '-c', action='store_true', default=False, help=h) 
+    args = parser.parse_args()
+    
+    main(args)

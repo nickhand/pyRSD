@@ -1,5 +1,5 @@
 try: 
-    from Cython.Build import cythonize
+    from Cython.Distutils import build_ext
     import cython_gsl
 except ImportError:
     print "You don't seem to have Cython installed. Please get a"
@@ -60,8 +60,8 @@ def makeExtension(extName):
     depends = []
     if len(sourceFiles) > 1: depends = sourceFiles[1:]
     
- #   if socket.gethostname() != 'ripken':
-#        cython(sourceFiles[0], depends)
+    if socket.gethostname() != 'ripken':
+        cython(sourceFiles[0], depends)
 
     return Extension(
         extName,
@@ -86,8 +86,9 @@ setup(
   author='Nick Hand',
   author_email='nicholas.adam.hand@gmail.com',
   packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
-  ext_modules=cythonize(extensions),
+  ext_modules=extensions,
   include_dirs = [cython_gsl.get_include(), '.'],
+  cmdclass = {'build_ext': build_ext},
   description='python package for redshift space power spectra using perturbation theory',
   long_description=open('README.md').read()
 )

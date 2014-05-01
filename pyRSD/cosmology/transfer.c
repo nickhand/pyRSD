@@ -17,7 +17,7 @@ and Szalay (BBKS) 1986 and Bond and Efstathiou 1984
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "transfer.h"
+#include "../include/transfer.h"
 
 /* ------------------------ FITTING FORMULAE ROUTINES ----------------- */
 

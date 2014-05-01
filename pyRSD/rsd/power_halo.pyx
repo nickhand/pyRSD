@@ -1,17 +1,17 @@
-#!python
 #cython: boundscheck=False
 #cython: wraparound=False
+#cython: nonecheck=False
 #cython: cdivision=True
 """
  power_halo.pyx
- pyPT: class implementing the redshift space halo power spectrum using
-       the PT expansion outlined in Vlah et al. 2013.
+ pyRSD: class implementing the redshift space halo power spectrum using
+        the PT expansion outlined in Vlah et al. 2013.
  
  author: Nick Hand
  contact: nhand@berkeley.edu
  creation date: 03/10/2014
 """
-from . import integralsPT, power_dm, tools
+from . import power_dm, tools
 from pyRSD.cosmology cimport growth, cosmo_tools
 
 import numpy as np

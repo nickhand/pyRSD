@@ -1,11 +1,11 @@
-#!python
 #cython: boundscheck=False
 #cython: wraparound=False
+#cython: nonecheck=False
 #cython: cdivision=True
 """
  power_dm.pyx
- pyPT: class implementing the redshift space dark matter power spectrum using
-       the PT expansion outlined in Vlah et al. 2012.
+ pyRSD: class implementing the redshift space dark matter power spectrum using
+        the PT expansion outlined in Vlah et al. 2012.
  
  author: Nick Hand
  contact: nhand@berkeley.edu
@@ -14,7 +14,7 @@
 from pyRSD.cosmology cimport growth, cosmo_tools
 from ..cosmology import velocity, hmf, power
 from ..cosmology.cosmo import Cosmology
-from . import integralsPT
+from . import _integralsPT
  
 import scipy.interpolate as interp
 import numpy as np
@@ -263,7 +263,7 @@ class DMSpectrum(object):
         try:
             return self._integrals
         except AttributeError:
-            self._integrals = integralsPT.Integrals(self.k, self.z, self.cosmo, 
+            self._integrals = _integralsPT.Integrals(self.k, self.z, self.cosmo, 
                                                     self._num_threads, self.transfer_fit, 
                                                     self.camb_kwargs)
             return self._integrals

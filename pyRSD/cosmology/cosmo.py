@@ -8,7 +8,7 @@
 """
 import os
 from . import parameters
-from . import constants as c
+from . import _constants as c
 
 
 #-------------------------------------------------------------------------------

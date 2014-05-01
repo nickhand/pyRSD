@@ -1,3 +1,6 @@
+#cython: cdivision=True
+#cython: boundscheck=False
+#cython: nonecheck=False
 """
  power.pyx
  pyPT: a class to provide methods to calculate the transfer function, matter 
@@ -7,12 +10,13 @@
  contact: nhand@berkeley.edu
  creation date: 03/26/2014
 """
-cimport numpy as np
-import numpy as np
 from .cosmo import Cosmology
-from . import camb, functionator
+from . import _camb, _functionator
 from pyRSD.cosmology cimport cosmo_tools
 import os
+
+import numpy as np
+cimport numpy as np
 
 if not os.environ.has_key("CAMB_DIR"):
     raise ValueError("Must specify 'CAMB_DIR' environment variable")
@@ -208,7 +212,7 @@ class Power(object):
             return self.__camb_k, self.__camb_T
         except:
             cdict = dict(self.cosmo.camb_dict().items() + self._camb_options.items())
-            k, T = camb.camb_transfer(cdict)
+            k, T = _camb.camb_transfer(cdict)
                 
             # check high k values
             if np.amax(self.k) > np.amax(k):
@@ -218,7 +222,7 @@ class Power(object):
                 p_gamma, p_amp = p_fit[0], np.exp(p_fit[1])
                 
                 p_amp = T[-1]/(k[-1]**p_gamma)
-                power_extrap = functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
+                power_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
                 
                 # make the combined transfer function
                 k_hi = np.logspace(np.log10(np.amax(k)), np.log10(np.amax(self.k)), 200)

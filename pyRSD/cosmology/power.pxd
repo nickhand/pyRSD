@@ -1,7 +1,7 @@
 cimport numpy as np
 from cython_gsl cimport *
 
-cdef extern from "pyRSD/cosmology/power_tools.h":
+cdef extern from "../include/power_tools.h":
     void D_plus(double *z, int numz, int normed, double *growth) nogil
     void set_parameters(double OMEGAM, double OMEGAB, double OMEGAL, double OMEGAR, 
                     double SIGMA8, double HUBBLE, double NSPEC, double TCMB, 

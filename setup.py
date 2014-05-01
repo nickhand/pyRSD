@@ -1,74 +1,120 @@
-try: 
-    from Cython.Distutils import build_ext
-    import cython_gsl
-except ImportError:
-    print "You don't seem to have Cython installed. Please get a"
-    print "copy from www.cython.org and install it"
-    sys.exit(1)
+#! /usr/bin/env python
 
-from distutils.core import setup
-from distutils.extension import Extension
-import os, sys
-import numpy
+descr = """pyRSD
 
-# setup the cc and cxx flags
-os.environ['CC']  = "/usr/bin/gcc"
-os.environ['CXX'] = "/usr/bin/gcc"
+Algorithms to compute the redshift space matter power spectra using 
+perturbation theory and the redshift space distortion (RSD) model based
+on a distribution function velocity moments approach
+"""
 
-# scan the 'pyPT' directory for extension files, converting
-# them to extension names in dotted notation
-def scandir(dir, files=[]):
-    for file in os.listdir(dir):
-        path = os.path.join(dir, file)
-        if os.path.isfile(path) and path.endswith(".pyx"):
-            files.append(path.replace(os.path.sep, ".")[:-4])
-        elif os.path.isdir(path):
-            scandir(path, files)
-    return files
+DISTNAME            = 'pyRSD'
+DESCRIPTION         = 'Redshift space power spectra in python'
+LONG_DESCRIPTION    = descr
+MAINTAINER          = 'Nick Hand'
+MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
+VERSION             = '0.10dev'
+PYTHON_VERSION      = (2, 5)
+DEPENDENCIES        = {
+                        'numpy': (1, 5),
+                        'Cython': (0, 6),
+                        'cython_gsl' : ()
+                      }
+
+
+import os
+import sys
+import re
+import setuptools
+from numpy.distutils.core import setup
+from distutils.command.build_py import build_py
+
+
+def configuration(parent_package='', top_path=None):
     
-parallel_exts = ['integralsIJ', 'integralsK']
+    from numpy.distutils.misc_util import Configuration
+    config = Configuration(None, parent_package, top_path)
 
-cwd = os.getcwd()
-# generate an Extension object from its dotted name
-def makeExtension(extName):
-    extPath = extName.replace(".", os.path.sep)+".pyx"
-    
-    cargs = ["-O3", '-w']
-    largs = ['-g']
-    if any(par_ext in extName for par_ext in parallel_exts):
-        cargs.append('-fopenmp')
-        largs.append('-fopenmp')
-    
-    sourceFiles = [extPath]
-    if 'growth' in extPath:
-        sourceFiles += ['pyRSD/cosmology/power_tools.c', 'pyRSD/cosmology/transfer.c']
-        
-    return Extension(
-        extName,
-        sourceFiles,
-        extra_compile_args = cargs,
-        extra_link_args = largs,
-        libraries=cython_gsl.get_libraries(),
-        library_dirs=[cython_gsl.get_library_dir(), cwd],
-        include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), cwd]
-        )
+    config.set_options(
+            ignore_setup_xxx_py=True,
+            assume_default_configuration=True,
+            delegate_options_to_subpackages=True,
+            quiet=True)
 
-# get the list of extensions
-extNames = scandir("pyRSD")
+    config.add_subpackage('pyRSD')
+    config.add_data_dir('pyRSD/data')
 
-# and build up the set of Extension objects
-extensions = [makeExtension(name) for name in extNames]
+    return config
 
-# finally, we can pass all this to distutils
-setup(
-  name="pyRSD",
-  version='1.0',
-  author='Nick Hand',
-  author_email='nicholas.adam.hand@gmail.com',
-  packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
-  ext_modules=extensions,
-  include_dirs = [cython_gsl.get_include()],
-  cmdclass = {'build_ext': build_ext},
-  description='python package for redshift space power spectra using perturbation theory',
-  long_description=open('README.md').read()
-)
+#-------------------------------------------------------------------------------
+def write_version_py(filename='pyRSD/version.py'):
+    template = """# THIS FILE IS GENERATED FROM THE PYRSD SETUP.PY
+version='%s'
+"""
+
+    vfile = open(os.path.join(os.path.dirname(__file__),
+                              filename), 'w')
+
+    try:
+        vfile.write(template % VERSION)
+    finally:
+        vfile.close()
+
+#-------------------------------------------------------------------------------
+def get_package_version(package):
+    version = []
+    for version_attr in ('version', 'VERSION', '__version__'):
+        if hasattr(package, version_attr) \
+                and isinstance(getattr(package, version_attr), str):
+            version_info = getattr(package, version_attr, '')
+            for part in re.split('\D+', version_info):
+                try:
+                    version.append(int(part))
+                except ValueError:
+                    pass
+    return tuple(version)
+
+#-------------------------------------------------------------------------------
+def check_requirements():
+    if sys.version_info < PYTHON_VERSION:
+        raise SystemExit('You need Python version %d.%d or later.' \
+                         % PYTHON_VERSION)
+
+    for package_name, min_version in DEPENDENCIES.items():
+        dep_error = False
+        try:
+            package = __import__(package_name)
+        except ImportError:
+            dep_error = True
+        else:
+            package_version = get_package_version(package)
+            if min_version > package_version:
+                dep_error = True
+
+        if dep_error:
+            raise ImportError('You need `%s` version %d.%d or later.' \
+                              % ((package_name, ) + min_version))
+
+
+#-------------------------------------------------------------------------------
+if __name__ == "__main__":
+
+    check_requirements()
+
+    write_version_py()
+
+    setup(
+        name=DISTNAME,
+        description=DESCRIPTION,
+        long_description=LONG_DESCRIPTION,
+        maintainer=MAINTAINER,
+        maintainer_email=MAINTAINER_EMAIL,
+        version=VERSION,
+
+        configuration=configuration,
+
+        packages=setuptools.find_packages(),
+        include_package_data=True,
+        zip_safe=False, # the package can run out of an .egg file
+
+        cmdclass={'build_py': build_py},
+    )

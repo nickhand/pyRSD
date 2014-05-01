@@ -1,3 +1,7 @@
+#cython: cdivision=True
+#cython: boundscheck=False
+#cython: nonecheck=False
+#cython: wraparound=False
 """
  cosmo_tools.pyx
  cosmology: store the core cosmology tools here

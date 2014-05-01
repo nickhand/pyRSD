@@ -9,7 +9,7 @@
 import numpy as np
 import copy
 from .cosmo import Cosmology
-from . import hmf_fits, functionator, growth, cosmo_tools, power
+from . import _hmf_fits, _functionator, growth, cosmo_tools, power
 
 import scipy.integrate as intg
 import scipy.optimize
@@ -239,7 +239,7 @@ class HaloMassFunction(object):
     @mf_fit.setter
     def mf_fit(self, val):
 
-        if val not in hmf_fits.Multiplicity.available:
+        if val not in _hmf_fits.Multiplicity.available:
            raise ValueError("mf_fit is not in the list of available fitting functions: ", val)
         del self.fsigma
         self.__mf_fit = val
@@ -453,7 +453,7 @@ class HaloMassFunction(object):
         try:
            return self.__fsigma
         except:
-           fit_class = hmf_fits.Multiplicity(self, cut=self.cut_fit)
+           fit_class = _hmf_fits.Multiplicity(self, cut=self.cut_fit)
            self.__fsigma = fit_class.fsigma()
            return self.__fsigma
 
@@ -615,7 +615,7 @@ class HaloMassFunction(object):
     def _fit_exponential_cutoff(self, M, mf):
         """
         Fit the high-mass end of the HMF with an exponential cutoff in mass 
-        and return a functionator.exponentialExtrapolator object. 
+        and return a _functionator.exponentialExtrapolator object. 
         """
         if self.exp_cutoff_M is None: return None
         
@@ -637,7 +637,7 @@ class HaloMassFunction(object):
         exp_decay = lambda x, A, gamma: A * np.exp(x * gamma)
         p0 = [1e-25, -1./1e16]
         (A, gamma), parm_cov = scipy.optimize.curve_fit(exp_decay, m_upper, mf_upper, p0=p0, maxfev=10000)
-        exp_extrap = functionator.exponentialExtrapolator(gamma=gamma, A=A, min_x=self.exp_cutoff_M)
+        exp_extrap = _functionator.exponentialExtrapolator(gamma=gamma, A=A, min_x=self.exp_cutoff_M)
         return exp_extrap
     #end _fit_exponential_cutoff
     
@@ -645,7 +645,7 @@ class HaloMassFunction(object):
     def _fit_lowmass_powerlaw(self, M, mf):
         """
         Fit the low-mass end of the HMF with a power law and return a
-        functionator.powerLawExtrapolator object. 
+        _functionator.powerLawExtrapolator object. 
         """
         if self.powerlaw_M is None: return None
         
@@ -666,7 +666,7 @@ class HaloMassFunction(object):
         # do the power law fit and initialize the extrapolator function
         p_fit = np.polyfit(np.log(m_lower), np.log(mf_lower), 1)
         p_gamma, p_amp = p_fit[0], np.exp(p_fit[1])
-        power_extrap = functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp, max_x=self.powerlaw_M)
+        power_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp, max_x=self.powerlaw_M)
 
         return power_extrap
     #end _fit_lowmass_powerlaw
@@ -697,14 +697,14 @@ class HaloMassFunction(object):
         m_middle = new_mf.M
         
 
-        spline_interp = functionator.splineInterpolator(m_middle, mf_middle,
+        spline_interp = _functionator.splineInterpolator(m_middle, mf_middle,
                                                         min_x=m_min,
                                                         max_x=m_max)
         
         # get the whole combined function
         ops = [lo_extrap, spline_interp, hi_extrap]
         ops = [op for op in ops if op != None]
-        self.__spline = functionator.functionator(ops=ops)
+        self.__spline = _functionator.functionator(ops=ops)
     #end _compute_dndm_spline
     
     #---------------------------------------------------------------------------

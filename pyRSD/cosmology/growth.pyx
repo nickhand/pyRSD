@@ -1,9 +1,10 @@
-#!python
+#cython: cdivision=True
 #cython: boundscheck=False
+#cython: nonecheck=False
 #cython: wraparound=False
 """
  growth.pyx
- pyPT: module to compute quantities related to the growth of perturbations
+ pyRSD: module to compute quantities related to the growth of perturbations
  
  author: Nick Hand
  contact: nhand@berkeley.edu
@@ -11,6 +12,7 @@
 """
 from .cosmo import Cosmology
 from pyRSD.cosmology cimport cosmo_tools
+
 import numpy as np
 cimport numpy as np
     

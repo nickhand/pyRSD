@@ -31,7 +31,7 @@ parallel_exts = ['integralsIJ', 'integralsK']
 def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"
     
-    cargs = ["-O3"]
+    cargs = ["-O3", '-w']
     largs = ['-g']
     if any(par_ext in extName for par_ext in parallel_exts):
         cargs.append('-fopenmp')

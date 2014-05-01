@@ -10,7 +10,6 @@ from setuptools import setup, Extension
 from distutils.dep_util import newer, newer_group
 import os, sys
 import numpy
-import argparse
 
 # setup the cc and cxx flags
 os.environ['CC']  = "/usr/bin/gcc"
@@ -72,13 +71,6 @@ def makeExtension(extName, force_cythonize=False):
         library_dirs=[cython_gsl.get_library_dir(), '.'],
         include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
         )
-
-# parse the input arguments
-parser = argparse.ArgumentParser(description="run the setup")
-
-h = 'whether to force cythonize old modules; default=False'
-parser.add_argument('--cythonize', '-c', action='store_true', default=False, help=h) 
-args = parser.parse_args()
 
 # get the list of extensions
 extNames = scandir("pyRSD")

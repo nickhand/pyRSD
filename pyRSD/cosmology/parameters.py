@@ -1,6 +1,7 @@
 """
- parameters.py: this module contains dictionaries with sets of parameters for a
- given cosmology.
+ parameters.py: 
+ pyRSD: this module contains dictionaries with sets of parameters for a
+        given cosmology.
 
  author: Nick Hand
  contact: nhand@berkeley.edu

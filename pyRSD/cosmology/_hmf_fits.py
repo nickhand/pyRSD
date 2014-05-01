@@ -1,7 +1,7 @@
 """
  hmf_fits.py
- pyPT: the multiplicity fitting functions for the halo mass function are 
-       defined here
+ pyRSD: the multiplicity fitting functions for the halo mass function are 
+        defined here
  
  author: Nick Hand
  contact: nhand@berkeley.edu

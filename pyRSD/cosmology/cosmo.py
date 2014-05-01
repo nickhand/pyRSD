@@ -1,6 +1,6 @@
 """
  cosmo.py
- pyPT: class to handle a set of cosmological parameters
+ pyRSD: class to handle a set of cosmological parameters
  
  author: Nick Hand 
  contact: nhand@berkeley.edu

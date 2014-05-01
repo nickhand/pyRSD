@@ -1,6 +1,6 @@
 """
  bias.py
- pyPT: bias as a function of halo mass
+ pyRSD: bias as a function of halo mass
  
  author: Nick Hand
  contact: nhand@berkeley.edu

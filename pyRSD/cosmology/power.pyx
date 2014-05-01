@@ -3,8 +3,8 @@
 #cython: nonecheck=False
 """
  power.pyx
- pyPT: a class to provide methods to calculate the transfer function, matter 
-       power spectrum and several other related quantities.
+ pyRSD: a class to provide methods to calculate the transfer function, matter 
+        power spectrum and several other related quantities.
  
  author: Nick Hand
  contact: nhand@berkeley.edu

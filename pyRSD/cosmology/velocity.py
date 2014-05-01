@@ -1,6 +1,6 @@
 """
  velocity.py
- pyPT: functions for computing velocity dispersions in the halo model
+ pyRSD: functions for computing velocity dispersions in the halo model
  
  author: Nick Hand
  contact: nhand@berkeley.edu

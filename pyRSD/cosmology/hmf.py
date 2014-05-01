@@ -1,6 +1,6 @@
 """
- hmf.pyx
- pyPT: module for calculation of halo mass function
+ hmf.py
+ pyRSD: module for calculation of halo mass function
  
  author: Nick Hand
  contact: nhand@berkeley.edu

@@ -4,7 +4,7 @@
 #cython: wraparound=False
 """
  cosmo_tools.pyx
- cosmology: store the core cosmology tools here
+ pyRSD: store the core cosmology tools here
  
  author: Nick Hand
  contact: nhand@berkeley.edu

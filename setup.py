@@ -62,7 +62,7 @@ setup(
   version='1.0',
   author='Nick Hand',
   author_email='nicholas.adam.hand@gmail.com',
-  packages=['pyPT', 'pyRSD.cosmology', 'pyRSD.rsd'],
+  packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
   ext_modules=extensions,
   include_dirs = [cython_gsl.get_include(), '.'],
   cmdclass = {'build_ext': build_ext},

@@ -467,7 +467,7 @@ class Power(object):
         output = np.ascontiguousarray(np.empty(len(r)), dtype=np.double)
 
         # compute sigma at z = 0, then multiply by the growth function
-        unnormalized_sigma_r(<double *>rarr.data, 0., len(r), <double *>output.data)
+        #unnormalized_sigma_r(<double *>rarr.data, 0., len(r), <double *>output.data)
         
         # the growth function
         Dz = np.ascontiguousarray(np.empty(len(z)), dtype=np.double)

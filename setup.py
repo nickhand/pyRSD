@@ -1,5 +1,5 @@
 try: 
-    from Cython.Build import cythonize
+    from Cython.Distutils import build_ext
     import cython_gsl
 except ImportError:
     print "You don't seem to have Cython installed. Please get a"
@@ -24,6 +24,21 @@ def scandir(dir, files=[]):
         elif os.path.isdir(path):
             scandir(path, files)
     return files
+
+def cython(source, depends):
+
+    target = source[:-3]+"c"
+    depends = [source] + depends
+    if (source[-4:].lower()==".pyx" and os.path.isfile(source[:-3]+"pxd")):
+        depends += [source[:-3]+"pxd"]
+    
+    if newer_group(depends, target, 'newer'):
+        print "cythoning %s to %s" %(source, target)
+        err = os.system("cython -a %s" %source)
+        if err:
+            raise Exception("Error compiling Cython file")
+    else:
+        print "skipping '%s' Cython extension (up-to-date)" %target
     
 parallel_exts = ['integralsIJ', 'integralsK']
 # generate an Extension object from its dotted name
@@ -39,10 +54,12 @@ def makeExtension(extName):
     sourceFiles = [extPath]
     if 'growth' in extPath:
         sourceFiles += ['pyRSD/cosmology/power_tools.c', 'pyRSD/cosmology/transfer.c']
-
-    depends = []
-    if len(sourceFiles) > 1: depends = sourceFiles[1:]
-    
+        
+    print extName
+    print sourceFiles
+    print cython_gsl.get_libraries()
+    print [cython_gsl.get_library_dir(), '.']
+    print [cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
     return Extension(
         extName,
         sourceFiles,
@@ -66,8 +83,9 @@ setup(
   author='Nick Hand',
   author_email='nicholas.adam.hand@gmail.com',
   packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
-  ext_modules=cythonize(extensions),
+  ext_modules=extensions,
   include_dirs = [cython_gsl.get_include(), '.'],
+  cmdclass = {'build_ext': build_ext},
   description='python package for redshift space power spectra using perturbation theory',
   long_description=open('README.md').read()
 )

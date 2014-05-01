@@ -1,11 +1,3 @@
-from setuptools import setup, Extension
-import os, sys
-import numpy
-
-# setup the cc and cxx flags
-os.environ['CC']  = "/usr/bin/gcc"
-os.environ['CXX'] = "/usr/bin/gcc"
-
 try: 
     from Cython.Distutils import build_ext
     import cython_gsl
@@ -13,6 +5,15 @@ except ImportError:
     print "You don't seem to have Cython installed. Please get a"
     print "copy from www.cython.org and install it"
     sys.exit(1)
+
+from setuptools import setup, Extension
+from distutils.dep_util import newer, newer_group
+import os, sys
+import numpy
+
+# setup the cc and cxx flags
+os.environ['CC']  = "/usr/bin/gcc"
+os.environ['CXX'] = "/usr/bin/gcc"
 
 # scan the 'pyPT' directory for extension files, converting
 # them to extension names in dotted notation
@@ -25,7 +26,21 @@ def scandir(dir, files=[]):
             scandir(path, files)
     return files
 
+def cython(source, depends):
 
+    target = source[:-3]+"c"
+    depends = [source] + depends
+    if (source[-4:].lower()==".pyx" and os.path.isfile(source[:-3]+"pxd")):
+        depends += [source[:-3]+"pxd"]
+    
+    if newer_group(depends, target, 'newer'):
+        print "cythoning %s to %s" %(source, target)
+        err = os.system("cython -a %s" %source)
+        if err:
+            raise Exception("Error compiling Cython file")
+    else:
+        print "skipping '%s' Cython extension (up-to-date)" %target
+    
 parallel_exts = ['integralsIJ', 'integralsK']
 # generate an Extension object from its dotted name
 def makeExtension(extName):
@@ -40,6 +55,11 @@ def makeExtension(extName):
     sourceFiles = [extPath]
     if 'growth' in extPath:
         sourceFiles += ['pyRSD/cosmology/power_tools.c', 'pyRSD/cosmology/transfer.c']
+
+    depends = []
+    if len(sourceFiles) > 1: depends = sourceFiles[1:]
+    cython(sourceFiles[0], depends)
+
     return Extension(
         extName,
         sourceFiles,

@@ -73,35 +73,29 @@ def makeExtension(extName, force_cythonize=False):
         include_dirs=[cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
         )
 
-def main(args):
-    
-    # get the list of extensions
-    extNames = scandir("pyRSD")
+# parse the input arguments
+parser = argparse.ArgumentParser(description="run the setup")
 
-    # and build up the set of Extension objects
-    extensions = [makeExtension(name, args.cythonize) for name in extNames]
+h = 'whether to force cythonize old modules; default=False'
+parser.add_argument('--cythonize', '-c', action='store_true', default=False, help=h) 
+args = parser.parse_args()
 
-    # finally, we can pass all this to distutils
-    setup(
-      name="pyRSD",
-      version='1.0',
-      author='Nick Hand',
-      author_email='nicholas.adam.hand@gmail.com',
-      packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
-      ext_modules=extensions,
-      include_dirs = [cython_gsl.get_include(), '.'],
-      cmdclass = {'build_ext': build_ext},
-      description='python package for redshift space power spectra using perturbation theory',
-      long_description=open('README.md').read()
-    )
+# get the list of extensions
+extNames = scandir("pyRSD")
 
-if __name__ == '__main__':
-    
-    # parse the input arguments
-    parser = argparse.ArgumentParser(description="run the setup")
-    
-    h = 'whether to force cythonize old modules; default=False'
-    parser.add_argument('--cythonize', '-c', action='store_true', default=False, help=h) 
-    args = parser.parse_args()
-    
-    main(args)
+# and build up the set of Extension objects
+extensions = [makeExtension(name, args.cythonize) for name in extNames]
+
+# finally, we can pass all this to distutils
+setup(
+  name="pyRSD",
+  version='1.0',
+  author='Nick Hand',
+  author_email='nicholas.adam.hand@gmail.com',
+  packages=['pyRSD', 'pyRSD.cosmology', 'pyRSD.rsd'],
+  ext_modules=extensions,
+  include_dirs = [cython_gsl.get_include(), '.'],
+  cmdclass = {'build_ext': build_ext},
+  description='python package for redshift space power spectra using perturbation theory',
+  long_description=open('README.md').read()
+)

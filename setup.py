@@ -10,6 +10,7 @@ from setuptools import setup, Extension
 from distutils.dep_util import newer, newer_group
 import os, sys
 import numpy
+import socket
 
 # setup the cc and cxx flags
 os.environ['CC']  = "/usr/bin/gcc"
@@ -59,7 +60,7 @@ def makeExtension(extName, force_cythonize=False):
     depends = []
     if len(sourceFiles) > 1: depends = sourceFiles[1:]
     
-    if force_cythonize:
+    if socket.gethostname() != 'ripken':
         cython(sourceFiles[0], depends)
 
     return Extension(

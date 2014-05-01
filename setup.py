@@ -6,7 +6,8 @@ except ImportError:
     print "copy from www.cython.org and install it"
     sys.exit(1)
 
-from setuptools import setup, Extension
+from distutils.core import setup
+from distutils.extension import Extension
 import os, sys
 import numpy
 
@@ -24,28 +25,13 @@ def scandir(dir, files=[]):
         elif os.path.isdir(path):
             scandir(path, files)
     return files
-
-def cython(source, depends):
-
-    target = source[:-3]+"c"
-    depends = [source] + depends
-    if (source[-4:].lower()==".pyx" and os.path.isfile(source[:-3]+"pxd")):
-        depends += [source[:-3]+"pxd"]
-    
-    if newer_group(depends, target, 'newer'):
-        print "cythoning %s to %s" %(source, target)
-        err = os.system("cython -a %s" %source)
-        if err:
-            raise Exception("Error compiling Cython file")
-    else:
-        print "skipping '%s' Cython extension (up-to-date)" %target
     
 parallel_exts = ['integralsIJ', 'integralsK']
 # generate an Extension object from its dotted name
 def makeExtension(extName):
     extPath = extName.replace(".", os.path.sep)+".pyx"
     
-    cargs = ["-O3", '-w']
+    cargs = ["-O3"]
     largs = ['-g']
     if any(par_ext in extName for par_ext in parallel_exts):
         cargs.append('-fopenmp')

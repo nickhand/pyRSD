@@ -55,11 +55,6 @@ def makeExtension(extName):
     if 'growth' in extPath:
         sourceFiles += ['pyRSD/cosmology/power_tools.c', 'pyRSD/cosmology/transfer.c']
         
-    print extName
-    print sourceFiles
-    print cython_gsl.get_libraries()
-    print [cython_gsl.get_library_dir(), '.']
-    print [cython_gsl.get_cython_include_dir(), numpy.get_include(), "."]
     return Extension(
         extName,
         sourceFiles,

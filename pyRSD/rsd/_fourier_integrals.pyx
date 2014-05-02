@@ -144,10 +144,12 @@ cdef class Fourier1D:
 
                 # the actual integration
                 status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)
+                
                 if status:
                     reason = gsl_strerror(status)
                     print "Warning: %s" %reason
             
+            print s[i], result1, result2
             output[i] = (result1 + result2) / (2.*M_PI**2)
         return output
     #end evaluate

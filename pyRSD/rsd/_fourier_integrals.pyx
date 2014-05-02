@@ -106,12 +106,10 @@ cdef class Fourier1D:
         cdef gsl_function F
 
         # set up the params to pass and the pointer 
-        params.spline      = self.spline
-        params.acc         = self.acc
-        params.R           = self.smoothing_radius
-
-        # now set up the gsl integrating function
-        F.function = &integrand1D
+        params.spline = self.spline
+        params.acc    = self.acc
+        params.R      = self.smoothing_radius
+        F.function    = &integrand1D
         
         # loop over each s value
         for i in xrange(N):
@@ -122,9 +120,15 @@ cdef class Fourier1D:
             elif self.multipole == 2:
                 params.kernel = _kernels.j2_sin
             
-            # do the sine integration first
-            params.s = s[i]
-            F.params = &params
+            # set up the params to pass and the pointer 
+            params.s      = s[i]
+            params.spline = self.spline
+            params.acc    = self.acc
+            params.R      = self.smoothing_radius
+            
+            F.function    = &integrand1D
+            F.params      = &params
+            
             gsl_integration_qawo_table_set(self.integ_table_sin, s[i], self.kmax-self.kmin, GSL_INTEG_SINE)
             
             # the actual integration
@@ -132,18 +136,23 @@ cdef class Fourier1D:
             if status:
                 reason = gsl_strerror(status)
                 print "Warning: %s" %reason
-                
+ 
             # also do the cosine integration for quadrupole
             if self.multipole == 2:
                 params.kernel = _kernels.j2_cos
 
-                print params.kernel(10.)
-                # do the sine integration first
-                params.s = s[i]
-                F.params = &params
+                # set up the params to pass and the pointer 
+                params.s      = s[i]
+                params.spline = self.spline
+                params.acc    = self.acc
+                params.R      = self.smoothing_radius
+
+                F.function    = &integrand1D
+                F.params      = &params
+                
                 gsl_integration_qawo_table_set(self.integ_table_cos, s[i], self.kmax-self.kmin, GSL_INTEG_COSINE)
 
-                # the actual integration
+                # do the cosine integration
                 status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)    
                 if status:
                     reason = gsl_strerror(status)

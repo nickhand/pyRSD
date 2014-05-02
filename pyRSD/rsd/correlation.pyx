@@ -83,13 +83,13 @@ class Correlation(object):
     #end monopole
     
     #---------------------------------------------------------------------------
-    def quadrupole(self, s):
+    def quadrupole(self, s, linear=False):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
         """
         # do the power law extrapolation past k = kcut
-        k_extrap, P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear)))
+        k_extrap, P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear))
 
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(2, self.kmin, self.kmax, 

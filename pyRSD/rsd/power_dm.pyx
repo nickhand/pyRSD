@@ -1008,7 +1008,7 @@ class DMSpectrum(object):
         """
         if linear:
             beta = self.f/self.b1
-            return (4./3*beta + 4./7*beta**2) * (self.b1*P.D)**2 * P.power_lin.power
+            return (4./3*beta + 4./7*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
         else:
             if self.max_mu == 2:
                 return (2./3)*self.P_mu2

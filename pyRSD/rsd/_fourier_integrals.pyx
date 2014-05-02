@@ -137,19 +137,18 @@ cdef class Fourier1D:
             if self.multipole == 2:
                 params.kernel = _kernels.j2_cos
 
+                print params.kernel(10.)
                 # do the sine integration first
                 params.s = s[i]
                 F.params = &params
                 gsl_integration_qawo_table_set(self.integ_table_cos, s[i], self.kmax-self.kmin, GSL_INTEG_COSINE)
 
                 # the actual integration
-                status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)
-                
+                status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)    
                 if status:
                     reason = gsl_strerror(status)
                     print "Warning: %s" %reason
             
-            print s[i], result1, result2
             output[i] = (result1 + result2) / (2.*M_PI**2)
         return output
     #end evaluate

@@ -292,7 +292,7 @@ cdef double j0_sin(double x) nogil:
     return 1./x
 
 cdef double j2_sin(double x) nogil:
-    return (3./(x*x) - 1.)/x
+    return (3./(x*x*x) - 1./x)
 
 cdef double j2_cos(double x) nogil:
     return -3./(x*x)

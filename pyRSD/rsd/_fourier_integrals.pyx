@@ -114,28 +114,7 @@ cdef class Fourier1D:
         # loop over each s value
         for i in xrange(N):
             
-            # also do the cosine integration for quadrupole
-            if self.multipole == 2:
-                params.kernel = _kernels.j2_cos
-
-                # set up the params to pass and the pointer 
-                params.s      = s[i]
-                params.spline = self.spline
-                params.acc    = self.acc
-                params.R      = self.smoothing_radius
-
-                F.function    = &integrand1D
-                F.params      = &params
-                
-                gsl_integration_qawo_table_set(self.integ_table_cos, s[i], self.kmax-self.kmin, GSL_INTEG_COSINE)
-
-                # do the cosine integration
-                status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)    
-                if status:
-                    reason = gsl_strerror(status)
-                    print "Warning: %s" %reason
-            
-            # set up monopole/quadrupole params
+            # set up monopole/quadrupole SINE params
             if self.multipole == 0:
                 params.kernel = _kernels.j0_sin
             elif self.multipole == 2:
@@ -158,7 +137,26 @@ cdef class Fourier1D:
                 reason = gsl_strerror(status)
                 print "Warning: %s" %reason
  
-            
+            # also do the COSINE integration for quadrupole
+            if self.multipole == 2:
+                params.kernel = _kernels.j2_cos
+
+                # set up the params to pass and the pointer 
+                params.s      = s[i]
+                params.spline = self.spline
+                params.acc    = self.acc
+                params.R      = self.smoothing_radius
+
+                F.function    = &integrand1D
+                F.params      = &params
+
+                gsl_integration_qawo_table_set(self.integ_table_cos, s[i], self.kmax-self.kmin, GSL_INTEG_COSINE)
+
+                # do the cosine integration
+                status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)    
+                if status:
+                    reason = gsl_strerror(status)
+                    print "Warning: %s" %reason
             output[i] = (result1 + result2) / (2.*M_PI**2)
         return output
     #end evaluate

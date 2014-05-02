@@ -96,7 +96,7 @@ class Correlation(object):
                                                  self.smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
 
-        return integrals.evaluate(s) 
+        return -1.*integrals.evaluate(s) 
     #end quadrupole
     
     #---------------------------------------------------------------------------

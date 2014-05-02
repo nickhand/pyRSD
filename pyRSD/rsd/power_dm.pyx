@@ -980,36 +980,44 @@ class DMSpectrum(object):
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
     #end monopole
     #---------------------------------------------------------------------------
-    def monopole(self):
+    def monopole(self, linear=False):
         """
         The monopole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        if self.max_mu == 0:
-            return self.P_mu0
-        elif self.max_mu == 2:
-            return self.P_mu0 + (1./3)*self.P_mu2
-        elif self.max_mu == 4:
-            return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4
-        elif self.max_mu == 6:
-            return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4 + (1./7)*self.P_mu6
-        elif self.max_mu == 8:
-            raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
+        if linear:
+            beta = self.f/self.b1
+            return (1. + 2./3*beta + 1/5*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
+        else:
+            if self.max_mu == 0:
+                return self.P_mu0
+            elif self.max_mu == 2:
+                return self.P_mu0 + (1./3)*self.P_mu2
+            elif self.max_mu == 4:
+                return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4
+            elif self.max_mu == 6:
+                return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4 + (1./7)*self.P_mu6
+            elif self.max_mu == 8:
+                raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
     #end monopole
     #---------------------------------------------------------------------------
-    def quadrupole(self):
+    def quadrupole(self, linear=False):
         """
         The quadrupole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        if self.max_mu == 2:
-            return (2./3)*self.P_mu2
-        elif self.max_mu == 4:
-            return (2./3)*self.P_mu2 + (4./7)*self.P_mu4
-        elif self.max_mu == 6:
-            return (2./3)*self.P_mu2 + (4./7)*self.P_mu4 + (10./21)*self.P_mu6
-        elif self.max_mu == 8:
-            raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
+        if linear:
+            beta = self.f/self.b1
+            return (4./3*beta + 4./7*beta**2) * (self.b1*P.D)**2 * P.power_lin.power
+        else:
+            if self.max_mu == 2:
+                return (2./3)*self.P_mu2
+            elif self.max_mu == 4:
+                return (2./3)*self.P_mu2 + (4./7)*self.P_mu4
+            elif self.max_mu == 6:
+                return (2./3)*self.P_mu2 + (4./7)*self.P_mu4 + (10./21)*self.P_mu6
+            elif self.max_mu == 8:
+                raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
     #end quadrupole
     #---------------------------------------------------------------------------
     def load(self, k_data, power_data, power_term, mu_term, errs=None):

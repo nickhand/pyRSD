@@ -47,34 +47,37 @@ class Correlation(object):
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
         """
-        # compute the logarithmic derivative, aka power law slope
-        dlogP = np.diff(np.log(Pspec))
-        dlogk = np.diff(np.log(self.power.k))
+        if self.power.k.max() >= self.kmax:
+            return self.power.k, Pspec
+        else:
+            # compute the logarithmic derivative, aka power law slope
+            dlogP = np.diff(np.log(Pspec))
+            dlogk = np.diff(np.log(self.power.k))
         
-        imin = (np.abs(self.power.k-self.kcut)).argmin()
-        slope = (dlogP / dlogk)[imin]
+            imin = (np.abs(self.power.k-self.kcut)).argmin()
+            slope = (dlogP / dlogk)[imin]
         
-        inds = np.where(self.power.k < self.kcut)[0]
-        k_extrap = np.linspace(self.kcut, self.kmax, 1000)
-        k_full = np.concatenate( (self.power.k[inds], k_extrap) )
-        P_full = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/self.kcut)**slope) )
+            inds = np.where(self.power.k < self.kcut)[0]
+            k_extrap = np.linspace(self.kcut, self.kmax, 1000)
+            k_full = np.concatenate( (self.power.k[inds], k_extrap) )
+            P_full = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/self.kcut)**slope) )
         
-        return k_full, P_full
+            return k_full, P_full
     #end _extrapolate_power
     
     #---------------------------------------------------------------------------
-    def monopole(self, s):
+    def monopole(self, s, linear=False):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
         """
         # do the power law extrapolation past k = kcut
-        k_extrap, P_extrap = self._extrapolate_power(self.power.monopole())
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear))
         
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(0, self.kmin, self.kmax, 
-                                                 self.smoothing_radius, k_extrap, 
-                                                 P_extrap)
+                                                 self.smoothing_radius, 
+                                                 self.k_extrap, self.P_extrap)
                                                  
         return integrals.evaluate(s) 
     #end monopole
@@ -86,12 +89,12 @@ class Correlation(object):
         function.
         """
         # do the power law extrapolation past k = kcut
-        k_extrap, P_extrap = self._extrapolate_power(self.power.monopole())
+        k_extrap, P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear)))
 
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(2, self.kmin, self.kmax, 
-                                                 self.smoothing_radius, k_extrap, 
-                                                 P_extrap)
+                                                 self.smoothing_radius, 
+                                                 self.k_extrap, self.P_extrap)
 
         return integrals.evaluate(s) 
     #end quadrupole

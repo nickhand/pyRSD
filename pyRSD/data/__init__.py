@@ -17,9 +17,9 @@ __all__ = ['load',
            'P01_mu2_z_0_000',
            'P01_mu2_z_0_509',
            'P01_mu2_z_0_989',
-           'P11_mu2_z_0_000',
-           'P11_mu2_z_0_509',
-           'P11_mu2_z_0_989',
+           'Pdv_mu0_z_0_000',
+           'Pdv_mu0_z_0_509',
+           'Pdv_mu0_z_0_989',
            'P11_mu4_z_0_000',
            'P11_mu4_z_0_509',
            'P11_mu4_z_0_989']
@@ -80,23 +80,23 @@ def P01_mu2_z_0_989():
     return load("pkmu_P01_mu2_z_0.989.dat")
 
 #-------------------------------------------------------------------------------
-def P11_mu2_z_0_000():
+def Pdv_mu0_z_0_000():
     """
-    The P11 dark matter term with mu^2 angular dependence at z = 0.000
+    The Pdv dark matter term with mu^0 angular dependence at z = 0.000
     """
-    return load("pkmu_P11_mu2_z_0.000.dat")
+    return load("pkmu_Pdv_mu0_z_0.000.dat")
 
-def P11_mu2_z_0_509():
+def Pdv_mu0_z_0_509():
     """
-    The P11 dark matter term with mu^2 angular dependence at z = 0.509
+    The Pdv dark matter term with mu^0 angular dependence at z = 0.509
     """
-    return load("pkmu_P11_mu2_z_0.509.dat")
+    return load("pkmu_Pdv_mu0_z_0.509.dat")
     
-def P11_mu2_z_0_989():
+def Pdv_mu0_z_0_989():
     """
-    The P11 dark matter term with mu^2 angular dependence at z = 0.989
+    The Pdv dark matter term with mu^0 angular dependence at z = 0.989
     """
-    return load("pkmu_P11_mu2_z_0.989.dat")
+    return load("pkmu_Pdv_mu0_z_0.989.dat")
 
 #-------------------------------------------------------------------------------
 def P11_mu4_z_0_000():
@@ -116,3 +116,5 @@ def P11_mu4_z_0_989():
     The P11 dark matter term with mu^4 angular dependence at z = 0.989
     """
     return load("pkmu_P11_mu4_z_0.989.dat")
+
+#-------------------------------------------------------------------------------

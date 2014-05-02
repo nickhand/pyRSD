@@ -48,10 +48,11 @@ cdef class Fourier1D:
     def __cinit__(self, multipole, kmin, kmax, smoothing_radius, k1, P1):
         cdef np.ndarray xarr, yarr            
         
-        self.acc         = NULL
-        self.spline      = NULL
-        self.integ_table = NULL
-        self.w           = NULL
+        self.acc             = NULL
+        self.spline          = NULL
+        self.integ_table_sin = NULL
+        self.integ_table_cos = NULL
+        self.w               = NULL
         
         # set up the power spline
         xarr = np.ascontiguousarray(k1, dtype=np.double)
@@ -62,8 +63,9 @@ cdef class Fourier1D:
         self.acc    = gsl_interp_accel_alloc()
         gsl_spline_init(self.spline, <double*>xarr.data, <double*>yarr.data, xarr.shape[0])
     
-        # set up the integration workspace and table
-        self.integ_table = gsl_integration_qawo_table_alloc(1., kmax-kmin, GSL_INTEG_SINE, 1000)
+        # set up the integration workspace and tables
+        self.integ_table_sin = gsl_integration_qawo_table_alloc(1., kmax-kmin, GSL_INTEG_SINE, 1000)
+        self.integ_table_cos = gsl_integration_qawo_table_alloc(1., kmax-kmin, GSL_INTEG_COSINE, 1000)
         self.w = gsl_integration_workspace_alloc(1000)
         
         # store the integral specifics
@@ -82,8 +84,10 @@ cdef class Fourier1D:
             gsl_spline_free(self.spline)
         if self.acc != NULL:
             gsl_interp_accel_free(self.acc)
-        if self.integ_table != NULL:
-            gsl_integration_qawo_table_free(self.integ_table)
+        if self.integ_table_sin != NULL:
+            gsl_integration_qawo_table_free(self.integ_table_sin)
+        if self.integ_table_cos != NULL:
+            gsl_integration_qawo_table_free(self.integ_table_cos)
         if self.w != NULL:
             gsl_integration_workspace_free(self.w)
     #end __dealloc__        
@@ -121,10 +125,10 @@ cdef class Fourier1D:
             # do the sine integration first
             params.s = s[i]
             F.params = &params
-            status = gsl_integration_qawo_table_set(self.integ_table, s[i], self.kmax-self.kmin, GSL_INTEG_SINE)
+            gsl_integration_qawo_table_set(self.integ_table_sin, s[i], self.kmax-self.kmin, GSL_INTEG_SINE)
             
             # the actual integration
-            status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table, &result1, &error1)
+            status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_sin, &result1, &error1)
             if status:
                 reason = gsl_strerror(status)
                 print "Warning: %s" %reason
@@ -136,10 +140,10 @@ cdef class Fourier1D:
                 # do the sine integration first
                 params.s = s[i]
                 F.params = &params
-                gsl_integration_qawo_table_set(self.integ_table, s[i], self.kmax-self.kmin, GSL_INTEG_COSINE)
+                gsl_integration_qawo_table_set(self.integ_table_cos, s[i], self.kmax-self.kmin, GSL_INTEG_COSINE)
 
                 # the actual integration
-                status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table, &result2, &error2)
+                status = gsl_integration_qawo(&F, self.kmin, 0, 1e-4, 1000, self.w, self.integ_table_cos, &result2, &error2)
                 if status:
                     reason = gsl_strerror(status)
                     print "Warning: %s" %reason

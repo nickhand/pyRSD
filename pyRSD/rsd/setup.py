@@ -13,12 +13,15 @@ def configuration(parent_package='', top_path=None):
     
     config = Configuration('rsd', parent_package, top_path)
 
-    cython(['_integral_base.pyx'], working_path=base_path)
-    cython(['_integralsPT.pyx'], working_path=base_path)
     cython(['_kernels.pyx'], working_path=base_path)
+    cython(['_integral_base.pyx'], working_path=base_path)
+    cython(['_pt_integrals.pyx'], working_path=base_path)
+    cython(['_fourier_integrals.pyx'], working_path=base_path)
+    
     
     cython(['power_dm.pyx'], working_path=base_path)
     cython(['power_halo.pyx'], working_path=base_path)
+    cython(['correlation.pyx'], working_path=base_path)
 
     config.add_extension('_integral_base', sources=['_integral_base.c'],
                          include_dirs=[get_numpy_include_dirs(), get_cython_include_dir()],
@@ -26,7 +29,13 @@ def configuration(parent_package='', top_path=None):
                          extra_compile_args=['-O3', '-w', '-fopenmp'],
                          extra_link_args=['-g', '-fopenmp'])
                          
-    config.add_extension('_integralsPT', sources=['_integralsPT.c'],
+    config.add_extension('_fourier_integrals', sources=['_fourier_integrals.c'],
+                         include_dirs=[get_numpy_include_dirs(), get_cython_include_dir()],
+                         libraries=get_libraries(), library_dirs=[get_library_dir()],
+                         extra_compile_args=['-O3', '-w'],
+                         extra_link_args=['-g'])
+                         
+    config.add_extension('_pt_integrals', sources=['_pt_integrals.c'],
                          include_dirs=[get_numpy_include_dirs()],
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])
@@ -45,6 +54,11 @@ def configuration(parent_package='', top_path=None):
                          include_dirs=[get_numpy_include_dirs()],
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])
+                         
+    config.add_extension('correlation', sources=['correlation.c'],
+                         include_dirs=[get_numpy_include_dirs()],
+                         extra_compile_args=['-O3', '-w'],
+                         extra_link_args=['-g'])                         
 
     return config
 

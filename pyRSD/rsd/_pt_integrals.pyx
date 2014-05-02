@@ -8,7 +8,6 @@ from pyRSD.cosmology cimport growth
 from ..cosmology.power import Power
 from ..cosmology.cosmo import Cosmology
 import numpy as np
-cimport numpy as np
 
 CONVERGENCE_FACTOR = 100.
 NORM_FACTOR = 1e6

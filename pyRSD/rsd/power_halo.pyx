@@ -1,7 +1,3 @@
-#cython: boundscheck=False
-#cython: wraparound=False
-#cython: nonecheck=False
-#cython: cdivision=True
 """
  power_halo.pyx
  pyRSD: class implementing the redshift space halo power spectrum using
@@ -15,7 +11,6 @@ from . import power_dm, tools
 from pyRSD.cosmology cimport growth, cosmo_tools
 
 import numpy as np
-cimport numpy as np
 
 class HaloSpectrum(power_dm.DMSpectrum):
     

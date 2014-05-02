@@ -15,7 +15,7 @@ from libc.math cimport log, fabs, pow
 from libc.string cimport strcmp
 
 
-cpdef double kernel(const char *name, double r, double x) nogil:
+cdef double kernel(const char *name, double r, double x) nogil:
     """
     Return the correct kernel based on input name.
     """
@@ -107,7 +107,7 @@ cpdef double kernel(const char *name, double r, double x) nogil:
         elif (strcmp(name, "k20_b") == 0):
             return k20_b(r, x)
         elif (strcmp(name, "k20s_b") == 0):
-            return k20s_b(r, x)   
+            return k20s_b(r, x)  
                        
 #-------------------------------------------------------------------------------
 # define the f_nm(r, x) kernels
@@ -284,4 +284,18 @@ cdef double k20_b(double r, double x) nogil:
 
 cdef double k20s_b(double r, double x) nogil:
     return h04(r, x)*S2(r, x)
+
 #-------------------------------------------------------------------------------
+# Spherical Bessel kernels for Fourier integrals
+#-------------------------------------------------------------------------------
+cdef double j0_sin(double x) nogil:
+    return 1./x
+
+cdef double j2_sin(double x) nogil:
+    return (3./(x*x) - 1.)/x
+
+cdef double j2_cos(double x) nogil:
+    return -3./(x*x)
+    
+#-------------------------------------------------------------------------------
+    

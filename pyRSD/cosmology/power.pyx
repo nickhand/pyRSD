@@ -48,6 +48,7 @@ class Power(object):
                               'accuracy_boost' : accuracy_boost,
                               'transfer_k_per_logint' : transfer_k_per_logint,
                               'transfer_kmax' : transfer_kmax}
+        
         self.k = k
         self.z = z
         self.transfer_fit = transfer_fit
@@ -219,17 +220,33 @@ class Power(object):
                 
                 # do a power law extrapolation at high k
                 p_fit = np.polyfit(np.log(k[-10:]), np.log(T[-10:]), 1)
-                p_gamma, p_amp = p_fit[0], np.exp(p_fit[1])
-                
+                p_gamma = p_fit[0]
                 p_amp = T[-1]/(k[-1]**p_gamma)
-                power_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
+                hik_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
                 
                 # make the combined transfer function
-                k_hi = np.logspace(np.log10(np.amax(k)), np.log10(np.amax(self.k)), 200)
-                T_hi = power_extrap(k_hi)
-                k = np.concatenate((k, k_hi[1:]))
-                T = np.concatenate((T, T_hi[1:]))
+                k_hi = np.logspace(np.log10(np.amax(k)), np.log10(np.amax(self.k)), 200)[1:]
+                T_hi = hik_extrap(k_hi)
+                k = np.concatenate((k, k_hi))
+                T = np.concatenate((T, T_hi))
                 
+            # check low k values, too
+            if np.amin(self.k) < np.amin(k):
+                
+                # do a power law extrapolation at low k
+                p_fit = np.polyfit(np.log(k[:10]), np.log(T[:10]), 1)
+                p_gamma = p_fit[0]
+                p_amp = T[0]/(k[0]**p_gamma)
+                lok_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
+                
+                # make the combined transfer function
+                k_lo = np.logspace(np.log10(np.amin(self.k)), np.log10(np.amin(k)), 100)[:-1]
+                T_lo = lok_extrap(k_lo)
+            
+                T_lo[np.where(T_lo > 1.0)] = 1.0 # don't go over unity here
+                k = np.concatenate((k_lo, k))
+                T = np.concatenate((T_lo, T))
+
             self.__camb_k = k
             self.__camb_T = T
             
@@ -471,7 +488,7 @@ class Power(object):
         output = np.ascontiguousarray(np.empty(len(r)), dtype=np.double)
 
         # compute sigma at z = 0, then multiply by the growth function
-        #unnormalized_sigma_r(<double *>rarr.data, 0., len(r), <double *>output.data)
+        unnormalized_sigma_r(<double *>rarr.data, 0., len(r), <double *>output.data)
         
         # the growth function
         Dz = np.ascontiguousarray(np.empty(len(z)), dtype=np.double)

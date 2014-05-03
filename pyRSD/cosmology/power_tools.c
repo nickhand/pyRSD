@@ -17,8 +17,6 @@
 #include "../include/power_tools.h"
 #include "../include/transfer.h"
 
-double transfer_ratio; 
-
 /*----------------------------------------------------------------------------*/
 void set_parameters(double OMEGAM, double OMEGAB, double OMEGAL, double OMEGAR, 
                     double SIGMA8, double HUBBLE, double NSPEC, double TCMB, 
@@ -78,20 +76,11 @@ void set_CAMB_transfer(double *k, double *Tk, int numk)
     Initialize the transfer function parameters and normalize the power
 */
 {
-    double camb_norm, eh_norm;
     free_transfer();
-    
-    /* compute the EH power norm */
-    transfer = 0;
-    eh_norm = normalize_power();
-    
-    transfer = 5;
+
     transfer_spline = gsl_spline_alloc(gsl_interp_cspline, numk); 
     transfer_acc = gsl_interp_accel_alloc();  
     gsl_spline_init(transfer_spline, k, Tk, numk);
-    camb_norm = normalize_power();
-
-    transfer_ratio = sqrt(eh_norm / camb_norm); 
 
 }
 /*----------------------------------------------------------------------------*/
@@ -104,11 +93,7 @@ double TF_spline(double k)
     
     /* default to full EH transfer function if error*/
     if (gsl_isnan(Tk)) {
-        if (k < 1e-4) {
-            Tk = transfer_ratio * TF_eh_onek(k*hubble);
-        } else {
-            Tk = 0.;
-        }
+        Tk = 0.;
     }
     return Tk;
 }

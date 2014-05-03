@@ -273,6 +273,10 @@ class Power(object):
             return self.__unnormalized_T
         except AttributeError:
             
+            # reset transfer to be sure
+            transfer_type = self.transfer_fit
+            self.transfer_fit = transfer_type
+            
             # set up C arrays to pass
             output = np.ascontiguousarray(np.empty(len(self.k)), dtype=np.double)
             k = np.ascontiguousarray(self.k, dtype=np.double)

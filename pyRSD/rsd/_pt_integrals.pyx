@@ -425,6 +425,13 @@ class Integrals(object):
     # THE POWER SPECTRA
     #---------------------------------------------------------------------------
     @property
+    def Plin(self):
+        """
+        The linear power spectrum evaluatated at klin
+        """
+        return self.D**2 * self._power.power_norm*self._power._unnormalized_P
+    #---------------------------------------------------------------------------
+    @property
     def P11(self):
         """
         For internal use.

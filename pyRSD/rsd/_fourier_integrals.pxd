@@ -9,10 +9,10 @@ cdef class Fourier1D:
     cdef gsl_spline *spline
     cdef gsl_interp_accel *acc
     cdef gsl_integration_workspace *w
-    cdef gsl_integration_qawo_table *integ_table_sin
-    cdef gsl_integration_qawo_table *integ_table_cos
+    cdef gsl_integration_workspace *w_cycle
+    cdef gsl_integration_qawo_table *integ_table
     cdef public int multipole
-    cdef public double kmin, kmax
+    cdef public double kmin
     cdef public double smoothing_radius
 
     # functions

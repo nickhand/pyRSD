@@ -98,7 +98,7 @@ class Correlation(object):
         function.
         """
         # compute the minimum wavenumber we need
-        kmin = 0.1 / np.amax(s)
+        kmin = 0.1 / np.amax(s) # integral converges for ks < 0.1
         
         # do the power extrapolation
         self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), 

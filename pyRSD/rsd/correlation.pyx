@@ -95,7 +95,7 @@ class Correlation(object):
         self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), kmin)
         
         # initialize the fourier integrals class
-        integrals = _fourier_integrals.Fourier1D(0, self.kmin, self.smoothing_radius, 
+        integrals = _fourier_integrals.Fourier1D(0, kmin, self.smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
                                                  
         return integrals.evaluate(s) 
@@ -107,12 +107,14 @@ class Correlation(object):
         Compute the monopole moment of the configuration space correlation 
         function.
         """
+        # compute the minimum wavenumber we need
+        kmin = 0.1 / np.amax(s)
+        
         # do the power law extrapolation past k = kcut
-        k_extrap, P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear))
+        k_extrap, P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), kmin)
 
         # initialize the fourier integrals class
-        integrals = _fourier_integrals.Fourier1D(2, self.kmin, self.kmax, 
-                                                 self.smoothing_radius, 
+        integrals = _fourier_integrals.Fourier1D(2, kmin, self.smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
 
         return -1.*integrals.evaluate(s) 

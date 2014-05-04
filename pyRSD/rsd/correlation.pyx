@@ -81,12 +81,9 @@ class Correlation(object):
             if kcut is None or kcut > k.max():
                 kcut = k[-1]
             
-            imin  = (np.abs(k - kcut)).argmin()
-            print imin
+            imin  = (np.abs(k - kcut)).argmin()-1
             slope = (dlogP / dlogk)[imin]
-            print slope
             inds     = np.where(k < kcut)
-            print inds
             k_extrap = np.linspace(kcut, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )
             Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/kcut)**slope) )

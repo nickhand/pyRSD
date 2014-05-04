@@ -41,9 +41,8 @@ def get_camb_params(input_params):
 #-------------------------------------------------------------------------------
 def set_transfer_params(params):
     
-    vals = {'get_scalar_cls' : 'F', 'get_vector_cls' : 'F', 'get_tensor_cls' : 'F',
+    vals = {'get_scalar_cls' : 'T', 'get_vector_cls' : 'F', 'get_tensor_cls' : 'F',
             'get_transfer' : 'T', 'transfer_high_precision' : 'T', 'output_root' : 'test',
-            'scalar_amp(1)' : '1', 'CMB_outputscale' :'1', 're_use_optical_depth' : 'T',
             're_delta_redshift' : 0.5}
             
     for k, v in vals.iteritems():
@@ -80,10 +79,13 @@ def camb_transfer(*args, **kwargs):
         param_file = tempfile.NamedTemporaryFile(delete=False)  
         param_file.write(params)
         
+        # copy some needed files
+        os.system("cp %s/HighLExtrapTemplate_lenspotentialCls.dat ." %os.environ['CAMB_DIR'])
+        
         # save the name and close the file
         param_file_name = param_file.name
         param_file.close()
-    
+
         # call camb
         ans = subprocess.call(['%s/camb' %os.environ['CAMB_DIR'], param_file_name], stdout=open(os.devnull, 'w'))
         

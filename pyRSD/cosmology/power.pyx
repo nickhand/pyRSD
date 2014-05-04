@@ -14,12 +14,8 @@ from .cosmo import Cosmology
 from . import _camb, _functionator
 from pyRSD.cosmology cimport cosmo_tools
 import os
-
 import numpy as np
-cimport numpy as np
 
-if not os.environ.has_key("CAMB_DIR"):
-    raise ValueError("Must specify 'CAMB_DIR' environment variable")
 
 class Power(object):
     """
@@ -30,12 +26,12 @@ class Power(object):
     
     def __init__(self, k=np.logspace(-3, 0, 200), 
                        z=0., 
-                       transfer_fit='EH', 
+                       transfer_fit='CAMB', 
                        cosmo={'default':"Planck1_lens_WP_highL", 'force_flat': True},
                        initial_condition=1, 
                        l_accuracy_boost=1, 
                        accuracy_boost=1,
-                       transfer_k_per_logint=5, 
+                       transfer_k_per_logint=11, 
                        transfer_kmax=200.):
                  
         # Set up a simple dictionary of cosmo params which can be later updated
@@ -154,7 +150,10 @@ class Power(object):
     def transfer_fit(self, val):
         if val not in Power.fits:
             raise ValueError("Transfer fit must be one of %s" %Power.fits)
-        
+            
+        if not os.environ.has_key("CAMB_DIR") and val == "CAMB":
+            raise ValueError("Must specify 'CAMB_DIR' environment variable to use 'CAMB' transfer function.")
+            
         # delete dependencies
         del self._unnormalized_T
         

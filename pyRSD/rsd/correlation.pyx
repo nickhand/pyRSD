@@ -81,13 +81,15 @@ class Correlation(object):
             if kcut is None or kcut > k.max():
                 kcut = k[-1]
             
+            print kcut
             imin  = (np.abs(k - kcut)).argmin()
             slope = (dlogP / dlogk)[imin]
-        
-            inds     = np.where(k < kcut)[0]
+            print slope
+            inds     = np.where(k < kcut)
+            print inds
             k_extrap = np.linspace(kcut, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )
-            Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/self.kcut)**slope) )
+            Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/kcut)**slope) )
         
         return k, Pspec
     #end _extrapolate_power

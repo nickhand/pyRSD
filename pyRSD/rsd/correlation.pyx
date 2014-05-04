@@ -15,7 +15,7 @@ KMAX = 100.
 
 class Correlation(object):
     
-    def __init__(self, power, smoothing_radius=0., kcut=0.2):
+    def __init__(self, power):
         
         """
         Parameters
@@ -32,13 +32,11 @@ class Correlation(object):
             Beyond this wavenumber, use a power law extrapolation for the 
             power spectrum.
         """
-        self.power            = power
-        self.smoothing_radius = smoothing_radius
-        self.kcut             = kcut
+        self.power = power
     #end __init__
     
     #---------------------------------------------------------------------------    
-    def _extrapolate_power(self, Pspec, kmin, multipole):
+    def _extrapolate_power(self, Pspec, kmin, kcut, multipole):
         """
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
@@ -79,11 +77,15 @@ class Correlation(object):
             dlogP = np.diff(np.log(Pspec))
             dlogk = np.diff(np.log(k))
         
-            imin  = (np.abs(k - self.kcut)).argmin()
+            # use the largest k value as the point of extrapolation
+            if kcut is None or kcut > k.max():
+                kcut = k[-1]
+            
+            imin  = (np.abs(k - kcut)).argmin()
             slope = (dlogP / dlogk)[imin]
         
-            inds     = np.where(k < self.kcut)[0]
-            k_extrap = np.linspace(self.kcut, KMAX, 200)
+            inds     = np.where(k < kcut)[0]
+            k_extrap = np.linspace(kcut, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )
             Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/self.kcut)**slope) )
         
@@ -91,7 +93,7 @@ class Correlation(object):
     #end _extrapolate_power
     
     #---------------------------------------------------------------------------
-    def monopole(self, s, linear=False):
+    def monopole(self, s, linear=False, smoothing_radius=0., kcut=0.2):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
@@ -99,18 +101,19 @@ class Correlation(object):
         # compute the minimum wavenumber we need
         kmin = 0.1 / np.amax(s)
         
-        # do the power law extrapolation past k = kcut
-        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), kmin, 0)
+        # do the power extrapolation
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), 
+                                                               kmin, kcut, 0)
         
         # initialize the fourier integrals class
-        integrals = _fourier_integrals.Fourier1D(0, kmin, self.smoothing_radius, 
+        integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
                                                  
         return integrals.evaluate(s) 
     #end monopole
     
     #---------------------------------------------------------------------------
-    def quadrupole(self, s, linear=False):
+    def quadrupole(self, s, linear=False, smoothing_radius=0., kcut=0.2):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
@@ -119,10 +122,11 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s)
         
         # do the power law extrapolation past k = kcut
-        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), kmin, 2)
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), 
+                                                               kmin, kcut, 2)
 
         # initialize the fourier integrals class
-        integrals = _fourier_integrals.Fourier1D(2, kmin, self.smoothing_radius, 
+        integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
 
         return -1.*integrals.evaluate(s) 

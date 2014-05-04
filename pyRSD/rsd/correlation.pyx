@@ -38,7 +38,7 @@ class Correlation(object):
     #end __init__
     
     #---------------------------------------------------------------------------    
-    def _extrapolate_power(self, Pspec, kmin):
+    def _extrapolate_power(self, Pspec, kmin, multipole):
         """
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
@@ -56,8 +56,16 @@ class Correlation(object):
             # check that the linear power spectrum is evaluated at the k we need
             if Pspec.integrals.klin.min() > kmin:
                 raise ValueError("Minimum wavenumber needed for convergence too low.")
+            
+            # compute the linear monopole or quadrupole
+            if multipole == 0:
+                beta = self.power.f/self.power.b1
+                linear_power = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            elif multipole == 2:
+                beta = self.power.f/self.power.b1
+                linear_power = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
                 
-            lowk_interp = _functionator.splineInterpolator(self.power.integrals.klin, self.power.integrals.Plin)
+            lowk_interp = _functionator.splineInterpolator(self.power.integrals.klin, linear_power)
             lowk        = np.logspace(np.log10(kmin), np.log10(k.min()), 200)[:-1]
             lowP        = lowk_interp(lowk)
             
@@ -92,7 +100,7 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s)
         
         # do the power law extrapolation past k = kcut
-        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), kmin)
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), kmin, 0)
         
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(0, kmin, self.smoothing_radius, 
@@ -111,7 +119,7 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s)
         
         # do the power law extrapolation past k = kcut
-        k_extrap, P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), kmin)
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), kmin, 2)
 
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(2, kmin, self.smoothing_radius, 

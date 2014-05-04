@@ -81,8 +81,8 @@ class Correlation(object):
             if kcut is None or kcut > k.max():
                 kcut = k[-1]
             
-            print kcut
             imin  = (np.abs(k - kcut)).argmin()
+            print imin
             slope = (dlogP / dlogk)[imin]
             print slope
             inds     = np.where(k < kcut)

@@ -36,23 +36,12 @@ class Correlation(object):
     #end __init__
     
     #---------------------------------------------------------------------------    
-    def _extrapolate_power(self, Pspec, kmin, kcut, multipole, linear=False):
+    def _extrapolate_power(self, Pspec, kmin, kcut, multipole):
         """
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
         """
         k = self.power.k
-        
-        # compute the linear monopole or quadrupole
-        if multipole == 0:
-            beta = self.power.f/self.power.b1
-            linear_power = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
-        elif multipole == 2:
-            beta = self.power.f/self.power.b1
-            linear_power = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
-            
-        if linear:
-            return self.power.integrals.klin, linear_power
         
         # do a linear theory extrapolation at low k, if needed
         if k.min() > kmin: 
@@ -66,6 +55,15 @@ class Correlation(object):
             if self.power.integrals.klin.min() > kmin:
                 raise ValueError("Minimum wavenumber needed for convergence too low.")
                 
+                
+            # compute the linear monopole or quadrupole
+            if multipole == 0:
+                beta = self.power.f/self.power.b1
+                linear_power = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            elif multipole == 2:
+                beta = self.power.f/self.power.b1
+                linear_power = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+                    
             lowk_interp = _functionator.splineInterpolator(self.power.integrals.klin, linear_power)
             lowk        = np.logspace(np.log10(kmin), np.log10(k.min()), 200)[:-1]
             lowP        = lowk_interp(lowk)
@@ -95,7 +93,7 @@ class Correlation(object):
     #end _extrapolate_power
     
     #---------------------------------------------------------------------------
-    def monopole(self, s, linear=False, smoothing_radius=0., kcut=0.2):
+    def monopole(self, s, smoothing_radius=0., kcut=0.2, **kwargs):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
@@ -104,8 +102,16 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s) # integral converges for ks < 0.1
         
         # do the power extrapolation
-        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), 
-                                                               kmin, kcut, 0, linear=linear)
+        linear = kwargs.get('linear', False)
+        if linear:
+            beta = self.power.f/self.power.b1
+            mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            
+            self.k_extrap = self.power.integrals.klin
+            self.P_extrap = mono_linear
+        else:
+            self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(**kwargs), 
+                                                                   kmin, kcut, 0)
         
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
@@ -115,7 +121,7 @@ class Correlation(object):
     #end monopole
     
     #---------------------------------------------------------------------------
-    def quadrupole(self, s, linear=False, smoothing_radius=0., kcut=0.2):
+    def quadrupole(self, s, smoothing_radius=0., kcut=0.2, **kwargs):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
@@ -123,9 +129,17 @@ class Correlation(object):
         # compute the minimum wavenumber we need
         kmin = 0.1 / np.amax(s)
         
-        # do the power law extrapolation past k = kcut
-        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), 
-                                                               kmin, kcut, 2, linear=linear)
+        # do the extrapolation
+        linear = kwargs.get('linear', False)
+        if linear:
+            beta = self.power.f/self.power.b1
+            quad_linear = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            
+            self.k_extrap = self.power.integrals.klin
+            self.P_extrap = quad_linear
+        else:
+            self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(**kwargs), 
+                                                                   kmin, kcut, 2)
 
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 

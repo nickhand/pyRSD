@@ -52,7 +52,7 @@ class Correlation(object):
                 raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
             
             # check that the linear power spectrum is evaluated at the k we need
-            if Pspec.integrals.klin.min() > kmin:
+            if self.power.integrals.klin.min() > kmin:
                 raise ValueError("Minimum wavenumber needed for convergence too low.")
             
             # compute the linear monopole or quadrupole

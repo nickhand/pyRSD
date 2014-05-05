@@ -121,7 +121,7 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s)
         
         # do the power law extrapolation past k = kcut
-        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), 
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), 
                                                                kmin, kcut, 2)
 
         # initialize the fourier integrals class

@@ -36,12 +36,23 @@ class Correlation(object):
     #end __init__
     
     #---------------------------------------------------------------------------    
-    def _extrapolate_power(self, Pspec, kmin, kcut, multipole):
+    def _extrapolate_power(self, Pspec, kmin, kcut, multipole, linear=False):
         """
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
         """
         k = self.power.k
+        
+        # compute the linear monopole or quadrupole
+        if multipole == 0:
+            beta = self.power.f/self.power.b1
+            linear_power = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+        elif multipole == 2:
+            beta = self.power.f/self.power.b1
+            linear_power = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            
+        if linear:
+            return self.power.integrals.klin, linear_power
         
         # do a linear theory extrapolation at low k, if needed
         if k.min() > kmin: 
@@ -54,14 +65,6 @@ class Correlation(object):
             # check that the linear power spectrum is evaluated at the k we need
             if self.power.integrals.klin.min() > kmin:
                 raise ValueError("Minimum wavenumber needed for convergence too low.")
-            
-            # compute the linear monopole or quadrupole
-            if multipole == 0:
-                beta = self.power.f/self.power.b1
-                linear_power = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
-            elif multipole == 2:
-                beta = self.power.f/self.power.b1
-                linear_power = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
                 
             lowk_interp = _functionator.splineInterpolator(self.power.integrals.klin, linear_power)
             lowk        = np.logspace(np.log10(kmin), np.log10(k.min()), 200)[:-1]
@@ -102,7 +105,7 @@ class Correlation(object):
         
         # do the power extrapolation
         self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=linear), 
-                                                               kmin, kcut, 0)
+                                                               kmin, kcut, 0, linear=linear)
         
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
@@ -122,7 +125,7 @@ class Correlation(object):
         
         # do the power law extrapolation past k = kcut
         self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(linear=linear), 
-                                                               kmin, kcut, 2)
+                                                               kmin, kcut, 2, linear=linear)
 
         # initialize the fourier integrals class
         integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 

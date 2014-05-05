@@ -89,7 +89,7 @@ class Correlation(object):
             
             k_extrap = np.linspace(kcut, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )
-            Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/kcut)**slope) )
+            Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/k0)**slope) )
         
         return k, Pspec
     #end _extrapolate_power

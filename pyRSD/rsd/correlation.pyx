@@ -85,6 +85,8 @@ class Correlation(object):
             imin  = (np.abs(k - kcut)).argmin()-1
             slope = (dlogP / dlogk)[imin]
             inds     = np.where(k < kcut)
+            k0 = k[imin]
+            
             k_extrap = np.linspace(kcut, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )
             Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/kcut)**slope) )
@@ -93,7 +95,7 @@ class Correlation(object):
     #end _extrapolate_power
     
     #---------------------------------------------------------------------------
-    def monopole(self, s, smoothing_radius=0., kcut=0.2, **kwargs):
+    def monopole(self, s, mono_func, smoothing_radius=0., kcut=0.2, linear=False):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
@@ -102,7 +104,6 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s) # integral converges for ks < 0.1
         
         # do the power extrapolation
-        linear = kwargs.get('linear', False)
         if linear:
             beta = self.power.f/self.power.b1
             mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
@@ -110,7 +111,7 @@ class Correlation(object):
             self.k_extrap = self.power.integrals.klin
             self.P_extrap = mono_linear
         else:
-            self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(**kwargs), 
+            self.k_extrap, self.P_extrap = self._extrapolate_power(mono_func(self.power), 
                                                                    kmin, kcut, 0)
         
         # initialize the fourier integrals class
@@ -121,7 +122,7 @@ class Correlation(object):
     #end monopole
     
     #---------------------------------------------------------------------------
-    def quadrupole(self, s, smoothing_radius=0., kcut=0.2, **kwargs):
+    def quadrupole(self, s, quad_func, smoothing_radius=0., kcut=0.2, linear=False):
         """
         Compute the monopole moment of the configuration space correlation 
         function.
@@ -130,7 +131,6 @@ class Correlation(object):
         kmin = 0.1 / np.amax(s)
         
         # do the extrapolation
-        linear = kwargs.get('linear', False)
         if linear:
             beta = self.power.f/self.power.b1
             quad_linear = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
@@ -138,7 +138,7 @@ class Correlation(object):
             self.k_extrap = self.power.integrals.klin
             self.P_extrap = quad_linear
         else:
-            self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(**kwargs), 
+            self.k_extrap, self.P_extrap = self._extrapolate_power(quad_func(self.power), 
                                                                    kmin, kcut, 2)
 
         # initialize the fourier integrals class

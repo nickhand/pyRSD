@@ -74,22 +74,37 @@ class Correlation(object):
         # also, do a power law extrapolation at high k, if needed
         if k.max() < KMAX:
             
-            # compute the logarithmic derivative, aka power law slope
-            dlogP = np.diff(np.log(Pspec))
-            dlogk = np.diff(np.log(k))
-        
             # use the largest k value as the point of extrapolation
+            one_sided = False
             if kcut is None or kcut > k.max():
                 kcut = k[-1]
+                one_sided = True
+                
+            if not one_sided:
+                kcut_min = 0.9*kcut
+                kcut_max = kcut
+            else:
+                kcut_min = 0.95*kcut
+                kcut_max = 1.05*kcut
+                
+            inds = where((k >= kcut_min)*(k <= kcut_max))
+            if len(inds[0]) < 5:
+                raise ValueError("Not enough points to fit power law extrapolation "
+                                 "at high k using k = [%.3f, %.3f]" %(kcut_min, kcut_max))
+                                 
             
-            imin  = (np.abs(k - kcut)).argmin()-1
-            k0 = k[imin]
-            slope = (dlogP / dlogk)[imin]*1.2
-            inds     = np.where(k < k0)
+            p_fit = np.polyfit(np.log(k[inds]), np.log(Pspec[inds]), 1)
+            p_gamma, p_amp = p_fit[0], np.exp(p_fit[1])
+            powerlaw_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
+            
+            imin = (np.abs(Pspec[inds] - powerlaw_extrap(k[inds]))).argmin()
+            k0   = k[inds][imin]
+            P0   = Pspec[inds][imin]
+            inds = np.where(k < k0)
             
             k_extrap = np.linspace(k0, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )
-            Pspec    = np.concatenate( (Pspec[inds], Pspec[imin]*(k_extrap/k0)**slope) )
+            Pspec    = np.concatenate( (Pspec[inds], P0*(k_extrap/k0)**p_gamma) )
         
         return k, Pspec
     #end _extrapolate_power

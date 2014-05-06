@@ -87,7 +87,7 @@ class Correlation(object):
                 kcut_min = 0.95*kcut
                 kcut_max = 1.05*kcut
                 
-            inds = where((k >= kcut_min)*(k <= kcut_max))
+            inds = np.where((k >= kcut_min)*(k <= kcut_max))
             if len(inds[0]) < 5:
                 raise ValueError("Not enough points to fit power law extrapolation "
                                  "at high k using k = [%.3f, %.3f]" %(kcut_min, kcut_max))
@@ -97,10 +97,15 @@ class Correlation(object):
             p_gamma, p_amp = p_fit[0], np.exp(p_fit[1])
             powerlaw_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
             
+            print "power law slope = ", p_gamma
+            
             imin = (np.abs(Pspec[inds] - powerlaw_extrap(k[inds]))).argmin()
             k0   = k[inds][imin]
             P0   = Pspec[inds][imin]
             inds = np.where(k < k0)
+            
+            print "joining functions at k = ", k0
+            print "difference in power here = ", abs(P0 - powerlaw_extrap(k0))/P0
             
             k_extrap = np.linspace(k0, KMAX, 200)
             k        = np.concatenate( (k[inds], k_extrap) )

@@ -35,26 +35,61 @@ class Correlation(object):
         """
         self.power = power
     #end __init__
+    
     #---------------------------------------------------------------------------
-    def _kaiser_monopole(self, k):
+    @property
+    def b1(self):
+        """
+        The linear bias factor.
+        """
+        return self.power.b1
+            
+    @b1.setter
+    def b1(self, val):
+        self.power.update(b1=val)
+                        
+        # delete the linear kaiser splines
+        for a in ['_kaiser_mono_spline', '_kaiser_quad_spline']:
+            if a in self.__dict__: del self.__dict__[a]
         
+    #---------------------------------------------------------------------------
+    def kaiser_monopole(self, k):
+        """
+        The linear, Kaiser power spectrum monopole, given by:
+        
+        .. math:: P_0(k) = (b_1^2 + 2/3*f*b_1 + 1/5*f^2) * P_{lin}
+        
+        Parameters
+        ----------
+        k : array_like or float
+            The wavenumber in h/Mpc to compute the monopole at.
+        """
         try:
             return self._kaiser_mono_spline(k)
         except:
-            beta = self.power.f/self.power.b1
-            mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            beta = self.power.f/self.b1
+            mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.b1**2 * self.power.integrals.Plin
             self._kaiser_mono_spline = InterpolatedUnivariateSpline(self.power.integrals.klin, mono_linear)
             return  self._kaiser_mono_spline(k)
     #end _kaiser_monopole
     
     #---------------------------------------------------------------------------
-    def _kaiser_quadrupole(self, k):
+    def kaiser_quadrupole(self, k):
+        """
+        The linear, Kaiser power spectrum quadrupole, given by:
         
+        .. math:: P_0(k) = (4/3*f*b_1 + 4/7*f^2) * P_{lin}
+        
+        Parameters
+        ----------
+        k : array_like or float
+            The wavenumber in h/Mpc to compute the quadrupole at.
+        """
         try:
             return self._kaiser_quad_spline(k)
         except:
-            beta = self.power.f/self.power.b1
-            quad_linear = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            beta = self.power.f/self.b1
+            quad_linear = (4./3*beta + 4./7*beta**2) * self.b1**2 * self.power.integrals.Plin
             self._kaiser_quad_spline = InterpolatedUnivariateSpline(self.power.integrals.klin, quad_linear)
             return  self._kaiser_quad_spline(k)
     #end _kaiser_quadrupole
@@ -89,11 +124,34 @@ class Correlation(object):
     #---------------------------------------------------------------------------
     def monopole(self, s, mono_func, smoothing_radius=0., kcut=0.2, linear=False):
         """
-        Compute the monopole moment of the configuration space correlation 
-        function.
+        Compute the correlation function monopole in configuration space by 
+        Fourier transforming the power spectrum stored in ``self.power``.
+        
+        Parameters
+        ----------
+        s : array_like or float
+            The configuration space separations to compute the correlation monopole
+            at [units :math: `Mpc h^{-1}`].
+        mono_func : callable
+            Function that takes ``self.power`` as its only argument and returns
+            the power spectrum to Fourier transform, defined at ``k = self.power.k``.
+        smoothing_radius : float, optional
+            The smoothing radius R of the Gaussian filter to apply in Fourer
+            space, :math: `exp[-(kR)^2]`. Default is ``smoothing_radius = 0``.
+        kcut : float, optional
+            The wavenumber above which a power law extrapolation is used for 
+            the model in Fourier space. [units :math: `h Mpc^{-1}`]. Default
+            is ``kcut = 0.2``.
+        linear : bool, optional
+            If ``True``, return the linear correlation monopole. 
+            
+        Returns
+        -------
+        xi0 : array_like or float
+            The correlation function monopole defined at s. [units: dimensionless]
         """
         # compute the minimum wavenumber we need
-        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.1
+        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.01
         kmin_model = self.power.k.min() 
         if kmin_model > 0.05: 
             raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
@@ -109,12 +167,13 @@ class Correlation(object):
                 klin = np.logspace(kmin, kmin_model, 500)
                 kmax = kmin_model
             integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
-                                                     klin, self._kaiser_monopole(klin),
+                                                     klin, self.kaiser_monopole(klin),
                                                      kmax=kmax)
             linear_contrib[:] = integrals.evaluate(s)[:]
             
             if linear:
-                return linear_contrib
+                xi0 = linear_contrib
+                return xi0
     
         # now do the contribution from the full model
         model_contrib = np.zeros(len(s))
@@ -125,17 +184,41 @@ class Correlation(object):
                                                  self.k_extrap, self.P_extrap)
         model_contrib[:] = integrals.evaluate(s)[:]
                                                  
-        return linear_contrib + model_contrib
+        xi0 = linear_contrib + model_contrib
+        return xi0
     #end monopole
     
     #---------------------------------------------------------------------------
     def quadrupole(self, s, quad_func, smoothing_radius=0., kcut=0.2, linear=False):
         """
-        Compute the monopole moment of the configuration space correlation 
-        function.
+        Compute the correlation function quadrupole in configuration space by 
+        Fourier transforming the power spectrum stored in ``self.power``.
+        
+        Parameters
+        ----------
+        s : array_like or float
+            The configuration space separations to compute the correlation monopole
+            at [units :math: `Mpc h^{-1}`].
+        quad_func : callable
+            Function that takes ``self.power`` as its only argument and returns
+            the power spectrum to Fourier transform, defined at ``k = self.power.k``.
+        smoothing_radius : float, optional
+            The smoothing radius R of the Gaussian filter to apply in Fourer
+            space, :math: `exp[-(kR)^2]`. Default is ``smoothing_radius = 0``.
+        kcut : float, optional
+            The wavenumber above which a power law extrapolation is used for 
+            the model in Fourier space. [units :math: `h Mpc^{-1}`]. Default
+            is ``kcut = 0.2``.
+        linear : bool, optional
+            If ``True``, return the linear correlation monopole. 
+            
+        Returns
+        -------
+        xi2 : array_like or float
+            The correlation function quadrupole defined at s. [units: dimensionless]
         """
         # compute the minimum wavenumber we need
-        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.1
+        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.01
         kmin_model = self.power.k.min() 
         if kmin_model > 0.05: 
             raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
@@ -151,13 +234,14 @@ class Correlation(object):
                 klin = np.logspace(kmin, kmin_model, 500)
                 kmax = kmin_model
             integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
-                                                     klin, self._kaiser_quadrupole(klin),
+                                                     klin, self.kaiser_quadrupole(klin),
                                                      kmax=kmax)
             linear_contrib[:] = integrals.evaluate(s)[:]
             
             if linear:
-                return -1.*linear_contrib
-    
+                xi2 = -1.*linear_contrib
+                return xi2
+                
         # now do the contribution from the full model
         model_contrib = np.zeros(len(s))
         
@@ -167,7 +251,8 @@ class Correlation(object):
                                                  self.k_extrap, self.P_extrap)
         model_contrib[:] = integrals.evaluate(s)[:]
                                                  
-        return -1.*(linear_contrib + model_contrib)
+        xi2 = -1.*(linear_contrib + model_contrib)
+        return xi2
     #end quadrupole
     
     #---------------------------------------------------------------------------

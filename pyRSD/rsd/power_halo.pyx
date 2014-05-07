@@ -142,7 +142,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self.b2_00
         except:
-            return tools.b2_00(self.b1, self.z)
+            return tools.b2_00(self.b1, self.z)[0]
             #raise ValueError("Must specify quadratic, local bias 'b2_00' attribute.")
             
     @b2_00.setter
@@ -162,7 +162,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         try:
             return self.b2_01
         except:
-            return tools.b2_01(self.b1, self.z)
+            return tools.b2_01(self.b1, self.z)[0]
             #raise ValueError("Must specify quadratic, local bias 'b2_01' attribute.")
             
     @b2_01.setter

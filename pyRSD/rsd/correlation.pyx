@@ -71,7 +71,7 @@ class Correlation(object):
         if k.max() < KMAX:
             
             # compute the power law slope at kcut
-            inds = np.where(k > 0.)
+            inds = np.where(Pspec > 0.)
             if k[inds].max() < kcut:
                 raise ValueError("Power spectrum is negative at k = kcut.")
             logspline = InterpolatedUnivariateSpline(k[inds], np.log(Pspec[inds]))

@@ -8,8 +8,9 @@
  creation date: 05/01/2014
 """
 from pyRSD.rsd cimport _fourier_integrals
-from pyRSD.cosmology import _functionator
+from scipy.interpolate import InterpolatedUnivariateSpline
 import numpy as np
+from scipy.misc import derivative
 
 KMAX = 100.
 
@@ -34,84 +35,53 @@ class Correlation(object):
         """
         self.power = power
     #end __init__
+    #---------------------------------------------------------------------------
+    def _kaiser_monopole(self, k):
+        
+        try:
+            return self._kaiser_mono_spline(k)
+        except:
+            beta = self.power.f/self.power.b1
+            mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            self._kaiser_mono_spline = InterpolatedUnivariateSpline(self.power.integrals.klin, mono_linear)
+            return  self._kaiser_mono_spline(k)
+    #end _kaiser_monopole
+    
+    #---------------------------------------------------------------------------
+    def _kaiser_quadrupole(self, k):
+        
+        try:
+            return self._kaiser_quad_spline(k)
+        except:
+            beta = self.power.f/self.power.b1
+            quad_linear = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+            self._kaiser_quad_spline = InterpolatedUnivariateSpline(self.power.integrals.klin, quad_linear)
+            return  self._kaiser_quad_spline(k)
+    #end _kaiser_quadrupole
     
     #---------------------------------------------------------------------------    
-    def _extrapolate_power(self, Pspec, kmin, kcut, multipole):
+    def _extrapolate_power(self, Pspec, kcut):
         """
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
         """
         k = self.power.k
         
-        # do a linear theory extrapolation at low k, if needed
-        if k.min() > kmin: 
-            
-            # raise an exception if we haven't computed the spectrum down to 
-            # at least k = 0.05
-            if k.min() > 0.05: 
-                raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
-            
-            # check that the linear power spectrum is evaluated at the k we need
-            if self.power.integrals.klin.min() > kmin:
-                raise ValueError("Minimum wavenumber needed for convergence too low.")
-                
-                
-            # compute the linear monopole or quadrupole
-            if multipole == 0:
-                beta = self.power.f/self.power.b1
-                linear_power = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
-            elif multipole == 2:
-                beta = self.power.f/self.power.b1
-                linear_power = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
-                    
-            lowk_interp = _functionator.splineInterpolator(self.power.integrals.klin, linear_power)
-            lowk        = np.logspace(np.log10(kmin), np.log10(k.min()), 200)[:-1]
-            lowP        = lowk_interp(lowk)
-            
-            k     = np.concatenate( (lowk, k) )
-            Pspec = np.concatenate( (lowP, Pspec) )
-        
-        # also, do a power law extrapolation at high k, if needed
+        # do a power law extrapolation at high k, if needed
         if k.max() < KMAX:
             
-            # use the largest k value as the point of extrapolation
-            one_sided = False
-            if kcut is None or kcut > k.max():
-                kcut = k[-1]
-                one_sided = True
-                
-            if not one_sided:
-                kcut_min = 0.9*kcut
-                kcut_max = kcut
-            else:
-                kcut_min = 0.95*kcut
-                kcut_max = 1.05*kcut
-                
-            inds = np.where((k >= kcut_min)*(k <= kcut_max))
-            if len(inds[0]) < 5:
-                raise ValueError("Not enough points to fit power law extrapolation "
-                                 "at high k using k = [%.3f, %.3f]" %(kcut_min, kcut_max))
-                                 
+            # compute the power law slope at kcut
+            logspline = InterpolatedUnivariateSpline(k, np.log(Pspec))
+            slope = derivative(logspline, kcut, dx=1e-3)*kcut
             
-            p_fit = np.polyfit(np.log(k[inds]), np.log(Pspec[inds]), 1)
-            p_gamma, p_amp = p_fit[0], np.exp(p_fit[1])
-            powerlaw_extrap = _functionator.powerLawExtrapolator(gamma=p_gamma, A=p_amp)
+            print "power law slope = ", slope
             
-            print "power law slope = ", p_gamma
+            lowk_spline = InterpolatedUnivariateSpline(k, Pspec)
+            k_total = np.logspace(np.log10(k.min()), np.log10(KMAX), 1000)
             
-            imin = (np.abs(Pspec[inds] - powerlaw_extrap(k[inds]))).argmin()
-            k0   = k[inds][imin]
-            P0   = Pspec[inds][imin]
-            inds = np.where(k < k0)
-            
-            print "joining functions at k = ", k0
-            print "difference in power here = ", abs(P0 - powerlaw_extrap(k0))/P0
-            
-            k_extrap = np.linspace(k0, KMAX, 200)
-            k        = np.concatenate( (k[inds], k_extrap) )
-            Pspec    = np.concatenate( (Pspec[inds], P0*(k_extrap/k0)**p_gamma) )
-        
-        return k, Pspec
+            Pspec_total = (k_total <= kcut)*lowk_spline(k) + \
+                          (k_total > kcut)*lowk_spline(kcut)*(k_total/kcut)**slope
+        return k_total, Pspec_total
     #end _extrapolate_power
     
     #---------------------------------------------------------------------------
@@ -121,52 +91,67 @@ class Correlation(object):
         function.
         """
         # compute the minimum wavenumber we need
-        kmin = 0.1 / np.amax(s) # integral converges for ks < 0.1
+        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.1
+        kmin_model = self.power.k.min() 
+        if kmin_model > 0.05: 
+            raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
         
-        # do the power extrapolation
-        if linear:
-            beta = self.power.f/self.power.b1
-            mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+        # first compute the linear correlation values
+        linear_contrib = np.zeros(len(s))
+        if kmin < kmin_model:
             
-            self.k_extrap = self.power.integrals.klin
-            self.P_extrap = mono_linear
-        else:
-            self.k_extrap, self.P_extrap = self._extrapolate_power(mono_func(self.power), 
-                                                                   kmin, kcut, 0)
+            if linear:
+                klin = self.power.integrals.klin
+                kmax = None
+            else:
+                klin = np.logspace(kmin, kmin_model, 500)
+                kmax = self.power.k.min()
+            integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
+                                                     klin, self._kaiser_monopole(klin),
+                                                     kmax=kmax)
+            linear_contrib[:] = integrals.evaluate(s)[:]
+            
+            if linear:
+                return linear_contrib
+    
+        # now do the contribution from the full model
+        model_contrib = np.zeros(len(s))
         
-        # initialize the fourier integrals class
-        integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
+        # do the high k power extrapolation
+        self.k_extrap, self.P_extrap = self._extrapolate_power(mono_func(self.power), kcut)
+        integrals = _fourier_integrals.Fourier1D(0, kmin_model, smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
+        model_contrib[:] = integrals.evaluate(s)[:]
                                                  
-        return integrals.evaluate(s) 
+        return linear_contrib + model_contrib
     #end monopole
     
     #---------------------------------------------------------------------------
-    def quadrupole(self, s, quad_func, smoothing_radius=0., kcut=0.2, linear=False):
-        """
-        Compute the monopole moment of the configuration space correlation 
-        function.
-        """
-        # compute the minimum wavenumber we need
-        kmin = 0.1 / np.amax(s)
-        
-        # do the extrapolation
-        if linear:
-            beta = self.power.f/self.power.b1
-            quad_linear = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
-            
-            self.k_extrap = self.power.integrals.klin
-            self.P_extrap = quad_linear
-        else:
-            self.k_extrap, self.P_extrap = self._extrapolate_power(quad_func(self.power), 
-                                                                   kmin, kcut, 2)
-
-        # initialize the fourier integrals class
-        integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
-                                                 self.k_extrap, self.P_extrap)
-
-        return -1.*integrals.evaluate(s) 
-    #end quadrupole
+    # def quadrupole(self, s, quad_func, smoothing_radius=0., kcut=0.2, linear=False):
+    #     """
+    #     Compute the monopole moment of the configuration space correlation 
+    #     function.
+    #     """
+    #     # compute the minimum wavenumber we need
+    #     kmin = 0.01 / np.amax(s)
+    #     
+    #     # do the extrapolation
+    #     if linear:
+    #         beta = self.power.f/self.power.b1
+    #         quad_linear = (4./3*beta + 4./7*beta**2) * self.power.b1**2 * self.power.integrals.Plin
+    #         
+    #         self.k_extrap = self.power.integrals.klin
+    #         self.P_extrap = quad_linear
+    #     else:
+    #         self.k_extrap, self.P_extrap = self._extrapolate_power(quad_func(self.power), 
+    #                                                                kmin, kcut, 2)
+    # 
+    #     # initialize the fourier integrals class
+    #     integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
+    #                                              self.k_extrap, self.P_extrap)
+    # 
+    #     return -1.*integrals.evaluate(s) 
+    # #end quadrupole
     
     #---------------------------------------------------------------------------
     

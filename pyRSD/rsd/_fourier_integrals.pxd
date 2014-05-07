@@ -12,8 +12,9 @@ cdef class Fourier1D:
     cdef gsl_integration_workspace *w_cycle
     cdef gsl_integration_qawo_table *integ_table
     cdef public int multipole
-    cdef public double kmin
+    cdef public double kmin, kmax
     cdef public double smoothing_radius
+    cdef public bint qawf
 
     # functions
     cpdef evaluate(self, np.ndarray[double, ndim=1] s)

@@ -37,6 +37,8 @@ cdef double integrand1D(double q,  void * params) nogil:
     # get the spline values for the linear power spectrum
     power = gsl_spline_eval(p.spline, q, p.acc)
     if gsl_isnan(power):
+        with gil:
+            print "HEY", q
         power = 0.
         
     return q*q*exp(-q*q*p.R*p.R)*kern*power
@@ -45,20 +47,30 @@ cdef double integrand1D(double q,  void * params) nogil:
 #-------------------------------------------------------------------------------
 cdef class Fourier1D:
     
-    def __cinit__(self, multipole, kmin, smoothing_radius, k1, P1):
+    def __cinit__(self, multipole, kmin, smoothing_radius, k1, P1, kmax=None):
         cdef np.ndarray xarr, yarr            
         
+        # determine what integrator we will use
+        if kmax != None:
+            self.qawf = False
+            self.kmax = kmax
+        else:
+            self.qawf = True
+            
+        # initialze all the GSL variables here
         self.acc         = NULL
         self.spline      = NULL
         self.integ_table = NULL
-        self.w_cycle     = NULL
         self.w           = NULL
+        
+        if self.qawf:
+            self.w_cycle = NULL
         
         # set up the power spline
         xarr = np.ascontiguousarray(k1, dtype=np.double)
         yarr = np.ascontiguousarray(P1, dtype=np.double)
 
-        # set up the spline
+        # initialize the GSL spline functions
         self.spline = gsl_spline_alloc(gsl_interp_cspline, xarr.shape[0])
         self.acc    = gsl_interp_accel_alloc()
         gsl_spline_init(self.spline, <double*>xarr.data, <double*>yarr.data, xarr.shape[0])
@@ -66,7 +78,10 @@ cdef class Fourier1D:
         # set up the integration workspace and tables
         self.integ_table = gsl_integration_qawo_table_alloc(1., 1., GSL_INTEG_SINE, 1000)
         self.w           = gsl_integration_workspace_alloc(1000)
-        self.w_cycle     = gsl_integration_workspace_alloc(1000)
+        
+        # only need if we are using qawf
+        if self.qawf:
+            self.w_cycle = gsl_integration_workspace_alloc(1000)
         
         # store the integral specifics
         self.kmin             = kmin
@@ -74,21 +89,24 @@ cdef class Fourier1D:
         self.multipole        = multipole 
         
         # turn off the error handler
-        #gsl_set_error_handler_off()
+        gsl_set_error_handler_off()
     #end __cinit__
     
     #---------------------------------------------------------------------------
     def __dealloc__(self):
+        
         if self.spline != NULL:
             gsl_spline_free(self.spline)
         if self.acc != NULL:
             gsl_interp_accel_free(self.acc)
         if self.integ_table != NULL:
             gsl_integration_qawo_table_free(self.integ_table)
-        if self.w_cycle != NULL:
-            gsl_integration_workspace_free(self.w_cycle)
         if self.w != NULL:
             gsl_integration_workspace_free(self.w)
+        
+        if self.qawf:
+            if self.w_cycle != NULL:
+                gsl_integration_workspace_free(self.w_cycle)
     #end __dealloc__        
     
     #---------------------------------------------------------------------------
@@ -96,7 +114,7 @@ cdef class Fourier1D:
         
         cdef double result1 = 0.
         cdef double result2 = 0.
-        cdef double error1, error2
+        cdef double error1, error2, dk
         cdef int N = s.shape[0]
         cdef int i, status
         cdef const char * reason
@@ -110,6 +128,12 @@ cdef class Fourier1D:
         params.R      = self.smoothing_radius
         F.function    = &integrand1D
         
+        # determine the integral domain
+        if self.qawf:
+            dk = 1.
+        else:
+            dk = self.kmax - self.kmin
+        
         # loop over each s value
         for i in xrange(N):
             
@@ -121,17 +145,17 @@ cdef class Fourier1D:
             
             # set up the params to pass and the pointer 
             params.s      = s[i]
-            params.spline = self.spline
-            params.acc    = self.acc
-            params.R      = self.smoothing_radius
-            
-            F.function    = &integrand1D
             F.params      = &params
             
-            gsl_integration_qawo_table_set(self.integ_table, s[i], 1.0, GSL_INTEG_SINE)
+            gsl_integration_qawo_table_set(self.integ_table, s[i], dk, GSL_INTEG_SINE)
             
             # the actual integration
-            status = gsl_integration_qawf(&F, self.kmin, 1e-4, 1000, self.w, self.w_cycle, self.integ_table, &result1, &error1) 
+            if self.qawf:
+                status = gsl_integration_qawf(&F, self.kmin, 1e-4, 1000, self.w, self.w_cycle, self.integ_table, &result1, &error1)
+            else:
+                status = gsl_integration_qawo(&F, self.kmin, 0., 1e-4, 1000, self.w, self.integ_table, &result1, &error1)
+            
+            # check for any errors here
             if status:
                 reason = gsl_strerror(status)
                 print "Warning: %s" %reason
@@ -142,17 +166,17 @@ cdef class Fourier1D:
 
                 # set up the params to pass and the pointer 
                 params.s      = s[i]
-                params.spline = self.spline
-                params.acc    = self.acc
-                params.R      = self.smoothing_radius
-
-                F.function    = &integrand1D
                 F.params      = &params
 
-                gsl_integration_qawo_table_set(self.integ_table, s[i], 1.0, GSL_INTEG_COSINE)
+                gsl_integration_qawo_table_set(self.integ_table, s[i], dk, GSL_INTEG_COSINE)
 
                 # do the cosine integration
-                status = gsl_integration_qawf(&F, self.kmin, 1e-4, 1000, self.w, self.w_cycle, self.integ_table, &result2, &error2)    
+                if self.qawf:
+                    status = gsl_integration_qawf(&F, self.kmin, 1e-4, 1000, self.w, self.w_cycle, self.integ_table, &result2, &error2)
+                else:
+                    status = gsl_integration_qawo(&F, self.kmin, 0., 1e-4, 1000, self.w, self.integ_table, &result2, &error2)
+                
+                # check for any errors
                 if status:
                     reason = gsl_strerror(status)
                     print "Warning: %s" %reason

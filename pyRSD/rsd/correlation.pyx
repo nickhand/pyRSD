@@ -164,7 +164,7 @@ class Correlation(object):
                                                  self.k_extrap, self.P_extrap)
         model_contrib[:] = integrals.evaluate(s)[:]
                                                  
-        return linear_contrib + model_contrib 
+        return -(linear_contrib + model_contrib)
     #end quadrupole
     
     #---------------------------------------------------------------------------

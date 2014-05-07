@@ -153,7 +153,7 @@ class Correlation(object):
             linear_contrib[:] = integrals.evaluate(s)[:]
             
             if linear:
-                return linear_contrib
+                return -1.*linear_contrib
     
         # now do the contribution from the full model
         model_contrib = np.zeros(len(s))
@@ -164,7 +164,7 @@ class Correlation(object):
                                                  self.k_extrap, self.P_extrap)
         model_contrib[:] = integrals.evaluate(s)[:]
                                                  
-        return -(linear_contrib + model_contrib)
+        return -1.*(linear_contrib + model_contrib)
     #end quadrupole
     
     #---------------------------------------------------------------------------

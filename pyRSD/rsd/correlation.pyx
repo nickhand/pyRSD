@@ -95,34 +95,64 @@ class Correlation(object):
     #end _kaiser_quadrupole
     
     #---------------------------------------------------------------------------    
-    def _extrapolate_power(self, Pspec, kcut):
+    def _extrapolate_power(self, Pspec, kcut, kmin, multipole):
         """
         Internal function to do a power law extrapolation of the power spectrum
         at high wavenumbers.
         """
         k = self.power.k
+        kmin_model = k.min()
         
+        # do a linear extrapolation at low k
+        lowk_extrap = False
+        lowk_func = lambda k: k*0.
+        if kmin_model > kmin:
+            
+            if kmin_model > 0.05: 
+                raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
+            
+            lowk_extrap = True
+            if multipole == 0:
+                if hasattr(self.power, 'stochasticity'):
+                    stoch_spline = InterpolatedUnivariateSpline(k, self.power.stochasticity)
+                    lowk_func = lambda k: self.kaiser_monopole(k) + stoch_spline(k)
+                else:
+                    lowk_func = lambda k: self.kaiser_monopole(k)
+            elif multipole == 2:
+                lowk_func = lambda k: self.kaiser_quadrupole(k)
+                
         # do a power law extrapolation at high k, if needed
+        highk_extrap = False
+        kmax_model = k.max()
+        slope = 0.
         if k.max() < KMAX:
             
             # compute the power law slope at kcut
             inds = np.where(Pspec > 0.)
             if k[inds].max() < kcut:
                 raise ValueError("Power spectrum is negative at k = kcut.")
+            
+            highk_extrap = True
+            kmax_model = kcut
             logspline = InterpolatedUnivariateSpline(k[inds], np.log(Pspec[inds]))
             slope = derivative(logspline, kcut, dx=1e-3)*kcut
             
-            # now compute the combined model
-            lowk_spline = InterpolatedUnivariateSpline(k, Pspec)
-            k_total = np.logspace(np.log10(k.min()), np.log10(KMAX), 1000)
-            Pspec_total = (k_total <= kcut)*lowk_spline(k_total) + \
-                          (k_total > kcut)*lowk_spline(kcut)*(k_total/kcut)**slope
+        # now compute the combined model
+        model_spline = InterpolatedUnivariateSpline(k, Pspec)
+        k_total = np.logspace(np.log10(kmin), np.log10(KMAX), 1000)
+        
+        # the three pieces
+        Pspec_low = (lowk_extrap)*(k_total < kmin_model)*lowk_func(k_total)
+        Pspec_middle = (k_total <= kmax_model)*(k_total >= kmin_model)*model_spline(k_total)
+        Pspec_high = (highk_extrap)*(k_total > kmax_model)*model_spline(kcut)*(k_total/kcut)**slope
+        
+        Pspec_total = Pspec_low + Pspec_middle + Pspec_high
                           
         return k_total, Pspec_total
     #end _extrapolate_power
     
     #---------------------------------------------------------------------------
-    def monopole(self, s, mono_func, smoothing_radius=0., kcut=0.2, linear=False):
+    def monopole(self, s, smoothing_radius=0., kcut=0.2, linear=False):
         """
         Compute the correlation function monopole in configuration space by 
         Fourier transforming the power spectrum stored in ``self.power``.
@@ -132,9 +162,6 @@ class Correlation(object):
         s : array_like or float
             The configuration space separations to compute the correlation monopole
             at [units :math: `Mpc h^{-1}`].
-        mono_func : callable
-            Function that takes ``self.power`` as its only argument and returns
-            the power spectrum to Fourier transform, defined at ``k = self.power.k``.
         smoothing_radius : float, optional
             The smoothing radius R of the Gaussian filter to apply in Fourer
             space, :math: `exp[-(kR)^2]`. Default is ``smoothing_radius = 0``.
@@ -151,45 +178,30 @@ class Correlation(object):
             The correlation function monopole defined at s. [units: dimensionless]
         """
         # compute the minimum wavenumber we need
-        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.01
-        kmin_model = self.power.k.min() 
-        if kmin_model > 0.05: 
-            raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
+        # integral should converge for ks < 0.01
+        kmin = 0.01 / np.amax(s)
         
-        # first compute the linear correlation values
-        linear_contrib = np.zeros(len(s))
-        if kmin < kmin_model or linear:
-            
-            if linear:
-                klin = self.power.integrals.klin
-                kmax = None
-            else:
-                klin = np.logspace(kmin, kmin_model, 500)
-                kmax = kmin_model
+        # check if we want the linear correlation
+        if linear:
+            klin = self.power.integrals.klin
             integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
-                                                     klin, self.kaiser_monopole(klin),
-                                                     kmax=kmax)
-            linear_contrib[:] = integrals.evaluate(s)[:]
-            
-            if linear:
-                xi0 = linear_contrib
-                return xi0
+                                                     klin, self.kaiser_monopole(klin))
+            xi0 = integrals.evaluate(s)
+            return xi0
     
-        # now do the contribution from the full model
-        model_contrib = np.zeros(len(s))
-        
         # do the high k power extrapolation
-        self.k_extrap, self.P_extrap = self._extrapolate_power(mono_func(self.power), kcut)
-        integrals = _fourier_integrals.Fourier1D(0, kmin_model, smoothing_radius, 
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.monopole(linear=False), 
+                                                               kcut, kmin, 0)
+        
+        # compute the FT of the model
+        integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
-        model_contrib[:] = integrals.evaluate(s)[:]
-                                                 
-        xi0 = linear_contrib + model_contrib
+        xi0 = integrals.evaluate(s)
         return xi0
     #end monopole
     
     #---------------------------------------------------------------------------
-    def quadrupole(self, s, quad_func, smoothing_radius=0., kcut=0.2, linear=False):
+    def quadrupole(self, s, smoothing_radius=0., kcut=0.2, linear=False):
         """
         Compute the correlation function quadrupole in configuration space by 
         Fourier transforming the power spectrum stored in ``self.power``.
@@ -198,10 +210,7 @@ class Correlation(object):
         ----------
         s : array_like or float
             The configuration space separations to compute the correlation monopole
-            at [units :math: `Mpc h^{-1}`].
-        quad_func : callable
-            Function that takes ``self.power`` as its only argument and returns
-            the power spectrum to Fourier transform, defined at ``k = self.power.k``.
+            at [units :math: `Mpc h^{-1}`]..
         smoothing_radius : float, optional
             The smoothing radius R of the Gaussian filter to apply in Fourer
             space, :math: `exp[-(kR)^2]`. Default is ``smoothing_radius = 0``.
@@ -218,40 +227,25 @@ class Correlation(object):
             The correlation function quadrupole defined at s. [units: dimensionless]
         """
         # compute the minimum wavenumber we need
-        kmin = 0.01 / np.amax(s) # integral converges for ks < 0.01
-        kmin_model = self.power.k.min() 
-        if kmin_model > 0.05: 
-            raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
+        # integral should converge for ks < 0.01
+        kmin = 0.01 / np.amax(s)
         
-        # first compute the linear correlation values
-        linear_contrib = np.zeros(len(s))
-        if kmin < kmin_model or linear:
-            
-            if linear:
-                klin = self.power.integrals.klin
-                kmax = None
-            else:
-                klin = np.logspace(kmin, kmin_model, 500)
-                kmax = kmin_model
-            integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
-                                                     klin, self.kaiser_quadrupole(klin),
-                                                     kmax=kmax)
-            linear_contrib[:] = integrals.evaluate(s)[:]
-            
-            if linear:
-                xi2 = -1.*linear_contrib
-                return xi2
-                
-        # now do the contribution from the full model
-        model_contrib = np.zeros(len(s))
-        
+        # check if we want the linear correlation
+        if linear:
+            klin = self.power.integrals.klin
+            integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
+                                                     klin, self.kaiser_quadrupole(klin))
+            xi2 = integrals.evaluate(s)
+            return xi2
+    
         # do the high k power extrapolation
-        self.k_extrap, self.P_extrap = self._extrapolate_power(quad_func(self.power), kcut)
-        integrals = _fourier_integrals.Fourier1D(2, kmin_model, smoothing_radius, 
+        self.k_extrap, self.P_extrap = self._extrapolate_power(self.power.quadrupole(linear=False), 
+                                                               kcut, kmin, 2)
+        
+        # compute the FT of the model
+        integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
-        model_contrib[:] = integrals.evaluate(s)[:]
-                                                 
-        xi2 = -1.*(linear_contrib + model_contrib)
+        xi2 = integrals.evaluate(s)
         return xi2
     #end quadrupole
     

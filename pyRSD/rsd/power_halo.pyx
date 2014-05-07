@@ -570,33 +570,6 @@ class HaloSpectrum(power_dm.DMSpectrum):
         """
         return self.P12_hh.total.mu6 + 1./8*self.f**4 * self.integrals.I('f32', 0)
     #---------------------------------------------------------------------------
-    def monopole(self, linear=False, include_stoch=False):
-        """
-        The monopole moment of the power spectrum. Include mu terms up to 
-        mu**max_mu.
-        """
-        if linear:
-            beta = self.f/self.b1
-            return (1. + 2./3*beta + 1/5*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
-        else:
-            
-            # determine if we want to include the stochasticity
-            if include_stoch:
-                P_mu0 = self.P00_hh.total.mu0
-            else:
-                P_mu0 = self.P00_hh_no_stoch.total.mu0
-                
-            if self.max_mu == 0:
-                return P_mu0
-            elif self.max_mu == 2:
-                return P_mu0 + (1./3)*self.P_mu2
-            elif self.max_mu == 4:
-                return P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4
-            elif self.max_mu == 6:
-                return P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4 + (1./7)*self.P_mu6
-            elif self.max_mu == 8:
-                raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
-    #---------------------------------------------------------------------------
 #enclass HaloPowerSpectrum       
 
         

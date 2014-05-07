@@ -79,7 +79,7 @@ class Correlation(object):
             lowk_spline = InterpolatedUnivariateSpline(k, Pspec)
             k_total = np.logspace(np.log10(k.min()), np.log10(KMAX), 1000)
             
-            Pspec_total = (k_total <= kcut)*lowk_spline(k) + \
+            Pspec_total = (k_total <= kcut)*lowk_spline(k_total) + \
                           (k_total > kcut)*lowk_spline(kcut)*(k_total/kcut)**slope
         return k_total, Pspec_total
     #end _extrapolate_power

@@ -37,8 +37,6 @@ cdef double integrand1D(double q,  void * params) nogil:
     # get the spline values for the linear power spectrum
     power = gsl_spline_eval(p.spline, q, p.acc)
     if gsl_isnan(power):
-        with gil:
-            print "HEY", q
         power = 0.
         
     return q*q*exp(-q*q*p.R*p.R)*kern*power

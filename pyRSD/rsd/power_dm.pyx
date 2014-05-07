@@ -134,7 +134,10 @@ class DMSpectrum(object):
                 print "WARNING: %s is not a valid parameter for the %s class" %(str(key), self.__class__.__name__)
             else:
                 if np.any(getattr(self, key) != val):
-                    setattr(self, '_' + key, val)
+                    try:
+                        setattr(self, key, val)
+                    except:
+                        setattr(self, '_' + key, val)
                 
             # keywords affecting the transfer function
             if key in ['transfer_fit', 'camb_kwargs']:

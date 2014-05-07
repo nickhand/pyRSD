@@ -132,6 +132,10 @@ class HaloSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in HaloSpectrum._power_atts:
             if a in self.__dict__: del self.__dict__[a]
+            
+        # also delete the other biases, that could depend on b1
+        for a in ['_b2_00', '_b2_01', '_bs']:
+            if a in self.__dict__: del self.__dict__[a]
     
     #---------------------------------------------------------------------------
     @property
@@ -140,7 +144,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         The quadratic, local bias used for the P00_hh term.
         """
         try:
-            return self.b2_00
+            return self._b2_00
         except:
             return tools.b2_00(self.b1, self.z)[0]
             #raise ValueError("Must specify quadratic, local bias 'b2_00' attribute.")
@@ -160,7 +164,7 @@ class HaloSpectrum(power_dm.DMSpectrum):
         The quadratic, local bias used for the P01_hh term.
         """
         try:
-            return self.b2_01
+            return self._b2_01
         except:
             return tools.b2_01(self.b1, self.z)[0]
             #raise ValueError("Must specify quadratic, local bias 'b2_01' attribute.")

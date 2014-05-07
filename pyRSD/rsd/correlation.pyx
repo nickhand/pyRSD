@@ -113,6 +113,8 @@ class Correlation(object):
             
             lowk_extrap = True
             if multipole == 0:
+                
+                # add in the stochasticity if it exists
                 if hasattr(self.power, 'stochasticity'):
                     stoch_spline = InterpolatedUnivariateSpline(k, self.power.stochasticity)
                     lowk_func = lambda k: self.kaiser_monopole(k) + stoch_spline(k)
@@ -233,9 +235,9 @@ class Correlation(object):
         # check if we want the linear correlation
         if linear:
             klin = self.power.integrals.klin
-            integrals = _fourier_integrals.Fourier1D(0, kmin, smoothing_radius, 
+            integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
                                                      klin, self.kaiser_quadrupole(klin))
-            xi2 = integrals.evaluate(s)
+            xi2 = -1.*integrals.evaluate(s)
             return xi2
     
         # do the high k power extrapolation
@@ -245,7 +247,7 @@ class Correlation(object):
         # compute the FT of the model
         integrals = _fourier_integrals.Fourier1D(2, kmin, smoothing_radius, 
                                                  self.k_extrap, self.P_extrap)
-        xi2 = integrals.evaluate(s)
+        xi2 = -1.*integrals.evaluate(s)
         return xi2
     #end quadrupole
     

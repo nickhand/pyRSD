@@ -20,7 +20,7 @@ def configuration(parent_package='', top_path=None):
     
     
     cython(['power_dm.pyx'], working_path=base_path)
-    cython(['power_halo.pyx'], working_path=base_path)
+    cython(['power_biased.pyx'], working_path=base_path)
     cython(['correlation.pyx'], working_path=base_path)
 
     config.add_extension('_integral_base', sources=['_integral_base.c'],
@@ -50,7 +50,7 @@ def configuration(parent_package='', top_path=None):
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])
 
-    config.add_extension('power_halo', sources=['power_halo.c'],
+    config.add_extension('power_biased', sources=['power_biased.c'],
                          include_dirs=[get_numpy_include_dirs()],
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])

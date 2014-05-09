@@ -362,9 +362,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._P02_ss
         except:
             # first make sure biases are available
-            b1    = self.b1
-            b2_00 = self.b2_00
-            bs    = self.bs
+            b1, b1_bar = self.b1, self.b1_bar
+            b2_00, b2_00_bar = self.b2_00, self.b2_00_bar
+            bs, bs_bar = self.bs, self.bs_bar
             
             self._P02_ss = power_dm.PowerTerm()
             
@@ -375,9 +375,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 K20_a = self.integrals.I('k20_a', 0)
                 K20s_a = self.integrals.I('k20s_a', 0)
                 
-                term1_mu2 = b1*self.P02.no_velocity.mu2            
+                term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
                 term2_mu2 =  -(self.f*self.D*self.k*self.sigma_lin)**2 * self.P00_ss_no_stoch.total.mu0
-                term3_mu2 = self.f**2 * (b2_00*K20_a + bs*K20s_a)
+                term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
                 self._P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
                 
                 # do mu^4 terms?
@@ -387,8 +387,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     K20_b = self.integrals.I('k20_b', 0)
                     K20s_b = self.integrals.I('k20s_b', 0)
                     
-                    term1_mu4 = b1*self.P02.no_velocity.mu4
-                    term2_mu4 = self.f**2 * (b2_00*K20_b + bs*K20s_b)
+                    term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
+                    term2_mu4 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
                     self._P02_ss.total.mu4 = term1_mu4 + term2_mu4
             return self._P02_ss
     #---------------------------------------------------------------------------
@@ -405,7 +405,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._P11_ss
         except:
             # first make sure linear bias is available
-            b1 = self.b1
+            b1, b1_bar = self.b1, self.b1_bar
             
             self._P11_ss = power_dm.PowerTerm()
  
@@ -415,7 +415,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 # this is C11 at 2-loop order
                 I1 = self.integrals.I('h01', 1, ('dd', 'vv'))
                 I2 = self.integrals.I('h03', 1, ('dv', 'dv'))
-                self._P11_ss.total.mu2 = (b1**2 - 1.)*self.f**2 * (I1 + I2)
+                self._P11_ss.total.mu2 = (b1*b1_bar - 1.)*self.f**2 * (I1 + I2)
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4:
@@ -429,12 +429,12 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     term1_mu4 = self.P11.total.mu4
                     
                     # second term is B11 coming from P11
-                    term2_mu4 = 2*(b1-1)*self.f**2 * (6.*self.k**2*Plin*J10 + 2*I22)
+                    term2_mu4 = (b1 + b1_bar - 2.)*self.f**2 * (6.*self.k**2*Plin*J10 + 2*I22)
                     
                     # third term is mu^4 part of C11 (at 2-loop)
                     I1 = self.integrals.I('h02', 1, ('dd', 'vv'))
                     I2 = self.integrals.I('h04', 1, ('dv', 'dv'))
-                    term3_mu4 =  (b1**2 - 1)*self.f**2 * (I1 + I2)
+                    term3_mu4 =  (b1*b1_bar - 1)*self.f**2 * (I1 + I2)
 
                     self._P11_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
             return self._P11_ss
@@ -466,7 +466,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._P12_ss
         except:
             # first make sure linear bias is available
-            b1 = self.b1
+            b1, b1_bar = self.b1, self.b1_bar
             
             self._P12_ss = power_dm.PowerTerm()
             
@@ -479,7 +479,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 I03 = self.integrals.I('f03', 0)
                 J02 = self.integrals.J('g02')
                 
-                term1_mu4 = self.f**3 * (I12 - b1*I03 + 2*self.k**2 * J02*Plin)
+                term1_mu4 = self.f**3 * (I12 - 0.5*(b1 + b1_bar)*I03 + 2*self.k**2 * J02*Plin)
                 term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P01_ss.total.mu2
                 self._P12_ss.total.mu4 = term1_mu4 + term2_mu4
                 
@@ -491,7 +491,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     I30 = self.integrals.I('f30', 0)
                     J20 = self.integrals.J('g20')
                     
-                    self._P12_ss.total.mu6 = self.f**3 * (I21 - b1*I30 + 2*self.k**2*J20*Plin)
+                    self._P12_ss.total.mu6 = self.f**3 * (I21 - 0.5*(b1+b1_bar)*I30 + 2*self.k**2*J20*Plin)
             
             return self._P12_ss
     #---------------------------------------------------------------------------
@@ -533,7 +533,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._P22_ss
         except:
             # first make sure linear bias is available
-            b1 = self.b1
+            b1, b1_bar = self.b1, self.b1_bar
             
             self._P22_ss = power_dm.PowerTerm()
             
@@ -544,10 +544,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 term1 = self.P22.no_velocity.mu4
                 
                 # add convolution to P22bar
-                term2 = 0.5*(self.f*self.k)**4 * (b1**2 * self.Pdd) * self.integrals.sigmasq_k**2
+                term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.integrals.sigmasq_k**2
                 
                 # b1 * P02_bar
-                term3 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu2)
+                term3 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
                 
                 # sigma^4 x P00_ss
                 term4 = 0.25*(self.k*self.f*self.D*self.sigma_lin)**4 * self.P00_ss_no_stoch.total.mu0
@@ -558,7 +558,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 if self.max_mu >= 6:
                     
                     term1 = self.P22.no_velocity.mu6
-                    term2 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * (b1*self.P02.no_velocity.mu4)
+                    term2 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
                     self._P22_ss.total.mu6 = term1 + term2
                 
                         
@@ -574,7 +574,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._P04_ss
         except:
             # first make sure linear bias is available
-            b1 = self.b1
+            b1, b1_bar = self.b1, self.b1_bar
             
             self._P04_ss = power_dm.PowerTerm()
             
@@ -582,7 +582,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 4:
                 
                 # contribution from P02[mu^2]
-                term1 = -0.5*b1*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu2
+                term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu2
                 
                 # contribution here from P00_ss * vel^4
                 A = (1./12)*(self.f*self.D*self.k)**4 * self.P00_ss_no_stoch.total.mu0
@@ -593,7 +593,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
                 # do mu^6 terms?
                 if self.max_mu >= 6:
-                    self._P04_ss.total.mu6 = -0.5*b1*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu4
+                    self._P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu4
                 
             return self._P04_ss
     #---------------------------------------------------------------------------

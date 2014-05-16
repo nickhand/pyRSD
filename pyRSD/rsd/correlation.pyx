@@ -68,7 +68,7 @@ class Correlation(object):
             return self._kaiser_mono_spline(k)
         except:
             beta = self.power.f/self.b1
-            mono_linear = (1. + 2./3*beta + 1/5*beta**2) * self.b1**2 * self.power.integrals.Plin
+            mono_linear = (1. + 2./3*beta + 1./5*beta**2) * self.b1**2 * self.power.integrals.Plin
             self._kaiser_mono_spline = InterpolatedUnivariateSpline(self.power.integrals.klin, mono_linear)
             return  self._kaiser_mono_spline(k)
     #end _kaiser_monopole

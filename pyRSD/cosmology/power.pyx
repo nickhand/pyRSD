@@ -27,7 +27,7 @@ class Power(object):
     def __init__(self, k=np.logspace(-3, 0, 200), 
                        z=0., 
                        transfer_fit='CAMB', 
-                       cosmo={'default':"Planck1_lens_WP_highL", 'force_flat': True},
+                       cosmo={'default':"Planck1_lens_WP_highL", 'flat': True},
                        initial_condition=1, 
                        l_accuracy_boost=1, 
                        accuracy_boost=1,

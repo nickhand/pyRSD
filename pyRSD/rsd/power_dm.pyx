@@ -23,11 +23,11 @@ class DMSpectrum(object):
     def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),
                        z=0., 
                        num_threads=1, 
-                       cosmo={'default':"Planck1_lens_WP_highL", 'force_flat': True}, 
+                       cosmo={'default':"Planck1_lens_WP_highL", 'flat': True}, 
                        mass_function_kwargs={'mf_fit' : 'Tinker'}, 
                        bias_model='Tinker',
                        include_2loop=False,
-                       transfer_fit="EH",
+                       transfer_fit="CAMB",
                        camb_kwargs={},
                        max_mu=4):
         """

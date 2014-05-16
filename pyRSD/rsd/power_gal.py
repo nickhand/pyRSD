@@ -394,7 +394,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
     #---------------------------------------------------------------------------
-    def Pgg(self, mu):
+    def Pgal(self, mu):
         """
         The total redshift-space galaxy power spectrum, combining the individual
         terms

@@ -223,7 +223,7 @@ def P01_mu2_z_0_509():
     """
     The P01 dark matter term with mu^2 angular dependence at z = 0.509
     """
-    return load("pkmu_P01_mu2_z_0.509.dat")
+    return load("dark_matter/pkmu_P01_mu2_z_0.509.dat")
     
 def P01_mu2_z_0_989():
     """

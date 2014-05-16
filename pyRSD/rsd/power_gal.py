@@ -7,6 +7,7 @@
  creation date: 05/09/2014
 """
 from . import power_biased
+import numpy as np
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     

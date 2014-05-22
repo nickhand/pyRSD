@@ -27,9 +27,9 @@ __all__ = ['load',
            'PcAs_z_0_509',
            'PsAsA_z_0_509',
            'PsAsB_z_0_509', 
-           'PcAs_sat_replaced_z_0_509',
-           'PsAsA_sat_replaced_z_0_509', 
-           'PsAsB_sat_replaced_z_0_509',
+           'PcAs_no_fog_z_0_509',
+           'PsAsA_no_fog_z_0_509', 
+           'PsAsB_no_fog_z_0_509',
            'Pgg_z_0_509']
 
 #-------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ def PsAsB_z_0_509():
     """
     return load("galaxy/2-halo/pkmu_s_r_i_j_00020_30000_z005_1-3_02-13aaan")
 #-------------------------------------------------------------------------------
-def PcAs_sat_replaced_z_0_509():
+def PcAs_no_fog_z_0_509():
     """
     The cross spectrum of centrals with no sats and satellites at z = 0.509,
     with satellite positions/velocities replaced by those of the halo. 
@@ -141,7 +141,7 @@ def PcAs_sat_replaced_z_0_509():
     """
     return load("galaxy/2-halo/pkmu_s_f_v_00020_30000_z005_1-3_02-13aaan")
 #-------------------------------------------------------------------------------
-def PsAsA_sat_replaced_z_0_509():
+def PsAsA_no_fog_z_0_509():
     """
     The auto spectrum of satellites with no sats in the same halo at z = 0.509,
     with satellite positions/velocities replaced by those of the halo.  
@@ -158,7 +158,7 @@ def PsAsA_sat_replaced_z_0_509():
     """
     return load("galaxy/2-halo/pkmu_s_w_w_00020_30000_z005_1-3_02-13aaan")
 #-------------------------------------------------------------------------------
-def PsAsB_sat_replaced_z_0_509():
+def PsAsB_no_fog_z_0_509():
     """
     The cross spectrum of satellites with and without sats in the same halo 
     at z = 0.509, with satellite positions/velocities replaced by those of 

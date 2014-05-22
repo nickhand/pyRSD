@@ -378,7 +378,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.one_halo_model(self.k, *self.one_halo_sBsB_args)
     #---------------------------------------------------------------------------
-    def Pss(self, mu):
+    def Pgal_ss(self, mu):
         """
         The total satellite auto spectrum.
         """
@@ -387,7 +387,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
                     2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
                     self.fsB**2 * self.Pgal_sBsB(mu) 
     #---------------------------------------------------------------------------
-    def Pcs(self, mu):
+    def Pgal_cs(self, mu):
         """
         The total central-satellite cross spectrum.
         """
@@ -403,5 +403,5 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         fcs = 2.*self.fs*(1 - self.fs)
         fcc = (1. - self.fs)**2
         
-        return fcc * self.Pgal_cc(mu) + fcs * self.Pcs(mu) + fss * self.Pss(mu)
+        return fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
     #---------------------------------------------------------------------------

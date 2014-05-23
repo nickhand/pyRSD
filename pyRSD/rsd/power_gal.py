@@ -217,12 +217,20 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     def sigma_sBsB_2h(self, val):
         self._sigma_sBsB_2h = val
     #---------------------------------------------------------------------------
-    def fog_damping(self, sigma, mu):
+    @property
+    def fog_model(self):
         """
-        Helper function to return the exponential FOG damping term. Sigma here
-        should in units of h/Mpc. 
+        Function to return the FOG suppression factor, which reads in a 
+        single variable `x = k \mu \sigma`
         """
-        return np.exp( -0.5 * (self.k * mu * sigma)**2 )
+        try:
+            return self._fog_damping
+        except AttributeError:
+            raise ValueError("Must specify the FOG damping model 'fog_model'")
+    
+    @fog_model.setter
+    def fog_model(self, val):
+        self._fog_model = val
     #---------------------------------------------------------------------------
     # 1-HALO ATTRIBUTES
     #---------------------------------------------------------------------------

@@ -224,7 +224,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         single variable `x = k \mu \sigma`
         """
         try:
-            return self._fog_damping
+            return self._fog_model
         except AttributeError:
             raise ValueError("Must specify the FOG damping model 'fog_model'")
     
@@ -304,7 +304,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_s
         
         # the FOG damping
-        G = self.fog_damping(self.sigma_cs, mu)
+        x = self.sigma_cs * mu * self.k
+        G = self.fog_model(x)
         
         # now return the power spectrum here
         return G*self.power(mu)
@@ -319,7 +320,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sA
         
         # the FOG damping
-        G = self.fog_damping(self.sigma_sAsA, mu)
+        x = self.sigma_sAsA * mu * self.k
+        G = self.fog_model(x)
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
@@ -334,7 +336,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sB
         
         # the FOG damping
-        G = self.fog_damping(self.sigma_sAsB, mu)
+        x = self.sigma_sAsB * mu * self.k
+        G = self.fog_model(x)
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
@@ -349,7 +352,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_s
         
         # the FOG damping
-        G = self.fog_damping(self.sigma_cs, mu)
+        x = self.sigma_cs * mu * self.k
+        G = self.fog_model(x)
         
         # now return the power spectrum here
         return G * (self.power(mu) + self.Pgal_cBs_1h)
@@ -372,8 +376,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sB
         
         # the FOG damping terms
-        G_1h = self.fog_damping(self.sigma_sBsB_1h, mu)
-        G_2h = self.fog_damping(self.sigma_sBsB_2h, mu)
+        x = self.sigma_sBsB_1h * mu * self.k
+        G_1h = self.fog_model(x)
+        
+        x = self.sigma_sBsB_2h * mu * self.k
+        G_2h = self.fog_model(x)
         
         # now return the power spectrum here
         return G_2h**2 * self.power(mu) + G_1h**2 * self.Pgal_sBsB_1h

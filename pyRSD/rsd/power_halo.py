@@ -43,7 +43,7 @@ class HaloSpectrum(power_biased.BiasedSpectrum):
         """
         The quadratic, local bias used for the P01_ss term.
         """
-        return self._b2_01
+        return self.b2_01
             
     #---------------------------------------------------------------------------
     @property

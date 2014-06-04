@@ -53,7 +53,7 @@ lambda_z2 = {'4.64': (-16915.5, -3215.98),
              '2.32': (-427.779, -41.3676)}              
 lambdas = {'0.000': lambda_z0, '0.509': lambda_z1, '0.989': lambda_z2}
 
-def stochasticity(bias, z):
+def stochasticity(bias, z, return_nan=False):
     """
     Given a linear bias and redshift, return the stochasticity based on 
     the mean of simulation results.
@@ -61,8 +61,17 @@ def stochasticity(bias, z):
     # check redshift value
     z_keys_str = sorted(lambdas.keys())
     z_keys = np.array(z_keys_str, dtype=float)
-    if z > np.amax(z_keys): raise ValueError("Cannot determine stochasticity for z > %s" %np.amax(z_keys))
-    if z < np.amin(z_keys): raise ValueError("Cannot determine stochasticity for z < %s" %np.amin(z_keys))
+    if z > np.amax(z_keys): 
+        if return_nan: 
+            return (np.nan, np.nan)
+        else:
+            raise ValueError("Cannot determine stochasticity for z > %s" %np.amax(z_keys))
+        
+    if z < np.amin(z_keys): 
+        if return_nan: 
+            return (np.nan, np.nan)
+        else:
+            raise ValueError("Cannot determine stochasticity for z < %s" %np.amin(z_keys))
 
     # determine the z indices
     redshift_lambdas = {}
@@ -89,8 +98,16 @@ def stochasticity(bias, z):
         
         bias_keys_str = sorted(z_lambda.keys())
         bias_keys = np.array(bias_keys_str, dtype=float)
-        if bias > np.amax(bias_keys): raise ValueError("Cannot determine stochasticity for b > %s" %np.amax(bias_keys))
-        if bias < np.amin(bias_keys): raise ValueError("Cannot determine stochasticity for b < %s" %np.amin(bias_keys))
+        if bias > np.amax(bias_keys): 
+            if return_nan: 
+                return (np.nan, np.nan)
+            else:
+                raise ValueError("Cannot determine stochasticity for b > %s" %np.amax(bias_keys))
+        if bias < np.amin(bias_keys): 
+            if return_nan: 
+                return (np.nan, np.nan)
+            else:
+                raise ValueError("Cannot determine stochasticity for b < %s" %np.amin(bias_keys))
         
         
         if bias in bias_keys:

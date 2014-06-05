@@ -193,10 +193,10 @@ class Integrals(object):
         auto spectra Pvv.
         """
         # compute P22_bar first (using linear power spectra)
-        I23_1, I32_1, I33_1 = self.P22bar
+        I23_1, I32_1 = self.P22bar
         
         # use approximation of ignoring I33 b/c it's slow
-        I1 = I23_1 + (2./3)*I32_1 + (1./5)*I33_1
+        I1 = I23_1 + (2./3)*I32_1 #+ (1./5)*I33_1
         power_norm = self._power.power_norm/NORM_FACTOR
         try:
             kurtosis = self.__kurtosis
@@ -534,13 +534,13 @@ class Integrals(object):
             self.__P22bar1_mu2 = I2 = self.I_lin.evaluate(self.k1loop) 
             
         # don't compute this b/c it's super slow
-        try:
-            I3 = self.__P22bar1_mu4
-        except:
-            self.I_lin.kernel_name = 'f33'
-            self.__P22bar1_mu4 = I3 = self.I_lin.evaluate(self.k1loop)
+        # try:
+        #     I3 = self.__P22bar1_mu4
+        # except:
+        #     self.I_lin.kernel_name = 'f33'
+        #     self.__P22bar1_mu4 = I3 = self.I_lin.evaluate(self.k1loop)
             
-        return I1, I2, I3
+        return I1, I2 #, I3
     #---------------------------------------------------------------------------
     @property
     def K00(self):

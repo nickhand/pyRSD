@@ -282,7 +282,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
     #---------------------------------------------------------------------------
-    def Pgal_cc(self, mu):
+    def Pgal_cc(self, mu, mu_hi=None):
         """
         The central galaxy auto spectrum, assuming no FOG here. This is a 2-halo
         term only.
@@ -292,9 +292,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_c
         
         # now return the power spectrum here
-        return self.power(mu)
+        return self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
-    def Pgal_cAs(self, mu):
+    def Pgal_cAs(self, mu, mu_hi=None):
         """
         The cross spectrum between centrals with no satellites and satellites. 
         This is a 2-halo term only. 
@@ -308,9 +308,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G*self.power(mu)
+        return G*self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
-    def Pgal_sAsA(self, mu):
+    def Pgal_sAsA(self, mu, mu_hi=None):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
         is a 2-halo term only.
@@ -324,9 +324,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G**2 * self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
-    def Pgal_sAsB(self, mu):
+    def Pgal_sAsB(self, mu, mu_hi=None):
         """
         The cross spectrum of satellites with and without no other sats in 
         same halo. This is a 2-halo term only.
@@ -340,9 +340,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G**2 * self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
-    def Pgal_cBs(self, mu):
+    def Pgal_cBs(self, mu, mu_hi=None):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
         This has both a 1-halo and 2-halo term only.
@@ -356,7 +356,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G * (self.power(mu) + self.Pgal_cBs_1h)
+        return G * (self.power(mu, mu_hi) + self.Pgal_cBs_1h)
     #---------------------------------------------------------------------------
     @property
     def Pgal_cBs_1h(self):
@@ -366,7 +366,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.one_halo_model(self.k, *self.one_halo_cBs_args)
     #---------------------------------------------------------------------------
-    def Pgal_sBsB(self, mu):
+    def Pgal_sBsB(self, mu, mu_hi=None):
         """
         The auto spectrum of satellits with other sats in the same halo.
         This has both a 1-halo and 2-halo term only.
@@ -383,7 +383,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G_2h = self.fog_model(x)
         
         # now return the power spectrum here
-        return G_2h**2 * self.power(mu) + G_1h**2 * self.Pgal_sBsB_1h
+        return G_2h**2 * self.power(mu, mu_hi) + G_1h**2 * self.Pgal_sBsB_1h
     #---------------------------------------------------------------------------
     @property
     def Pgal_sBsB_1h(self):
@@ -393,23 +393,23 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.one_halo_model(self.k, *self.one_halo_sBsB_args)
     #---------------------------------------------------------------------------
-    def Pgal_ss(self, mu):
+    def Pgal_ss(self, mu, mu_hi=None):
         """
         The total satellite auto spectrum.
         """
         
-        return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
-                    2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
-                    self.fsB**2 * self.Pgal_sBsB(mu) 
+        return (1. - self.fsB)**2 * self.Pgal_sAsA(mu, mu_hi) + \
+                    2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu, mu_hi) + \
+                    self.fsB**2 * self.Pgal_sBsB(mu, mu_hi) 
     #---------------------------------------------------------------------------
-    def Pgal_cs(self, mu):
+    def Pgal_cs(self, mu, mu_hi=None):
         """
         The total central-satellite cross spectrum.
         """
         
-        return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
+        return (1. - self.fcB)*self.Pgal_cAs(mu, mu_hi) + self.fcB*self.Pgal_cBs(mu, mu_hi) 
     #---------------------------------------------------------------------------
-    def Pgal(self, mu):
+    def Pgal(self, mu, mu_hi=None):
         """
         The total redshift-space galaxy power spectrum, combining the individual
         terms
@@ -418,5 +418,5 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         fcs = 2.*self.fs*(1 - self.fs)
         fcc = (1. - self.fs)**2
         
-        return fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
+        return fcc * self.Pgal_cc(mu, mu_hi) + fcs * self.Pgal_cs(mu, mu_hi) + fss * self.Pgal_ss(mu, mu_hi)
     #---------------------------------------------------------------------------

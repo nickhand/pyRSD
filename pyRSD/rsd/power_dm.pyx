@@ -13,6 +13,7 @@ from ..cosmology.cosmo import Cosmology
 from . import _pt_integrals
  
 import scipy.interpolate as interp
+from scipy.integrate import quad
 import numpy as np
 
 class DMSpectrum(object):
@@ -966,22 +967,47 @@ class DMSpectrum(object):
                         
             return self._P04
     #---------------------------------------------------------------------------
-    def power(self, mu):
+    def power(self, mu, mu_hi=None):
         """
         Return the redshift space power spectrum at the specified value of mu, 
         including terms up to mu**max_mu
         """
+        if mu_hi is not None:
+            assert(mu_hi > mu)
+        
         if self.max_mu == 0:
             return self.P_mu0
+            
         elif self.max_mu == 2:
-            return self.P_mu0 + mu**2 * self.P_mu2
+            mu2 = mu**2
+            if mu_hi is not None:
+                mu2 = self._mu_avg(mu, mu_hi, 2)
+            return self.P_mu0 + mu2 * self.P_mu2
+            
         elif self.max_mu == 4:
-            return self.P_mu0 + mu**2 * self.P_mu2 + mu**4 * self.P_mu4
+            mu2, mu4 = mu**2, mu**4
+            if mu_hi is not None:
+                mu2 = self._mu_avg(mu, mu_hi, 2)
+                mu4 = self._mu_avg(mu, mu_hi, 4)
+            return self.P_mu0 + mu2 * self.P_mu2 + mu4 * self.P_mu4
+            
         elif self.max_mu == 6:
-            return self.P_mu0 + mu**2 * self.P_mu2 + mu**4 * self.P_mu4 + mu**6 * self.P_mu6 
+            mu2, mu4, mu6 = mu**2, mu**4, mu**6
+            if mu_hi is not None:
+                mu2 = self._mu_avg(mu, mu_hi, 2)
+                mu4 = self._mu_avg(mu, mu_hi, 4)
+                mu4 = self._mu_avg(mu, mu_hi, 6)
+            return self.P_mu0 + mu2 * self.P_mu2 + mu4 * self.P_mu4 + mu6 * self.P_mu6 
+            
         elif self.max_mu == 8:
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
-    #end monopole
+    #end power
+    #---------------------------------------------------------------------------
+    def _mu_avg(self, mu_lo, mu_hi, power):
+        """
+        Compute the mean value of ``mu**power`` over the specified mu range
+        """
+        return quad(lambda x: x**power, mu_lo, mu_hi)[0] / (mu_hi - mu_lo)
     #---------------------------------------------------------------------------
     def monopole(self, linear=False):
         """

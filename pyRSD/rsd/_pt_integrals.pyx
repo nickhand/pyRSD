@@ -225,7 +225,7 @@ class Integrals(object):
             sigmasq_k = []
             # evaluate at any k
             for k in self.k_eval:
-                J.kmax = 0.5*k # integrate up to 0.5*k
+                J.kmax = 0.7*k # integrate up to 0.7*k
                 sigmasq_k.append(J.evaluate(np.array([k]))[0])
             self.__sigmasq_k = 1./3*np.array(sigmasq_k)
             

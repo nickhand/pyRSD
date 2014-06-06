@@ -585,7 +585,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu2
                 
                 # contribution here from P00_ss * vel^4
-                A = (1./12)*(self.f*self.D*self.k)**4 * self.P00_ss_no_stoch.total.mu0
+                A = (1./12)*(self.f*self.D*self.k)**4 * (b1*b1_bar)*self.Pdd #self.P00_ss_no_stoch.total.mu0
                 vel_kurtosis = self.integrals.vel_kurtosis / self.D**4
                 term2 = A*(3.*self.sigma_lin**4 + vel_kurtosis)
                 

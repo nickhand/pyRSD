@@ -221,7 +221,8 @@ cdef double h03(double r, double x) nogil:
     return -0.5*(1 - x*x) / (1 + r*r - 2*r*x)
 
 cdef double h04(double r, double x) nogil:
-    return 0.5*(r*r - 3*x*x*r*r + 2*r*x) / (r*r*(1 + r*r - 2*r*x))
+    return 0.5*(r*x + 0.5*r*r*(1. - 3*x*x))/(1. + r*r - 2.*r*x)/(r*r)
+    #return 0.5*(r*r - 3*x*x*r*r + 2*r*x) / (r*r*(1 + r*r - 2*r*x))
 
 cdef double h10(double r, double x) nogil:
     return 1./(r*r*r*r)

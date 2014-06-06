@@ -18,7 +18,7 @@ import numpy as np
 
 class DMSpectrum(object):
     
-    _power_atts = ['_P00', '_P01', '_P11', '_P02', '_P12', 'P22', '_P03', 
+    _power_atts = ['_P00', '_P01', '_P11', '_P02', '_P12', '_P22', '_P03', 
                     '_P13', '_P04', '_Pdd', '_Pdv', '_Pvv']
     
     def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),

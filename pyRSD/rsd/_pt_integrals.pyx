@@ -387,7 +387,7 @@ class Integrals(object):
             kmin = self.kmin/(CONVERGENCE_FACTOR)
             kmax = self.kmax*(CONVERGENCE_FACTOR)
             
-            self.__k1loop = np.logspace(np.log10(kmin), np.log10(kmax), 200)
+            self.__k1loop = np.logspace(np.log10(kmin), np.log10(kmax), 1000)
             return self.__k1loop
     #----------------------------------------------------------------------------
     @property

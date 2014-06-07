@@ -377,7 +377,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 
                 term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
                 term2_mu2 =  -(self.f*self.D*self.k*self.sigma_lin)**2 * self.P00_ss_no_stoch.total.mu0
-                term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
+                term3_mu2 = -0.25*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
                 self._P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
                 
                 # do mu^4 terms?
@@ -388,7 +388,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     K20s_b = self.integrals.I('k20s_b', 0)
                     
                     term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
-                    term2_mu4 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
+                    term2_mu4 = 0.25*self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
                     self._P02_ss.total.mu4 = term1_mu4 + term2_mu4
             return self._P02_ss
     #---------------------------------------------------------------------------

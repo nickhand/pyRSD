@@ -138,8 +138,8 @@ class Integrals(object):
         try:
             I1 = getattr(self, "%s_1" %name)
         except:
-            self.I_lin.kernel_name = kernel_name
-            I1 = self.I_lin.evaluate(self.k_eval)
+            self.I_lin_o_lin.kernel_name = kernel_name
+            I1 = self.I_lin_o_lin.evaluate(self.k_eval)
             self.__dict__["%s_1" %name] = I1
             
         # return I1 if we are doing linear order
@@ -153,7 +153,7 @@ class Integrals(object):
             try:
                 I2 = getattr(self, "%s_2" %name)
             except:
-                thisI = getattr(self, 'I_lin_%s1loop' %variables[0])
+                thisI = getattr(self, 'I_lin_o_%s1loop' %variables[0])
                 thisI.kernel_name = kernel_name
                 I2 = thisI.evaluate(self.k_eval)
                 self.__dict__["%s_2" %name] = I2
@@ -165,7 +165,7 @@ class Integrals(object):
                 try:
                     I3 = getattr(self, "%s_3" %name)
                 except:
-                    thisI = getattr(self, 'I_lin_%s1loop' %variables[1])
+                    thisI = getattr(self, 'I_%s1loop_o_lin' %variables[1])
                     thisI.kernel_name = kernel_name
                     I3 = thisI.evaluate(self.k_eval) 
                     self.__dict__["%s_3" %name] = I3
@@ -174,13 +174,9 @@ class Integrals(object):
             try:
                 I4 = getattr(self, "%s_4" %name)
             except:
-                if variables[0] == variables[1]:
-                    thisI = getattr(self, 'I_%s1loop' %variables[0])
-                    thisI.kernel_name = kernel_name
-                    I4 = thisI.evaluate(self.k_eval)
-                else:
-                    self.I_dd1loop_vv1loop.kernel_name = kernel_name
-                    I4 = self.I_dd1loop_vv1loop.evaluate(self.k_eval)
+                thisI = getattr(self, 'I_%s1loop_o_%s1loop' %(variables[0], variables[1]))
+                thisI.kernel_name = kernel_name
+                I4 = thisI.evaluate(self.k_eval)
                 self.__dict__["%s_4" %name] = I4
         
             fac = (self.D**2 * power_norm)
@@ -251,111 +247,136 @@ class Integrals(object):
     # INTEGRAL BASE CLASSES FOR EACH SPECTRA COMBO
     #---------------------------------------------------------------------------
     @property
-    def I_lin(self):
+    def I_lin_o_lin(self):
+        """
+        For use in integrals of the form :math: \int Pxx_lin(q) Pxx_lin(|k-q|)
+        """
         try:
-            return self.__I_lin
+            return self.__I_lin_o_lin
         except:
-            self.__I_lin = _integral_base.integral2D('f00', self.kmin_lin, self.kmax_lin, 
-                                                    self.num_threads, 
-                                                    self.klin, 
-                                                    self._power._unnormalized_P*NORM_FACTOR,
-                                                    k2=self.klin, 
-                                                    P2=self._power._unnormalized_P*NORM_FACTOR)
-            return self.__I_lin
-    #----------------------------------------------------------------------------
-    @property
-    def I_lin_vv1loop(self):
-        try:
-            return self.__I_lin_vv1loop
-        except:
-            self.__I_lin_vv1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
+            self.__I_lin_o_lin = _integral_base.integral2D('f00', 
+                                                            self.kmin_lin, 
+                                                            self.kmax_lin, 
                                                             self.num_threads, 
                                                             self.klin, 
                                                             self._power._unnormalized_P*NORM_FACTOR,
-                                                            k2=self.k1loop, 
-                                                            P2=self.Pvv_1loop)
-            return self.__I_lin_vv1loop
+                                                            k2=self.klin, 
+                                                            P2=self._power._unnormalized_P*NORM_FACTOR)
+            return self.__I_lin_o_lin
     #----------------------------------------------------------------------------
     @property
-    def I_vv1loop(self):
+    def I_vv1loop_o_lin(self):
+        """
+        For use in integrals of the form :math: \int Pvv_1loop (q) Pxx_lin (|k-q|)
+        """
         try:
-            return self.__I_vv1loop
+            return self.__I_vv1loop_o_lin
         except:
-            self.__I_vv1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
-                                                        self.num_threads, 
-                                                        self.k1loop, 
-                                                        self.Pvv_1loop,
-                                                        k2=self.k1loop, 
-                                                        P2=self.Pvv_1loop)
-            return self.__I_vv1loop
-    #---------------------------------------------------------------------------
-    @property
-    def I_lin_dd1loop(self):
-        try:
-            return self.__I_lin_dd1loop
-        except:
-            self.__I_lin_dd1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
-                                                            self.num_threads, 
-                                                            self.klin, 
-                                                            self._power._unnormalized_P*NORM_FACTOR,
-                                                            k2=self.k1loop, 
-                                                            P2=self.Pdd_1loop)
-            return self.__I_lin_dd1loop
-    #---------------------------------------------------------------------------
-    @property
-    def I_dd1loop(self):
-        try:
-            return self.__I_dd1loop
-        except:
-            self.__I_dd1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
-                                                            self.num_threads, 
-                                                            self.k1loop, 
-                                                            self.Pdd_1loop,
-                                                            k2=self.k1loop, 
-                                                            P2=self.Pdd_1loop)
-            return self.__I_dd1loop
-    #---------------------------------------------------------------------------
-    @property
-    def I_dd1loop_vv1loop(self):
-        try:
-            return self.__I_dd1loop_vv1loop
-        except:
-            self.__I_dd1loop_vv1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
-                                                                self.num_threads, 
+            self.__I_vv1loop_o_lin = _integral_base.integral2D('f00', 
+                                                                self.kmin_1loop, 
+                                                                self.kmax_1loop, 
+                                                                self.num_threads,
                                                                 self.k1loop, 
-                                                                self.Pdd_1loop,
+                                                                self.Pvv_1loop,
+                                                                k2=self.klin, 
+                                                                P2=self._power._unnormalized_P*NORM_FACTOR)
+            return self.__I_vv1loop_o_lin
+    #----------------------------------------------------------------------------
+    @property
+    def I_vv1loop_o_vv1loop(self):
+        """
+        For use in integrals of the form :math: \int Pvv_1loop (q) Pvv_1loop (|k-q|)
+        """
+        try:
+            return self.__I_vv1loop_o_vv1loop
+        except:
+            self.__I_vv1loop_o_vv1loop = _integral_base.integral2D('f00', 
+                                                                    self.kmin_1loop, 
+                                                                    self.kmax_1loop, 
+                                                                    self.num_threads, 
+                                                                    self.k1loop, 
+                                                                    self.Pvv_1loop,
+                                                                    k2=self.k1loop, 
+                                                                    P2=self.Pvv_1loop)
+            return self.__I_vv1loop_o_vv1loop
+    #---------------------------------------------------------------------------
+    @property
+    def I_lin_o_dd1loop(self):
+        """
+        For use in integrals of the form :math: \int Pxx_lin (q) Pdd_1loop (|k-q|)
+        """
+        try:
+            return self.__I_lin_o_dd1loop
+        except:
+            self.__I_lin_o_dd1loop = _integral_base.integral2D('f00', 
+                                                                self.kmin_1loop, 
+                                                                self.kmax_1loop, 
+                                                                self.num_threads, 
+                                                                self.klin, 
+                                                                self._power._unnormalized_P*NORM_FACTOR,
                                                                 k2=self.k1loop, 
-                                                                P2=self.Pvv_1loop)
-            return self.__I_dd1loop_vv1loop
+                                                                P2=self.Pdd_1loop)
+            return self.__I_lin_o_dd1loop
     #---------------------------------------------------------------------------
     @property
-    def I_lin_dv1loop(self):
+    def I_vv1loop_o_dd1loop(self):
+        """
+        For use in integrals of the form :math: \int Pvv_1loop (q) Pdd_1loop (|k-q|)
+        """
         try:
-            return self.__I_lin_dv1loop
+            return self.__I_vv1loop_o_dd1loop
         except:
-            self.__I_lin_dv1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
-                                                            self.num_threads, 
-                                                            self.klin, 
-                                                            self._power._unnormalized_P*NORM_FACTOR,
-                                                            k2=self.k1loop, 
-                                                            P2=self.Pdv_1loop)
-            return self.__I_lin_dv1loop
+            self.__I_vv1loop_o_dd1loop = _integral_base.integral2D('f00', 
+                                                                    self.kmin_1loop, 
+                                                                    self.kmax_1loop, 
+                                                                    self.num_threads, 
+                                                                    self.k1loop, 
+                                                                    self.Pvv_1loop,
+                                                                    k2=self.k1loop, 
+                                                                    P2=self.Pdd_1loop)
+            return self.__I_vv1loop_o_dd1loop
     #---------------------------------------------------------------------------
     @property
-    def I_dv1loop(self):
+    def I_lin_o_dv1loop(self):
+        """
+        For use in integrals of the form :math: \int Pxx_lin (q) Pdv_1loop (|k-q|)
+        """
         try:
-            return self.__I_dv1loop
+            return self.__I_lin_o_dv1loop
         except:
-            self.__I_dv1loop = _integral_base.integral2D('f00', self.kmin_1loop, self.kmax_1loop, 
-                                                        self.num_threads, 
-                                                        self.k1loop, 
-                                                        self.Pdv_1loop,
-                                                        k2=self.k1loop, 
-                                                        P2=self.Pdv_1loop)
-            return self.__I_dv1loop
+            self.__I_lin_o_dv1loop = _integral_base.integral2D('f00', 
+                                                                self.kmin_1loop, 
+                                                                self.kmax_1loop, 
+                                                                self.num_threads, 
+                                                                self.klin, 
+                                                                self._power._unnormalized_P*NORM_FACTOR,
+                                                                k2=self.k1loop, 
+                                                                P2=self.Pdv_1loop)
+            return self.__I_lin_o_dv1loop
+    #---------------------------------------------------------------------------
+    @property
+    def I_dv1loop_o_dv1loop(self):
+        """
+        For use in integrals of the form :math: \int Pdv_1loop (q) Pdv_1loop (|k-q|)
+        """
+        try:
+            return self.__I_dv1loop_o_dv1loop
+        except:
+            self.__I_dv1loop_o_dv1loop = _integral_base.integral2D('f00', 
+                                                                    self.kmin_1loop, 
+                                                                    self.kmax_1loop, 
+                                                                    self.num_threads, 
+                                                                    self.k1loop, 
+                                                                    self.Pdv_1loop,
+                                                                    k2=self.k1loop, 
+                                                                    P2=self.Pdv_1loop)
+            return self.__I_dv1loop_o_dv1loop
     #---------------------------------------------------------------------------
     @property
     def J_lin(self):
+        """
+        For use in integrals of the form :math: Pxx_lin (k) \int Pxx_lin(q)
+        """
         try:
             return self.__J_lin
         except:
@@ -386,8 +407,9 @@ class Integrals(object):
             # must have wide enough k region to converge
             kmin = self.kmin/(CONVERGENCE_FACTOR)
             kmax = self.kmax*(CONVERGENCE_FACTOR)
+            kmax = min(40., kmax)
             
-            self.__k1loop = np.logspace(np.log10(kmin), np.log10(kmax), 1000)
+            self.__k1loop = np.logspace(np.log10(kmin), np.log10(kmax), 200)
             return self.__k1loop
     #----------------------------------------------------------------------------
     @property
@@ -458,8 +480,8 @@ class Integrals(object):
             return self.__Pdd_1loop
         except:
             # compute I00
-            self.I_lin.kernel_name = 'f00'
-            I00 = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'f00'
+            I00 = self.I_lin_o_lin.evaluate(self.k1loop)
 
             # compute J00
             self.J_lin.kernel_name = 'g00'
@@ -481,8 +503,8 @@ class Integrals(object):
             return self.__Pdv_1loop
         except:       
             # compute I01
-            self.I_lin.kernel_name = 'f01'
-            I01 = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'f01'
+            I01 = self.I_lin_o_lin.evaluate(self.k1loop)
 
             # compute J01
             self.J_lin.kernel_name = 'g01'
@@ -503,8 +525,8 @@ class Integrals(object):
             return self.__Pvv_1loop
         except:     
             # compute I11
-            self.I_lin.kernel_name = 'f11'
-            I11 = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'f11'
+            I11 = self.I_lin_o_lin.evaluate(self.k1loop)
 
             # compute J11
             self.J_lin.kernel_name = 'g11'
@@ -524,21 +546,21 @@ class Integrals(object):
         try:
             I1 = self.__P22bar1_mu0
         except:
-            self.I_lin.kernel_name = 'f23'
-            self.__P22bar1_mu0 = I1 = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'f23'
+            self.__P22bar1_mu0 = I1 = self.I_lin_o_lin.evaluate(self.k1loop)
         
         try:
             I2 = self.__P22bar1_mu2
         except:
-            self.I_lin.kernel_name = 'f32'
-            self.__P22bar1_mu2 = I2 = self.I_lin.evaluate(self.k1loop) 
+            self.I_lin_o_lin.kernel_name = 'f32'
+            self.__P22bar1_mu2 = I2 = self.I_lin_o_lin.evaluate(self.k1loop) 
             
         # don't compute this b/c it's super slow
         try:
             I3 = self.__P22bar1_mu4
         except:
-            self.I_lin.kernel_name = 'f33'
-            self.__P22bar1_mu4 = I3 = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'f33'
+            self.__P22bar1_mu4 = I3 = self.I_lin_o_lin.evaluate(self.k1loop)
             
         return I1, I2, I3
     #---------------------------------------------------------------------------
@@ -550,8 +572,8 @@ class Integrals(object):
         try:
             return self.__K00
         except:
-            self.I_lin.kernel_name = 'k00'
-            self.__K00 = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'k00'
+            self.__K00 = self.I_lin_o_lin.evaluate(self.k1loop)
             return self.__K00
     #---------------------------------------------------------------------------
     @property
@@ -562,7 +584,7 @@ class Integrals(object):
         try:
             return self.__K00s
         except:
-            self.I_lin.kernel_name = 'k00s'
-            self.__K00s = self.I_lin.evaluate(self.k1loop)
+            self.I_lin_o_lin.kernel_name = 'k00s'
+            self.__K00s = self.I_lin_o_lin.evaluate(self.k1loop)
             return self.__K00s
     #---------------------------------------------------------------------------

@@ -612,7 +612,7 @@ class DMSpectrum(object):
                     if not self.include_2loop:
                         Pvec = self.f**2 * self.integrals.I('f31', 0)
                     else:
-                        I1 = self.integrals.I('h01', 1, ('dd', 'vv'))
+                        I1 = self.integrals.I('h01', 1, ('vv', 'dd'))
                         I2 = self.integrals.I('h03', 1, ('dv', 'dv'))
                         Pvec = self.f**2 * (I1 + I2)
                 
@@ -630,7 +630,7 @@ class DMSpectrum(object):
                           
                         # compute the scalar mu^4 contribution
                         if self.include_2loop:
-                            I1 = self.integrals.I('h02', 1, ('dd', 'vv'))
+                            I1 = self.integrals.I('h02', 1, ('vv', 'dd'))
                             I2 = self.integrals.I('h04', 1, ('dv', 'dv'))
                             C11_contrib = I1 + I2
                         else:

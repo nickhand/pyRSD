@@ -413,7 +413,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 2:
                 
                 # this is C11 at 2-loop order
-                I1 = self.integrals.I('h01', 1, ('dd', 'vv'))
+                I1 = self.integrals.I('h01', 1, ('vv', 'dd'))
                 I2 = self.integrals.I('h03', 1, ('dv', 'dv'))
                 self._P11_ss.total.mu2 = (b1*b1_bar)*self.f**2 * (I1 + I2)
                 
@@ -432,7 +432,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     term2_mu4 = (b1 + b1_bar - 2.)*self.f**2 * (6.*self.k**2*Plin*J10 + 2*I22)
                     
                     # third term is mu^4 part of C11 (at 2-loop)
-                    I1 = self.integrals.I('h02', 1, ('dd', 'vv'))
+                    I1 = self.integrals.I('h02', 1, ('vv', 'dd'))
                     I2 = self.integrals.I('h04', 1, ('dv', 'dv'))
                     term3_mu4 =  (b1*b1_bar - 1)*self.f**2 * (I1 + I2)
 

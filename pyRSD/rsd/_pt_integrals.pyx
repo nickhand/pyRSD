@@ -126,7 +126,7 @@ class Integrals(object):
         return (self.D**2 * power_norm)*J1
     
     #---------------------------------------------------------------------------
-    def I(self, kernel_name, order, variables=None):
+    def I(self, kernel_name, order, variables):
         """
         Return the value of the integral I_nm(k), at the specified order, 
         with the correct redshift dependence.
@@ -153,7 +153,7 @@ class Integrals(object):
             try:
                 I2 = getattr(self, "%s_2" %name)
             except:
-                thisI = getattr(self, 'I_lin_o_%s1loop' %variables[0])
+                thisI = getattr(self, 'I_lin_o_%s1loop' %variables[1])
                 thisI.kernel_name = kernel_name
                 I2 = thisI.evaluate(self.k_eval)
                 self.__dict__["%s_2" %name] = I2
@@ -165,7 +165,7 @@ class Integrals(object):
                 try:
                     I3 = getattr(self, "%s_3" %name)
                 except:
-                    thisI = getattr(self, 'I_%s1loop_o_lin' %variables[1])
+                    thisI = getattr(self, 'I_%s1loop_o_lin' %variables[0])
                     thisI.kernel_name = kernel_name
                     I3 = thisI.evaluate(self.k_eval) 
                     self.__dict__["%s_3" %name] = I3

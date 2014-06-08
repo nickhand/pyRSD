@@ -88,6 +88,8 @@ cdef double kernel(const char *name, double r, double x) nogil:
             return k00(r, x)
         elif (strcmp(name, "k00s") == 0):
             return k00s(r, x)
+        elif (strcmp(name, "k01") == 0):
+            return k01(r, x)
         elif (strcmp(name, "k01s") == 0):
             return k01s(r, x)
         elif (strcmp(name, "k02s") == 0):
@@ -254,6 +256,9 @@ cdef double k00(double r, double x) nogil:
 
 cdef double k00s(double r, double x) nogil:
     return F2(r, x)*S2(r, x)
+
+cdef double k01(double r, double x) nogil:
+    return 1.
 
 cdef double k01s(double r, double x) nogil:
     return S2(r, x)**2

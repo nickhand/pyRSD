@@ -339,9 +339,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 2:
                 
                 # get the integral attributes
-                K10 = self.integrals.I('k10', 0)
+                K10  = self.integrals.I('k10', 0)
                 K10s = self.integrals.I('k10s', 0)
-                K11 = self.integrals.I('k11', 0)
+                K11  = self.integrals.I('k11', 0)
                 K11s = self.integrals.I('k11s', 0)
                 
                 term1 = (b1*b1_bar) * self.P01.total.mu2

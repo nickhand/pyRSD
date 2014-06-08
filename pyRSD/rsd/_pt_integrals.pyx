@@ -407,7 +407,7 @@ class Integrals(object):
             # must have wide enough k region to converge
             kmin = self.kmin/(CONVERGENCE_FACTOR)
             kmax = self.kmax*(CONVERGENCE_FACTOR)
-            kmax = min(40., kmax)
+            #kmax = min(40., kmax)
             
             self.__k1loop = np.logspace(np.log10(kmin), np.log10(kmax), 200)
             return self.__k1loop

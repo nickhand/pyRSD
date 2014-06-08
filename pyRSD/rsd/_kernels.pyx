@@ -280,10 +280,10 @@ cdef double k20s_a(double r, double x) nogil:
     return h03(r, x)*S2(r, x)
     
 cdef double k20_b(double r, double x) nogil:
-    return h04(r, x)
+    return 0.5*h04(r, x) # not sure I like this factor of 1/2
 
 cdef double k20s_b(double r, double x) nogil:
-    return h04(r, x)*S2(r, x)
+    return 0.5*h04(r, x)*S2(r, x) # not sure I like this factor of 1/2
 
 #-------------------------------------------------------------------------------
 # Spherical Bessel kernels for Fourier integrals

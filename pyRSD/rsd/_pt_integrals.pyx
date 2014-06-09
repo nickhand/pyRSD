@@ -283,6 +283,24 @@ class Integrals(object):
             return self.__I_vv1loop_o_lin
     #----------------------------------------------------------------------------
     @property
+    def I_lin_o_vv1loop(self):
+        """
+        For use in integrals of the form :math: \int Pxx_lin(q) Pvv_1loop (|k-q|)
+        """
+        try:
+            return self.__I_lin_o_vv1loop
+        except:
+            self.__I_lin_o_vv1loop = _integral_base.integral2D('f00', 
+                                                                self.kmin_1loop, 
+                                                                self.kmax_1loop, 
+                                                                self.num_threads,
+                                                                self.klin, 
+                                                                self._power._unnormalized_P*NORM_FACTOR,
+                                                                k2=self.k1loop, 
+                                                                P2=self.Pvv_1loop)
+            return self.__I_lin_o_vv1loop
+    #---------------------------------------------------------------------------
+    @property
     def I_vv1loop_o_vv1loop(self):
         """
         For use in integrals of the form :math: \int Pvv_1loop (q) Pvv_1loop (|k-q|)

@@ -673,7 +673,7 @@ class DMSpectrum(object):
                 J02 = self.integrals.J('g02')
     
                 # the mu^2 no velocity terms
-                self._P02.no_velocity.mu2 = self.f**2 * (I02 + 2*self.k**2*J02*Plin)
+                self._P02.no_velocity.mu2 = self.f**2 * (I02 + 2.*self.k**2*J02*Plin)
                 
                 # the mu^2 terms depending on velocity (velocities in Mpc/h)
                 sigma_lin = self.sigma_lin

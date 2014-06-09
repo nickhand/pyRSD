@@ -259,7 +259,7 @@ def fit_Pdv(params, k_transition=0.1, plot=False, save=True):
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
 
         # now transition nicely
-        switch = transition(k_final, k_transition, 0.005)
+        switch = transition(k_final, k_transition, 0.01)
         Pdv = (1-switch)*model(k_final, m.params, pt_spline(k_final)) + switch*sim_spline(k_final)
         #Pdv = (k_final < k_transition)*(1-switch)*model(k_final, m.params, pt_spline(k_final)) + (k_final >= k_transition)*switch*sim_spline(k_final)
         

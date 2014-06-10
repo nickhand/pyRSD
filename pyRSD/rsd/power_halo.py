@@ -15,10 +15,7 @@ class HaloSpectrum(power_biased.BiasedSpectrum):
         
         # initalize the dark matter power spectrum
         super(HaloSpectrum, self).__init__(**kwargs)
-        
-        # don't violate galilean invariance.
-        self._include_2loop = False
-        
+
     #end __init__
     
     #---------------------------------------------------------------------------

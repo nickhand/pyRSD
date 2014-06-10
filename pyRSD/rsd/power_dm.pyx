@@ -279,19 +279,39 @@ class DMSpectrum(object):
     @property
     def sigma_lin(self):
         """
-        The dark matter velocity dispersion, as evaluated in linear theory 
-        [units: Mpc/h]
+        The dark matter velocity dispersion at z = 0, as evaluated in 
+        linear theory [units: Mpc/h]
         """
-        try: 
-            return self._sigma_lin
-        except:
-            return np.sqrt(self.integrals.sigmasq)
-        
-    @sigma_lin.setter
-    def sigma_lin(self, val):
-        self._sigma_lin = val
+        return np.sqrt(self.integrals.sigmasq)
     #---------------------------------------------------------------------------
     # SET ATTRIBUTES
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_v(self):
+        """
+        The velocity dispersion at z = 0. If not provided, defaults to the 
+        linear theory prediction [units: Mpc/h]
+        """
+        try: 
+            return self._sigma_v
+        except AttributeError:
+            return self.sigma_lin
+        
+    @sigma_v.setter
+    def sigma_v(self, val):
+        self._sigma_v = val
+        
+        # delete dependencies
+        atts = ['_P02', '_P12', '_P22', '_P03', '_P13', '_P04']
+        for a in atts:
+            if a in self.__dict__: del self.__dict__[a]
+        
+    @sigma_v.deleter
+    def sigma_v(self):
+        try:
+            del self._sigma_v
+        except AttributeError:
+            pass
     #---------------------------------------------------------------------------
     @property
     def bias_model(self):
@@ -676,7 +696,7 @@ class DMSpectrum(object):
                 self._P02.no_velocity.mu2 = self.f**2 * (I02 + 2.*self.k**2*J02*Plin)
                 
                 # the mu^2 terms depending on velocity (velocities in Mpc/h)
-                sigma_lin = self.sigma_lin
+                sigma_lin = self.sigma_v
                 sigma_02  = self.sigma_bv2 * self.cosmo.h / (self.f*self.conformalH*self.D)
                 sigsq_eff = sigma_lin**2 + sigma_02**2
 
@@ -724,7 +744,7 @@ class DMSpectrum(object):
                 self._P12.no_velocity.mu4 = self.f**3 * (I12 - I03 + 2*self.k**2*J02*Plin)
             
                 # now do mu^4 terms depending on velocity (velocities in Mpc/h)
-                sigma_lin = self.sigma_lin  
+                sigma_lin = self.sigma_v  
                 sigma_12  = self.sigma_bv2 * self.cosmo.h / (self.f*self.conformalH*self.D) 
                 sigsq_eff = sigma_lin**2 + sigma_12**2
             
@@ -765,7 +785,7 @@ class DMSpectrum(object):
             if self.include_2loop:
                 
                 # velocities in units of Mpc/h
-                sigma_lin = self.sigma_lin
+                sigma_lin = self.sigma_v
                 sigma_22  = self.sigma_bv2 * self.cosmo.h / (self.f*self.conformalH*self.D) 
                 sigsq_eff = sigma_lin**2 + sigma_22**2
                 
@@ -865,7 +885,7 @@ class DMSpectrum(object):
                 Plin = self.D**2 * self.power_lin.power
                 
                 # only terms depending on velocity here (velocities in Mpc/h)
-                sigma_lin = self.sigma_lin 
+                sigma_lin = self.sigma_v 
                 sigma_03  = self.sigma_v2 * self.cosmo.h / (self.f*self.conformalH*self.D)
                 sigsq_eff = sigma_lin**2 + sigma_03**2
 
@@ -893,7 +913,7 @@ class DMSpectrum(object):
             Plin = self.D**2 * self.power_lin.power
             
             # compute velocity weighting in Mpc/h
-            sigma_lin = self.sigma_lin 
+            sigma_lin = self.sigma_v 
             sigma_13_v  = self.sigma_bv2 * self.cosmo.h / (self.f*self.conformalH*self.D) 
             sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
             
@@ -940,7 +960,7 @@ class DMSpectrum(object):
             if self.include_2loop:
                 
                 # compute the relevant small-scale + linear velocities in Mpc/h
-                sigma_lin = self.sigma_lin 
+                sigma_lin = self.sigma_v 
                 sigma_04  = self.sigma_bv4 * self.cosmo.h / (self.f*self.conformalH*self.D) 
                 sigsq_eff = sigma_lin**2 + sigma_04**2
                 

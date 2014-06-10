@@ -19,13 +19,16 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                    '_P02_ss', '_P12_ss', '_P22_ss', '_P03_ss', '_P13_ss', 
                    '_P04_ss', '_stochasticity']
                 
-    def __init__(self, stoch_model='constant', stoch_args=(), **kwargs):
+    def __init__(self, sigma_from_sims=True, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
         
         # don't violate galilean invariance.
         self._include_2loop = False
+        
+        # whether to use sigma_v from simulations
+        self.sigma_from_sims = sigma_from_sims
         
     #end __init__
     #---------------------------------------------------------------------------
@@ -110,6 +113,56 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
         # delete P00_ss if it exists
         if hasattr(self, '_P00_ss'): del self._P00_ss
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_v(self):
+        """
+        The velocity dispersion at z = 0. If not provided and ``sigma_from_sims
+        = False``, this defaults to the linear theory prediction [units: Mpc/h]
+        """
+        try: 
+            return self._sigma_v
+        except AttributeError:
+            
+            if self.sigma_from_sims:
+                mean_bias = np.sqrt(self.b1 * self.b1_bar)
+                sigma_v = tools.sigma_from_sims(mean_bias, self.z)
+                sigma_v /= (self.f*self.D*100.) # this should be in Mpc/h now
+                return sigma_v[0]
+            else:
+                return self.sigma_lin
+        
+    @sigma_v.setter
+    def sigma_v(self, val):
+        del self.sigma_v
+        self._sigma_v = val
+        
+            
+    @sigma_v.deleter
+    def sigma_v(self):
+        try:
+            del self._sigma_v
+        except AttributeError:
+            pass
+            
+        # delete dependencies
+        atts = ['_P02', '_P12', '_P22', '_P03', '_P13', '_P04']
+        for a in atts:
+            if a in self.__dict__: del self.__dict__[a]
+            if a+'_ss' in self.__dict__: del self.__dict__[a+'_ss']
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_from_sims(self):
+        """
+        Whether to use the velocity dispersion as computed from simulations.
+        """
+        return self._sigma_from_sims
+        
+    @sigma_from_sims.setter
+    def sigma_from_sims(self, val):
+
+        self._sigma_from_sims = val
+        del self.sigma_v            
     #---------------------------------------------------------------------------
     # FIRST BIAS TERMS 
     #---------------------------------------------------------------------------
@@ -376,7 +429,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 K20s_a = self.integrals.I('k20s_a', 0)
                 
                 term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-                term2_mu2 =  -(self.f*self.D*self.k*self.sigma_lin)**2 * self.P00_ss_no_stoch.total.mu0
+                term2_mu2 =  -(self.f*self.D*self.k*self.sigma_v)**2 * self.P00_ss_no_stoch.total.mu0
                 term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
                 self._P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
                 
@@ -452,7 +505,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
             # do mu^4 term?
             if self.max_mu >= 4:
-                self._P03_ss.total.mu4 = -0.5*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P01_ss.total.mu2
+                self._P03_ss.total.mu4 = -0.5*(self.f*self.D*self.k*self.sigma_v)**2 * self.P01_ss.total.mu2
         
             return self._P03_ss
     #---------------------------------------------------------------------------
@@ -480,7 +533,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 J02 = self.integrals.J('g02')
                 
                 term1_mu4 = self.f**3 * (I12 - 0.5*(b1 + b1_bar)*I03 + 2*self.k**2 * J02*Plin)
-                term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P01_ss.total.mu2
+                term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_v)**2 * self.P01_ss.total.mu2
                 self._P12_ss.total.mu4 = term1_mu4 + term2_mu4
                 
                 # do mu^6 terms?
@@ -506,7 +559,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         except:
             self._P13_ss = power_dm.PowerTerm()
             
-            A = -(self.f*self.D*self.k*self.sigma_lin)**2 
+            A = -(self.f*self.D*self.k*self.sigma_v)**2 
             
             # do mu^4 terms?
             if self.max_mu >= 4:
@@ -547,10 +600,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.integrals.sigmasq_k**2
                 
                 # b1 * P02_bar
-                term3 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
+                term3 = -0.5*(self.k*self.f*self.D*self.sigma_v)**2 * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
                 
                 # sigma^4 x P00_ss
-                term4 = 0.25*(self.k*self.f*self.D*self.sigma_lin)**4 * self.P00_ss_no_stoch.total.mu0
+                term4 = 0.25*(self.k*self.f*self.D*self.sigma_v)**4 * self.P00_ss_no_stoch.total.mu0
                 
                 self._P22_ss.total.mu4 = term1 + term2 + term3 + term4
                 
@@ -558,7 +611,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 if self.max_mu >= 6:
                     
                     term1 = self.P22.no_velocity.mu6
-                    term2 = -0.5*(self.k*self.f*self.D*self.sigma_lin)**2 * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
+                    term2 = -0.5*(self.k*self.f*self.D*self.sigma_v)**2 * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
                     self._P22_ss.total.mu6 = term1 + term2
                 
                         
@@ -582,18 +635,18 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 4:
                 
                 # contribution from P02[mu^2]
-                term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu2
+                term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_v)**2 * self.P02.no_velocity.mu2
                 
                 # contribution here from P00_ss * vel^4
                 A = (1./12)*(self.f*self.D*self.k)**4 * self.P00_ss_no_stoch.total.mu0
                 vel_kurtosis = self.integrals.vel_kurtosis / self.D**4
-                term2 = A*(3.*self.sigma_lin**4 + vel_kurtosis)
+                term2 = A*(3.*self.sigma_v**4 + vel_kurtosis)
                 
                 self._P04_ss.total.mu4 = term1 + term2
             
                 # do mu^6 terms?
                 if self.max_mu >= 6:
-                    self._P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_lin)**2 * self.P02.no_velocity.mu4
+                    self._P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_v)**2 * self.P02.no_velocity.mu4
                 
             return self._P04_ss
     #---------------------------------------------------------------------------

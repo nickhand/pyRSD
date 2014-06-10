@@ -261,4 +261,66 @@ def b2_01(bias, z):
 
 #end b2_01
 #-------------------------------------------------------------------------------
+def sigma_from_sims(bias, z):
+    """
+    The halo velocity dispersion as measured from simulations, as computed
+    from Figure 7 of Vlah et al. 2013. These are computed in km/s as
+    :math: \sigma_v(z=0) * D(z) * f(z) * H(z) / h where 
+    :math: \sigma_v(z=0) ~ 6 Mpc/h.
+    """
+    bias = np.array(bias, copy=False, ndmin=1)
+    
+    sigma_z0 = {'1.18' : 3.06, '1.47' : 3.02, '2.04' : 2.96, '3.05' : 2.88}
+    sigma_z1 = {'1.64' : 3.57, '2.18' : 3.52, '3.13' : 3.46, '4.82' : 3.39}
+    sigma_z2 = {'2.32' : 3.4, '3.17' : 3.37, '4.64' : 3.3}
+    
+    sigmas = {'0.000': sigma_z0, '0.509': sigma_z1, '0.989': sigma_z2}
+    
+    # check redshift value
+    z_keys_str = sorted(sigmas.keys())
+    z_keys = np.array(z_keys_str, dtype=float)
+    if z > np.amax(z_keys): raise ValueError("Cannot determine sigma for z > %s" %np.amax(z_keys))
+    if z < np.amin(z_keys): raise ValueError("Cannot determine sigma for z < %s" %np.amin(z_keys))
+
+    # determine the z indices
+    redshift_sigmas = {}
+    if z in z_keys:
+        inds = np.where(z_keys == z)[0][0]
+        redshift_sigmas[str(z)] = sigmas[z_keys_str[inds]]
+    else:
+        
+        index_zhi = bisect.bisect(z_keys, z)
+        index_zlo = index_zhi - 1
+        zhi = z_keys_str[index_zhi]
+        zlo = z_keys_str[index_zlo]
+        
+        redshift_sigmas[zlo] = sigmas[zlo]
+        redshift_sigmas[zhi] = sigmas[zhi]
+
+    # now get the mean values for this bias, at this redshift
+    z_keys_str = sorted(redshift_sigmas.keys())
+    z_keys = np.array(z_keys_str, dtype=float)
+    values = []
+    for z_key in z_keys_str:
+
+        z_bias = redshift_sigmas[z_key]
+        
+        b1s = np.array(z_bias.keys(), dtype=float)
+        inds = np.argsort(b1s)
+        b1s = b1s[inds]
+        sigs = np.array(z_bias.values())[inds]
+        
+        interp = interp1d(b1s, sigs)
+        extrap = extrap1d(interp)
+        values.append(extrap(bias))
+        
+    if len(values) == 1:
+        return  values[0]*100.
+    else:
+
+        w = (z - z_keys[0]) / (z_keys[1] - z_keys[0]) 
+        return 100.*((1 - w)*values[0] + w*values[1])
+#end sigma_from_sims
+
+#-------------------------------------------------------------------------------
     

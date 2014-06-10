@@ -12,7 +12,7 @@ import numpy as np
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     
                 
-    def __init__(self, **kwargs):
+    def __init__(self, use_mean_bias=False, **kwargs):
         
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
@@ -20,6 +20,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # don't violate galilean invariance.
         self._include_2loop = False
         
+        self.use_mean_bias = use_mean_bias
     #end __init__
     
     #---------------------------------------------------------------------------
@@ -300,8 +301,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         This is a 2-halo term only. 
         """
         # set the linear biases first
-        self.b1     = self.b1_cA
-        self.b1_bar = self.b1_s
+        if self.use_mean_bias:
+            mean_bias = np.sqrt(self.b1_cA*self.b1_s)
+            self.b1 = self.b1_bar = mean_bias
+        else:
+            self.b1     = self.b1_cA
+            self.b1_bar = self.b1_s
         
         # the FOG damping
         x = self.sigma_cs * mu * self.k
@@ -332,8 +337,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         same halo. This is a 2-halo term only.
         """
         # set the linear biases first
-        self.b1     = self.b1_sA
-        self.b1_bar = self.b1_sB
+        if self.use_mean_bias:
+            mean_bias = np.sqrt(self.b1_sA*self.b1_sB)
+            self.b1 = self.b1_bar = mean_bias
+        else:
+            self.b1     = self.b1_sA
+            self.b1_bar = self.b1_sB
         
         # the FOG damping
         x = self.sigma_sAsB * mu * self.k
@@ -348,8 +357,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         This has both a 1-halo and 2-halo term only.
         """
         # set the linear biases first
-        self.b1     = self.b1_cB
-        self.b1_bar = self.b1_s
+        if self.use_mean_bias:
+            mean_bias = np.sqrt(self.b1_cB*self.b1_s)
+            self.b1 = self.b1_bar = mean_bias
+        else:
+            self.b1     = self.b1_cB
+            self.b1_bar = self.b1_s
         
         # the FOG damping
         x = self.sigma_cs * mu * self.k

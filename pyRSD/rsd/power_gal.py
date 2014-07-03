@@ -161,6 +161,22 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @sigma_cs.setter
     def sigma_cs(self, val):
         self._sigma_cs = val
+    
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_cc(self):
+        """
+        The FOG velocity dispersion for centrals auto spectra Pgal_cc. Will be
+        set to zero if no value is specified.
+        """
+        try:
+            return self._sigma_cc
+        except AttributeError:
+            return 0.
+            
+    @sigma_cc.setter
+    def sigma_cc(self, val):
+        self._sigma_cc = val
     #---------------------------------------------------------------------------
     @property
     def sigma_sAsA(self):
@@ -292,8 +308,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1     = self.b1_c
         self.b1_bar = self.b1_c
         
+        x = self.sigma_cc * mu * self.k
+        G = self.fog_model(x)
+        
         # now return the power spectrum here
-        return self.power(mu, mu_hi)
+        return G**2 * self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
     def Pgal_cAs(self, mu, mu_hi=None):
         """
@@ -313,7 +332,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G*self.power(mu, mu_hi)
+        return G**2 * self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
     def Pgal_sAsA(self, mu, mu_hi=None):
         """
@@ -369,7 +388,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G * (self.power(mu, mu_hi) + self.Pgal_cBs_1h)
+        return G**2 * (self.power(mu, mu_hi) + self.Pgal_cBs_1h)
     #---------------------------------------------------------------------------
     @property
     def Pgal_cBs_1h(self):

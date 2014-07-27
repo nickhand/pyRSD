@@ -332,7 +332,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu, mu_hi)
+        return G * self.power(mu, mu_hi)
     #---------------------------------------------------------------------------
     def Pgal_sAsA(self, mu, mu_hi=None):
         """
@@ -388,7 +388,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * (self.power(mu, mu_hi) + self.Pgal_cBs_1h)
+        return G * (self.power(mu, mu_hi) + self.Pgal_cBs_1h)
     #---------------------------------------------------------------------------
     @property
     def Pgal_cBs_1h(self):

@@ -30,7 +30,9 @@ __all__ = ['load',
            'PcAs_no_fog_z_0_509',
            'PsAsA_no_fog_z_0_509', 
            'PsAsB_no_fog_z_0_509',
-           'Pgg_z_0_509']
+           'Pgg_z_0_509',
+           'Pgg_mono_z_0_509',
+           'Pgg_quad_z_0_509']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -190,7 +192,33 @@ def Pgg_z_0_509():
     11th: its error
     """
     return load("galaxy/full/lrgmu_gg_z005aaa")
+
+#-------------------------------------------------------------------------------    
+def Pgg_mono_z_0_509():
+    """
+    The full galaxy power spectrum monopole in redshift space at z = 0.509. 
+    It has 3 columns, as follows:
+
+    1st: k
+    2nd: P_0
+    3rd: its error
+    """
+    f = "galaxy/full/lrg_mono_cen_sat_z005aaa"
+    return np.loadtxt(_os.path.join(data_dir, f), usecols=(0, 1, 2))
     
+#-------------------------------------------------------------------------------    
+def Pgg_quad_z_0_509():
+    """
+    The full galaxy power spectrum quadrupole in redshift space at z = 0.509. 
+    It has 3 columns, as follows:
+
+    1st: k
+    2nd: P_0
+    3rd: its error
+    """
+    f = "galaxy/full/lrg_quad_cen_sat_z005aaa"
+    return np.loadtxt(_os.path.join(data_dir, f), usecols=(0, 1, 2))
+
 #-------------------------------------------------------------------------------
 # DARK MATTER SIM DATA
 #-------------------------------------------------------------------------------

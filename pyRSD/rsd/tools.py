@@ -328,7 +328,7 @@ def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function
     """ 
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args):
         mus = np.linspace(0., 1., 1000)
         Pkmus = f(self, mus)
         return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in range(len(self.k))])
@@ -338,10 +338,29 @@ def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
     """ 
-    def wrapper(self, *args, **kwargs):
+    def wrapper(self, *args):
         mus = np.linspace(0., 1., 1000)
         Pkmus = f(self, mus)
         kern = 2.5*(3*mus**2 - 1.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in range(len(self.k))])
+    return wrapper
+#-------------------------------------------------------------------------------
+def mu_vectorize(f):
+    """
+    Vectorize the function to handle scalar or array_like `mu` input
+    """ 
+    def wrapper(self, *args):
+        mu = args[0]
+        scalar = np.isscalar(mu)
+        if scalar: 
+            mu = [mu]
+        else:
+            mu = np.asarray(mu)
+            if mu.ndim > 1: return f(self, mu)
+        mu = np.array([mu,]*len(self.k)).transpose()
+        
+        P_out = f(self, mu)
+        return P_out[0,:] if scalar else P_out.transpose()
+        
     return wrapper
 #-------------------------------------------------------------------------------

@@ -7,7 +7,7 @@
  creation date: 05/09/2014
 """
 from . import power_biased
-from .tools import monopole, quadrupole
+from . import tools
 import numpy as np
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
@@ -300,6 +300,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_cc(self, mu):
         """
         The central galaxy auto spectrum, assuming no FOG here. This is a 2-halo
@@ -309,16 +310,15 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1     = self.b1_c
         self.b1_bar = self.b1_c
         
+
+        
         x = self.sigma_cc * mu * self.k
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        if not monopole or quadrupole:
-            return G**2 * self.power(mu)
-        else:
-            if monopole:
-                return G**2 * self.monopole(mu)
+        return G**2 * self.power(mu)
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_cAs(self, mu):
         """
         The cross spectrum between centrals with no satellites and satellites. 
@@ -339,6 +339,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # now return the power spectrum here
         return G * self.power(mu)
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_sAsA(self, mu):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
@@ -355,6 +356,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # now return the power spectrum here
         return G**2 * self.power(mu)
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_sAsB(self, mu):
         """
         The cross spectrum of satellites with and without no other sats in 
@@ -375,6 +377,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # now return the power spectrum here
         return G**2 * self.power(mu)
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_cBs(self, mu):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
@@ -403,6 +406,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.one_halo_model(self.k, *self.one_halo_cBs_args)
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_sBsB(self, mu):
         """
         The auto spectrum of satellits with other sats in the same halo.
@@ -430,6 +434,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.one_halo_model(self.k, *self.one_halo_sBsB_args)
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_ss(self, mu):
         """
         The total satellite auto spectrum.
@@ -439,6 +444,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
                     2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
                     self.fsB**2 * self.Pgal_sBsB(mu) 
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal_cs(self, mu):
         """
         The total central-satellite cross spectrum.
@@ -446,6 +452,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def Pgal(self, mu):
         """
         The total redshift-space galaxy power spectrum, combining the individual
@@ -457,14 +464,14 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         return fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
     #---------------------------------------------------------------------------
-    @monopole
+    @tools.monopole
     def Pgal_mono(self, mu):
         """
         The total redshift-space galaxy monopole moment
         """
         return self.Pgal(mu)
     #---------------------------------------------------------------------------
-    @quadrupole
+    @tools.quadrupole
     def Pgal_quad(self, mu):
         """
         The total redshift-space galaxy quadrupole moment

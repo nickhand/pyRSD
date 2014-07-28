@@ -10,7 +10,7 @@
 from pyRSD.cosmology cimport growth, cosmo_tools
 from ..cosmology import velocity, hmf, power
 from ..cosmology.cosmo import Cosmology
-from . import _pt_integrals
+from . import _pt_integrals, tools
  
 import scipy.interpolate as interp
 from scipy.integrate import quad
@@ -987,6 +987,7 @@ class DMSpectrum(object):
                         
             return self._P04
     #---------------------------------------------------------------------------
+    @tools.mu_vectorize
     def power(self, mu):
         """
         Return the redshift space power spectrum at the specified value of mu, 
@@ -1005,12 +1006,6 @@ class DMSpectrum(object):
             dimensions are `(len(k), N)`, i.e., each column corresponds is the
             model evaluated at different `mu` values
         """
-        # make sure mu is 
-        scalar = np.isscalar(mu)
-        if scalar:
-            mu = [mu]
-        mu = np.array([mu,]*len(self.k)).transpose()
-        
         if self.max_mu == 0:
             P_out = self.P_mu0 * (mu*0. + 1.)
         elif self.max_mu == 2:
@@ -1022,10 +1017,7 @@ class DMSpectrum(object):
         elif self.max_mu == 8:
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
             
-        if scalar:
-            return P_out[0,:]
-        else:
-            return P_out.transpose()
+        return P_out
     #end power
     
     #---------------------------------------------------------------------------

@@ -1,6 +1,7 @@
 import numpy as np
 import bisect
 from scipy.interpolate import interp1d
+from scipy.integrate import simps
 
 def extrap1d(interpolator):
     """
@@ -323,4 +324,24 @@ def sigma_from_sims(bias, z):
 #end sigma_from_sims
 
 #-------------------------------------------------------------------------------
-    
+def monopole(f):
+    """
+    Decorator to compute the monopole from a `self.power` function
+    """ 
+    def wrapper(self, *args, **kwargs):
+        mus = np.linspace(0., 1., 1000)
+        Pkmus = f(self, mus)
+        return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in range(len(self.k))])
+    return wrapper
+#-------------------------------------------------------------------------------
+def quadrupole(f):
+    """
+    Decorator to compute the quadrupole from a `self.power` function
+    """ 
+    def wrapper(self, *args, **kwargs):
+        mus = np.linspace(0., 1., 1000)
+        Pkmus = f(self, mus)
+        kern = 2.5*(3*mus**2 - 1.)
+        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in range(len(self.k))])
+    return wrapper
+#-------------------------------------------------------------------------------

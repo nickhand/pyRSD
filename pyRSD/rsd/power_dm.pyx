@@ -987,47 +987,47 @@ class DMSpectrum(object):
                         
             return self._P04
     #---------------------------------------------------------------------------
-    def power(self, mu, mu_hi=None):
+    def power(self, mu):
         """
         Return the redshift space power spectrum at the specified value of mu, 
-        including terms up to mu**max_mu
+        including terms up to ``mu**self.max_mu``.
+        
+        Parameters
+        ----------
+        mu : {float, array_like}
+            The mu values to evaluate the power at.
+        
+        Returns
+        -------
+        Pkmu : array_like
+            The power model P(k, mu). If `mu` is a scalar, return dimensions
+            are `(len(self.k), )`. If `mu` has dimensions (N, ), the return
+            dimensions are `(len(k), N)`, i.e., each column corresponds is the
+            model evaluated at different `mu` values
         """
-        if mu_hi is not None:
-            assert(mu_hi > mu)
+        # make sure mu is 
+        scalar = np.isscalar(mu)
+        if scalar:
+            mu = [mu]
+        mu = np.array([mu,]*len(self.k)).transpose()
         
         if self.max_mu == 0:
-            return self.P_mu0
-            
+            P_out = self.P_mu0 * (mu*0. + 1.)
         elif self.max_mu == 2:
-            mu2 = mu**2
-            if mu_hi is not None:
-                mu2 = self._mu_avg(mu, mu_hi, 2)
-            return self.P_mu0 + mu2 * self.P_mu2
-            
+            P_out = self.P_mu0 * (mu*0. + 1.) + mu**2 * self.P_mu2
         elif self.max_mu == 4:
-            mu2, mu4 = mu**2, mu**4
-            if mu_hi is not None:
-                mu2 = self._mu_avg(mu, mu_hi, 2)
-                mu4 = self._mu_avg(mu, mu_hi, 4)
-            return self.P_mu0 + mu2 * self.P_mu2 + mu4 * self.P_mu4
-            
+            P_out = self.P_mu0 * (mu*0. + 1.) + mu**2 * self.P_mu2 + mu**4 * self.P_mu4
         elif self.max_mu == 6:
-            mu2, mu4, mu6 = mu**2, mu**4, mu**6
-            if mu_hi is not None:
-                mu2 = self._mu_avg(mu, mu_hi, 2)
-                mu4 = self._mu_avg(mu, mu_hi, 4)
-                mu4 = self._mu_avg(mu, mu_hi, 6)
-            return self.P_mu0 + mu2 * self.P_mu2 + mu4 * self.P_mu4 + mu6 * self.P_mu6 
-            
+            P_out = self.P_mu0 * (mu*0. + 1.) + mu**2 * self.P_mu2 + mu**4 * self.P_mu4 + mu**6 * self.P_mu6 
         elif self.max_mu == 8:
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
+            
+        if scalar:
+            return P_out[0,:]
+        else:
+            return P_out.transpose()
     #end power
-    #---------------------------------------------------------------------------
-    def _mu_avg(self, mu_lo, mu_hi, power):
-        """
-        Compute the mean value of ``mu**power`` over the specified mu range
-        """
-        return quad(lambda x: x**power, mu_lo, mu_hi)[0] / (mu_hi - mu_lo)
+    
     #---------------------------------------------------------------------------
     def monopole(self, linear=False):
         """
@@ -1036,7 +1036,7 @@ class DMSpectrum(object):
         """
         if linear:
             beta = self.f/self.b1
-            return (1. + 2./3*beta + 1/5*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
+            return (1. + 2./3*beta + 1./5*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
         else:
             if self.max_mu == 0:
                 return self.P_mu0

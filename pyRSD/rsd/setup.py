@@ -36,7 +36,8 @@ def configuration(parent_package='', top_path=None):
                          extra_link_args=['-g'])
                          
     config.add_extension('_pt_integrals', sources=['_pt_integrals.c'],
-                         include_dirs=[get_numpy_include_dirs()],
+                         include_dirs=[get_numpy_include_dirs(), get_cython_include_dir()],
+                         libraries=get_libraries(), library_dirs=[get_library_dir()],
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])
 
@@ -46,12 +47,13 @@ def configuration(parent_package='', top_path=None):
                          extra_link_args=['-g'])
                          
     config.add_extension('power_dm', sources=['power_dm.c'],
-                         include_dirs=[get_numpy_include_dirs()],
+                         include_dirs=[get_numpy_include_dirs(), get_cython_include_dir()],
+                         libraries=get_libraries(), library_dirs=[get_library_dir()],
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])
 
     config.add_extension('power_biased', sources=['power_biased.c'],
-                         include_dirs=[get_numpy_include_dirs()],
+                         include_dirs=[get_numpy_include_dirs(), get_cython_include_dir()],
                          extra_compile_args=['-O3', '-w'],
                          extra_link_args=['-g'])
                          

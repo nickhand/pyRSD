@@ -102,6 +102,9 @@ if __name__ == "__main__":
 
     write_version_py()
 
+    # use gcc not clang
+    os.environ['CC'] = 'gcc'
+    
     setup(
         name=DISTNAME,
         description=DESCRIPTION,

@@ -149,35 +149,49 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # VELOCITY DISPERSIONS
     #---------------------------------------------------------------------------
     @property
-    def sigma_cs(self):
+    def sigma_cAs(self):
         """
-        The FOG velocity dispersion for central-sats cross spectra Pgal_cAs 
-        and Pgal_cBs
+        The FOG velocity dispersion for Pgal_cAs 
         """
         try:
-            return self._sigma_cs
+            return self._sigma_cAs
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_cs' attribute.")
+            raise ValueError("Must specify velocity dispersion 'sigma_cAs' attribute.")
             
-    @sigma_cs.setter
-    def sigma_cs(self, val):
-        self._sigma_cs = val
+    @sigma_cAs.setter
+    def sigma_cAs(self, val):
+        self._sigma_cAs = val
+    
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_cBs(self):
+        """
+        The FOG velocity dispersion for Pgal_cBs 
+        """
+        try:
+            return self._sigma_cBs
+        except AttributeError:
+            raise ValueError("Must specify velocity dispersion 'sigma_cBs' attribute.")
+            
+    @sigma_cBs.setter
+    def sigma_cBs(self, val):
+        self._sigma_cBs = val
     
     #---------------------------------------------------------------------------
     @property
     def sigma_cc(self):
         """
-        The FOG velocity dispersion for centrals auto spectra Pgal_cc. Will be
-        set to zero if no value is specified.
+        The FOG velocity dispersion for centrals auto spectra Pgal_cc.
         """
         try:
             return self._sigma_cc
         except AttributeError:
-            return 0.
+            raise ValueError("Must specify velocity dispersion 'sigma_cc' attribute.")
             
     @sigma_cc.setter
     def sigma_cc(self, val):
         self._sigma_cc = val
+    
     #---------------------------------------------------------------------------
     @property
     def sigma_sAsA(self):
@@ -206,34 +220,22 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @sigma_sAsB.setter
     def sigma_sAsB(self, val):
         self._sigma_sAsB = val
+        
     #---------------------------------------------------------------------------
     @property
-    def sigma_sBsB_1h(self):
+    def sigma_sBsB(self):
         """
-        The FOG velocity dispersion for the 1-halo part of Pgal_sBsB. 
-        """
-        try:
-            return self._sigma_sBsB_1h
-        except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sBsB_1h' attribute.")
-            
-    @sigma_sBsB_1h.setter
-    def sigma_sBsB_1h(self, val):
-        self._sigma_sBsB_1h = val
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_sBsB_2h(self):
-        """
-        The FOG velocity dispersion for the 2-halo part of Pgal_sBsB. 
+        The FOG velocity dispersion for Pgal_sBsB. 
         """
         try:
-            return self._sigma_sBsB_2h
+            return self._sigma_sBsB
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sBsB_2h' attribute.")
+            raise ValueError("Must specify velocity dispersion 'sigma_sBsB' attribute.")
             
-    @sigma_sBsB_2h.setter
-    def sigma_sBsB_2h(self, val):
-        self._sigma_sBsB_2h = val
+    @sigma_sBsB.setter
+    def sigma_sBsB(self, val):
+        self._sigma_sBsB = val
+        
     #---------------------------------------------------------------------------
     @property
     def fog_model(self):
@@ -249,6 +251,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @fog_model.setter
     def fog_model(self, val):
         self._fog_model = val
+        
     #---------------------------------------------------------------------------
     # 1-HALO ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -309,9 +312,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # set the linear biases first
         self.b1     = self.b1_c
         self.b1_bar = self.b1_c
-        
-
-        
+           
         x = self.sigma_cc * mu * self.k
         G = self.fog_model(x)
         
@@ -333,11 +334,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        x = self.sigma_cs * mu * self.k
+        x = self.sigma_cAs * mu * self.k
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G * self.power(mu)
+        return G**2 * self.power(mu)
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_sAsA(self, mu):
@@ -392,11 +393,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        x = self.sigma_cs * mu * self.k
+        x = self.sigma_cBs * mu * self.k
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G * (self.power(mu) + self.Pgal_cBs_1h)
+        return G**2 * (self.power(mu) + self.Pgal_cBs_1h)
     #---------------------------------------------------------------------------
     @property
     def Pgal_cBs_1h(self):
@@ -417,14 +418,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sB
         
         # the FOG damping terms
-        x = self.sigma_sBsB_1h * mu * self.k
-        G_1h = self.fog_model(x)
+        x = self.sigma_sBsB * mu * self.k
+        G = self.fog_model(x)
         
-        x = self.sigma_sBsB_2h * mu * self.k
-        G_2h = self.fog_model(x)
         
         # now return the power spectrum here
-        return G_2h**2 * self.power(mu) + G_1h**2 * self.Pgal_sBsB_1h
+        return G**2 * (self.power(mu) +  self.Pgal_sBsB_1h)
     #---------------------------------------------------------------------------
     @property
     def Pgal_sBsB_1h(self):

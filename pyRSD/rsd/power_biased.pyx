@@ -17,7 +17,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
     
     _power_atts = ['_P00_ss', '_P00_ss_no_stoch', '_P01_ss', '_P11_ss', 
                    '_P02_ss', '_P12_ss', '_P22_ss', '_P03_ss', '_P13_ss', 
-                   '_P04_ss', '_stochasticity']
+                   '_P04_ss']
                 
     def __init__(self, sigma_from_sims=True, **kwargs):
         

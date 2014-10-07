@@ -48,7 +48,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         """
         Attribute determining the stochasticity model to use.
         """
-        return lambda k, *args: args[0] + args[1]*np.log(k)
+        try:
+            return self._stoch_model
+        except:
+            return lambda k, *args: args[0] + args[1]*np.log(k)
             
     @stoch_model.setter
     def stoch_model(self, val):
@@ -66,7 +69,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         Any arguments to pass to the stochasticity model function held in 
         ``self.stoch_model``.
         """
-        return tools.stochasticity(np.sqrt(self.b1*self.b1_bar), self.z)
+        try:
+            return self._stoch_args
+        except:
+            return tools.stochasticity(np.sqrt(self.b1*self.b1_bar), self.z)
             
     @stoch_args.setter
     def stoch_args(self, val):

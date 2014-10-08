@@ -92,8 +92,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._stochasticity
         except:
             if callable(self.stoch_model):
-                self._stochasticity = self.stoch_model(self.k, *self.stoch_args)
-                return self._stochasticity
+                return self.stoch_model(self.k, *self.stoch_args)
             else:
                 raise ValueError("Stochasticity value must be set, or input function provided.")
     

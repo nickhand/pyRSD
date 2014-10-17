@@ -140,7 +140,7 @@ class Power(object):
         if self.__dict__.has_key('_Power__transfer_int'): transfer_int = self.__transfer_int
         set_parameters(self.cosmo.omegam, self.cosmo.omegab, self.cosmo.omegal, 
                         self.cosmo.omegar, self.cosmo.sigma_8, self.cosmo.h, 
-                        self.cosmo.n, self.cosmo.Tcmb, self.cosmo.w, -1)
+                        self.cosmo.n, self.cosmo.Tcmb, self.cosmo.w, transfer_int)
     #---------------------------------------------------------------------------
     @property
     def transfer_fit(self):
@@ -321,6 +321,11 @@ class Power(object):
         try:
             return self._power_norm
         except AttributeError:
+            
+            # reset transfer to be sure
+            transfer_type = self.transfer_fit
+            self.transfer_fit = transfer_type
+            
             self._power_norm = normalize_power()
             return self._power_norm
     
@@ -453,6 +458,10 @@ class Power(object):
             k = np.ascontiguousarray(self.k, dtype=np.double)
             delta_k = np.ascontiguousarray(self.delta_k, dtype=np.double)
             
+            # reset transfer to be sure
+            transfer_type = self.transfer_fit
+            self.transfer_fit = transfer_type
+            
             nonlinear_power(<double *>k.data, self.z, len(self.k), 
                                 <double *>delta_k.data, <double *>output.data)
             self.__nonlinear_power = output
@@ -490,6 +499,10 @@ class Power(object):
         rarr = np.ascontiguousarray(r, dtype=np.double)
         output = np.ascontiguousarray(np.empty(len(r)), dtype=np.double)
 
+        # reset transfer to be sure
+        transfer_type = self.transfer_fit
+        self.transfer_fit = transfer_type
+
         # compute sigma at z = 0, then multiply by the growth function
         unnormalized_sigma_r(<double *>rarr.data, 0., len(r), <double *>output.data)
         
@@ -518,6 +531,10 @@ class Power(object):
         # set up the arrays to pass to the C code
         rarr = np.ascontiguousarray(r, dtype=np.double)
         integral = np.ascontiguousarray(np.empty(len(r)), dtype=np.double)
+
+        # reset transfer to be sure
+        transfer_type = self.transfer_fit
+        self.transfer_fit = transfer_type
 
         # compute the mass variance if it is not provided
         if sigma0 is None:

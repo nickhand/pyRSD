@@ -37,7 +37,7 @@ class Cosmology(object):
     _cp = ['sigma_8', 'n', 'w', 'cs2_lam', 'Tcmb', 'Y_he', 'N_nu', 'N_nu_massive', 
             'z_reion', 'tau', 'delta_c', 'h', 'H0', 'omegan', 'omegam', 'omegal',
             'omegab', 'omegac', 'omegab_h2', 'omegac_h2', 'omegan_h2', 'z_star',
-            'age', 'flat', 'default']
+            'age', 'flat', 'default', 'omegar']
             
     def __init__(self, *args, **kwargs):
         """

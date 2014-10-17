@@ -9,7 +9,7 @@
 import os
 from . import parameters
 from . import _constants as c
-
+import copy
 
 #-------------------------------------------------------------------------------
 class Cosmology(object):
@@ -87,6 +87,9 @@ class Cosmology(object):
         if len(args) > 2:
             raise TypeError("Expected at most 1 positional argument, got 2")
         
+        # explicitly copy the input args
+        args = copy.deepcopy(args)
+       
         # set the default cosmology parameter
         try:
             self.default = args[0].pop('default')
@@ -228,18 +231,21 @@ class Cosmology(object):
         #-----------------------------------------------------------------------
         
         # first compute default omega radiation, assuming N_eff massless neutrinos
-        try:
-            # Compute photon density from Tcmb
-            constant = c.a_rad/c.c_light**2
-            rho_crit = self.crit_dens * self.h**2 * (c.M_sun/c.Mpc**3) # now in g/cm^3
-            omega_gam =  constant*self.Tcmb**4 / rho_crit
+        if "omegar" in input_params:
+            self.omegar = input_params.pop("omegar")
+        else:
+            try:
+                # Compute photon density from Tcmb
+                constant = c.a_rad/c.c_light**2
+                rho_crit = self.crit_dens * self.h**2 * (c.M_sun/c.Mpc**3) # now in g/cm^3
+                omega_gam =  constant*self.Tcmb**4 / rho_crit
 
-            # compute neutrino omega, assuming N_nu massless neutrinos + omegan from massive neutrinos
-            omega_nu = 7./8.*(4./11)**(4./3)*self.N_nu*omega_gam + self.omegan
+                # compute neutrino omega, assuming N_nu massless neutrinos + omegan from massive neutrinos
+                omega_nu = 7./8.*(4./11)**(4./3)*self.N_nu*omega_gam + self.omegan
         
-            self.omegar = omega_gam + omega_nu
-        except:
-            self.omegar = 0.
+                self.omegar = omega_gam + omega_nu
+            except:
+                self.omegar = 0.
                 
         if "omegal" in input_params:
             self.omegal = input_params.pop("omegal")

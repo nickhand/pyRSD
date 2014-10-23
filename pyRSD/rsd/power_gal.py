@@ -410,7 +410,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G**2 * self.power(mu)
     
     #---------------------------------------------------------------------------
-    @property
+    @tools.mu_vectorize
     def Pgal_cBs_1h(self, mu):
         """
         The 1-halo term for the cross spectrum of centrals with sats in the 
@@ -449,8 +449,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G**2 * self.power(mu)
         
     #---------------------------------------------------------------------------
-    @property
-    def Pgal_sBsB_1h(self):
+    @tools.mu_vectorize
+    def Pgal_sBsB_1h(self, mu):
         """
         The 1-halo term for the auto spectrum of satellits with other sats 
         in the same halo, with mu dependence introduced by the FOG damping

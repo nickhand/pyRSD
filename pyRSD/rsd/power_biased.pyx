@@ -118,6 +118,12 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
         # delete P00_ss if it exists
         if hasattr(self, '_P00_ss'): del self._P00_ss
+        
+    @stochasticity.deleter
+    def stochasticity(self):
+        if hasattr(self, '_stochasticity'): del self._stochasticity
+        if hasattr(self, '_P00_ss'): del self._P00_ss
+        
     #---------------------------------------------------------------------------
     @property
     def sigma_v(self):

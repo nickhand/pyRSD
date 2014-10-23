@@ -377,12 +377,22 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
+    
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_cBs(self, mu):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
         This has both a 1-halo and 2-halo term only.
+        """
+        return self.Pgal_cBs_2h(mu) + self.Pgal_cBs_1h(mu)
+    
+    #---------------------------------------------------------------------------
+    @tools.mu_vectorize
+    def Pgal_cBs_2h(self, mu):
+        """
+        The 2-halo term for the cross spectrum of centrals with sats in 
+        the same halo and satellites.
         """
         # set the linear biases first
         if self.use_mean_bias:
@@ -397,21 +407,35 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * (self.power(mu) + self.Pgal_cBs_1h)
+        return G**2 * self.power(mu)
+    
     #---------------------------------------------------------------------------
     @property
-    def Pgal_cBs_1h(self):
+    def Pgal_cBs_1h(self, mu):
         """
         The 1-halo term for the cross spectrum of centrals with sats in the 
-        same halo and satellites.
+        same halo and satellites, with mu dependence introduced by the 
+        FOG damping
         """
-        return self.one_halo_model(self.k, *self.one_halo_cBs_args)
+        x = self.sigma_cBs * mu * self.k
+        G = self.fog_model(x)
+        return G**2 * self.one_halo_model(self.k, *self.one_halo_cBs_args)
+
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_sBsB(self, mu):
         """
         The auto spectrum of satellits with other sats in the same halo.
         This has both a 1-halo and 2-halo term only.
+        """
+        return self.Pgal_sBsB_2h(mu) + self.Pgal_sBsB_1h(mu)
+    
+    #---------------------------------------------------------------------------
+    @tools.mu_vectorize
+    def Pgal_sBsB_2h(self, mu):
+        """
+        The 2-halo term for the auto spectrum of satellits with other sats 
+        in the same halo.
         """
         # set the linear biases first
         self.b1     = self.b1_sB
@@ -421,27 +445,42 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         x = self.sigma_sBsB * mu * self.k
         G = self.fog_model(x)
         
-        
         # now return the power spectrum here
-        return G**2 * (self.power(mu) +  self.Pgal_sBsB_1h)
+        return G**2 * self.power(mu)
+        
     #---------------------------------------------------------------------------
     @property
     def Pgal_sBsB_1h(self):
         """
         The 1-halo term for the auto spectrum of satellits with other sats 
-        in the same halo.
+        in the same halo, with mu dependence introduced by the FOG damping
         """
-        return self.one_halo_model(self.k, *self.one_halo_sBsB_args)
+        x = self.sigma_sBsB * mu * self.k
+        G = self.fog_model(x)
+        return G**2 * self.one_halo_model(self.k, *self.one_halo_sBsB_args)
+        
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
-    def Pgal_ss(self, mu):
+    def Pgal_ss_2h(self, mu):
         """
-        The total satellite auto spectrum.
+        The 2-halo part of the total satellite auto spectrum.
         """
         
         return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
                     2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
                     self.fsB**2 * self.Pgal_sBsB(mu) 
+    
+    #---------------------------------------------------------------------------
+    @tools.mu_vectorize
+    def Pgal_ss_2h(self, mu):
+        """
+        The 2-halo part of the total satellite auto spectrum.
+        """
+        
+        return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
+                    2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
+                    self.fsB**2 * self.Pgal_sBsB(mu) 
+    
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_cs(self, mu):

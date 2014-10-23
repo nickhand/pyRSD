@@ -461,7 +461,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
-    def Pgal_ss_2h(self, mu):
+    def Pgal_ss(self, mu):
         """
         The 2-halo part of the total satellite auto spectrum.
         """
@@ -469,18 +469,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
                     2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
                     self.fsB**2 * self.Pgal_sBsB(mu) 
-    
-    #---------------------------------------------------------------------------
-    @tools.mu_vectorize
-    def Pgal_ss_2h(self, mu):
-        """
-        The 2-halo part of the total satellite auto spectrum.
-        """
-        
-        return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
-                    2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
-                    self.fsB**2 * self.Pgal_sBsB(mu) 
-    
+                    
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_cs(self, mu):

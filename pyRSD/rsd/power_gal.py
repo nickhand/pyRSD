@@ -505,4 +505,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.Pgal(mu)
     #---------------------------------------------------------------------------
+    @tools.hexadecapole
+    def Pgal_hexadec(self, mu):
+        """
+        The total redshift-space galaxy hexadecapole moment
+        """
+        return self.Pgal(mu)
+    #---------------------------------------------------------------------------
     

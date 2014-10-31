@@ -364,3 +364,14 @@ def mu_vectorize(f):
         
     return wrapper
 #-------------------------------------------------------------------------------
+def hexadecapole(f):
+    """
+    Decorator to compute the hexadecapole from a `self.power` function
+    """ 
+    def wrapper(self, *args):
+        mus = np.linspace(0., 1., 1000)
+        Pkmus = f(self, mus)
+        kern = 9./8.*(35*mus**4 - 30.*mu**2 + 3.)
+        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in range(len(self.k))])
+    return wrapper
+#-------------------------------------------------------------------------------

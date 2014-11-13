@@ -30,6 +30,26 @@ def Planck1():
     return c
 
 #-------------------------------------------------------------------------------
+def Planck1_WP():
+    """
+    Planck 2013 DR1 + WMAP polarization cosmology parameters from the 
+    best-fit values listedin Table 2 of arXiv:1303.5076v2.
+    """ 
+    c = {'omegac_h2' : 0.12038,
+         'omegab_h2' : 0.022032,   
+         'omegan_h2' : 0.000645,
+         'N_nu'      : 2.046,
+         'N_nu_massive' : 1,
+         'H0'        : 67.04, 
+         'z_reion'   : 11.37, 
+         'n'         : 0.9619,
+         'tau'       : 0.0925, 
+         'sigma_8'   : 0.8347,
+         'age'       : 13.81242, 
+         'flat'      : True}
+    return c
+
+#-------------------------------------------------------------------------------
 def Planck1_lens_WP_highL():
     """
     Planck 2013 DR1 + lensing + WMAP low ell polarization + highL data
@@ -146,12 +166,12 @@ def get_cosmology_from_string(arg):
     return cosmo_dict
     
 #-------------------------------------------------------------------------------
-available = ( Planck1, 
+available = [ Planck1, 
               Planck1_lens_WP_highL, 
               Planck1_WP_highL_BAO, 
               WMAP9_eCMB, 
               WMAP7, 
-              WMAP5)
+              WMAP5 ]
 
 # define parameters common to all sets
 extras = {'w'            : -1., 
@@ -160,4 +180,8 @@ extras = {'w'            : -1.,
           'delta_c'      : 1.686, 
           'Y_he'         : 0.2477,
           'cs2_lam'      : 1.}
+
+default_params = 'Planck1_lens_WP_highL'
+
+__all__ = available + ['available', 'default_params']
           

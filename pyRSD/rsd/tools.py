@@ -64,7 +64,7 @@ def stochasticity(bias, z, *args, **kwargs):
     assert np.isscalar(z), 'Redshift input must be scalar'
     
     return_nan = kwargs.pop('return_nan', False)
-    if len(args) > 1: 
+    if len(args) > 0: 
         corr_model = args[0]
     else:
         corr_model = 'linear'
@@ -117,7 +117,6 @@ def stochasticity(bias, z, *args, **kwargs):
         biases = np.array(v.index)
             
         # initialize the Gaussian Process
-        print "corr model = ", corr_model
         gp = GaussianProcess(corr=corr_model, theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
 
         # setup the fitting        

@@ -56,12 +56,18 @@ lambda_z2 = {'4.64': (-16915.5, -3215.98),
              '2.32': (-427.779, -41.3676)}              
 lambdas = [(0., lambda_z0), (0.509, lambda_z1), (0.989, lambda_z2)]
 
-def stochasticity(bias, z, return_nan=False):
+def stochasticity(bias, z, *args, **kwargs):
     """
     Given a linear bias and redshift, return the stochasticity based on 
     the mean of simulation results.
     """
     assert np.isscalar(z), 'Redshift input must be scalar'
+    
+    return_nan = kwargs.pop('return_nan', False)
+    if len(args) > 1: 
+        corr_model = args[0]
+    else:
+        corr_model = 'linear'
     
     # first construct the pandas DataFrame
     # make a data frame holding the lambda data from sims
@@ -111,7 +117,7 @@ def stochasticity(bias, z, return_nan=False):
         biases = np.array(v.index)
             
         # initialize the Gaussian Process
-        gp = GaussianProcess(corr='cubic', theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
+        gp = GaussianProcess(corr=corr_model, theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
 
         # setup the fitting        
         x = np.atleast_2d(biases).T

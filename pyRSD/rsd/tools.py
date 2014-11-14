@@ -117,6 +117,7 @@ def stochasticity(bias, z, *args, **kwargs):
         biases = np.array(v.index)
             
         # initialize the Gaussian Process
+        print "corr model = ", corr_model
         gp = GaussianProcess(corr=corr_model, theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
 
         # setup the fitting        

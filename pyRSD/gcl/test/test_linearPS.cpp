@@ -8,32 +8,50 @@
 // 
 
 #include "LinearPS.h"
+
+#include <cstdio>
+#include <string>
 #include <iostream>
 using namespace std;
 
 int main(int argc, char** argv){
     
-    
-    // initialize the cosmology
-    Cosmology cosmo("explanatory.ini", Cosmology::CLASS);
+     
+    // initialize the cosmology to planck base
+    Cosmology cosmo("planck1_WP.ini", Cosmology::CLASS);
     info("delta_H = %f\n", cosmo.delta_H());
     
-    // initialize the no-wiggle power spectrum
-    double z = 1.0;
+    // // initialize the no-wiggle power spectrum
+    double z = 0.;
     LinearPS linPS(cosmo, z);
-    
-    cosmo.NormalizeTransferFunction(0.8);
     
     info("Computing linear power spectrum at z = %f\n", z);
     info("Note: sigma8 = %.3f\n", cosmo.sigma8());
     
-    // the wavenumbers
-    parray k = parray::logspace(1e-3, 1.0, 100);
+    // the wavenumbers in h/Mpc
+    parray k = parray::logspace(1e-7, 100, 1000);
     
-    for (size_t i = 0; i < k.size(); i++){
-        double Pk = linPS.Evaluate(k[i]);
-        cout << k[i] << "\t" << Pk << endl;
+    // using CLASS transfer
+    parray Pk_class = linPS(k);
+    
+    // using EH full
+    cosmo.SetTransferFunction(Cosmology::EH);
+    parray Pk_eh = linPS(k);
+    
+    // using EH no wiggle
+    cosmo.SetTransferFunction(Cosmology::EH_NoWiggle);
+    parray Pk_nw = linPS(k);
+    
+    // using BBKS
+    cosmo.SetTransferFunction(Cosmology::BBKS);
+    parray Pk_bbks = linPS(k);
+    
+    // print out the results in columns
+    string filename = "data/test_linearPS.dat";
+    FILE* fp = fopen(filename.c_str() , "w");
+    for (size_t i = 0; i < k.size(); i++) {
+        write(fp, "%.5e %.5e %.5e %.5e %.5e\n", k[i], Pk_class[i], Pk_eh[i], Pk_nw[i], Pk_bbks[i]);
     }
-    
+    fclose(fp);
     return 0;
 }

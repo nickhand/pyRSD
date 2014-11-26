@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <string>
 
-#include "Imn.h"
+#include "Kmn.h"
 #include "linearPS.h"
 #include "pstring.h"
 #include "Timer.h"
@@ -20,7 +20,7 @@ using namespace std;
 int main(int argc, char** argv){
     
     // make sure we have the write number of arguments 
-    if (argc != 3)
+    if (argc < 3)
         error("Must specify integral indices (m, n) as two command line arguments\n");
         
     pstring m_str = pstring(argv[1]);
@@ -42,13 +42,40 @@ int main(int argc, char** argv){
     parray k = parray::logspace(kminout, kmaxout, Nout);
     
     // time the computation
-    Imn I(linPS, 1e-4);
+    Kmn K(linPS, 1e-4);
     Timer T;
-    parray out = I(k, int(m), int(n));
+    parray out;
+    
+    bool tidal = false;
+    int part = 0;
+    string tidal_str = "";
+    string part_str = "";
+    
+    // determine other K indices
+    if (argc > 3) {
+        if (string(argv[3]) == "1") {
+            tidal = true;
+            tidal_str = "s";  
+        } 
+    }
+           
+    if (argc > 4) {
+        if (m == 2 && n == 0) {
+            if (string(argv[4]) == "0") {
+                part = 0;
+                part_str = "_a";
+            } else {
+                part = 1;
+                part_str = "_b";
+            }
+        }
+    }    
+    
+    out = K(k, int(m), int(n), tidal, part);
     info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
         
     // write out the results
-    string filename = "data/I" + m_str + n_str + ".dat";
+    string filename = "data/K" + m_str + n_str + tidal_str + part_str + ".dat";
     FILE* fp = fopen(filename.c_str() , "w");
     for (int i = 0; i < Nout; i++){
         write(fp, "%e %e\n", k[i], out[i]);

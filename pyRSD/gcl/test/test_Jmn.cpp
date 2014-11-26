@@ -10,7 +10,7 @@
 #include <cstdio>
 #include <string>
 
-#include "Imn.h"
+#include "Jmn.h"
 #include "linearPS.h"
 #include "pstring.h"
 #include "Timer.h"
@@ -42,13 +42,13 @@ int main(int argc, char** argv){
     parray k = parray::logspace(kminout, kmaxout, Nout);
     
     // time the computation
-    Imn I(linPS, 1e-4);
+    Jmn J(linPS, 1e-4);
     Timer T;
-    parray out = I(k, int(m), int(n));
+    parray out = J(k, int(m), int(n));
     info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
         
     // write out the results
-    string filename = "data/I" + m_str + n_str + ".dat";
+    string filename = "data/J" + m_str + n_str + ".dat";
     FILE* fp = fopen(filename.c_str() , "w");
     for (int i = 0; i < Nout; i++){
         write(fp, "%e %e\n", k[i], out[i]);

@@ -1,5 +1,4 @@
 #include <functional>
-#include <iostream>
 #include "Imn.h"
 #include "PowerSpectrum.h"
 #include "Quadrature.h"

@@ -7,7 +7,7 @@ using std::bind;
 using std::cref;
 using namespace std::placeholders;
 
-double KMIN = 1e-4;
+double KMIN = 1e-5;
 double KMAX = 1e1;
 int NUM_PTS = 1000;
 
@@ -15,7 +15,7 @@ OneLoopPS::OneLoopPS(const PowerSpectrum& P_L_, double epsrel) : P_L(P_L_), I(P_
 
 double OneLoopPS::EvaluateFull(double k) const {
     if (k > KMAX)
-        return 0.;
+        return 0.;  
     else
         return Evaluate(k) + P_L(k);
 }
@@ -27,7 +27,7 @@ double OneLoopPS::Evaluate(double k) const {
         return oneloop_spline(k);
 }
 
-parray OneLoopPS::EvaluateManyFull(const parray& k) const {
+parray OneLoopPS::EvaluateFull(const parray& k) const {
     int n = (int)k.size();
     parray pk(n);
     #pragma omp parallel for
@@ -130,7 +130,7 @@ void OneLoopP22Bar::InitializeSpline() {
 }
 
 static double f(const OneLoopPS& P, double logq) {
-    double q = exp(q);
+    double q = exp(logq);
     return P.EvaluateFull(q)/q;
 }
 

@@ -24,7 +24,7 @@ public:
 
     // returns full spectrum (linear + 1-loop terms)
     virtual double EvaluateFull(double k) const;
-    virtual parray EvaluateManyFull(const parray& k) const;
+    virtual parray EvaluateFull(const parray& k) const;
     virtual double Evaluate(double k) const; 
         
     const PowerSpectrum& GetLinearPS() const { return P_L; }
@@ -87,6 +87,9 @@ class OneLoopP22Bar : public OneLoopPS {
 public:
     
     OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+    
+    /* Calculate the 1-D velocity kurtosis $\sigma_v^4 = \frac{1}{4} \int_0^\infty P22bar(q)/q^2 ~dq$ */
+    double VelocityKurtosis() const;
 
 private:
     

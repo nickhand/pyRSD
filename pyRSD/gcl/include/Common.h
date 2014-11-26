@@ -28,6 +28,8 @@ class Spline;
 class Timer;
 class parray;
 class pstring;
+class OneLoopPS;
+class LinearPS;
 
 /* Convenient print functions that flush the output buffer afterwards */
 //   Print to file

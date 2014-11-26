@@ -54,24 +54,24 @@ int main(int argc, char** argv){
     if (tag == "dd") {
         
         OneLoopPdd P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateManyFull(k);
+        parray Pk = P_1loop.EvaluateFull(k);
         write_results(k, Pk, tag);
     }
     else if (tag == "dv") {
         
         OneLoopPdv P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateManyFull(k);
+        parray Pk = P_1loop.EvaluateFull(k);
         write_results(k, Pk, tag);
     }
     else if (tag == "vv") {
         
         OneLoopPvv P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateManyFull(k);
+        parray Pk = P_1loop.EvaluateFull(k);
         write_results(k, Pk, tag);
     } else if (tag == "P22bar") {
         
         OneLoopP22Bar P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateManyFull(k);
+        parray Pk = P_1loop.EvaluateFull(k);
         info("velocity kurtosis = %.4f\n", P_1loop.VelocityKurtosis());
         write_results(k, Pk, tag); 
     }

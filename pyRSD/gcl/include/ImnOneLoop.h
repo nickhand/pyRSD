@@ -1,11 +1,11 @@
-#ifndef IMN_H
-#define IMN_H
+#ifndef IMN_ONELOOP_H
+#define IMN_ONELOOP_H
 // 
-//  Imn.h
+//  ImnOneLoop.h
 //  
 //  author: Nick Hand
 //  contact: nhand@berkeley.edu
-//  creation date: 11/23/2014 
+//  creation date: 11/26/2014 
 // 
 
 #include "Common.h"
@@ -13,29 +13,36 @@
 
 /*------------------------------------------------------------------------------
     Peturbation theory integrals from Vlah et al 2012
-    I_nm = \int d^3q / (2\pi^3) f_nm (\vec(k), \vec{q}) P_L(q) P_L(|\vec{k} - \vec{q}|)
+    
+    I_nm = \int d^3q / (2\pi^3) f_nm (\vec(k), \vec{q}) P_X(q) P_X(|\vec{k} - \vec{q}|),
+    where P_X can be of linear order or 1-loop over
 ------------------------------------------------------------------------------*/
 
-class Imn {
+class ImnOneLoop {
 public: 
     
-    Imn(const PowerSpectrum& P_L, double epsrel = 1e-5);
+    // both 1-loop spectra are the same
+    ImnOneLoop(const OneLoopPS& P_1, double epsrel = 1e-4);
+    ImnOneLoop(const OneLoopPS& P_1, const OneLoopPS& P_2, double epsrel = 1e-4);
     
-    /* Evaluate integral at a single k */
-    double Evaluate(double k, int m, int n) const;
-    double operator()(double k, int m, int n) const { return Evaluate(k, m, n); }
+    /* Evaluate the linear-linear term for a given kernel (scales as D(z)^4) */
+    double EvaluateLinear(double k, int m, int n) const;
+    parray EvaluateLinear(const parray& k, int m, int n) const;
     
-    /* Evaluate integral at many k values (parallelized for speed) */
-    parray EvaluateMany(const parray& k, int m, int n) const;
-    parray operator()(const parray& k, int m, int n) const { return EvaluateMany(k, m, n); }
+    /* Evaluate the sum of 1loop-linear and linear-1loop terms for a given kernel (scales as D(z)^6) */
+    double EvaluateCross(double k, int m, int n) const;
+    parray EvaluateCross(const parray& k, int m, int n) const;
     
-    // return constant reference to LinearPS
-    const PowerSpectrum& GetLinearPS() const { return P_L; }
+    /* Evaluate the 1loop - 1loop term for a given kernel (scales as D(z)^8) */
+    double EvaluateOneLoop(double k, int m, int n) const;
+    parray EvaluateOneLoop(const parray& k, int m, int n) const;
     
 protected:
-    const PowerSpectrum& P_L;
+    const OneLoopPS& P_1;
     double epsrel;
-   
+    bool equal;
+    const OneLoopPS& P_2;
+    const PowerSpectrum& P_L;
 };
 
-#endif // IMN_H
+#endif // IMN_ONELOOP_H

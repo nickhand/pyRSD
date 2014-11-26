@@ -72,6 +72,7 @@ int main(int argc, char** argv){
         
         OneLoopP22Bar P_1loop(linPS, 1e-4);
         parray Pk = P_1loop.EvaluateManyFull(k);
+        info("velocity kurtosis = %.4f\n", P_1loop.VelocityKurtosis());
         write_results(k, Pk, tag); 
     }
     

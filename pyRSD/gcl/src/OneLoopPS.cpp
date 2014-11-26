@@ -1,4 +1,11 @@
+#include <cmath>
+#include <functional>
 #include "OneLoopPS.h"
+#include "Quadrature.h"
+
+using std::bind;
+using std::cref;
+using namespace std::placeholders;
 
 double KMIN = 1e-4;
 double KMAX = 1e1;
@@ -122,8 +129,11 @@ void OneLoopP22Bar::InitializeSpline() {
             
 }
 
+static double f(const OneLoopPS& P, double logq) {
+    double q = exp(q);
+    return P.EvaluateFull(q)/q;
+}
 
-
-
-
-
+double OneLoopP22Bar::VelocityKurtosis() const {
+    return 0.25/(2*M_PI*M_PI) * Integrate(bind(f, cref(*this), _1), log(1e-5), log(KMAX), 1e-4, 1e-10);
+}

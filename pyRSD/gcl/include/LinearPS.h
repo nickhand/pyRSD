@@ -18,9 +18,14 @@ public:
     
     LinearPS(Cosmology& C, double z = 0);
 
-    const Cosmology& GetCosmology() const { return C; }
+    // evaluate for single k
     double Evaluate(double k) const;
     
+    // redshift accessor
+    const double& GetRedshift() const { return z; }
+    
+    // cosmology accessor
+    const Cosmology& GetCosmology() const { return C; }
 
 private:
     

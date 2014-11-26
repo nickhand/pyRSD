@@ -1,0 +1,98 @@
+#ifndef ONELOOP_PS_H
+#define ONELOOP_PS_H
+
+#include "Cosmology.h"
+#include "Imn.h"
+#include "Jmn.h"
+#include "PowerSpectrum.h"
+
+/*------------------------------------------------------------------------------
+    OneLoopPS
+    ---------
+    Standard Perturbation Theory (SPT_ 1-loop power spectrum, for density-density
+    density-velocity, and velocity velocity spectra
+
+    Computes spectra from KMIN to KMAX and returns the value at a given k, 
+    using a Spline
+------------------------------------------------------------------------------*/
+
+// base class for 1-loop PS
+class OneLoopPS : public PowerSpectrum {
+public:
+    
+    OneLoopPS(const PowerSpectrum& P_L, double epsrel = 1e-4);
+
+    // returns full spectrum (linear + 1-loop terms)
+    virtual double EvaluateFull(double k) const;
+    virtual parray EvaluateManyFull(const parray& k) const;
+    virtual double Evaluate(double k) const; 
+        
+    const PowerSpectrum& GetLinearPS() const { return P_L; }
+    const double& GetRedshift() const { return P_L.GetRedshift(); }
+    const Cosmology& GetCosmology() const { return P_L.GetCosmology(); }
+
+protected:
+    
+    const PowerSpectrum& P_L;
+    Imn I; 
+    Jmn J;
+    Spline oneloop_spline; 
+    
+};
+
+// density-density 1-loop power spectrum
+class OneLoopPdd : public OneLoopPS {
+
+public:
+    
+    OneLoopPdd(const PowerSpectrum& P_L, double epsrel = 1e-4);
+
+private:
+    
+    // this sets the 1-loop spline to 2*I00 + 6*k^2 * J00 * P_lin(k)
+    void InitializeSpline();
+};
+
+// density-velocity 1-loop power spectrum
+class OneLoopPdv : public OneLoopPS {
+
+public:
+    
+    OneLoopPdv(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+    
+private:
+    
+    // this sets the 1-loop spline to 2*I01 + 6*k^2 * J01 * P_lin(k)
+    void InitializeSpline();
+
+};
+
+// velocity-velocity 1-loop power spectrum
+class OneLoopPvv : public OneLoopPS {
+
+public:
+    
+    OneLoopPvv(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+
+private:
+    
+    // this sets the 1-loop spline to 2*I11 + 6*k^2 * J11 * P_lin(k)
+    void InitializeSpline();
+
+};
+
+// \bar{P22} 1-loop power spectrum, which is basically < vpar^2 | vpar^2 > 
+class OneLoopP22Bar : public OneLoopPS {
+
+public:
+    
+    OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+
+private:
+    
+    // this sets the 1-loop spline to I23 + (2/3)*I32 + (1/5)*I33
+    void InitializeSpline();
+
+};
+
+#endif // ONELOOP_PS_H

@@ -47,6 +47,8 @@ public:
 
     /* Write power spectrum to file */
     virtual void Save(const char* filename, double kmin = 1e-3, double kmax = 1, int Nk = 1000, bool log = false);
+    
+    virtual const double& GetRedshift() const = 0;
 };
 
 

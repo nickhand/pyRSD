@@ -78,11 +78,11 @@ EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rk
 %.o:  %.cpp .base
 	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
-TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o GSL_Quadrature.o
+TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o GSL_Quadrature.o 
 
-SOURCE = Engine.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o
+SOURCE = Engine.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o
 
-TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o
+TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o
 
 
 C_TOOLS =  $(addprefix src/, $(addsuffix .cpp,$(basename $(TOOLS))))
@@ -116,6 +116,8 @@ test_Jmn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 test_Kmn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
 
+test_oneloopPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
+	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
 
 # 
 # tar: $(C_ALL) $(C_TEST) $(H_ALL) $(PRE_ALL) $(INI_ALL) $(MISC_FILES) $(HYREC) $(PYTHON_FILES)

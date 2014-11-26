@@ -60,7 +60,10 @@ CCFLAG += -DDEBUG
 #CCFLAG += -DVERBOSE
 
 # where to find include files *.h
-INCLUDES = -I../include
+INCLUDES = -I../include -I/opt/local/include/
+
+# libraries
+LIBS = -L/opt/local/lib/ -lgsl
 
 # automatically add external programs if needed. First, initialize to blank.
 EXTERNAL =
@@ -73,15 +76,13 @@ EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rk
 #endif
 
 %.o:  %.cpp .base
-	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) -c ../$< -o $*.o
+	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
-TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o
+TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o GSL_Quadrature.o
 
-SOURCE = Engine.o ClassCosmology.o Cosmology.o PowerSpectrum.o NoWigglePS.o LinearPS.o Imn.o
+SOURCE = Engine.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o
 
-TEST =  test_linearPS.o test_Imn.o
-
-#LinearPS.o 
+TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o
 
 
 C_TOOLS =  $(addprefix src/, $(addsuffix .cpp,$(basename $(TOOLS))))
@@ -101,42 +102,21 @@ C_TEST = $(addprefix test/, $(addsuffix .cpp,$(basename $(TEST) )))
 all: libgcl.so
 
 libgcl.so: $(TOOLS) $(SOURCE) $(EXTERNAL)
-	$(SO) $(OPTFLAG) $(OMPFLAG) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -o $@ 
+	$(SO) $(OPTFLAG) $(OMPFLAG) $(LIBS) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -o $@ 
 
 test_linearPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
 
 test_Imn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
 
-# 
-# test_loops: $(TOOLS) $(SOURCE) $(EXTERNAL) $(OUTPUT) $(TEST_LOOPS)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_stephane: $(TOOLS) $(SOURCE) $(EXTERNAL) $(OUTPUT) $(TEST_STEPHANE)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_degeneracy: $(TOOLS) $(SOURCE) $(EXTERNAL) $(OUTPUT) $(TEST_DEGENERACY)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_transfer: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST_TRANSFER)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_nonlinear: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST_NONLINEAR)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_perturbations: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST_PERTURBATIONS)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_thermodynamics: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST_THERMODYNAMICS)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_background: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST_BACKGROUND)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o  $@ $(addprefix build/,$(notdir $^)) -lm
-# 
-# test_hyperspherical: $(TOOLS) $(TEST_HYPERSPHERICAL)
-#	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) -o test_hyperspherical $(addprefix build/,$(notdir $^)) -lm
-# 
+test_Jmn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
+	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+
+test_Kmn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
+	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+
+
 # 
 # tar: $(C_ALL) $(C_TEST) $(H_ALL) $(PRE_ALL) $(INI_ALL) $(MISC_FILES) $(HYREC) $(PYTHON_FILES)
 #	tar czvf class.tar.gz $(C_ALL) $(H_ALL) $(PRE_ALL) $(INI_ALL) $(MISC_FILES) $(HYREC) $(PYTHON_FILES)

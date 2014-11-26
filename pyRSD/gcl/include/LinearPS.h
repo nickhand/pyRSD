@@ -20,6 +20,7 @@ public:
 
     const Cosmology& GetCosmology() const { return C; }
     double Evaluate(double k) const;
+    
 
 private:
     

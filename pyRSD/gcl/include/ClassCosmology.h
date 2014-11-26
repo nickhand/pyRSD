@@ -133,11 +133,11 @@ public:
 	                parray& clephi);
 
     // linear/nonlinear matter power spectra
-    int GetPklin(double z, parray& k, parray& Pk);
-    int GetPknl(double z, parray& k, parray& Pk);
+    int GetPklin(double z, const parray& k, parray& Pk);
+    int GetPknl(double z, const parray& k, parray& Pk);
 
     // get the total density transfer function
-    int GetTk(double z, parray& k, parray& Tk);
+    int GetTk(double z, const parray& k, parray& Tk);
 
     // parameter accessors
 
@@ -185,6 +185,8 @@ public:
     inline double ln_1e10_A_s() const { return log(1e10*pm.A_s); }
     // convenience function to return sigma8 at z = 0
     inline double sigma8() const { return sp.sigma8; }
+    // maximum k value computed in h/Mpc
+    inline double k_max() const { return exp(sp.ln_k[sp.ln_k_size-1])/h(); }
     
     // baryon drag redshift
     inline double z_drag() const { return th.z_d; }
@@ -260,7 +262,7 @@ protected:
     
     // nonlinear vs linear P(k)
     enum Pktype {Pk_linear=0, Pk_nonlinear};
-    int GetPk(double z, parray& k, parray& Pk, Pktype method = Pk_linear);
+    int GetPk(double z, const parray& k, parray& Pk, Pktype method = Pk_linear);
     double GetCl(Engine::cltype t, const long &l); 
         
     // functions for returning cosmological quantities

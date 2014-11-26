@@ -47,9 +47,9 @@ public:
 			             parray& cltp, 
 			             parray& clep)=0;
 			  
-  virtual int GetPklin(double z, parray& k, parray& Pk)=0;
-  virtual int GetPknl(double z, parray& k, parray& Pk)=0;
-  virtual int GetTk(double z, parray& k, parray& Tk)=0;
+  virtual int GetPklin(double z, const parray& k, parray& Pk)=0;
+  virtual int GetPknl(double z, const parray& k, parray& Pk)=0;
+  virtual int GetTk(double z, const parray& k, parray& Tk)=0;
 
   // the output functions
   virtual void WriteCls(std::ostream &o);

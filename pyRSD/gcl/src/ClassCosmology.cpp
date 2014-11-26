@@ -5,7 +5,6 @@
 #include <cmath>
 #include <sstream>
 #include <numeric>
-#include <cassert>
 #include <cstdio>
 
 using namespace std;
@@ -56,6 +55,8 @@ ClassCosmology::ClassCosmology() {
 ClassCosmology::ClassCosmology(const ClassParams& pars, const string & precision_file)
 : cl(0), dofree(true)
 {
+    _lmax = 0;
+    
     Initialize(pars, precision_file);
     
     // store Omega0_m and Omegar_0 at z = 0 so we don't keep computing it
@@ -66,6 +67,8 @@ ClassCosmology::ClassCosmology(const ClassParams& pars, const string & precision
 ClassCosmology::ClassCosmology(const string & param_file, const string & precision_file)
 : cl(0), dofree(true)
 {
+    _lmax = 0;
+    
     ClassParams parameters(FindFilename(param_file));
     Initialize(parameters, precision_file);
     
@@ -145,7 +148,6 @@ void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file
         i++;
     }
     verbose("%s :  : using lmax = %d\n", __FILE__ , _lmax);
-    assert(_lmax > 0);
 
     // concantanate precision
     if (precision_file != "") {
@@ -449,59 +451,52 @@ int ClassCosmology::GetLensing(const vector<unsigned>& lvec, // input
 /*----------------------------------------------------------------------------*/
 
 // generic private class for computing either P_lin(k) or P_nl(k)
-int ClassCosmology::GetPk(double z, parray& k, parray& Pk, Pktype method) {
+int ClassCosmology::GetPk(double z, const parray& k, parray& Pk, Pktype method) {
     
-    // resize the input parrays
-    k.resize(sp.ln_k_size);
-    Pk.resize(sp.ln_k_size);
     
-    int index_md;
-    int index_k;
-    
-    index_md = pt.index_md_scalars;
-
-    if (z > sp.z_max_pk) {
-        cout << "P(k,z) computed up to z = " << sp.z_max_pk << " but requested at z = " << z << ". Must increase z_max_pk in precision file." << endl;
-        throw out_of_range("Redshift error");
-    }
-    
+    int index_md = sp.index_md_scalars;
     if (sp.ic_size[index_md] > 1) 
         throw out_of_range("Cannot currently deal with mutiple initial conditions spectra, try only specifying one.");
         
-    /* if z_pk = 0, no interpolation needed */
-    if (z == 0.) {
-
-        for (index_k=0; index_k < sp.ln_k_size; index_k++) {
-            k[index_k] = exp(sp.ln_k[index_k])/ba.h;
-            
-            if (method == Pk_linear)
-                Pk[index_k] = exp(sp.ln_pk[(sp.ln_tau_size-1) * sp.ln_k_size + index_k])*pow(ba.h,3);
-            else
-                Pk[index_k] = exp(sp.ln_pk_nl[(sp.ln_tau_size-1) * sp.ln_k_size + index_k])*pow(ba.h,3);
-        }
-    } else {
+    Pk = parray::zeros(k.size());
+    double pk_ic = 0;
+    for (size_t i = 0; i < k.size(); i++) {
+        int status;
+        double thisPk;
+        double thisk = k[i]*h();
+    
+        // check for k > kmax
+        if (thisk > k_max())
+            warning("Computing P(k) for k > kmax; 0 will be returned\n");
+        
+        // make sure to put k from h/Mpc to 1/Mpc
         if (method == Pk_linear)
-            spectra_pk_at_z(&ba, &sp, linear, z, &Pk[0], NULL);
+            status = spectra_pk_at_k_and_z(&ba, &pm, &sp, thisk, z, &thisPk, &pk_ic);
         else
-            spectra_pk_nl_at_z(&ba, &sp, linear, z, &Pk[0]);
-    }    
+            status = spectra_pk_nl_at_k_and_z(&ba, &pm, &sp, thisk, z, &thisPk);
+        
+        if (status == _FAILURE_)
+            return _FAILURE_;
+            
+        Pk[i] = thisPk*pow3(h()); // put into units of (Mpc/h^3)
+    }
     return _SUCCESS_;
 }
 
 /*----------------------------------------------------------------------------*/
 
 // compute the k, linear Pk in units of h/Mpc, (Mpc/h)^3
-int ClassCosmology::GetPklin(double z, parray& k, parray& Pk) {
+int ClassCosmology::GetPklin(double z, const parray& k, parray& Pk) {
+    
     if (pt.has_pk_matter == _FALSE_)
         return _FAILURE_;
-    
     return GetPk(z, k, Pk, Pk_linear);
 }
 
 /*----------------------------------------------------------------------------*/
 
 // compute the k, nonlinear Pk in units of h/Mpc, (Mpc/h)^3
-int ClassCosmology::GetPknl(double z, parray& k, parray& Pk) {
+int ClassCosmology::GetPknl(double z, const parray& k, parray& Pk) {
     
     if (nl.method == nl_none)
        return _FAILURE_;
@@ -512,57 +507,26 @@ int ClassCosmology::GetPknl(double z, parray& k, parray& Pk) {
 /*----------------------------------------------------------------------------*/
 
 // return the k, transfer function (in CAMB format) in units of h/Mpc, unitless
-int ClassCosmology::GetTk(double z, parray& k, parray& Tk) {
+int ClassCosmology::GetTk(double z, const parray& k, parray& Tk) {
     
     if (pt.has_density_transfers != _TRUE_)
         return _FAILURE_;
+    
+    int index_md = sp.index_md_scalars;
         
-    // resize the input parrays
-    k.resize(sp.ln_k_size);
-    Tk.resize(sp.ln_k_size);
-    
-    double thisk, k_over_h, k2;
-    double *tk;
-    parray tkfull;
-    int index_md = 0;
-    int index_k;
-    int index_tr;
-    
-    if (sp.ln_k_size*sp.ic_size[index_md]*sp.tr_size > 0)
-        tkfull.resize(sp.ln_k_size*sp.ic_size[index_md]*sp.tr_size);
-    
-    if (z > sp.z_max_pk) {
-        cout << "T(k,z) computed up to z = " << sp.z_max_pk << " but requested at z = " << z << ". Must increase z_max_pk in precision file." << endl;
-        throw out_of_range("Redshift error");
-    }
-    
-    if (sp.ic_size[index_md] > 1) 
-        throw out_of_range("Cannot currently deal with mutiple initial conditions spectra, try only specifying one.");
-        
-    /* if z_pk = 0, no interpolation needed */
-    if (z == 0.) {
-        for (index_k=0; index_k < sp.ln_k_size; index_k++) {
-            for (index_tr=0; index_tr<sp.tr_size; index_tr++) {
-                tkfull[index_k*sp.tr_size + index_tr] = sp.matter_transfer[((sp.ln_tau_size-1)*sp.ln_k_size + index_k) * sp.tr_size + index_tr];
-            }
-        }
-    } else {
-        spectra_tk_at_z(&ba, &sp, z, &tkfull[0]);
-    }   
-    
-    // store the total transfer function
-    for (index_k=0; index_k < sp.ln_k_size; index_k++) {
+    // resize the output array
+    Tk.resize(k.size());
 
-      tk = &(tkfull[index_k * sp.tr_size]);
-      thisk = exp(sp.ln_k[index_k]);
-      k2 = thisk*thisk;
-      k_over_h = thisk/ba.h;
-      
-      // store
-      k[index_k] = k_over_h;
-      
-      // return in CAMB format, regardless of input
-      Tk[index_k] = -tk[sp.index_tr_delta_tot]/k2;         
+    // compute the linear Power spectrum
+    GetPklin(z, k, Tk);
+    
+    for (size_t i = 0; i < k.size(); i++) {
+    
+        double pk_primordial_k;
+        double thisk = k[i]*h();
+        primordial_spectrum_at_k(&pm, index_md, linear, thisk, &pk_primordial_k);
+        Tk[i] /= (pk_primordial_k*k[i]*pow3(h()));
+        Tk[i] = sqrt(Tk[i]);
     }
     return _SUCCESS_;
 }

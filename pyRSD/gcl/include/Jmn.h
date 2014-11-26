@@ -1,11 +1,12 @@
-#ifndef IMN_H
-#define IMN_H
+#ifndef JMN_H
+#define JMN_H
 // 
-//  Imn.h
+//  Jmn.h
+//  gcl
 //  
 //  author: Nick Hand
 //  contact: nhand@berkeley.edu
-//  creation date: 11/23/2014 
+//  creation date: 11/25/2014 
 // 
 
 #include "Common.h"
@@ -13,13 +14,13 @@
 
 /*------------------------------------------------------------------------------
     Peturbation theory integrals from Vlah et al 2012
-    I_nm = \int d^3q / (2\pi^3) f_nm (\vec(k), \vec{q}) P_L(q) P_L(|\vec{k} - \vec{q}|)
+    I_nm = \int d^3q / (2\pi^3) g_nm (k/q) P_L(q) /q^2
 ------------------------------------------------------------------------------*/
 
-class Imn {
+class Jmn {
 public: 
     
-    Imn(const PowerSpectrum& P_L, double epsrel = 1e-5);
+    Jmn(const PowerSpectrum& P_L, double epsrel = 1e-5);
     
     /* Evaluate integral at a single k */
     double Evaluate(double k, int m, int n) const;
@@ -29,10 +30,10 @@ public:
     parray EvaluateMany(const parray& k, int m, int n) const;
     parray operator()(const parray& k, int m, int n) const { return EvaluateMany(k, m, n); }
     
-protected:
+private:
     const PowerSpectrum& P_L;
     double epsrel;
    
 };
 
-#endif // IMN_H
+#endif // JMN_H

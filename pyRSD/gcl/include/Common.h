@@ -16,7 +16,7 @@
 #endif
 
 #include <cmath>
-
+#include <cstdio>
 
 /* Forward declarations of generic classes */
 // class Closure;
@@ -30,6 +30,8 @@ class parray;
 class pstring;
 
 /* Convenient print functions that flush the output buffer afterwards */
+//   Print to file
+void write(FILE * stream, const char* format, ...);
 //   Print to stdout
 void info(const char* format, ...);
 //   Print to stdout if VERBOSE is defined.
@@ -41,6 +43,7 @@ void warning(const char* format, ...);
 //   Print to stderr and abort.
 void error(const char* format, ...);
 
+
 /***** Math routines *****/
 
 /* Small integer powers */
@@ -51,6 +54,8 @@ static inline double pow5(double x) { return x*pow4(x); }
 static inline double pow6(double x) { return pow3(pow2(x)); }
 static inline double pow7(double x) { return x*pow6(x); }
 static inline double pow8(double x) { return pow2(pow4(x)); }
+static inline double pow10(double x) { return pow2(pow5(x)); }
+static inline double pow12(double x) { return pow2(pow6(x)); }
 
 /* Physical constants in cgs units */
 namespace Constants {

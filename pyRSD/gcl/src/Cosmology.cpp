@@ -11,6 +11,7 @@ using std::bind;
 using std::cref;
 using namespace std::placeholders;
 
+
 Cosmology::Cosmology() {
     /* No initialization */
 }
@@ -93,10 +94,10 @@ double Cosmology::GetSplineTransfer(double k) const {
         return 0;
     else if (k <= k0)
         // Eisenstein-Hu, scaled to match splined P(k) at k = k0
-        return T0 * GetNoWiggleTransfer(k)/GetNoWiggleTransfer(k0);    
+        return T0 * GetNoWiggleTransfer(k)/T0_nw;    
     else if(k >= k1)
         // Eisenstein-Hu, scaled to match splined P(k) at k = k1
-        return T1 * GetNoWiggleTransfer(k)/GetNoWiggleTransfer(k1);     
+        return T1 * GetNoWiggleTransfer(k)/T1_nw;     
     else
         return Tk(k);
 }
@@ -109,7 +110,7 @@ double Cosmology::GetEisensteinHuTransfer(double k) const {
     double T_c_f, T_c;
     double s_tilde, xx_tilde;
     double T_b_T0, T_b;
-            
+    
     k *= h();
     q = k/13.41/k_equality;
     xx = k*sound_horizon;
@@ -135,19 +136,8 @@ double Cosmology::GetEisensteinHuTransfer(double k) const {
 // return T(k) from the no-wiggle Eisenstein-Hu fit
 double Cosmology::GetNoWiggleTransfer(double k) const {
             
-    // convenience variables
-    double h2 = pow2(h());
-    double om = Omega0_m();
-    double omh2 = Omega0_m()*h2;
-    double obh2 = Omega0_b()*h2;
-    double theta_cmb = Tcmb()/2.7;
-    double f_baryon = obh2 / omh2;
-    
-    double k_equality = 0.0746*omh2/pow2(theta_cmb);
-    double s = 44.5*log(9.83/om)/sqrt(1 + 10*pow(om*f_baryon, 0.75));
-    double alpha_gamma = 1 - 0.328*log(431*omh2)*f_baryon + 0.38*log(22.3*omh2)*pow2(f_baryon);
-    
     k *= h();
+    double omh2 = Omega0_m();
     double q = k/13.41/k_equality;
     double gamma_eff = omh2*(alpha_gamma + (1 - alpha_gamma)/(1 + pow4(0.43*k*s)));
     double q_eff = q*omh2/gamma_eff;
@@ -175,8 +165,13 @@ void Cosmology::InitializeTransferFunction(TransferFit tf, const string& tkfile)
     if (tf == FromFile) {
         LoadTransferFunction(tkfile);
     } else if (tf == CLASS) {
+        
+        ki = parray::logspace(1e-5, k_max(), 500);
         GetTk(0., ki, Ti);
     }
+    
+    // set EH params
+    SetEisensteinHuParameters();
     
     // set the spline
     if (tf == FromFile || tf == CLASS) {
@@ -187,6 +182,9 @@ void Cosmology::InitializeTransferFunction(TransferFit tf, const string& tkfile)
         k1 = ki[N-1];
         T0 = Ti[0];
         T1 = Ti[N-1];
+
+        T0_nw = GetNoWiggleTransfer(k0);
+        T1_nw = GetNoWiggleTransfer(k1);
     }
     
     // normalize to sigma8() and set sigma8/delta_H 
@@ -199,6 +197,53 @@ void Cosmology::SetTransferFunction(TransferFit tf, const string& tkfile) {
     
     transfer_fit_ = tf;
     InitializeTransferFunction(tf, tkfile);
+}
+
+void Cosmology::SetEisensteinHuParameters() {
+    
+    double h2 = pow2(h());
+    double om = Omega0_m();
+    double omh2 = Omega0_m()*h2;
+    double obh2 = Omega0_b()*h2;
+    double theta_cmb = Tcmb()/2.7;
+    
+    // baryon fraction
+    f_baryon = obh2 / omh2;
+
+    // wavenumber of equality
+    double z_equality = 2.5e4*omh2/pow3(theta_cmb);
+    k_equality = 0.0746*omh2/pow2(theta_cmb);
+    
+    // sound horizon and k_silk
+    double z_drag_b1 = 0.313*pow(omh2,-0.419)*(1 + 0.607*pow(omh2, 0.674));
+    double z_drag_b2 = 0.238*pow(omh2, 0.223);
+    double z_drag = 1291*pow(omh2, 0.251)/(1 + 0.659*pow(omh2, 0.828))*(1+z_drag_b1*pow(obh2,z_drag_b2));
+    double R_drag = 31.5*obh2/pow4(theta_cmb)*(1000/(1+z_drag));
+    double R_equality = 31.5*obh2/pow4(theta_cmb)*(1000/z_equality);
+    sound_horizon = 2./3./k_equality*sqrt(6./R_equality)*log((sqrt(1+R_drag)+sqrt(R_drag+R_equality))/(1+sqrt(R_equality)));
+    k_silk = 1.6*pow(obh2,0.52)*pow(omh2,0.73)*(1+pow(10.4*omh2,-0.95));
+    
+    // alpha_c
+    double alpha_c_a1 = pow(46.9*omh2,0.670)*(1+pow(32.1*omh2,-0.532));
+    double alpha_c_a2 = pow(12.0*omh2,0.424)*(1+pow(45.0*omh2,-0.582));
+    alpha_c = pow(alpha_c_a1,-f_baryon)*pow(alpha_c_a2,-pow3(f_baryon));   
+    
+    // beta_c
+    double beta_c_b1 = 0.944/(1+pow(458*omh2,-0.708));
+    double beta_c_b2 = pow(0.395*omh2, -0.0266);
+    beta_c = 1.0/(1+beta_c_b1*(pow(1-f_baryon, beta_c_b2)-1));
+    
+    double y = z_equality/(1+z_drag);
+    double alpha_b_G = y*(-6.*sqrt(1+y)+(2.+3.*y)*log((sqrt(1+y)+1)/(sqrt(1+y)-1)));
+    alpha_b = 2.07*k_equality*sound_horizon*pow(1+R_drag,-0.75)*alpha_b_G;
+    beta_node = 8.41*pow(omh2, 0.435);
+    beta_b = 0.5+f_baryon+(3.-2.*f_baryon)*sqrt(pow(17.2*omh2,2.0)+1);
+    
+    // no wiggle params
+    s = 44.5*log(9.83/om)/sqrt(1 + 10*pow(om*f_baryon, 0.75));
+    alpha_gamma = 1 - 0.328*log(431*omh2)*f_baryon + 0.38*log(22.3*omh2)*pow2(f_baryon);
+    
+    
 }
 
 

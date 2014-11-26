@@ -1,9 +1,18 @@
 #include <cmath>
 #include <cstdarg>
-#include <cstdio>
 #include <cstdlib>
 
 #include "Common.h"
+
+void write(FILE* stream, const char* format, ...) {
+    va_list args;
+    char dest[6000];
+    va_start(args, format);
+    vsnprintf(dest, 2048, format, args);
+    va_end(args);
+    fprintf(stream, dest);
+}
+
 
 void info(const char* format, ...) {
     va_list ap;

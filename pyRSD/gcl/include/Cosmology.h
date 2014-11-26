@@ -64,15 +64,21 @@ private:
     TransferFit transfer_fit_;   /* the transfer fit method */
     
     parray ki, Ti;
-    double k0, T0;        // k and T(k) of left-most data point
-    double k1, T1;        // k and T(k) of right-most data point
-    Spline Tk;            // spline T(k) based on transfer function
+    double k0, T0, T0_nw;        // k and T(k) of left-most data point
+    double k1, T1, T1_nw;        // k and T(k) of right-most data point
+    Spline Tk;                   // spline T(k) based on transfer function
+    
+    double f_baryon;
+    double k_equality, sound_horizon, beta_c, alpha_c;
+    double beta_node, alpha_b, beta_b, k_silk;
+    double alpha_gamma, s;
     
     double GetEisensteinHuTransfer(double k) const;
     double GetNoWiggleTransfer(double k) const;
     double GetBBKSTransfer(double k) const;
     double GetSplineTransfer(double k) const;
     void InitializeTransferFunction(TransferFit tf, const string& tkfile);
+    void SetEisensteinHuParameters();
         
 };
 

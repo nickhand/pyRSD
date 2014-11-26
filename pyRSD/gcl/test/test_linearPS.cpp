@@ -33,18 +33,22 @@ int main(int argc, char** argv){
     
     // using CLASS transfer
     parray Pk_class = linPS(k);
+    info("CLASS transfer: sigma_v = %.5f Mpc/h\n", sqrt(linPS.VelocityDispersion()));
     
     // using EH full
     cosmo.SetTransferFunction(Cosmology::EH);
     parray Pk_eh = linPS(k);
+    info("EH transfer: sigma_v = %.5f Mpc/h\n", sqrt(linPS.VelocityDispersion()));
     
     // using EH no wiggle
     cosmo.SetTransferFunction(Cosmology::EH_NoWiggle);
     parray Pk_nw = linPS(k);
+    info("EH no-wiggle transfer: sigma_v = %.5f Mpc/h\n", sqrt(linPS.VelocityDispersion()));
     
     // using BBKS
     cosmo.SetTransferFunction(Cosmology::BBKS);
     parray Pk_bbks = linPS(k);
+    info("BBKS transfer: sigma_v = %.5f Mpc/h\n", sqrt(linPS.VelocityDispersion()));
     
     // print out the results in columns
     string filename = "data/test_linearPS.dat";

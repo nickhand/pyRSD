@@ -46,6 +46,19 @@ double PowerSpectrum::VelocityDispersion() const {
     return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-5, 1e2, 1e-5, 1e-12);
 }
 
+double PowerSpectrum::VelocityDispersion(double k) const {
+    return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-5, k, 1e-5, 1e-12);
+}
+
+parray PowerSpectrum::VelocityDispersion(const parray& k) const {
+    int n = (int)k.size();
+    parray sigmasq(n);
+    #pragma omp parallel for
+    for(int i = 0; i < n; i++)
+        sigmasq[i] = VelocityDispersion(k[i]);
+    return sigmasq;
+}
+
 double PowerSpectrum::NonlinearScale() const {
     return 1/sqrt(VelocityDispersion());
 }

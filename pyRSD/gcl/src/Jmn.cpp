@@ -127,7 +127,7 @@ double Jmn::Evaluate(double k, int m, int n) const {
         case 6:
             return ComputeIntegral(g20, P_L, k, epsrel);
         default:
-            warning("Jmn: invalid indices, m = %d, n = %d\n", m, n);
+            error("Jmn: invalid indices, m = %d, n = %d\n", m, n);
             return 0;
     }
 }

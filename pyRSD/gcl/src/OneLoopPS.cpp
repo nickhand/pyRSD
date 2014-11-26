@@ -109,6 +109,22 @@ OneLoopP22Bar::OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel) : OneLoopP
     OneLoopP22Bar::InitializeSpline(); 
 }
 
+double OneLoopP22Bar::EvaluateFull(double k) const {
+    if (k > KMAX)
+        return 0.;  
+    else
+        return Evaluate(k);
+}
+
+parray OneLoopP22Bar::EvaluateFull(const parray& k) const {
+    int n = (int)k.size();
+    parray pk(n);
+    #pragma omp parallel for
+    for(int i = 0; i < n; i++)
+        pk[i] = EvaluateFull(k[i]);
+    return pk;
+}
+
 void OneLoopP22Bar::InitializeSpline() {
     
     // spline seeded at these k values
@@ -129,11 +145,10 @@ void OneLoopP22Bar::InitializeSpline() {
             
 }
 
-static double f(const OneLoopPS& P, double logq) {
-    double q = exp(logq);
-    return P.EvaluateFull(q)/q;
+static double f(const OneLoopPS& P, double q) {
+    return P.EvaluateFull(q)/(q*q);
 }
 
 double OneLoopP22Bar::VelocityKurtosis() const {
-    return 0.25/(2*M_PI*M_PI) * Integrate(bind(f, cref(*this), _1), log(1e-5), log(KMAX), 1e-4, 1e-10);
+    return 0.25/(2*M_PI*M_PI) * Integrate<ExpSub>(bind(f, cref(*this), _1), 1e-5, KMAX, 1e-4, 1e-10);
 }

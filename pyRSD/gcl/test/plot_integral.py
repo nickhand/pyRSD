@@ -19,10 +19,9 @@ def main(args):
     plt.loglog(data[:,0], abs(data[:,1]))
     
     # make it look nice
-    m = args.integral[-2]
-    n = args.integral[-1]
+    indices = args.integral[1:]
     plt.xlabel(r"$k$ ($h$/Mpc)", fontsize=16)
-    plt.ylabel(r"$|%s_{%s %s}(k)|$" %(args.integral[0], m, n), fontsize=16)
+    plt.ylabel(r"$|%s_{%s}(k)|$" %(args.integral[0], indices), fontsize=16)
     plt.savefig("plots/%s.pdf" %args.integral)
     plt.show()
     

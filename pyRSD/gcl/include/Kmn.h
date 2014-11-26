@@ -18,7 +18,7 @@
 class Kmn  {
 public: 
     
-    Kmn(const PowerSpectrum& P_L, double epsrel = 1e-5);
+    Kmn(const PowerSpectrum& P_L, double epsrel = 1e-3);
     
     /* Evaluate integral at a single k */
     double Evaluate(double k, int m, int n, bool tidal=false, int part=0) const;

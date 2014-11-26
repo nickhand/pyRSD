@@ -78,7 +78,7 @@ EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rk
 %.o:  %.cpp .base
 	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
-TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o GSL_Quadrature.o 
+TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o
 
 SOURCE = Engine.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o ImnOneLoop.o
 

@@ -1,4 +1,5 @@
-#include "GSL_Quadrature.h"
+#include <functional>
+#include "Quadrature.h"
 #include "Kmn.h"
 #include "PowerSpectrum.h"
 
@@ -20,95 +21,112 @@ Kmn::Kmn(const PowerSpectrum& P_L_, double epsrel_) : P_L(P_L_), epsrel(epsrel_)
 /*----------------------------------------------------------------------------*/
 
 // the 2nd order PT density kernel
-static double F2(double r, double x) {
-    return (7*x + 3*r - 10*r*x*x)/(14*r*(1 + r*r - 2*r*x));
+static double F2(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return (8 + 6*v2 + u2*(6 - 20*v2))/(7*pow2(u2 - v2));
 }
 
 // the 2nd order PT velocity kernel
-static double G2(double r, double x) {
-    return (7*x - r - 6*r*x*x)/(14*r*(1 + r*r - 2*r*x));
+static double G2(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return -((2*(-8 + u2 + v2 + 6*u2*v2)) / (7*pow2(u2 - v2)));
 }
 
 // the biasing tidal term kernel
-static double S2(double r, double x) {
-    return (r-x)*(r-x)/(1. + r*r - 2.*r*x) - 1./3.;
+static double S2(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return (2*(6 + u2*u2 - 6*v2 + v2*v2 + u2*(-6 + 4*v2)))/(3*pow2(u2 - v2));
 }
 
 // k00(\vec{k}, \vec{q})
-static double k00(double r, double x) {
-    return F2(r, x);
+static double k00(double u, double v) {
+    return F2(u, v);
 }
 
 // k00s(\vec{k}, \vec{q})
-static double k00s(double r, double x) {
-    return F2(r, x)*S2(r, x);
+static double k00s(double u, double v) {
+    return F2(u, v)*S2(u, v);
 }
 
 // k01(\vec{k}, \vec{q})
-static double k01(double r, double x) {
+static double k01(double u, double v) {
     return 1;
 }
 
 // k01s(\vec{k}, \vec{q})
-static double k01s(double r, double x) {
-    return pow2(S2(r, x));
+static double k01s(double u, double v) {
+    return pow2(S2(u, v));
 }
 
-static double k02s(double r, double x) {
-    return S2(r, x);
+static double k02s(double u, double v) {
+    return S2(u, v);
 }
 
-static double k10(double r, double x) {
-    return G2(r, x);
+static double k10(double u, double v) {
+    return G2(u, v);
 }
 
-static double k10s(double r, double x) {
-    return G2(r, x)*S2(r, x);
+static double k10s(double u, double v) {
+    return G2(u, v)*S2(u, v);
 }
 
-static double k11(double r, double x) {
-    return x/r;
+static double k11(double u, double v) {
+    return (2 - 2*u*v)/pow2(u - v);
 }
 
-static double k11s(double r, double x) {
-    return x/r*S2(r, x);
+static double k11s(double u, double v) {
+    return (2 - 2*u*v)/pow2(u - v) * S2(u, v);
 }
     
-static double k20_a(double r, double x) {
-    return -0.5*(1 - x*x) / (1 + r*r - 2*r*x); // this is h03
+static double k20_a(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return (2*(-1 + u2)*(-1 + v2))/pow2(u2 - v2);
 }
 
-static double k20s_a(double r, double x) {
-    return S2(r, x) * (-0.5*(1 - x*x) / (1 + r*r - 2*r*x)); // S2*h03
+static double k20s_a(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return S2(u, v)*(2*(-1 + u2)*(-1 + v2))/pow2(u2 - v2);
 }
     
-static double k20_b(double r, double x) {
-    return (0.5 - 1.5*x*x + x/r) / (1 + r*r - 2*r*x); // this is h04
+static double k20_b(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return (1 + u2 + v2 - 3*u2*v2) / pow2(u2 - v2);
 }
 
-static double k20s_b(double r, double x) {
-    return S2(r, x)*((0.5 - 1.5*x*x + x/r) / (1 + r*r - 2*r*x)); 
+static double k20s_b(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return S2(u, v)*(1 + u2 + v2 - 3*u2*v2) / pow2(u2 - v2);
 }
 
 // the Kmn integrand
-static double KmnIntegrand(double (*f)(double, double), const PowerSpectrum& P_L, double k, double logq, double x) {
-    double q = exp(logq);
-    double r = q/k, d = 1 + r*r - 2*r*x;
-    return q * q * q * P_L(q) * P_L(k*sqrt(d)) * f(r, x);
+static double KmnIntegrand(double (*f)(double, double), const PowerSpectrum& P_L, double k, double logu, double v) {    
+    double u = exp(logu);
+    double q = (k/2)*(u - v);
+    double r = (k/2)*(u + v);
+    return u * q * r * P_L(q) * P_L(r) * f(u, v);
     
 }
 
 template<class KmnKernel>
-static double ComputeIntegral(KmnKernel f, const PowerSpectrum& P_L, double k, double epsrel = 1e-5, double qmax = QMAX) {
+static double ComputeIntegral(KmnKernel f, const PowerSpectrum& P_L, double k, double epsrel = 1e-3, bool symmetric=true, double qmax = QMAX) {
     if(k <= 0) return 0;
     
 
-    double a[] = { log(QMIN), -1. };
-    double b[] = { log(QMAX), 1. };    
-    double V = 1 / (4*M_PI*M_PI);
+    double umin = 1, umax = 2*qmax/k;
+    double vmin = 0, vmax = 1.;
+    double a[] = { log(umin), vmin };
+    double b[] = { log(umax), vmax };
+    double V = k / (4*M_PI*M_PI);
+    double ans;
     
-    // use a double wrapper of CQUAD to do the doube integral
-    return V * DoubleIntegrateCQUAD(bind(KmnIntegrand, f, cref(P_L), k, _1, _2), a, b, epsrel, 0.);      
+    if (symmetric)
+        ans =  V * Integrate<2>(bind(KmnIntegrand, f, cref(P_L), k, _1, _2), a, b, epsrel, 0.);
+    else {
+        a[1] = -1;
+        ans = 0.5 * V * Integrate<2>(bind(KmnIntegrand, f, cref(P_L), k, _1, _2), a, b, epsrel, 0.);
+    }
+    return ans;
+    
 }
 
 parray Kmn::EvaluateMany(const parray& k, int m, int n,  bool tidal, int part) const {
@@ -136,7 +154,7 @@ double Kmn::Evaluate(double k, int m, int n, bool tidal, int part) const {
         case 6:
             return ComputeIntegral(k10, P_L, k, epsrel);
         case 7:
-            return ComputeIntegral(k11, P_L, k, epsrel);            
+            return ComputeIntegral(k11, P_L, k, epsrel, false, QMAX);            
         case 8:
             return ComputeIntegral(k10s, P_L, k, epsrel);
         case 9:
@@ -152,7 +170,7 @@ double Kmn::Evaluate(double k, int m, int n, bool tidal, int part) const {
             else
                 return ComputeIntegral(k20s_b, P_L, k, epsrel);
         default:
-            warning("Kmn: invalid indices, m = %d, n = %d\n", m, n);
+            error("Kmn: invalid indices, m = %d, n = %d\n", m, n);
             return 0;
     }
 }

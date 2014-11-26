@@ -183,7 +183,7 @@ double Imn::Evaluate(double k, int m, int n) const {
         case 15:
             return ComputeIntegral(f33, P_L, k, epsrel);
         default:
-            warning("Imn: invalid indices, m = %d, n = %d\n", m, n);
+            error("Imn: invalid indices, m = %d, n = %d\n", m, n);
             return 0;
     }
 }

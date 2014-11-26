@@ -88,6 +88,10 @@ public:
     
     OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel = 1e-4); 
     
+    // dont need P_L term here
+    double EvaluateFull(double k) const;
+    parray EvaluateFull(const parray& k) const;
+    
     /* Calculate the 1-D velocity kurtosis $\sigma_v^4 = \frac{1}{4} \int_0^\infty P22bar(q)/q^2 ~dq$ */
     double VelocityKurtosis() const;
 

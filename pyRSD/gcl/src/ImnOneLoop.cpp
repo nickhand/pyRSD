@@ -50,7 +50,8 @@ static double h03(double u, double v) {
 
 // h04(\vec{k}, \vec{q})
 static double h04(double u, double v) {
-    return (2*(-1 + 2*u*v + v*v + u*u*(1 - 3*v*v)))/pow2(u*u - v*v);
+    double u2 = u*u, v2 = v*v;
+    return (2*(1 + v2 + u2*(1 - 3*v2))) / pow2(u2 - v2);
 }
 
 // f23(\vec{k}, \vec{q})
@@ -79,14 +80,14 @@ static double ImnIntegrand(double (*f)(double, double), const PowerSpectrum& P_1
 }
 
 template<class ImnKernel>
-static double ComputeIntegral(ImnKernel f, const OneLoopPS& P_1, const OneLoopPS& P_2, double k, double epsrel = 1e-5, double qmax = QMAX) {
+static double ComputeIntegral(ImnKernel f, const PowerSpectrum& P_1, const PowerSpectrum& P_2, double k, double epsrel = 1e-5, double qmax = QMAX) {
     if(k <= 0) return 0;
 
     double umin = 1, umax = 2*qmax/k;
-    double vmin = 0., vmax = 1.;
+    double vmin = -1., vmax = 1.;
     double a[] = { log(umin), vmin };
     double b[] = { log(umax), vmax };
-    double V = k / (4*M_PI*M_PI);
+    double V = k / (8*M_PI*M_PI);
     
     return V * Integrate<2>(bind(ImnIntegrand, f, cref(P_1), cref(P_2), k, _1, _2), a, b, epsrel, epsrel);
 }
@@ -109,7 +110,7 @@ double ImnOneLoop::EvaluateLinear(double k, int m, int n) const {
         case 9:
             return ComputeIntegral(f33, P_L, P_L, k, epsrel);            
         default:
-            warning("ImnOneLoop: invalid indices, m = %d, n = %d\n", m, n);
+            error("ImnOneLoop: invalid indices, m = %d, n = %d\n", m, n);
             return 0;
     }
 }
@@ -169,7 +170,7 @@ double ImnOneLoop::EvaluateCross(double k, int m, int n) const {
             else
                 return part1 + ComputeIntegral(f33, P_1, P_L, k, epsrel);            
         default:
-            warning("ImnOneLoop: invalid indices, m = %d, n = %d\n", m, n);
+            error("ImnOneLoop: invalid indices, m = %d, n = %d\n", m, n);
             return 0;
     }
 }
@@ -200,7 +201,7 @@ double ImnOneLoop::EvaluateOneLoop(double k, int m, int n) const {
         case 9:
             return ComputeIntegral(f33, P_1, P_2, k, epsrel);            
         default:
-            warning("ImnOneLoop: invalid indices, m = %d, n = %d\n", m, n);
+            error("ImnOneLoop: invalid indices, m = %d, n = %d\n", m, n);
             return 0;
     }
 }

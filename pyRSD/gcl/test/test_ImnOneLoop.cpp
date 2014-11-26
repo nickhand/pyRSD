@@ -48,14 +48,14 @@ int main(int argc, char** argv){
     parray k = parray::logspace(kminout, kmaxout, Nout);
     
     // time the computation
-    ImnOneLoop Ivvdd(Pvv, Pdd, 1e-4);
-    //ImnOneLoop Idvdv(Pdv, 1e-4);
+    //ImnOneLoop Ivvdd(Pvv, Pdd, 1e-4);
+    ImnOneLoop Idvdv(Pdv, 1e-4);
    
-    // parray out = Idvdv.EvaluateLinear(k, 0, 3) + Idvdv.EvaluateCross(k, 0, 3) + Idvdv.EvaluateOneLoop(k, 0, 3);
-    //parray out = Idvdv.EvaluateLinear(k, 0, 4) + Idvdv.EvaluateCross(k, 0, 4) + Idvdv.EvaluateOneLoop(k, 0, 4);
+    //parray out = Idvdv.EvaluateLinear(k, 0, 3) + Idvdv.EvaluateCross(k, 0, 3) + Idvdv.EvaluateOneLoop(k, 0, 3);
+    parray out = Idvdv.EvaluateLinear(k, 0, 4) + Idvdv.EvaluateCross(k, 0, 4) + Idvdv.EvaluateOneLoop(k, 0, 4);
     
     //parray out = Ivvdd.EvaluateLinear(k, 0, 1) + Ivvdd.EvaluateCross(k, 0, 1) + Ivvdd.EvaluateOneLoop(k, 0, 1);
-    parray out = Ivvdd.EvaluateLinear(k, 0, 2) + Ivvdd.EvaluateCross(k, 0, 2) + Ivvdd.EvaluateOneLoop(k, 0, 2);
+    //parray out = Ivvdd.EvaluateLinear(k, 0, 2) + Ivvdd.EvaluateCross(k, 0, 2) + Ivvdd.EvaluateOneLoop(k, 0, 2);
    
     // // write out the results
     // string filename = "data/test.dat";

@@ -120,5 +120,4 @@ pygcl: libgcl.so python/*.i
 clean: .base
 	rm -rf $(WRKDIR);
 	rm -f libgcl.so
-	# rm -f $(MDIR)/python/classy.c
-	# rm -rf $(MDIR)/python/build
+	rm -rf $(MDIR)/python/build

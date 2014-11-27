@@ -28,7 +28,7 @@ SO		 = g++ -shared
 PYTHON = python
 
 # your optimization flag
-OPTFLAG = -O4 -ffast-math #-march=native
+OPTFLAG = -O4 -ffast-math -march=native
 #OPTFLAG = -Ofast -ffast-math #-march=native
 #OPTFLAG = -fast
 
@@ -60,10 +60,13 @@ CCFLAG += -DDEBUG
 #CCFLAG += -DVERBOSE
 
 # where to find include files *.h
-INCLUDES = -I../include -I/opt/local/include/
+INCLUDES = -I../include 
+#-I/opt/local/include/
 
 # libraries
-LIBS = -L/opt/local/lib/ -lgsl
+LIBS = 
+
+#-L/opt/local/lib/ -lgsl
 
 # automatically add external programs if needed. First, initialize to blank.
 EXTERNAL =
@@ -73,30 +76,19 @@ vpath %.o $(CLASS)/build
 INCLUDES += -I$(CLASS)/include
 EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rkck.o growTable.o helium.o history.o hydrogen.o hyperspherical.o hyrectools.o input.o lensing.o nonlinear.o output.o parser.o perturbations.o primordial.o quadrature.o sparse.o spectra.o thermodynamics.o transfer.o 
 
-#endif
 
 %.o:  %.cpp .base
 	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
 TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o
 
-SOURCE = Engine.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o ImnOneLoop.o
+SOURCE = Engine.o ClassParams.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o ImnOneLoop.o
 
 TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o test_ImnOneLoop.o
-
 
 C_TOOLS =  $(addprefix src/, $(addsuffix .cpp,$(basename $(TOOLS))))
 C_SOURCE = $(addprefix src/, $(addsuffix .cpp,$(basename $(SOURCE))))
 C_TEST = $(addprefix test/, $(addsuffix .cpp,$(basename $(TEST) )))
-# C_MAIN = $(addprefix main/, $(addsuffix .c,$(basename $(CLASS))))
-# C_ALL = $(C_MAIN) $(C_TOOLS) $(C_SOURCE)
-# H_ALL = $(addprefix include/, common.h svnversion.h $(addsuffix .h, $(basename $(notdir $(C_ALL)))))
-# PRE_ALL = cl_ref.pre clt_permille.pre
-# INI_ALL = explanatory.ini lcdm.ini
-# MISC_FILES = Makefile CPU psd_FD_single.dat myselection.dat myevolution.dat README bbn/sBBN.dat external_Pk/* cpp
-# PYTHON_FILES = python/classy.pyx python/setup.py python/cclassy.pxd python/test_class.py
-
-
 
 
 all: libgcl.so
@@ -122,12 +114,8 @@ test_oneloopPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 test_ImnOneLoop: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
 
-# 
-# tar: $(C_ALL) $(C_TEST) $(H_ALL) $(PRE_ALL) $(INI_ALL) $(MISC_FILES) $(HYREC) $(PYTHON_FILES)
-#	tar czvf class.tar.gz $(C_ALL) $(H_ALL) $(PRE_ALL) $(INI_ALL) $(MISC_FILES) $(HYREC) $(PYTHON_FILES)
-# 
-# classy: libclass.a python/classy.pyx python/cclassy.pxd
-#	cd python; $(PYTHON) setup.py install --user
+pygcl: libgcl.so python/*.i	
+	cd python; $(PYTHON) setup.py build_ext --inplace -I $(CLASS)/include
 
 clean: .base
 	rm -rf $(WRKDIR);

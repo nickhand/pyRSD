@@ -14,92 +14,10 @@ History (add to end):
 #ifndef CLASSCOSMOLOGY_H
 #define CLASSCOSMOLOGY_H
 
-// CLASS
-#include "class.h"
 
+#include "ClassParams.h"
 #include "Engine.h"
 #include "Common.h"
-
-// the std c++ libraries
-#include <string>
-#include <utility>
-#include <stdexcept>
-#include <map>
-#include <iostream>
-
-using namespace std;
-using namespace Constants;
-
-// general utility to convert safely numerical types to string
-template<typename T> string str(const T &x);
-
-//specializations
-template<> string str(const float &x);
-template<> string str(const double &x);
-template<> string str(const bool &x); // translate bool to "yes" or "no"
-template<> string str(const string &x);
-string str(const char* x);
-
-/*----------------------------------------------------------------------------*/
-/* class to encapsulate CLASS parameters from any type (numerical or string)  */
-/*----------------------------------------------------------------------------*/
-class ClassParams {
-
-public:
-    
-    typedef map<string, string> param_vector;
-    typedef param_vector::iterator iterator;
-    typedef param_vector::const_iterator const_iterator;
-    
-    ClassParams(){};
-    ClassParams(const ClassParams& o) : pars(o.pars){};
-    ClassParams(const string& param_file){
-        
-        // for error messages
-        ErrorMsg _errmsg; 
-        
-        // initialize an empty file_content to read the params file
-        struct file_content fc_input;
-        fc_input.size = 0;
-        fc_input.filename=new char[1];
-        
-        // read the param file
-        if (parser_read_file(const_cast<char*>(param_file.c_str()), &fc_input, _errmsg) == _FAILURE_){
-            throw invalid_argument(_errmsg);
-        }
-        
-        // set the pars
-        for (int i=0; i < fc_input.size; i++) {
-            this->Update(fc_input.name[i], fc_input.value[i]);
-        }
-        
-        // free the input
-        parser_free(&fc_input);
-  }
-
-  // use this to add a CLASS variable
-  template<typename T> 
-  unsigned Update(const string& key, const T& val){ pars[key] = str(val); return pars.size(); }
-  
-  void Print() {
-     for (const_iterator iter = pars.begin(); iter != pars.end(); iter++)       
-         cout << iter->first << " = " << iter->second << endl;
-  }
-  
-  // accesors
-  inline unsigned size() const {return pars.size();}
-  inline const string& value(const string& key) const {return pars.at(key);}
-  
-  // iterate over the pars variable
-  const_iterator begin() const { return pars.begin(); }
-  const_iterator end() const { return pars.end(); }
-  
-  // overload the [] operator to return const reference
-  const string& operator[](const string& key) const { return this->value(key); }
-
-private:
-    param_vector pars;
-};
 
 /*----------------------------------------------------------------------------*/
 /* class to serve as the engine for CLASS */
@@ -110,27 +28,18 @@ public:
   
     ClassCosmology();
     // construct from a ClassParams object
-    ClassCosmology(const ClassParams& pars, const string& precision_file = "");
+    ClassCosmology(const ClassParams& pars, const std::string& precision_file = "");
     // construct directly from a parameter file
-    ClassCosmology(const string& param_file, const string& precision_file = "");
+    ClassCosmology(const std::string& param_file, const std::string& precision_file = "");
   
-    void Initialize(const ClassParams& pars, const string& precision_file);
+    void Initialize(const ClassParams& pars, const std::string& precision_file);
     
     // destructor
     ~ClassCosmology();
 
     // the functions to return the various spectra 
-    int GetCls(const vector<unsigned>& lVec, // input 
-	            parray& cltt, 
-	            parray& clte, 
-	            parray& clee, 
-	            parray& clbb);
-
-  
-    int GetLensing(const vector<unsigned>& lVec, //input 
-	                parray& clphiphi, 
-	                parray& cltphi, 
-	                parray& clephi);
+    int GetCls(const std::vector<unsigned>& lVec, parray& cltt, parray& clte, parray& clee, parray& clbb);
+    int GetLensing(const std::vector<unsigned>& lVec, parray& clphiphi, parray& cltphi, parray& clephi);
 
     // linear/nonlinear matter power spectra
     int GetPklin(double z, const parray& k, parray& Pk);
@@ -149,7 +58,7 @@ public:
     /* present day quantities */
     /*------------------------------------------------------------------------*/
     // the present-day Hubble constant in units of km/s/Mpc
-    inline double H0() const { return ba.H0*c_light/(km/second); }
+    inline double H0() const { return ba.H0*Constants::c_light/(Constants::km/Constants::second); }
     // the dimensionless Hubble constant
     inline double h() const { return ba.h; }
     // CMB temperature today in Kelvin
@@ -204,7 +113,7 @@ public:
     inline double f_z(double z) { return BackgroundValue(z, ba.index_bg_f); }
     
     // Hubble constant H(z) (km/s/Mpc)
-    double H_z(double z) { return (z != 0.) ? BackgroundValue(z, ba.index_bg_H)*c_light/(km/second) : H0(); }
+    double H_z(double z) { return (z != 0.) ? BackgroundValue(z, ba.index_bg_H)*Constants::c_light/(Constants::km/Constants::second) : H0(); }
         
     // angular diameter distance (Mpc)
     double Da_z(double z) { return BackgroundValue(z, ba.index_bg_ang_distance); }
@@ -258,7 +167,7 @@ protected:
     	           ErrorMsg errmsg);
     
     // parameter names
-    vector<string> parNames;
+    std::vector<std::string> parNames;
     
     // nonlinear vs linear P(k)
     enum Pktype {Pk_linear=0, Pk_nonlinear};
@@ -269,7 +178,7 @@ protected:
     double BackgroundValue(double z, int index);
     
     // helper function to find correctfile name
-    const string FindFilename(const string& file_name);
+    const std::string FindFilename(const std::string& file_name);
     
     // omega0_m and omega0_r are constants
     double Omega0_m_, Omega0_r_;

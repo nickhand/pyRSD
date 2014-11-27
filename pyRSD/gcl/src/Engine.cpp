@@ -16,6 +16,7 @@ using namespace std;
 
 // constructor
 Engine::Engine():_lmax(-1) {}
+Engine::~Engine() {}
 /*----------------------------------------------------------------------------*/
 
 // write out the Cls, in units of uK^2
@@ -52,7 +53,7 @@ void Engine::WriteCls(std::ostream &of){
 // write out Pk in units of h/Mpc, (Mpc/h)^3
 void Engine::WriteMatterSpectrum(std::ostream &of, double z, pktype t) {
 
-    int status; 
+    int status(0); 
     parray k, output;
 
     // get the computed spectrum
@@ -90,3 +91,36 @@ void Engine::WriteTk(std::ostream &of, double z) {
     WriteMatterSpectrum(of, z, Tk);
 }
 /*----------------------------------------------------------------------------*/
+
+// return the computed Cls at the desired ell values
+int Engine::GetCls(const vector<unsigned>& lvec, parray& cltt, parray& clte, parray& clee, parray& clbb) {
+    return 1;
+}
+/*----------------------------------------------------------------------------*/
+ 
+// return the computed lensing spectra the desired ell values
+int Engine::GetLensing(const vector<unsigned>& lvec, parray& clpp, parray& cltp, parray& clep  ) {
+    return 1;        
+}
+
+
+/*----------------------------------------------------------------------------*/
+
+// compute the k, linear Pk in units of h/Mpc, (Mpc/h)^3
+int Engine::GetPklin(double z, const parray& k, parray& Pk) {
+    return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+// compute the k, nonlinear Pk in units of h/Mpc, (Mpc/h)^3
+int Engine::GetPknl(double z, const parray& k, parray& Pk) {
+    return 1;
+}
+
+/*----------------------------------------------------------------------------*/
+
+// return the k, transfer function (in CAMB format) in units of h/Mpc, unitless
+int Engine::GetTk(double z, const parray& k, parray& Tk) {
+    return 1;
+}

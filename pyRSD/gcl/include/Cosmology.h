@@ -31,15 +31,17 @@ public:
         
     Cosmology();
     // construct from a ClassParams object
-    Cosmology(const ClassParams& pars, TransferFit tf = CLASS, const string& tkfile = "", const string& precision_file = "");
+    Cosmology(const ClassParams& pars, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
     // construct directly from a parameter file
-    Cosmology(const string& param_file, TransferFit tf = CLASS, const string& tkfile = "", const string& precision_file = "");
+    Cosmology(const std::string& param_file, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
+    
+    ~Cosmology();
     
     // functions for setting the type of transfer TransferFit to use
-    void SetTransferFunction(TransferFit tf, const string& tkfile = "");
+    void SetTransferFunction(TransferFit tf, const std::string& tkfile = "");
     
     // load the transfer file from file
-    void LoadTransferFunction(const string& tkfile, int kcol = 1, int tcol = 2);
+    void LoadTransferFunction(const std::string& tkfile, int kcol = 1, int tcol = 2);
     
     // normalize the transfer function
     void NormalizeTransferFunction(double sigma8);
@@ -77,7 +79,7 @@ private:
     double GetNoWiggleTransfer(double k) const;
     double GetBBKSTransfer(double k) const;
     double GetSplineTransfer(double k) const;
-    void InitializeTransferFunction(TransferFit tf, const string& tkfile);
+    void InitializeTransferFunction(TransferFit tf, const std::string& tkfile);
     void SetEisensteinHuParameters();
         
 };

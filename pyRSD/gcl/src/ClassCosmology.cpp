@@ -1,53 +1,14 @@
 #include "ClassCosmology.h"
 
-#include <iomanip>
+#include <sstream>
 #include <string>
 #include <cmath>
-#include <sstream>
-#include <numeric>
 #include <cstdio>
 
 using namespace std;
 
-// functions for converting values to strings
-template<typename T> string str(const T &x){
-  ostringstream os;
-  os << x;
-  return os.str();
-};
-
-template<> string str (const float &x){
-  ostringstream os;
-  os << setprecision(8) << x;
-  return os.str();
-}
-template<> string str (const double &x){
-  ostringstream os;
-  os << setprecision(16) << x;
-  return os.str();
-}
-template<> string str (const bool &x){
-  { return x ? "yes" : "no"; }
-}
-
-template<> string str (const string &x) {return x;}
-
-string str (const char* s){return string(s);}
-
-// instanciations
-template string str(const int &x);
-template string str(const signed char &x);
-template string str(const unsigned char &x);
-template string str(const short &x);
-template string str(const unsigned short &x);
-template string str(const unsigned int &x);
-template string str(const long &x);
-template string str(const unsigned long &x);
-template string str(const long long &x);
-template string str(const unsigned long long &x);
 
 // Constructors
-
 ClassCosmology::ClassCosmology() {
 
 }

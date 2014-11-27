@@ -21,6 +21,8 @@
 /* Forward declarations of generic classes */
 // class Closure;
 // class CorrelationFunction;
+class ClassParams;
+class ClassCosmology;
 class Cosmology;
 class Datafile;
 class PowerSpectrum;
@@ -106,7 +108,7 @@ namespace Constants {
     const double micron   = 1e-4 * cm;  
     const double angstrom = 1e-8 * cm;
     const double jansky   = 1e-23;       /* in erg/s/cm/cm/Hz */
-    const double barn     = 1e-24 * pow2(cm);
+    const double barn     = 1e-24*cm*cm;
 
     // energy and power conversion factors
     const double joule   = 1e7 * erg;
@@ -126,10 +128,10 @@ namespace Constants {
     const double Mpc       = mega*parsec;
     const double lyr       = c_light*year;           /* light year */
 
-    const double L_sun  = 3.826e33;                 /* erg/s */
-    const double  M_sun = 1.9891e33;                /* g */
-    const double R_sun  = 6.9598e10;                /* cm */
-    const double T_sun  = 5770;                     /* kelvin */
+    const double L_sun = 3.826e33;                 /* erg/s */
+    const double M_sun = 1.9891e33;                /* g */
+    const double R_sun = 6.9598e10;                /* cm */
+    const double T_sun = 5770;                     /* kelvin */
 
     const double M_earth   = 5.976e27;              /* Earth mass in g */
     const double R_earth   = 6371 * km;             /* Earth's equatorial radius in cm */

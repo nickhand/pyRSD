@@ -12,11 +12,12 @@ using std::cref;
 using namespace std::placeholders;
 
 
-Cosmology::Cosmology() {
-    /* No initialization */
-}
 
-Cosmology::Cosmology(const ClassParams& pars,  TransferFit tf, const string& tkfile, const string& precision_file) 
+Cosmology::Cosmology() {}
+
+Cosmology::~Cosmology() {}
+
+Cosmology::Cosmology(const ClassParams& pars,  TransferFit tf, const std::string& tkfile, const std::string& precision_file) 
 : ClassCosmology(pars, precision_file), sigma8_(0.), delta_H_(1.), transfer_fit_(tf)
 {
  
@@ -24,14 +25,14 @@ Cosmology::Cosmology(const ClassParams& pars,  TransferFit tf, const string& tkf
     InitializeTransferFunction(tf, tkfile);
 }
 
-Cosmology::Cosmology(const string& param_file,  TransferFit tf, const string& tkfile, const string& precision_file)
+Cosmology::Cosmology(const std::string& param_file,  TransferFit tf, const std::string& tkfile, const std::string& precision_file)
 : ClassCosmology(param_file, precision_file), sigma8_(0.), delta_H_(1.), transfer_fit_(tf)
 {
     InitializeTransferFunction(tf, tkfile);
 }
 
 
-void Cosmology::LoadTransferFunction(const string& tkfile, int kcol, int tcol) {
+void Cosmology::LoadTransferFunction(const std::string& tkfile, int kcol, int tcol) {
     
     /* First check the current directory for a file named 'tkfile' */
     pstring tkpath(tkfile);
@@ -159,7 +160,7 @@ double Cosmology::GetBBKSTransfer(double k) const {
 }
 
 // initialize the transfer function 
-void Cosmology::InitializeTransferFunction(TransferFit tf, const string& tkfile) {
+void Cosmology::InitializeTransferFunction(TransferFit tf, const std::string& tkfile) {
 
     // set ki, Ti if from file or using Class
     if (tf == FromFile) {
@@ -193,7 +194,7 @@ void Cosmology::InitializeTransferFunction(TransferFit tf, const string& tkfile)
 }
 
 // set the transfer function
-void Cosmology::SetTransferFunction(TransferFit tf, const string& tkfile) {
+void Cosmology::SetTransferFunction(TransferFit tf, const std::string& tkfile) {
     
     transfer_fit_ = tf;
     InitializeTransferFunction(tf, tkfile);

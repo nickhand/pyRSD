@@ -20,8 +20,7 @@
 #include <ostream>
 #include "parray.h"
 
-class Engine
-{
+class Engine {
 
 public:
 
@@ -32,24 +31,14 @@ public:
   Engine();
   
   // destructor
-  virtual ~Engine(){};
+  virtual ~Engine();
 
   // units = (micro-K)^2
-  virtual int GetCls(const std::vector<unsigned>& lVec, //input 
-		             parray& cltt, 
-		             parray& clte, 
-		             parray& clee, 
-		             parray& clbb)=0;
-  
-                 
-  virtual int GetLensing(const std::vector<unsigned>& lVec, //input 
-			             parray& clpp, 
-			             parray& cltp, 
-			             parray& clep)=0;
-			  
-  virtual int GetPklin(double z, const parray& k, parray& Pk)=0;
-  virtual int GetPknl(double z, const parray& k, parray& Pk)=0;
-  virtual int GetTk(double z, const parray& k, parray& Tk)=0;
+  virtual int GetCls(const std::vector<unsigned>& lVec, parray& cltt, parray& clte, parray& clee, parray& clbb);
+  virtual int GetLensing(const std::vector<unsigned>& lVec, parray& clpp, parray& cltp, parray& clep);
+  virtual int GetPklin(double z, const parray& k, parray& Pk);
+  virtual int GetPknl(double z, const parray& k, parray& Pk);
+  virtual int GetTk(double z, const parray& k, parray& Tk);
 
   // the output functions
   virtual void WriteCls(std::ostream &o);
@@ -61,7 +50,7 @@ public:
 
 protected:
   int _lmax;
-
+  
   virtual void WriteMatterSpectrum(std::ostream &of, double z, pktype t);
 
 };

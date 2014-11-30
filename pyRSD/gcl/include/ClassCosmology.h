@@ -110,40 +110,42 @@ public:
     /* background quantities as a function of z */
     /*------------------------------------------------------------------------*/
     // the growth rate f(z) (unitless)
-    inline double f_z(double z) { return BackgroundValue(z, ba.index_bg_f); }
+    inline double f_z(double z) const { return BackgroundValue(z, ba.index_bg_f); }
     
     // Hubble constant H(z) (km/s/Mpc)
-    double H_z(double z) { return (z != 0.) ? BackgroundValue(z, ba.index_bg_H)*Constants::c_light/(Constants::km/Constants::second) : H0(); }
+    double H_z(double z) const { return (z != 0.) ? BackgroundValue(z, ba.index_bg_H)*Constants::c_light/(Constants::km/Constants::second) : H0(); }
         
     // angular diameter distance (Mpc)
-    double Da_z(double z) { return BackgroundValue(z, ba.index_bg_ang_distance); }
+    double Da_z(double z) const { return BackgroundValue(z, ba.index_bg_ang_distance); }
     
     // growth function D(z) / D(0) (normalized to unity at z = 0)
-    double D_z(double z) { return (z != 0.) ? BackgroundValue(z, ba.index_bg_D) / BackgroundValue(0., ba.index_bg_D) : 1.; }
+    double D_z(double z) const { return (z != 0.) ? BackgroundValue(z, ba.index_bg_D) / BackgroundValue(0., ba.index_bg_D) : 1.; }
     
     // sigma8 (z) as derived from the scalar amplitude
     // may not be equal to the desired sigma8
-    double Sigma8_z(double z);
+    double Sigma8_z(double z) const;
 
     // print content of file_content
-    void PrintFC();
+    void PrintFC() const;
     
 protected:
   
     // the main class structures
-    struct file_content fc;
-    struct precision pr;        /* for precision parameters */
-    struct background ba;       /* for cosmological background */
-    struct thermo th;           /* for thermodynamics */
-    struct perturbs pt;         /* for source functions */
-    struct transfers tr;        /* for transfer functions */
-    struct primordial pm;       /* for primordial spectra */
-    struct spectra sp;          /* for output spectra */
-    struct nonlinear nl;        /* for non-linear spectra */
-    struct lensing le;          /* for lensed spectra */
-    struct output op;           /* for output files */
+    // make them mutable such that they can be changed for different
+    // redshifts, etc
+    mutable struct file_content fc;
+    mutable struct precision pr;        /* for precision parameters */
+    mutable struct background ba;       /* for cosmological background */
+    mutable struct thermo th;           /* for thermodynamics */
+    mutable struct perturbs pt;         /* for source functions */
+    mutable struct transfers tr;        /* for transfer functions */
+    mutable struct primordial pm;       /* for primordial spectra */
+    mutable struct spectra sp;          /* for output spectra */
+    mutable struct nonlinear nl;        /* for non-linear spectra */
+    mutable struct lensing le;          /* for lensed spectra */
+    mutable struct output op;           /* for output files */
 
-    ErrorMsg _errmsg;            /* for error messages */
+    ErrorMsg _errmsg;                   /* for error messages */
     double * cl;
 
     // helpers
@@ -175,7 +177,7 @@ protected:
     double GetCl(Engine::cltype t, const long &l); 
         
     // functions for returning cosmological quantities
-    double BackgroundValue(double z, int index);
+    double BackgroundValue(double z, int index) const;
     
     // helper function to find correctfile name
     const std::string FindFilename(const std::string& file_name);

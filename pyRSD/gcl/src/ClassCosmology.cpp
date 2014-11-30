@@ -9,9 +9,7 @@ using namespace std;
 
 
 // Constructors
-ClassCosmology::ClassCosmology() {
-
-}
+ClassCosmology::ClassCosmology() {}
 
 ClassCosmology::ClassCosmology(const ClassParams& pars, const string & precision_file)
 : cl(0), dofree(true)
@@ -144,7 +142,7 @@ ClassCosmology::~ClassCosmology()
 /*----------------------------------------------------------------------------*/
 
 // print content of file_content
-void ClassCosmology::PrintFC() {
+void ClassCosmology::PrintFC() const {
     
     printf("FILE_CONTENT SIZE=%d\n",fc.size);
     for (int i=0; i<fc.size; i++) 
@@ -494,7 +492,7 @@ int ClassCosmology::GetTk(double z, const parray& k, parray& Tk) {
 /*----------------------------------------------------------------------------*/
 /* Functions for computing cosmological quantities as a function of z */
 /*----------------------------------------------------------------------------*/
-double ClassCosmology::BackgroundValue(double z, int index) {
+double ClassCosmology::BackgroundValue(double z, int index) const {
     
     double tau;
     double toret;
@@ -516,7 +514,7 @@ double ClassCosmology::BackgroundValue(double z, int index) {
 /*----------------------------------------------------------------------------*/
 
 // the power spectrum normalization, sigma8
-double ClassCosmology::Sigma8_z(double z) {
+double ClassCosmology::Sigma8_z(double z) const {
     
 
     double sigma8 = 0.;

@@ -46,11 +46,11 @@ public:
     double tau_reio() const;
     double z_reio() const;
     
-    double f_z(double z);
-    double H_z(double z);
-    double Da_z(double z);
-    double D_z(double z);
-    double Sigma8_z(double z);
+    double f_z(double z) const;
+    double H_z(double z) const;
+    double Da_z(double z) const;
+    double D_z(double z) const;
+    double Sigma8_z(double z) const;
 
     void PrintFC();
 

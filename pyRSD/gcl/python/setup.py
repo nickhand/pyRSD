@@ -28,11 +28,12 @@ for root, dirs, files in os.walk(".", topdown=False):
             shutil.rmtree(name)
 
 # setup the extension
+fftw_libs = ['fftw3', 'fftw3f', 'fftw3_threads', 'fftw3f_threads', 'm']
 pygcl_module = Extension('_pygcl',
                          sources=['pygcl.i'],
                          swig_opts=['-c++', '-Wall', '-I../src'], 
                          include_dirs=['../src', '../include', numpy.get_include()],
-                         libraries=['gcl', 'gsl', 'gslcblas'],
+                         libraries=['gcl', 'gsl', 'gslcblas', 'gomp'] + fftw_libs,
                          extra_link_args=["-L..", "-g", "-fPIC"],
                          library_dirs=['/opt/local/lib'],
                          extra_compile_args=["-fopenmp", "-O4", "-ffast-math"]

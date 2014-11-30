@@ -6,19 +6,20 @@
 
 %naturalvar;
 
-%include "parray.i"
 %include "numpy.i"
-%include "typemaps.i"
-%include "std_string.i"
-using std::string;
 
 %init %{
     import_array();
 %}
 
+%include "typemaps.i"
+%include "std_string.i"
+using std::string;
 
+%include "parray.i"
 %include "Common.i"
 %include "Spline.i"
+
 
 /*%include "Datafile.i"
 %include "Quadrature.i"
@@ -35,5 +36,6 @@ using std::string;
 %include "Jmn.i"
 %include "Kmn.i"
 %include "ImnOneLoop.i"
+%include "ZeldovichPS.i"
 
 

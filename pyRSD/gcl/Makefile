@@ -22,13 +22,15 @@ CC		 = g++ -Wall -std=c++11
 
 
 # your tool for creating shared object libraries:
-SO		 = g++ -shared
+AR		 = ar rv
+#g++ -shared
 
 # (OPT) your python interpreter
 PYTHON = python
 
 # your optimization flag
-OPTFLAG = -O4 -ffast-math -march=native
+OPTFLAG = -O4 -ffast-math 
+#-march=native
 #OPTFLAG = -Ofast -ffast-math #-march=native
 #OPTFLAG = -fast
 
@@ -59,14 +61,18 @@ CCFLAG += -DDEBUG
 # turn on verbosity
 #CCFLAG += -DVERBOSE
 
+
 # where to find include files *.h
 INCLUDES = -I../include 
-#-I/opt/local/include/
+
 
 # libraries
 LIBS = 
 
-#-L/opt/local/lib/ -lgsl
+# Do FFTW
+CCFLAG += -DHAVE_LIBFFTW3
+INCLUDES += -I/opt/local/include/
+LIBS += -L/opt/local/lib/ -lfftw3 -lm
 
 # automatically add external programs if needed. First, initialize to blank.
 EXTERNAL =
@@ -80,21 +86,21 @@ EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rk
 %.o:  %.cpp .base
 	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
-TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o
+TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o fftlog.o
 
-SOURCE = Engine.o ClassParams.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o ImnOneLoop.o
+SOURCE = Engine.o ClassParams.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o ImnOneLoop.o ZeldovichPS.o
 
-TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o test_ImnOneLoop.o
+TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o
 
 C_TOOLS =  $(addprefix src/, $(addsuffix .cpp,$(basename $(TOOLS))))
 C_SOURCE = $(addprefix src/, $(addsuffix .cpp,$(basename $(SOURCE))))
 C_TEST = $(addprefix test/, $(addsuffix .cpp,$(basename $(TEST) )))
 
 
-all: libgcl.so
+all: libgcl.a
 
-libgcl.so: $(TOOLS) $(SOURCE) $(EXTERNAL)
-	$(SO) $(OPTFLAG) $(OMPFLAG) $(LIBS) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -o $@ 
+libgcl.a: $(TOOLS) $(SOURCE) $(EXTERNAL)
+	$(AR)  $@  $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) 
 
 test_linearPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
@@ -114,7 +120,10 @@ test_oneloopPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 test_ImnOneLoop: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
 	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
 
-pygcl: libgcl.so python/*.i	
+test_zeldovichPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
+	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+
+pygcl: libgcl.a python/*.i	
 	cd python; $(PYTHON) setup.py build_ext --inplace -I $(CLASS)/include
 
 clean: .base

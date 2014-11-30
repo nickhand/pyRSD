@@ -6,17 +6,11 @@ class OneLoopPS : public PowerSpectrum {
 public:
     
     OneLoopPS(const PowerSpectrum& P_L, double epsrel = 1e-4);
-
-    // returns full spectrum (linear + 1-loop terms)
-    virtual double EvaluateFull(double k) const;
-    virtual parray EvaluateFull(const parray& k) const;
-    virtual double Evaluate(double k) const; 
     
-    %extend {
-        double __call__(double k) const { return $self->Evaluate(k); }
-        parray __call__(const parray& k) const { return $self->EvaluateMany(k); }
-    };
-        
+    // returns the full 1-loop power spectrum (1-loop term + linear term)
+    double EvaluateFull(double k) const;
+    parray EvaluateFull(const parray& k) const;
+    
     const PowerSpectrum& GetLinearPS() const;
     const double& GetRedshift() const;
     const Cosmology& GetCosmology() const;
@@ -50,7 +44,10 @@ public:
     
     OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel = 1e-4); 
     
+    // returns the full power spectrum
     double EvaluateFull(double k) const;
     parray EvaluateFull(const parray& k) const;
+    
+    // velocity kurtosis
     double VelocityKurtosis() const;
 };

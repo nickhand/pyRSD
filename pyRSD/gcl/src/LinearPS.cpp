@@ -1,7 +1,7 @@
 #include "LinearPS.h"
 
 
-LinearPS::LinearPS(Cosmology& C_, double z_)
+LinearPS::LinearPS(const Cosmology& C_, double z_)
     : C(C_), z(z_) {}
 
 double LinearPS::Evaluate(double k) const {

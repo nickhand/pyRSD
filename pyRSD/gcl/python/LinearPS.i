@@ -4,7 +4,7 @@
 
 class LinearPS : public PowerSpectrum {
 public:
-    LinearPS(Cosmology& C, double z = 0);
+    LinearPS(const Cosmology& C, double z = 0);
 
     const Cosmology& GetCosmology() const;
 };

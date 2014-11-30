@@ -95,11 +95,16 @@ struct Constants {
     Py_DECREF(floatobj);
 }
 %typemap(typecheck) double {
-    PyObject* floatobj = PyNumber_Float($input);
-    if(floatobj != NULL) {
-        $1 = 1;
-        Py_DECREF(floatobj);
-    }
-    else
+    // check for numpy array first, so we don't raise a TypeError later on
+    if (($input) && PyArray_Check((PyArrayObject *)$input))
         $1 = 0;
+    else {
+        PyObject* floatobj = PyNumber_Float($input);
+        if(floatobj != NULL) {
+            $1 = 1;
+            Py_DECREF(floatobj);
+        }
+        else 
+            $1 = 0;
+    }
 }

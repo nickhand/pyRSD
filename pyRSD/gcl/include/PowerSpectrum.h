@@ -45,11 +45,23 @@ public:
     /* Calculate the 1-D velocity dispersion $\sigma_v^2(k) = \frac{1}{3} \int_0^k P(q) ~dq$ */
     virtual double VelocityDispersion(double k) const;
     
-    /* Calculate the 1-D velocity dispersion $\sigma_v^2(k) = \frac{1}{3} \int_0^k P(q) ~dq$ */
+    /* compute \sigma_v^2(k) for several k */
     virtual parray VelocityDispersion(const parray& k) const;
 
     /* Calculate the non-linear wavenumber scale $k_\text{nl} = 1/\sigma_v$ */
     virtual double NonlinearScale() const;
+    
+    /* Zel'dovich approx integral X(k) = 1/2pi^2 = \int dq P(q) (-2 * j_1(kq) / kq) */
+    virtual double X_Zel(double k) const;
+    
+    /* Compute X(k) for several k*/
+    virtual parray X_Zel(const parray& k) const;
+    
+    /* Zel'dovich approx integral Y(k) = 1/2pi^2 = \int dq P(q) (-2 * j_0(kq) + 6 j_1(kq)/kq) */
+    virtual double Y_Zel(double k) const;
+    
+    /* Compute Y(k) for several k */
+    virtual parray Y_Zel(const parray& k) const;
 
     /* Write power spectrum to file */
     virtual void Save(const char* filename, double kmin = 1e-3, double kmax = 1, int Nk = 1000, bool log = false);

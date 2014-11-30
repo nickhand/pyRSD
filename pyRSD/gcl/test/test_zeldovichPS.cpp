@@ -1,15 +1,16 @@
 // 
-//  test_oneloopPS.cpp
-//  test the one loop PS
+//  test_zeldovichPS.cpp
+//  pyRSD
 //  
 //  author: Nick Hand
 //  contact: nhand@berkeley.edu
-//  creation date: 11/25/2014 
+//  creation date: 11/29/2014 
 // 
 
 #include "LinearPS.h"
-#include "OneLoopPS.h"
+#include "ZeldovichPS.h"
 #include "pstring.h"
+#include "Timer.h"
 
 #include <cstdio>
 #include <string>
@@ -32,48 +33,38 @@ int main(int argc, char** argv){
     
     // make sure we have the write number of arguments 
     if (argc != 2)
-        error("Must specify which 1-loop spectra; one of {'Pdd', 'Pdv', 'Pvv', 'P22bar'}\n");
+        error("Must specify which Zel'dovich spectra; one of {'P00', 'P01'}\n");
      
     pstring tag(argv[1]);
      
     // initialize the cosmology to planck base
     Cosmology cosmo("planck1_WP.ini", Cosmology::CLASS);
-    info("delta_H = %f\n", cosmo.delta_H());
     
     // // initialize the linear power spectrum
     double z = 0.;
     LinearPS linPS(cosmo, z);
     
-    info("Computing linear power spectrum at z = %f\n", z);
-    info("Note: sigma8 = %.3f\n", cosmo.sigma8());
-    
     // the wavenumbers in h/Mpc
-    parray k = parray::logspace(1e-5, 1e1, 500);
+    parray k = parray::logspace(1e-2, 1e0, 500);
     
     // initialize the one loop object
-    if (tag == "Pdd") {
+    if (tag == "P00") {
         
-        OneLoopPdd P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateFull(k);
+        Timer T;
+        ZeldovichP00 P(linPS);
+        info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
+        parray Pk = P(k);
+        info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
         write_results(k, Pk, tag);
     }
-    else if (tag == "Pdv") {
+    else if (tag == "P01") {
         
-        OneLoopPdv P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateFull(k);
+        Timer T;
+        ZeldovichP01 P(linPS);
+        info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
+        parray Pk = P(k);
+        info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
         write_results(k, Pk, tag);
-    }
-    else if (tag == "Pvv") {
-        
-        OneLoopPvv P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateFull(k);
-        write_results(k, Pk, tag);
-    } else if (tag == "P22bar") {
-        
-        OneLoopP22Bar P_1loop(linPS, 1e-4);
-        parray Pk = P_1loop.EvaluateFull(k);
-        info("velocity kurtosis = %.4f\n", P_1loop.VelocityKurtosis());
-        write_results(k, Pk, tag); 
     }
     
     return 0;

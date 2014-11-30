@@ -25,7 +25,7 @@ public:
     // returns full spectrum (linear + 1-loop terms)
     virtual double EvaluateFull(double k) const;
     virtual parray EvaluateFull(const parray& k) const;
-    virtual double Evaluate(double k) const; 
+    double Evaluate(double k) const; 
         
     const PowerSpectrum& GetLinearPS() const { return P_L; }
     const double& GetRedshift() const { return P_L.GetRedshift(); }

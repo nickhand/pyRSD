@@ -16,7 +16,7 @@
 class LinearPS : public PowerSpectrum {
 public:
     
-    LinearPS(Cosmology& C, double z = 0);
+    LinearPS(const Cosmology& C, double z = 0);
 
     // evaluate for single k
     double Evaluate(double k) const;
@@ -29,7 +29,7 @@ public:
 
 private:
     
-    Cosmology& C;
+    const Cosmology& C;
     double z;
 
 };

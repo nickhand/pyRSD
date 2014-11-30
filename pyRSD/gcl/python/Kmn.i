@@ -7,13 +7,10 @@ public:
 
     Kmn(const PowerSpectrum& P_L, double epsrel = 1e-5);
 
-    double Evaluate(double k, int m, int n) const;
-    parray EvaluateMany(const parray& k, int m, int n) const;
+    // translated to __call__ -> calls Evaluate(K)
+    double operator()(const double k, int m, int n) const;
     
-    %extend {
-        double __call__(double k, int m, int n) const { return $self->Evaluate(k, m, n); }
-        parray __call__(const parray& k, int m, int n) const { return $self->EvaluateMany(k, m, n); }
-    };
-
+    // translated to __call__ -> calls EvaluateMany(K)
+    parray operator()(const parray& k, int m, int n) const;
 };
 

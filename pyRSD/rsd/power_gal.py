@@ -6,9 +6,8 @@
  contact: nhand@berkeley.edu
  creation date: 05/09/2014
 """
-from . import power_biased
-from . import tools
-import numpy as np
+from . import power_biased, tools
+from .. import numpy as np
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     

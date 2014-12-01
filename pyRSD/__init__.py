@@ -9,14 +9,27 @@ following subpackages:
 
 Subpackages
 -----------
-cosmology
-    Cosmological calculations.
 data
     Simulation data.
 rsd
     RSD power spectra.
+pygcl
+    Python bindings for a C++ "General Cosmology Library"
 """
-import os.path as _osp
 
+# save the absolute path of the package and data directories
+import os.path as _osp
+import sys
+import os
 pkg_dir = _osp.abspath(_osp.dirname(__file__))
 data_dir = _osp.join(pkg_dir, 'data')
+
+# try to import pygcl; hopefully you succeed 
+sys.path.append("%s/gcl/python" %pkg_dir)
+try:
+    import pygcl
+except:
+    raise ImportError("Cannot import pygcl; package is unusable :(")
+    
+# every module uses numpy
+import numpy

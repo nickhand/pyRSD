@@ -46,11 +46,18 @@ public:
     // normalize the transfer function
     void NormalizeTransferFunction(double sigma8);
     
+    // set the sigma8 value
+    inline void SetSigma8(double sigma8) { sigma8_ = sigma8; NormalizeTransferFunction(sigma8); }
+    
     // normalization of linear power spectrum at z = 0 
     inline double delta_H() const { return delta_H_; }
     
     // return the sigma8 that we normalized too
     inline double sigma8() const { return sigma8_; }
+    
+    // return the scalar amplitude values for the sigma8 we normalized to
+    inline double A_s() const { return ClassCosmology::A_s() * pow2(sigma8_/ClassCosmology::sigma8()); }
+    inline double ln_1e10_A_s() const { return log(1e10*A_s()); }
     
     // the type of transfer fit
     inline TransferFit transfer_fit() const { return transfer_fit_; }
@@ -61,8 +68,8 @@ public:
     
 private:
         
-    double sigma8_;              /* power spectrum variance smoothed at 8 Mpc/h */
-    double delta_H_;             /* normalization of linear power spectrum at z = 0 */
+    double sigma8_;      /* power spectrum variance smoothed at 8 Mpc/h */
+    double delta_H_;     /* normalization of linear power spectrum at z = 0 */
     TransferFit transfer_fit_;   /* the transfer fit method */
     
     parray ki, Ti;

@@ -91,7 +91,7 @@ public:
     // scalar amplitude = curvature power spectrum at pivot scale
     inline double A_s() const { return pm.A_s; }
     // convenience function returns log (1e10*A_s)
-    inline double ln_1e10_A_s() const { return log(1e10*pm.A_s); }
+    inline double ln_1e10_A_s() const { return log(1e10*A_s()); }
     // convenience function to return sigma8 at z = 0
     inline double sigma8() const { return sp.sigma8; }
     // maximum k value computed in h/Mpc

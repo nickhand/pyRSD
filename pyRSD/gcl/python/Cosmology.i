@@ -14,8 +14,14 @@ public:
     void SetTransferFunction(TransferFit tf, const std::string& tkfile = "");
     void LoadTransferFunction(const std::string& tkfile, int kcol = 1, int tcol = 2);
     void NormalizeTransferFunction(double sigma8);
+    void SetSigma8(double sigma8);
+    
+    // parameter accessors
+    double A_s() const;
+    double ln_1e10_A_s() const;
     double delta_H() const;
     double sigma8() const;
+    
     TransferFit transfer_fit() const;
     double EvaluateTransfer(double k) const;
 

@@ -5,7 +5,7 @@
 class Imn {
 public: 
 
-    Imn(const PowerSpectrum& P_L, double epsrel = 1e-5);
+    Imn(const PowerSpectrum& P_L, double epsrel = 1e-4);
 
     // translated to __call__ -> calls Evaluate(K)
     double operator()(const double k, int m, int n) const;

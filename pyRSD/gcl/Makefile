@@ -88,7 +88,9 @@ EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rk
 
 TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o fftlog.o
 
-SOURCE = Engine.o ClassParams.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o ImnOneLoop.o ZeldovichPS.o
+SOURCE = Engine.o ClassParams.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o \
+        ImnOneLoop.o ZeldovichPS.o CorrelationFunction.o Kaiser.o
+        
 
 TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o
 

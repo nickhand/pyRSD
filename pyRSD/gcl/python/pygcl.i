@@ -20,10 +20,9 @@ using std::string;
 %include "Common.i"
 %include "Spline.i"
 
-
-/*%include "Datafile.i"
-%include "Quadrature.i"
-%include "Timer.i"*/
+//%include "Datafile.i"
+//%include "Quadrature.i"
+//%include "Timer.i"
 
 %include "Engine.i"
 %include "ClassParams.i"
@@ -32,10 +31,14 @@ using std::string;
 %include "PowerSpectrum.i"
 %include "LinearPS.i"
 %include "OneLoopPS.i"
+%include "CorrelationFunction.i"
+%include "Kaiser.i"
 %include "Imn.i"
 %include "Jmn.i"
 %include "Kmn.i"
 %include "ImnOneLoop.i"
 %include "ZeldovichPS.i"
+
+
 
 

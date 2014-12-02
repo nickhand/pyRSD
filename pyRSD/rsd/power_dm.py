@@ -285,10 +285,17 @@ class DMSpectrum(object):
             del self._conformalH
         except AttributeError:
             pass
-
+    #---------------------------------------------------------------------------
+    def normed_power_lin(self, k):
+        """
+        The linear power evaluated at `self.k` and at `self.z`, normalized
+        to `self.sigma8`
+        """
+        return self._power_norm * self.D**2 * self.power_lin(k)
+    
     #---------------------------------------------------------------------------
     @property
-    def power_norm(self):
+    def _power_norm(self):
         """
         The factor needed to normalize the linear power spectrum to the 
         desired sigma_8, as specified by `self.sigma8`
@@ -324,10 +331,10 @@ class DMSpectrum(object):
         ``\sigma^2_v(k)`` [units: `(Mpc/h)^2`]
         """
         try:
-            return self.power_norm*self.D**2 * self._sigmasq_k
+            return self._power_norm*self.D**2 * self._sigmasq_k
         except AttributeError:
             self._sigmasq_k = self.power_lin.VelocityDispersion(self.k)
-            return self.power_norm*self.D**2 * self._sigmasq_k
+            return self._power_norm*self.D**2 * self._sigmasq_k
             
     #---------------------------------------------------------------------------
     @property
@@ -526,7 +533,7 @@ class DMSpectrum(object):
         """
         The 1-loop auto-correlation of density.
         """
-        return self.power_norm*self.D**2 * self.integrals.Pdd.EvaluateFull(self.k)
+        return self._power_norm*self.D**2 * self.integrals.Pdd.EvaluateFull(self.k)
         
     #---------------------------------------------------------------------------
     @property
@@ -539,7 +546,7 @@ class DMSpectrum(object):
         if hasattr(self, '_Pdv_loaded'):
             return self._Pdv_loaded
         else:
-            return (-self.f) * self.power_norm*self.D**2 * self.integrals.Pdv.EvaluateFull(self.k)
+            return (-self.f) * self._power_norm*self.D**2 * self.integrals.Pdv.EvaluateFull(self.k)
 
     #---------------------------------------------------------------------------
     @property
@@ -547,7 +554,7 @@ class DMSpectrum(object):
         """
         The 1-loop auto-correlation of velocity divergence.
         """
-        return self.f**2 * self.power_norm*self.D**2 * self.integrals.Pvv.EvaluateFull(self.k)
+        return self.f**2 * self._power_norm*self.D**2 * self.integrals.Pvv.EvaluateFull(self.k)
     
     #---------------------------------------------------------------------------
     @property
@@ -577,7 +584,7 @@ class DMSpectrum(object):
                     I00 = self.integrals.I00
                     J00 = self.integrals.J00
             
-                    P11 = self.power_norm*self.D**2 * self.power_lin(self.k)
+                    P11 = self.normed_power_lin(self.k)
                     P22 = 2*I00
                     P13 = 6*self.k**2*J00*P11
                     self._P00.total.mu0 = P11 + P22 + P13
@@ -609,7 +616,7 @@ class DMSpectrum(object):
                     I00 = self.integrals.I00
                     J00 = self.integrals.J00
             
-                    Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                    Plin = self.normed_power_lin(self.k)
                     self._P01.total.mu2 = 2*self.f*(Plin + 4.*(I00 + 3*self.k**2*J00*Plin))
             
             return self._P01
@@ -671,7 +678,7 @@ class DMSpectrum(object):
                         J11 = self.integrals.J11
                         J10 = self.integrals.J10
                     
-                        Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                        Plin = self.normed_power_lin(self.k)
                         part2 = 2*I11 + 4*I22 + 6*self.k**2 * (J11 + 2*J10)*Plin
                         P_scalar = self.f**2 * (Plin + part2 + C11_contrib) - self._P11.vector.mu4
                     
@@ -695,7 +702,7 @@ class DMSpectrum(object):
             
             # do mu^2 terms?
             if self.max_mu >= 2:        
-                Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                Plin = self.normed_power_lin(self.k)
                 
                 # the necessary integrals 
                 I02 = self.integrals.I02
@@ -742,7 +749,7 @@ class DMSpectrum(object):
             
             # do mu^4 terms?
             if self.max_mu >= 4:
-                Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                Plin = self.normed_power_lin(self.k)
                 
                 # the necessary integrals 
                 I12 = self.integrals.I12
@@ -804,7 +811,7 @@ class DMSpectrum(object):
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
-                Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                Plin = self.normed_power_lin(self.k)
                 
                 # 1-loop or 2-loop terms from <v^2 | v^2 > 
                 if not self.include_2loop:
@@ -891,7 +898,7 @@ class DMSpectrum(object):
             
             # do mu^4 terms?
             if self.max_mu >= 4:
-                Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                Plin = self.normed_power_lin(self.k)
                 
                 # only terms depending on velocity here (velocities in Mpc/h)
                 sigma_lin = self.sigma_v 
@@ -919,7 +926,7 @@ class DMSpectrum(object):
             return self._P13
         except AttributeError:
             self._P13 = PowerTerm()
-            Plin = self.D**2 * self.power_lin.power
+            Plin = self.D**2 * self.normed_power_lin(self.k)
             
             # compute velocity weighting in Mpc/h
             sigma_lin = self.sigma_v 
@@ -1037,7 +1044,7 @@ class DMSpectrum(object):
         """
         if linear:
             beta = self.f/self.b1
-            return (1. + 2./3*beta + 1./5*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
+            return (1. + 2./3*beta + 1./5*beta**2) * self.b1**2 * self.normed_power_lin(self.k)
         else:
             if self.max_mu == 0:
                 return self.P_mu0
@@ -1058,7 +1065,7 @@ class DMSpectrum(object):
         """
         if linear:
             beta = self.f/self.b1
-            return (4./3*beta + 4./7*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
+            return (4./3*beta + 4./7*beta**2) * self.b1**2 * self.normed_power_lin(self.k)
         else:
             if self.max_mu == 2:
                 return (2./3)*self.P_mu2
@@ -1077,7 +1084,7 @@ class DMSpectrum(object):
         """
         if linear:
             beta = self.f/self.b1
-            return (8./35.*beta**2) * (self.b1*self.D)**2 * self.power_lin.power
+            return (8./35.*beta**2) * self.b1**2 * self.normed_power_lin(self.k)
         else:
             if self.max_mu == 4:
                 return (8./35)*self.P_mu4

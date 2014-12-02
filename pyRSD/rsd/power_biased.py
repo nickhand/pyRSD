@@ -157,7 +157,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete dependencies
         for a in ['_P02', '_P12', '_P22', '_P03', '_P13', '_P04']:
             if hasattr(self, a): delattr(self, a)
-            if hasattr(a+'_ss'): delattr(self, a+'_ss')
+            if hasattr(self, a+'_ss'): delattr(self, a+'_ss')
             
     #---------------------------------------------------------------------------
     @property
@@ -490,7 +490,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 
                 # do mu^4 terms?
                 if self.max_mu >= 4:
-                    Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                    Plin = self.normed_power_lin(self.k)
                     
                     # get the integral attributes
                     I22 = self.integrals.I22
@@ -545,7 +545,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
             # do mu^4 terms?
             if self.max_mu >= 4:
-                Plin = self.power_norm*self.D**2 * self.power_lin(self.k)
+                Plin = self.normed_power_lin(self.k)
                 
                 # get the integral attributes
                 I12 = self.integrals.I12

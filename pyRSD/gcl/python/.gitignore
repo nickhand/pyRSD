@@ -1,0 +1,4 @@
+/build
+/pygcl_wrap.cpp
+pygcl.py
+_pygcl.so

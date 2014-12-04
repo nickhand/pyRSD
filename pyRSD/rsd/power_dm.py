@@ -815,7 +815,7 @@ class DMSpectrum(object):
                 
                 # 1-loop or 2-loop terms from <v^2 | v^2 > 
                 if not self.include_2loop:
-                    self._P22.no_velocity.mu4 = 1./16*self.f**4 * self.integrals.I('f23', 0)
+                    self._P22.no_velocity.mu4 = 1./16*self.f**4 * self.integrals.I23
                 else:
                     I23_2loop = self.integrals.Ivvvv_f23
                     self._P22.no_velocity.mu4 = 1./16*self.f**4 * I23_2loop

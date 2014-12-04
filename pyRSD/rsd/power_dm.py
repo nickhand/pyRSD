@@ -118,7 +118,7 @@ class DMSpectrum(object):
     def include_2loop(self):
         return self._include_2loop
         
-    @include_2loop
+    @include_2loop.setter
     def include_2loop(self, val):
         assert isinstance(val, bool), '`include_2loop` must be True/False'
         

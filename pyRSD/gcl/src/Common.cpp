@@ -4,7 +4,7 @@
 
 #include "Common.h"
 
-void write(FILE* stream, const char* format, ...) {
+void Common::write(FILE* stream, const char* format, ...) {
     va_list args;
     char dest[6000];
     va_start(args, format);
@@ -14,7 +14,7 @@ void write(FILE* stream, const char* format, ...) {
 }
 
 
-void info(const char* format, ...) {
+void Common::info(const char* format, ...) {
     va_list ap;
     va_start(ap, format);
     vfprintf(stdout, format, ap);
@@ -22,7 +22,7 @@ void info(const char* format, ...) {
     fflush(stdout);
 }
 
-void verbose(const char* format, ...) {
+void Common::verbose(const char* format, ...) {
 #ifdef VERBOSE
     va_list ap;
     va_start(ap, format);
@@ -32,7 +32,7 @@ void verbose(const char* format, ...) {
 #endif
 }
 
-void debug(const char* format, ...) {
+void Common::debug(const char* format, ...) {
 #ifdef DEBUG
     va_list ap;
     va_start(ap, format);
@@ -42,7 +42,7 @@ void debug(const char* format, ...) {
 #endif
 }
 
-void warning(const char* format, ...) {
+void Common::warning(const char* format, ...) {
     va_list ap;
     va_start(ap, format);
     vfprintf(stderr, format, ap);
@@ -50,7 +50,7 @@ void warning(const char* format, ...) {
     fflush(stderr);
 }
 
-void error(const char* format, ...) {
+void Common::error(const char* format, ...) {
     va_list ap;
     va_start(ap, format);
     vfprintf(stderr, format, ap);

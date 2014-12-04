@@ -4,7 +4,8 @@
 #include "Common.h"
 #include "SpecialFunctions.h"
 
-//#include <gsl/gsl_sf_gamma.h>
+using namespace Common;
+
 
 /* Use standard library implementations */
 double BesselJ0(double x) { return j0(x); }

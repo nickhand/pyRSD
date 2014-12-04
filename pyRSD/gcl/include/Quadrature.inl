@@ -344,7 +344,7 @@ double Integrate(Function f, double* a, double* b, double epsrel, double epsabs,
     const double wtp2 = 245./486.;
     const double wtp3 = (265. - 100.*n)/1458.;
     const double wtp4 = 25./729.;
-    const double ratio = pow2(lambda2/lambda4);
+    const double ratio = Common::pow2(lambda2/lambda4);
 
     GMWorkspace* workspace = workspace_manager.get_gm_workspace(n);
     region<n>* wrkstr = (region<n>*)workspace->wrkstr;
@@ -510,9 +510,9 @@ double Integrate(Function f, double* a, double* b, double epsrel, double epsabs,
     workspace_manager.release_gm_workspace(workspace);
 
     if(ifail == 1)
-        verbose("Integrate: did not converge after %d function evaluations\n", funcls);
+        Common::verbose("Integrate: did not converge after %d function evaluations\n", funcls);
     else if(ifail == 2)
-        verbose("Integrate: not enough storage space (this should never happen)\n");
+        Common::verbose("Integrate: not enough storage space (this should never happen)\n");
 
     if(pabserr)
         *pabserr = abserr;

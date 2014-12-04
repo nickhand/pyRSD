@@ -1,9 +1,9 @@
 #include "Kaiser.h"
-
 #include "CorrelationFunction.h"
 #include "Cosmology.h"
 #include "LinearPS.h"
 
+using namespace Common;
 
 Kaiser::Kaiser(const Cosmology& C, double z) : P(LinearPS(C, z)), f(C.f_z(z)) {}
 

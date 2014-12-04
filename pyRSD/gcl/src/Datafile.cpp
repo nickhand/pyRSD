@@ -4,6 +4,7 @@
 #include "Datafile.h"
 #include "pstring.h"
 
+using namespace Common;
 
 Datafile::Datafile() {
     fname = "";

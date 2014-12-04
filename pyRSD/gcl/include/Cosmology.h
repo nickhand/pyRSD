@@ -56,7 +56,7 @@ public:
     inline double sigma8() const { return sigma8_; }
     
     // return the scalar amplitude values for the sigma8 we normalized to
-    inline double A_s() const { return ClassCosmology::A_s() * pow2(sigma8_/ClassCosmology::sigma8()); }
+    inline double A_s() const { return ClassCosmology::A_s() * Common::pow2(sigma8_/ClassCosmology::sigma8()); }
     inline double ln_1e10_A_s() const { return log(1e10*A_s()); }
     
     // the type of transfer fit

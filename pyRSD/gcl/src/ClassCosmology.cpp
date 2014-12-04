@@ -6,6 +6,7 @@
 #include <cstdio>
 
 using namespace std;
+using namespace Common;
 
 
 // Constructors

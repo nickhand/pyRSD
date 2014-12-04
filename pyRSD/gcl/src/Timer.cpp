@@ -1,5 +1,6 @@
 #include "Timer.h"
 #include "Common.h"
+using namespace Common;
 
 Timer::Timer() {
     Start();

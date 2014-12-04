@@ -13,6 +13,7 @@
 using std::bind;
 using std::cref;
 using namespace std::placeholders;
+using namespace Common;
 
 parray SmoothedXiMultipole(Spline P, int l, const parray& r, int Nk, double kmin, double kmax, double smoothing)
 {

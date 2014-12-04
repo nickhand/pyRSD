@@ -6,6 +6,7 @@
 using std::bind;
 using std::cref;
 using namespace std::placeholders;
+using namespace Common;
 
 double KMIN = 1e-5;
 double KMAX = 1e1;

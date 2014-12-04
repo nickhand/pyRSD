@@ -10,7 +10,7 @@
 using std::bind;
 using std::cref;
 using namespace std::placeholders;
-
+using namespace Common;
 
 
 Cosmology::Cosmology() {}

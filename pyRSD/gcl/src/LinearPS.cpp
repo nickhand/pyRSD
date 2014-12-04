@@ -1,5 +1,6 @@
 #include "LinearPS.h"
 
+using namespace Common;
 
 LinearPS::LinearPS(const Cosmology& C_, double z_)
     : C(C_), z(z_) {}

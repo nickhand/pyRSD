@@ -8,6 +8,7 @@
 #include "Common.h"
 #include "Quadrature.h"
 
+using namespace Common;
 
 /******************************************************************************
  * DiscreteIntegrate

@@ -7,7 +7,7 @@
 using std::bind;
 using std::cref;
 using namespace std::placeholders;
-
+using namespace Common;
 
 /* Limits of integration for second-order power spectrum */
 const double QMIN = 1e-5;

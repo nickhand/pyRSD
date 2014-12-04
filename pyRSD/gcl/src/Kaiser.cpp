@@ -5,8 +5,6 @@
 
 using namespace Common;
 
-Kaiser::Kaiser(const Cosmology& C, double z) : P(LinearPS(C, z)), f(C.f_z(z)) {}
-
 
 Kaiser::Kaiser(const PowerSpectrum& P_) : P(P_), f(P.GetCosmology().f_z(P.GetRedshift())) {}
 

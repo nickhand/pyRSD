@@ -74,6 +74,7 @@ LIBRARY = libgcl.a
 PY_LIBRARY = pygcl
 
 %.o:  %.cpp .base
+	@echo Compiling $<
 	cd $(WRKDIR); $(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
 all: $(LIBRARY)

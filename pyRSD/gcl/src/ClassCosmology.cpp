@@ -91,7 +91,7 @@ void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file
     
     // prepare fp structure
     size_t n = pars.size();
-    parser_init(pfc_input, n, "pipo", _errmsg);
+    parser_init(pfc_input, n, nullptr, _errmsg);
   
     // set up the input 
     int i = 0;

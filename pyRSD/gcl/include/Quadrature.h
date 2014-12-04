@@ -43,17 +43,23 @@ double Integrate(Function f, double a, double b, double epsrel = 1e-5, double ep
 template<typename Sub, typename Function>
 double Integrate(Function f, double a, double b, double epsrel = 1e-5, double epsabs = 1e-10, double* abserr = 0, int* neval = 0, Sub sub = Sub());
 
-/* Pre-defined substitution mixins */
-#define DECLARE_SUB(NAME,X,U,DXDU) \
-struct NAME { \
-    double x(double u) { return X; } \
-    double u(double x) { return U; } \
-    double dxdu(double u) { return DXDU; } \
+struct NoSub { \
+    double x(double u) { return u; } \
+    double u(double x) { return x; } \
+    double dxdu(double) { return 1; } \
 };
 
-DECLARE_SUB(NoSub, u, x, 1)
-DECLARE_SUB(ExpSub, exp(u), log(x), exp(u))
-DECLARE_SUB(InverseSub, 1/u, 1/x, -1/(u*u))
+struct ExpSub { \
+    double x(double u) { return exp(u); } \
+    double u(double x) { return log(x); } \
+    double dxdu(double u) { return exp(u); } \
+};
+
+struct InverseSub { \
+    double x(double u) { return 1/u; } \
+    double u(double x) { return 1/x; } \
+    double dxdu(double u) { return -1/(u*u); } \
+};
 
 
 /**

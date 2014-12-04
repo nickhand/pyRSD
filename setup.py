@@ -3,14 +3,15 @@ from distutils.core import setup, Command
 from distutils.command.install import install as DistutilsInstall
 import os
 
-# my own command class to make pygcl before installing
+# my own install class to make pygcl before installing
 class MyInstall(DistutilsInstall):
     
     def run(self):
         ans = os.system("cd pyRSD/gcl; make pygcl;")
         if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue")
         DistutilsInstall.run(self)
-        
+
+# my own command to do a clean of all necessary files      
 class MyClean(Command):
     description = "custom clean command that removes build directories and runs make clean on pygcl"
     user_options = []

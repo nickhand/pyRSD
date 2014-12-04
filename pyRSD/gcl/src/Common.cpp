@@ -23,9 +23,9 @@ void Common::info(const char* format, ...) {
 }
 
 void Common::verbose(const char* format, ...) {
-#ifdef VERBOSE
     va_list ap;
     va_start(ap, format);
+#ifdef VERBOSE
     vfprintf(stdout, format, ap);
     va_end(ap);
     fflush(stdout);
@@ -33,9 +33,9 @@ void Common::verbose(const char* format, ...) {
 }
 
 void Common::debug(const char* format, ...) {
-#ifdef DEBUG
     va_list ap;
     va_start(ap, format);
+#ifdef DEBUG
     vfprintf(stdout, format, ap);
     va_end(ap);
     fflush(stdout);

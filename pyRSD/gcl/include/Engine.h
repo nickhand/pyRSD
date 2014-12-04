@@ -34,11 +34,11 @@ public:
   virtual ~Engine();
 
   // units = (micro-K)^2
-  virtual int GetCls(const std::vector<unsigned>& lVec, parray& cltt, parray& clte, parray& clee, parray& clbb);
-  virtual int GetLensing(const std::vector<unsigned>& lVec, parray& clpp, parray& cltp, parray& clep);
-  virtual int GetPklin(double z, const parray& k, parray& Pk);
-  virtual int GetPknl(double z, const parray& k, parray& Pk);
-  virtual int GetTk(double z, const parray& k, parray& Tk);
+  virtual int GetCls(const std::vector<unsigned>&, parray&, parray&, parray&, parray&);
+  virtual int GetLensing(const std::vector<unsigned>&, parray&, parray&, parray&);
+  virtual int GetPklin(double, const parray&, parray&);
+  virtual int GetPknl(double, const parray&, parray&);
+  virtual int GetTk(double, const parray&, parray&);
 
   // the output functions
   virtual void WriteCls(std::ostream &o);

@@ -49,7 +49,7 @@ static double k00s(double u, double v) {
 }
 
 // k01(\vec{k}, \vec{q})
-static double k01(double u, double v) {
+static double k01(double, double) {
     return 1;
 }
 

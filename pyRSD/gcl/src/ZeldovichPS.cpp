@@ -19,6 +19,8 @@ ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_)
     YY = P_L.Y_Zel(r); 
 }
 
+ZeldovichPS::~ZeldovichPS() {}
+
 void ZeldovichPS::SetRedshift(double new_z) {
     
     const Cosmology& cosmo = P_L.GetCosmology();
@@ -101,11 +103,11 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
     return this_Pk;
 }
 
-void ZeldovichPS::Fprim(dcomplex a[], const double r[], double k) const {
+void ZeldovichPS::Fprim(dcomplex[], const double[], double) const {
     error("In ZeldovichPS::Fprim; something has gone horribly wrong\n");
 }
 
-void ZeldovichPS::Fsec(dcomplex a[], const double r[], double k, double n) const {
+void ZeldovichPS::Fsec(dcomplex[], const double[], double, double) const {
     error("In ZeldovichPS::Fsec; something has gone horribly wrong\n");
 }
 

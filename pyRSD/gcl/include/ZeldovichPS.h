@@ -16,6 +16,7 @@ class ZeldovichPS  {
 public:
        
     ZeldovichPS(const PowerSpectrum& P_L);
+    virtual ~ZeldovichPS();
     
     virtual double Evaluate(double k) const; 
     double operator()(double k) const { return Evaluate(k); }
@@ -46,9 +47,9 @@ protected:
     double sigma_sq;
     parray r, XX, YY; 
     
-    double fftlog_compute(double k, const double factor = 1.) const;
-    virtual void Fprim(dcomplex a[], const double r[], double k) const;
-    virtual void Fsec(dcomplex a[], const double r[], double k, double n) const;
+    double fftlog_compute(double k, const double factor = 1) const;
+    virtual void Fprim(dcomplex[], const double[], double) const;
+    virtual void Fsec(dcomplex[], const double[], double, double) const;
     
 };
 

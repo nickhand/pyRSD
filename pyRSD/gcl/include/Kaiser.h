@@ -9,7 +9,6 @@
  * function. */
 class Kaiser {
 public:
-    Kaiser(const Cosmology& C, double z);
     Kaiser(const PowerSpectrum& P_L);
 
     /* Redshift-space power spectrum */

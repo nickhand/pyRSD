@@ -6,6 +6,7 @@ class ZeldovichPS {
 public:
     
     ZeldovichPS(const PowerSpectrum& P_L);
+    virtual ~ZeldovichPS();
     
     // translated to __call__ -> calls Evaluate(K)
     double operator()(const double k) const;

@@ -13,122 +13,101 @@ vpath %.cpp src test
 vpath %.o build
 vpath .base build
 
-########################################################
-######### LINES TO ADAPT TO YOUR PLATFORM ##############
-########################################################
-
-# your C++ compiler:
-CC		 = g++ -Wall -std=c++11
-
-
-# your tool for creating shared object libraries:
-AR		 = ar rv
-#g++ -shared
-
-# (OPT) your python interpreter
-PYTHON = python
-
-# your optimization flag
-OPTFLAG = -O4 -ffast-math 
-#-march=native
-#OPTFLAG = -Ofast -ffast-math #-march=native
-#OPTFLAG = -fast
-
-# your openmp flag (comment for compiling without openmp)
-OMPFLAG	  = -fopenmp
-#OMPFLAG   = -mp -mp=nonuma -mp=allcores -g
-#OMPFLAG   = -openmp
-
-# all other compilation flags
-CFLAG = -g -fPIC
-LDFLAG = -g -fPIC 
-
-# the ClASS directory
-CLASS = /Users/Nick/Research/Programs/class
-CLASSLIB = $(CLASS)/build/
+include ../../setup.config
 
 ########################################################
 ###### IN PRINCIPLE THE REST SHOULD BE LEFT UNCHANGED ##
 ########################################################
 
 # pass current working directory to the code
-CCFLAG += -DGCLDIR='"$(MDIR)"'
-CCFLAG += -DDATADIR='"$(DATADIR)"'
+MCK_CXXFLAGS += -DGCLDIR='"$(MDIR)"'
+MCK_CXXFLAGS += -DDATADIR='"$(DATADIR)"'
+
+# optimization flag
+MCK_OPT = $(MCK_OPT_WARN) $(MCK_OPT_HIGH)
+ifdef OMP_FLAG
+    MCK_CXXFLAGS += $(OMP_FLAG)
+endif
 
 # turn on debugging
-CCFLAG += -DDEBUG
+ifdef DEBUG
+    ifeq ($(DEBUG), 1) 
+        MCK_CXXFLAGS += -DDEBUG
+    endif
+endif
 
 # turn on verbosity
-#CCFLAG += -DVERBOSE
-
+# turn on debugging
+ifdef VERBOSE
+    ifeq ($(VERBOSE), 1) 
+        MCK_CXXFLAGS += -DVERBOSE
+    endif
+endif
 
 # where to find include files *.h
-INCLUDES = -I../include 
-
+INCLUDES = -I../include	 -I$(FFTW_INC) -I$(CLASS_INC)
 
 # libraries
-LIBS = 
+LIBS = -L$(CLASS_LIB) -L$(FFTW_LIBDIR) $(FFTW_LIBS)
 
-# Do FFTW
-CCFLAG += -DHAVE_LIBFFTW3
-INCLUDES += -I/opt/local/include/
-LIBS += -L/opt/local/lib/ -lfftw3 -lm
+# make the libraries and includes to pass to python bindings
+PY_INCLUDES = "$(FFTW_INC):$(CLASS_INC):$(MDIR)/src:$(MDIR)/include"
+PY_LIBDIRS = $(FFTW_LIBDIR)
+PY_LIBS = gcl gomp
+PY_LIBS += $(foreach lib, $(FFTW_LIBS), $(subst -l, , $(lib)))
 
-# automatically add external programs if needed. First, initialize to blank.
-EXTERNAL =
+# class sources
+CLASS_SOURCES = arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rkck.o growTable.o helium.o \
+				history.o hydrogen.o hyperspherical.o hyrectools.o input.o lensing.o nonlinear.o output.o parser.o \
+				perturbations.o primordial.o quadrature.o sparse.o spectra.o thermodynamics.o transfer.o 
+CLASS_OBJS = $(addprefix $(CLASS_PATH)/build/, $(CLASS_SOURCES))
 
-# eventually update flags for including HyRec
-vpath %.o $(CLASS)/build
-INCLUDES += -I$(CLASS)/include
-EXTERNAL += arrays.o background.o common.o dei_rkck.o evolver_ndf15.o evolver_rkck.o growTable.o helium.o history.o hydrogen.o hyperspherical.o hyrectools.o input.o lensing.o nonlinear.o output.o parser.o perturbations.o primordial.o quadrature.o sparse.o spectra.o thermodynamics.o transfer.o 
-
-
-%.o:  %.cpp .base
-	cd $(WRKDIR);$(CC) $(OPTFLAG) $(OMPFLAG) $(CCFLAG) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
-
-TOOLS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o fftlog.o
+TOOLS = fftlog.o Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o Quadrature.o Common.o Timer.o 
 
 SOURCE = Engine.o ClassParams.o ClassCosmology.o Cosmology.o PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o \
-        ImnOneLoop.o ZeldovichPS.o CorrelationFunction.o Kaiser.o
-        
+		 ImnOneLoop.o ZeldovichPS.o CorrelationFunction.o Kaiser.o
 
-TEST =  test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o
+TEST =	test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o
 
-C_TOOLS =  $(addprefix src/, $(addsuffix .cpp,$(basename $(TOOLS))))
-C_SOURCE = $(addprefix src/, $(addsuffix .cpp,$(basename $(SOURCE))))
-C_TEST = $(addprefix test/, $(addsuffix .cpp,$(basename $(TEST) )))
+LIBRARY = libgcl.a
 
+PY_LIBRARY = pygcl
 
-all: libgcl.a
+%.o:  %.cpp .base
+	cd $(WRKDIR); $(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
-libgcl.a: $(TOOLS) $(SOURCE) $(EXTERNAL)
-	$(AR)  $@  $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) 
+all: $(LIBRARY)
 
-test_linearPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+$(LIBRARY): $(TOOLS) $(SOURCE) 
+	$(AR_EXEC) $(AR_FLAGS) $@  $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS)
 
-test_Imn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+test : $(basename $(TEST))
 
-test_Jmn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+test_linearPS : test_linearPS.o $(TOOLS) $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS) 
 
-test_Kmn: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+test_Imn : test_Imn.o $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS) 
 
-test_oneloopPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+test_Jmn : test_Jmn.o $(TOOLS) $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS) 
 
-test_ImnOneLoop: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+test_Kmn : test_Kmn.o $(TOOLS) $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS)
 
-test_zeldovichPS: $(TOOLS) $(SOURCE) $(EXTERNAL) $(TEST)
-	$(CC) $(OPTFLAG) $(OMPFLAG) $(LDFLAG)  $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(addprefix $(CLASSLIB), $(EXTERNAL)) -lm
+test_oneloopPS : test_oneloopPS.o $(TOOLS) $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS) 
 
-pygcl: libgcl.a python/*.i	
-	cd python; $(PYTHON) setup.py build_ext --inplace -I $(CLASS)/include
+test_ImnOneLoop : test_ImnOneLoop.o $(TOOLS) $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS)
+
+test_zeldovichPS : test_zeldovichPS.o $(TOOLS) $(SOURCE) 
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(TOOLS) $(SOURCE)) $(CLASS_OBJS) 
+
+$(PY_LIBRARY): $(LIBRARY) python/*.i
+	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l"$(PY_LIBS)" -L$(PY_LIBDIRS) 
 
 clean: .base
 	rm -rf $(WRKDIR);
-	rm -f libgcl.so
+	rm -f $(LIBRARY)
 	rm -rf $(MDIR)/python/build

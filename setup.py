@@ -1,6 +1,16 @@
 #! /usr/bin/env python
 from distutils.core import setup
+from distutils.command.install import install as DistutilsInstall
 import os
+
+# my own command class to make pygcl before installing
+class MyInstall(DistutilsInstall):
+    
+    def run(self):
+        ans = os.system("cd pyRSD/gcl; make pygcl;")
+        if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue")
+        DistutilsInstall.run(self)
+
 
 descr = """pyRSD
 
@@ -17,7 +27,8 @@ MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
 VERSION             = '0.10dev'
 
     
-setup(  name=DISTNAME,
+setup(  cmdclass={'install': MyInstall},
+        name=DISTNAME,
         description=DESCRIPTION,
         long_description=LONG_DESCRIPTION,
         maintainer=MAINTAINER,

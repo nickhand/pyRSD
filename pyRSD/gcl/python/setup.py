@@ -13,7 +13,7 @@ import numpy
 import os
 import shutil
 
-# c++ so use g++
+
 os.environ['CC'] = 'g++'
 os.environ['CXX'] = 'g++'
 
@@ -28,15 +28,12 @@ for root, dirs, files in os.walk(".", topdown=False):
             shutil.rmtree(name)
 
 # setup the extension
-fftw_libs = ['fftw3', 'fftw3f', 'fftw3_threads', 'fftw3f_threads', 'm']
 pygcl_module = Extension('_pygcl',
                          sources=['pygcl.i'],
-                         swig_opts=['-c++', '-Wall', '-I../src'], 
-                         include_dirs=['../src', '../include', numpy.get_include()],
-                         libraries=['gcl', 'gsl', 'gslcblas', 'gomp'] + fftw_libs,
+                         swig_opts=['-c++', '-Wall'], 
+                         include_dirs=[numpy.get_include()],
                          extra_link_args=["-L..", "-g", "-fPIC"],
-                         library_dirs=['/opt/local/lib'],
-                         extra_compile_args=["-fopenmp", "-O4", "-ffast-math"]
+                         extra_compile_args=["-fopenmp", "-O2"]
                          )
 
 # actually do the setup 

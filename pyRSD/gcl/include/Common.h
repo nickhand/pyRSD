@@ -61,8 +61,6 @@ namespace Common {
     static inline double pow6(double x) { return pow3(pow2(x)); }
     static inline double pow7(double x) { return x*pow6(x); }
     static inline double pow8(double x) { return pow2(pow4(x)); }
-    static inline double pow10(double x) { return pow2(pow5(x)); }
-    static inline double pow12(double x) { return pow2(pow6(x)); }
 }
 
 /* Physical constants in cgs units */

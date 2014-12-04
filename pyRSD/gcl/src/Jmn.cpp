@@ -28,8 +28,9 @@ static double g00(double r) {
         return (1./3024.)*(12./(r*r) - 158. + 100.*r*r - 42.*pow4(r) + 3./pow3(r)*pow3(r*r-1.)*(7.*r*r+2.)*log((r+1.)/fabs(r-1.)));
     }
     else {
-        double r12 = pow12(r);
-        return (-2./3024)*(70. + 125.*r*r - 354.*pow4(r) + 263.*pow6(r) + 400.*pow8(r) - 1008.*pow10(r) + 5124.*r12)/(105.*r12);
+        double r12 = pow2(pow6(r));
+        double r10 = pow2(pow5(r));
+        return (-2./3024)*(70. + 125.*r*r - 354.*pow4(r) + 263.*pow6(r) + 400.*pow8(r) - 1008.*r10 + 5124.*r12)/(105.*r12);
     }
 }
 
@@ -39,8 +40,9 @@ static double g01(double r) {
         return (1./3024.)*(24./(r*r) - 202. + 56.*r*r - 30.*pow4(r) + 3./pow3(r)*pow3(r*r-1.)*(5.*r*r+4.)*log((r+1.)/fabs(r-1.)));
     }
     else {
-        double r12 = pow12(r);
-        return (-2./3024)*(140. - 65.*r*r - 168.*pow4(r) + 229.*pow6(r) + 656.*pow8(r) - 3312.*pow10(r) + 10500.*r12)/(105.*r12);
+        double r12 = pow2(pow6(r));
+        double r10 = pow2(pow5(r));
+        return (-2./3024)*(140. - 65.*r*r - 168.*pow4(r) + 229.*pow6(r) + 656.*pow8(r) - 3312.*r10 + 10500.*r12)/(105.*r12);
         }
 }
 
@@ -50,7 +52,7 @@ static double g10(double r) {
         return (1./1008.)*(-38. + 48.*r*r - 18.*pow4(r) + 9./r*pow3(r*r-1.)*log((r+1.)/fabs(r-1.)));
     }
     else {
-        double r10 = pow10(r);
+        double r10 = pow2(pow5(r));
         return (8./1008)*(-28. - 60.*r*r - 156.*pow4(r) - 572.*pow6(r) - 5148.*pow8(r) + 1001.*r10)/(5005.*r10);
     }
 }
@@ -61,8 +63,9 @@ static double g11(double r) {
         return (1./1008.)*(12./(r*r) - 82. + 4.*r*r - 6.*pow4(r) + 3./(r*r*r)*pow3(r*r-1.)*(r*r+2.)*log((r+1.)/fabs(r-1.)));
     }
     else {
-        double r12 = pow12(r);
-        return (-2./1008)*(70. - 85.*r*r + 6.*pow4(r) + 65.*pow6(r) + 304.*pow8(r) - 1872.*pow10(r) + 5292.*r12)/(105.*r12);
+        double r12 = pow2(pow6(r));
+        double r10 = pow2(pow5(r));
+        return (-2./1008)*(70. - 85.*r*r + 6.*pow4(r) + 65.*pow6(r) + 304.*pow8(r) - 1872.*r10 + 5292.*r12)/(105.*r12);
     }
 }
 
@@ -72,8 +75,9 @@ static double g02(double r) {
         return (1./224.)*(2./(r*r)*(r*r+1.)*(3.*pow4(r) - 14.*r*r + 3.) - 3./(r*r*r)*pow4(r*r-1.)*log((r+1.)/fabs(r-1.)));
     }
     else {
-        double r12 = pow12(r);
-        return (-2./224)*(35. - 95.*r*r + 93.*pow4(r) - 17.*pow6(r) + 128.*pow8(r) - 1152.*pow10(r) + 2688.*r12)/(105.*r12);
+        double r12 = pow2(pow6(r));
+        double r10 = pow2(pow5(r));
+        return (-2./224)*(35. - 95.*r*r + 93.*pow4(r) - 17.*pow6(r) + 128.*pow8(r) - 1152.*r10 + 2688.*r12)/(105.*r12);
     }
 }
 
@@ -83,8 +87,9 @@ static double g20(double r) {
         return (1./672.)*(2./(r*r)*(9. - 109.*r*r + 63.*pow4(r) - 27.*pow6(r)) + 9./(r*r*r)*pow3(r*r-1.)*(3*r*r+1.)*log((r+1.)/fabs(r-1.)));
     }
     else {
-        double r12 = pow12(r);
-        return (-2./672)*(35. + 45.*r*r - 147.*pow4(r) + 115.*pow6(r) + 192.*pow8(r) - 576.*pow10(r) + 2576.*r12)/(35.*r12);
+        double r12 = pow2(pow6(r));
+        double r10 = pow2(pow5(r));
+        return (-2./672)*(35. + 45.*r*r - 147.*pow4(r) + 115.*pow6(r) + 192.*pow8(r) - 576.*r10 + 2576.*r12)/(35.*r12);
     }
 }
 

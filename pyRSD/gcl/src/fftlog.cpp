@@ -1,7 +1,5 @@
 #include <cmath>
 
-#if HAVE_LIBFFTW3
-
 #include "Common.h"
 #include "fftlog.h"
 #include <fftw3.h>
@@ -129,4 +127,3 @@ void fht(int N, const double r[], const dcomplex a[], double k[], dcomplex b[], 
     delete[] ulocal;
 }
 
-#endif // HAVE_LIBFFTW3

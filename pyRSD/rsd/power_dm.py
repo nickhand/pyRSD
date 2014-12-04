@@ -80,6 +80,11 @@ class DMSpectrum(object):
         
         
     #end __init__
+    #---------------------------------------------------------------------------
+    def update(self, **kwargs):
+        for k, v in kwargs.iteritems():
+            if hasattr(self, k):
+                setattr(self, k, v)
     
     #---------------------------------------------------------------------------
     def _delete_power(self):

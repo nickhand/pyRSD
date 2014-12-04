@@ -28,7 +28,10 @@ ClassCosmology::ClassCosmology(const string & param_file, const string & precisi
 {
     _lmax = 0;
     
-    ClassParams parameters(FindFilename(param_file));
+    string fname(FindFilename(param_file));
+    ClassParams parameters(fname);
+    verbose("Reading CLASS parameters from %s\n", fname.c_str());
+    
     Initialize(parameters, precision_file);
     
     // store Omega0_m and Omegar_0 at z = 0 so we don't keep computing it
@@ -57,9 +60,10 @@ const string ClassCosmology::FindFilename(const string& file_name) {
 void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file)
 {
     string precision_file;
-    if (pre_file != "")
+    if (pre_file != "") {
         precision_file = FindFilename(pre_file);
-    else
+        verbose("Reading CLASS precision file from %s\n", precision_file.c_str());
+    } else
         precision_file = "";
         
     // setup the file contents

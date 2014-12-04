@@ -91,7 +91,8 @@ void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file
     
     // prepare fp structure
     size_t n = pars.size();
-    parser_init(pfc_input, n, nullptr, _errmsg);
+    char file_not_needed[] = "not_needed_file.dat";
+    parser_init(pfc_input, n, file_not_needed, _errmsg);
   
     // set up the input 
     int i = 0;

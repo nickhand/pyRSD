@@ -108,6 +108,7 @@ $(PY_LIBRARY): $(LIBRARY) python/*.i
 	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l"$(PY_LIBS)" -L$(PY_LIBDIRS) 
 
 clean: .base
-	rm -rf $(WRKDIR);
+	rm -rf $(WRKDIR)
 	rm -f $(LIBRARY)
 	rm -rf $(MDIR)/python/build
+	rm -f $(addprefix test/, $(basename $(TEST)))

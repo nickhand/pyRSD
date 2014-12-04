@@ -1,5 +1,5 @@
 #! /usr/bin/env python
-from distutils.core import setup
+from distutils.core import setup, Command
 from distutils.command.install import install as DistutilsInstall
 import os
 
@@ -10,6 +10,18 @@ class MyInstall(DistutilsInstall):
         ans = os.system("cd pyRSD/gcl; make pygcl;")
         if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue")
         DistutilsInstall.run(self)
+        
+class MyClean(Command):
+    description = "custom clean command that removes build directories and runs make clean on pygcl"
+    user_options = []
+    def initialize_options(self):
+        self.cwd = None
+    def finalize_options(self):
+        self.cwd = os.getcwd()
+    def run(self):
+        assert os.getcwd() == self.cwd, 'Must be in package root: %s' % self.cwd
+        os.system('rm -rf ./build')
+        os.system('cd pyRSD/gcl; make clean;')
 
 
 descr = """pyRSD
@@ -27,7 +39,7 @@ MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
 VERSION             = '0.10dev'
 
     
-setup(  cmdclass={'install': MyInstall},
+setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
         name=DISTNAME,
         description=DESCRIPTION,
         long_description=LONG_DESCRIPTION,

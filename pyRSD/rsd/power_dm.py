@@ -546,7 +546,7 @@ class DMSpectrum(object):
         """
         The 1-loop auto-correlation of density.
         """
-        return self._power_norm*self.D**2 * self.integrals.Pdd.EvaluateFull(self.k)
+        return (self._power_norm*self.D**2)**2 * self.integrals.Pdd.EvaluateFull(self.k)
         
     #---------------------------------------------------------------------------
     @property
@@ -559,7 +559,7 @@ class DMSpectrum(object):
         if hasattr(self, '_Pdv_loaded'):
             return self._Pdv_loaded
         else:
-            return (-self.f) * self._power_norm*self.D**2 * self.integrals.Pdv.EvaluateFull(self.k)
+            return (-self.f) * (self._power_norm*self.D**2)**2 * self.integrals.Pdv.EvaluateFull(self.k)
 
     #---------------------------------------------------------------------------
     @property
@@ -567,7 +567,7 @@ class DMSpectrum(object):
         """
         The 1-loop auto-correlation of velocity divergence.
         """
-        return self.f**2 * self._power_norm*self.D**2 * self.integrals.Pvv.EvaluateFull(self.k)
+        return self.f**2 * (self._power_norm*self.D**2)**2 * self.integrals.Pvv.EvaluateFull(self.k)
     
     #---------------------------------------------------------------------------
     @property

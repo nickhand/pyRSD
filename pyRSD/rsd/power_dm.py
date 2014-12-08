@@ -345,7 +345,8 @@ class DMSpectrum(object):
         try:
             return self._power_norm*self.D**2 * self._sigmasq_k
         except AttributeError:
-            self._sigmasq_k = self.power_lin.VelocityDispersion(self.k)
+            # integrate up to 0.5*k
+            self._sigmasq_k = self.power_lin.VelocityDispersion(self.k, 0.5)
             return self._power_norm*self.D**2 * self._sigmasq_k
             
     #---------------------------------------------------------------------------

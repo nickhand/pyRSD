@@ -48,16 +48,16 @@ double PowerSpectrum::VelocityDispersion() const {
     return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-5, 1e2, 1e-5, 1e-12);
 }
 
-double PowerSpectrum::VelocityDispersion(double k) const {
-    return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-5, k, 1e-5, 1e-12);
+double PowerSpectrum::VelocityDispersion(double k, double factor ) const {
+    return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-5, factor*k, 1e-5, 1e-12);
 }
 
-parray PowerSpectrum::VelocityDispersion(const parray& k) const {
+parray PowerSpectrum::VelocityDispersion(const parray& k, double factor) const {
     int n = (int)k.size();
     parray sigmasq(n);
     #pragma omp parallel for
     for(int i = 0; i < n; i++)
-        sigmasq[i] = VelocityDispersion(k[i]);
+        sigmasq[i] = VelocityDispersion(k[i], factor);
     return sigmasq;
 }
 

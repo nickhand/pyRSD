@@ -26,8 +26,8 @@ public:
     double NonlinearScale() const;
     
     // sigma_v as a function of k
-    parray VelocityDispersion(const parray& k) const;
-    double VelocityDispersion(const double k) const;
+    parray VelocityDispersion(const parray& k, double factor = 0.5) const;
+    double VelocityDispersion(const double k, double factor = 0.5) const;
     
     // Zeldovich approximation integrals
     parray X_Zel(const parray& k) const;

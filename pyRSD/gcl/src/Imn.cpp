@@ -143,10 +143,8 @@ parray Imn::EvaluateMany(const parray& k, int m, int n) const {
     int size = (int)k.size();
     parray toret(size);
     #pragma omp parallel for
-    for(int i = 0; i < size; i++) {
-        verbose("Imn: Openmp using %d threads", omp_get_num_threads());
+    for(int i = 0; i < size; i++)
         toret[i] = Evaluate(k[i], m, n);
-    }
     return toret;
 }
 

@@ -547,7 +547,7 @@ class DMSpectrum(object):
         The 1-loop auto-correlation of density.
         """
         norm = self._power_norm*self.D**2
-        return norm*(self.power_lin(k) + norm*self.self.integrals.Pdd(self.k))
+        return norm*(self.power_lin(self.k) + norm*self.integrals.Pdd(self.k))
         
     #---------------------------------------------------------------------------
     @property
@@ -561,7 +561,7 @@ class DMSpectrum(object):
             return self._Pdv_loaded
         else:
             norm = self._power_norm*self.D**2
-            return (-self.f)*norm*(self.power_lin(k) + norm*self.self.integrals.Pdv(self.k))
+            return (-self.f)*norm*(self.power_lin(self.k) + norm*self.integrals.Pdv(self.k))
           
     #---------------------------------------------------------------------------
     @property
@@ -570,7 +570,7 @@ class DMSpectrum(object):
         The 1-loop auto-correlation of velocity divergence.
         """
         norm = self._power_norm*self.D**2
-        return self.f**2 * norm*(self.power_lin(k) + norm*self.self.integrals.Pvv(self.k))
+        return self.f**2 * norm*(self.power_lin(self.k) + norm*self.integrals.Pvv(self.k))
     
     #---------------------------------------------------------------------------
     @property

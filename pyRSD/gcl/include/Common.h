@@ -15,6 +15,10 @@
 #define DATADIR "." 
 #endif
 
+#ifdef VERBOSE
+#include <omp.h>
+#endif
+
 #include <cmath>
 #include <cstdio>
 

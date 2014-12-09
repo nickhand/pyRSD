@@ -14,7 +14,9 @@
 #include <cstdio>
 #include <string>
 #include <iostream>
+
 using namespace std;
+using namespace Common;
 
 void write_results(const parray& k, const parray& Pk, const pstring& tag) {
     

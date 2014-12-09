@@ -15,7 +15,9 @@
 #include <cstdio>
 #include <string>
 #include <iostream>
+
 using namespace std;
+using namespace Common;
 
 void write_results(const parray& k, const parray& Pk, const pstring& tag) {
     
@@ -41,8 +43,8 @@ int main(int argc, char** argv){
     Cosmology cosmo("planck1_WP.ini", Cosmology::CLASS);
     
     // // initialize the linear power spectrum
-    double z = 0.;
-    LinearPS linPS(cosmo, z);
+    double z = 0.55;
+    LinearPS linPS(cosmo, 0.);
     
     // the wavenumbers in h/Mpc
     parray k = parray::logspace(1e-2, 1e0, 500);
@@ -53,6 +55,7 @@ int main(int argc, char** argv){
         Timer T;
         ZeldovichP00 P(linPS);
         info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
+        P.SetRedshift(z);
         parray Pk = P(k);
         info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
         write_results(k, Pk, tag);
@@ -62,6 +65,7 @@ int main(int argc, char** argv){
         Timer T;
         ZeldovichP01 P(linPS);
         info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
+        P.SetRedshift(z);
         parray Pk = P(k);
         info("Elapsed time: %d seconds\n", T.WallTimeElapsed());
         write_results(k, Pk, tag);

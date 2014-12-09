@@ -17,6 +17,7 @@
 #include "Timer.h"
 
 using namespace std;
+using namespace Common;
 
 int main(int argc, char** argv){
     

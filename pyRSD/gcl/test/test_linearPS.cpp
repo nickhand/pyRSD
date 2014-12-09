@@ -12,7 +12,9 @@
 #include <cstdio>
 #include <string>
 #include <iostream>
+
 using namespace std;
+using namespace Common;
 
 int main(int argc, char** argv){
     

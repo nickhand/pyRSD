@@ -37,7 +37,7 @@ DESCRIPTION         = 'Redshift space power spectra in python'
 LONG_DESCRIPTION    = descr
 MAINTAINER          = 'Nick Hand'
 MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
-VERSION             = '0.10dev'
+VERSION             = '1.0'
 
     
 setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},

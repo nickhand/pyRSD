@@ -49,7 +49,7 @@ endif
 MCK_CXXFLAGS += -lgfortran
 
 # where to find include files *.h
-INCLUDES = -I../include	 -I$(FFTW_INC) -I$(CLASS_INC)
+INCLUDES = -I../include	 -I$(CLASS_INC)
 
 # libraries
 LIBS = -L$(CLASS_LIB) 

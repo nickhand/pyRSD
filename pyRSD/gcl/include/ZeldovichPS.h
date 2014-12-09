@@ -3,7 +3,7 @@
 
 #include "Cosmology.h"
 #include "PowerSpectrum.h"
-#include "FFTLog.h"
+#include "fftlog.h"
 
 /*------------------------------------------------------------------------------
     ZeldovichPS
@@ -42,15 +42,14 @@ protected:
     
     // keep track of redshift, sigma8 for easy scaling
     double z, sigma8;
-    double nc, dlogr, logrc;
     
     // the integrals needed for the FFTLog integral
     double sigma_sq;
     parray r, XX, YY; 
     
     double fftlog_compute(double k, const double factor = 1) const;
-    virtual void Fprim(parray&, const parray&, double) const;
-    virtual void Fsec(parray&, const parray&, double, double) const;
+    virtual void Fprim(dcomplex[], const double[], double) const;
+    virtual void Fsec(dcomplex[], const double[], double, double) const;
     
 };
 
@@ -65,8 +64,8 @@ public:
 
 private:
     
-    void Fprim(parray& a, const parray& r, double k) const ;
-    void Fsec(parray& a, const parray& r, double k, double n) const;    
+    void Fprim(dcomplex a[], const double r[], double k) const;
+    void Fsec(dcomplex a[], const double r[], double k, double n) const;    
 };
 
 class ZeldovichP01 : public ZeldovichPS {
@@ -80,8 +79,8 @@ public:
 
 private:
         
-    void Fprim(parray& a, const parray& r, double k) const ;
-    void Fsec(parray& a, const parray& r, double k, double n) const;    
+    void Fprim(dcomplex a[], const double r[], double k) const ;
+    void Fsec(dcomplex a[], const double r[], double k, double n) const;    
 };
 
 #endif // ZELDOVICH_PS_H

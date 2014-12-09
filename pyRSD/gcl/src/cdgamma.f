@@ -71,35 +71,29 @@ c
       xr = dble(x)
       xi = dimag(x)
 c---x = 0, -1, -2
-      if (xr .eq. aint(xr) .and. xr .le. 0. .and. xi .eq. 0.) then
+      if (xr .eq. aint(xr) .and. xr .le. 0.d0 .and. xi .eq. 0.d0) then
 c...Gamma
         if (l .eq. 0) then
-          wr = xr / 2.
+          wr = xr / 2.d0
 c   +Infinity at even negative integers
           if (wr .eq. aint(wr)) then
-CCC            yr = 1.d0/zero
-               print*,'div. by zero'
-               stop
+            yr = 1.d0 / zero
 c   -Infinity at odd negative integers
           else
-CCC            yr = -1.d0/zero
-               print*,'div. by zero'
-               stop
+            yr = -1.d0 / zero
           endif
-          yi = 0.
+          yi = 0.d0
 c...lnGamma
         elseif (l .eq. 1) then
 c   real part is +Infinity
-CCC          yr = 1.d0/zero
-             print*,'div. by zero'
-             stop
+          yr = 1.d0 / zero
           yi = pi * aint(xr)
         endif
         goto 200
       endif
 c---Re(x) < 1/2 : use reflection formula
       if (xr .lt. .5d0) then
-          wr = 1 - xr
+          wr = 1.d0 - xr
           wi = -xi
       else
           wr = xr
@@ -115,15 +109,15 @@ c   ln(overall factor)
 c   u = ln(x + pv) - 1
         yr = wr + pv
         ur = yr
-        if (ur .lt. 0.) ur = - ur
+        if (ur .lt. 0.d0) ur = - ur
         ui = wi
-        if (ui .lt. 0.) ui = - ui
+        if (ui .lt. 0.d0) ui = - ui
         if (ur.ge.ui) then
           t = wi / yr
-          ur = log(ur) + log(1. + t * t) / 2 - 1
+          ur = log(ur) + log(1.d0 + t * t) / 2.d0 - 1.d0
         else
           t = yr / wi
-          ur = log(ui) + log(1. + t * t) / 2 - 1
+          ur = log(ui) + log(1.d0 + t * t) / 2.d0 - 1.d0
         endif
         ui = atan2(wi, yr)
 c---not large |x|
@@ -169,7 +163,7 @@ c     = pr + 1/x ( 1 + 1/(x+q1) ( p1 + 1/(x+q2) ( p2 + ...
 c   Overall factor
 c   u = ln(x + pv) - 1
         yr = wr + pv
-        ur = log(yr * yr + wi * wi) / 2 - 1
+        ur = log(yr * yr + wi * wi) / 2.d0 - 1.d0
         ui = atan2(wi, yr)
       endif
 c---lnGamma
@@ -180,50 +174,50 @@ c     = (x - .5) [ln(x + pv) - 1] - pu
 c   y = y + ln(v)
 c     = (x - .5) [ln(x + pv) - 1] - pu + ln(Rational)
 c     = lnGamma(x)
-      yr = yr + log(vr * vr + vi * vi) / 2
+      yr = yr + log(vr * vr + vi * vi) / 2.d0
       yi = yi + atan2(vi, vr)
 c---Reflection formula Gamma(x) Gamma(1-x) = pi/sin(pi x)
 c   sign of Gamma
-      t = 1
+      t = 1.d0
       if (xr .lt. .5d0) then
         wi = anint(xr)
         wr = xr - wi
-        if (wi .gt. xr) wi = wi - 1
+        if (wi .gt. xr) wi = wi - 1.d0
 c   case of real x
-        if (xi .eq. 0.) then
+        if (xi .eq. 0.d0) then
 c   w = ln[sin(pi x)]
           wr = log(sin(pi * abs(wr)))
           if (l .eq. 0) then
-            if (wi .ne. 2 * aint(wi / 2)) t = -1
-            wi = 0
+            if (wi .ne. 2.d0 * aint(wi / 2)) t = -1.d0
+            wi = 0.d0
           elseif (l .eq. 1) then
             wi = - pi * wi
           endif
 c   case where imaginary part of x is < 1 in absolute value
-        elseif (abs(xi) .lt. 1.) then
+        elseif (abs(xi) .lt. 1.d0) then
           if (l .eq. 0) then
-            if (wi .ne. 2 * aint(wi / 2)) t = -1
-            ui = 0
+            if (wi .ne. 2.d0 * aint(wi / 2.d0)) t = -1.d0
+            ui = 0.d0
           elseif (l .eq. 1) then
             ui = -pi * wi
-            if (xi .lt. 0.) ui = -ui
+            if (xi .lt. 0.d0) ui = -ui
           endif
           wr = pi * wr
           wi = pi * xi
           vr = sin(wr) * cosh(wi)
           vi = cos(wr) * sinh(wi)
-          if (wr .lt. 0.) then
+          if (wr .lt. 0.d0) then
             vr = -vr
             vi = -vi
           endif
 c   w = ln[sin(pi x)]
-          wr = log(vr * vr + vi * vi) / 2
+          wr = log(vr * vr + vi * vi) / 2.d0
           wi = ui + atan2(vi, vr)
 c   case where imaginary part of x is >= 1 in absolute value
         else
           if (l .eq. 0) then
-            if (wi .ne. 2 * aint(wi / 2)) t = -1
-            if (wr .ge. 0.) then
+            if (wi .ne. 2.d0 * aint(wi / 2)) t = -1.d0
+            if (wr .ge. 0.d0) then
               ui = pi * (.5d0 - wr)
             else
               ui = pi * (- .5d0 - wr)
@@ -231,17 +225,17 @@ c   case where imaginary part of x is >= 1 in absolute value
           elseif (l .eq. 1) then
             ui = pi * (.5d0 - xr)
           endif
-          wi = exp(- 2 * pi * abs(xi))
-          wr = 2 * pi * wr
-          vr = (1 - cos(wr) * wi) / 2
-          vi = - sin(wr) * wi / 2
+          wi = exp(- 2.d0 * pi * abs(xi))
+          wr = 2.d0 * pi * wr
+          vr = (1.d0 - cos(wr) * wi) / 2.d0
+          vi = - sin(wr) * wi / 2.d0
           ur = pi * xi
 c   w = ln[sin(pi x)]
-          if (xi .gt. 0.) then
-            wr = ur + log(vr * vr + vi * vi) / 2
+          if (xi .gt. 0.d0) then
+            wr = ur + log(vr * vr + vi * vi) / 2.d0
             wi = ui + atan2(vi, vr)
-          elseif (xi .lt. 0.) then
-            wr = - ur + log(vr * vr + vi * vi) / 2
+          elseif (xi .lt. 0.d0) then
+            wr = - ur + log(vr * vr + vi * vi) / 2.d0
             wi = - ui - atan2(vi, vr)
           endif
         endif
@@ -252,9 +246,9 @@ c   y = ln[Gamma(x)]
 c---Gamma
       if (l .eq. 0) then
         ur = exp(yr)
-        if (xi .eq. 0.) then
+        if (xi .eq. 0.d0) then
           yr = t * ur
-          yi = 0.
+          yi = 0.d0
         else
           yr = t * ur * cos(yi)
           yi = ur * sin(yi)

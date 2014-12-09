@@ -7,11 +7,12 @@ extern "C" void fht_(int*, double*, int*, double*);
  
  
 // the constructor
-FFTLog::FFTLog(int N, double dlnr, double mu, double q, double kr, int kropt):
-  N(N), kropt(kropt), mu(mu), q(q), dlnr(dlnr), kr(kr) 
+FFTLog::FFTLog(int N_, double dlnr_, double mu_, double q_, double kr_, int kropt_):
+  N(N_), kropt(kropt_), mu(mu_), q(q_), dlnr(dlnr_), kr(kr_) 
 {
-    wsave = parray(Nwsave());
-    fhti_(&N, &mu, &q, &dlnr, &kr, &kropt, (double*)(wsave), &ok);
+    int size = 2*N + 3*(N/2) + 19;
+    wsave = new double[size];
+    fhti_(&N, &mu, &q, &dlnr, &kr, &kropt, wsave, &ok);
 }
 
 // this does the actual transform
@@ -20,22 +21,29 @@ bool FFTLog::Transform(parray& a, int dir){
     if (a.size() != (size_t)N) Common::error("size mismatch");
     
     // initialize to values of a
-    parray tempa(a);    
+    double *tempa = new double[N];
+    for (int i=0; i<N; i++) tempa[i] = a[i]; 
     
     // call the fortran FFTlog driver
-    fht_(&N, (double*)(tempa), &dir, wsave); 
+    fht_(&N, (double*)(tempa), &dir, (double*)(wsave)); 
     for (int i=0; i<N; i++) a[i] = tempa[i]; 
+    
+    delete[] tempa;
     return ok;
 }
 
 // length of the wsave array
 int FFTLog::Nwsave() const{
-  return   (7*N)/2+19;
+    return 2*N + 3*(N/2) + 19;
 }
 
 // the value of kr used
 double FFTLog::KR() const { 
-  return kr;
+    return kr;
+}
+
+double FFTLog::GetWSave(int i) {
+    return wsave[i];
 }
 
 // copy constructor
@@ -43,7 +51,7 @@ FFTLog::FFTLog(const FFTLog& old) : N(old.N), kropt(old.kropt), mu(old.mu),
                q(old.q), dlnr(old.dlnr), kr(old.kr), ok(old.ok)
 
 {
-    wsave = parray(Nwsave());
+    wsave = new double[Nwsave()];
     for(int i=0; i < Nwsave(); i++) wsave[i] = old.wsave[i]; 
 }
 
@@ -51,10 +59,10 @@ FFTLog::FFTLog(const FFTLog& old) : N(old.N), kropt(old.kropt), mu(old.mu),
 FFTLog& FFTLog::operator=(const FFTLog& old) {
   
     if (this==&old) return *this;
-    //if (N > 0) NR::free_dvector(wsave,0,Nwsave()-1);
+    if (N > 0) delete[] wsave;
  
     N = old.N;
-    wsave = parray(Nwsave());
+    wsave = new double[Nwsave()];
     for (int i=0; i<Nwsave(); i++) wsave[i] = old.wsave[i]; 
     kropt = old.kropt;
     mu = old.mu;
@@ -64,6 +72,6 @@ FFTLog& FFTLog::operator=(const FFTLog& old) {
 }
 
 FFTLog::~FFTLog(){
-  // if(N>0) NR::free_dvector(wsave,0,Nwsave()-1);
+    if(N>0) delete[] wsave;
 }
 

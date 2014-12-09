@@ -42,6 +42,7 @@ protected:
     
     // keep track of redshift, sigma8 for easy scaling
     double z, sigma8;
+    double nc, dlogr, logrc;
     
     // the integrals needed for the FFTLog integral
     double sigma_sq;

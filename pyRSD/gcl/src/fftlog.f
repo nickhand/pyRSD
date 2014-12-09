@@ -5,6 +5,7 @@ c    or Fast Hankel Transform (of arbitrary real index)
 c    of a periodic logarithmic sequence.
 c
 c---Start of revision history-------------------------------------------
+c
 c Original version 27 March 1999.
 c
 c 5 July 1999:
@@ -25,6 +26,20 @@ c a forward transform with q -> -q [and rk -> 1/rk]
 c for any kr if n is odd,
 c but only for low-ringing kr if n is even.
 c Original falsely stated that transforms were same irrespective of kr.
+c
+c 19 Dec 1999:
+c Slightly spiffed up interactive option to change kr to low-ringing kr.
+c
+c 13 Mar 2000:
+c Made g77-safe:
+c 1. Checked for any automatic variables that needed explicitly
+c    `save'ing - actually there weren't any.
+c    g77 is unusual in that it does NOT save variables not in
+c    common or data statements.
+c 2. All double precision constants explicitly suffixed d0.
+c    g77 is unusual in that it does NOT automatically promote
+c    real constants such as 1.1 to double precision 1.1d0.
+c 
 c---End of revision history---------------------------------------------
 c
 c For more information about FFTLog, see
@@ -35,7 +50,7 @@ c Andrew J S Hamilton March 1999
 c email: Andrew.Hamilton@Colorado.EDU
 c
 c Refs:	Talman J. D., 1978, J. Comp. Phys., 29, 35
-c	Hamilton A. J. S., 1999, MNRAS, in press
+c	Hamilton A. J. S., 2000, MNRAS, 312, 257
 c	( http://xxx.lanl.gov/abs/astro-ph/9905191 )
 c
 c FFTLog uses the NCAR suite of FFT routines,
@@ -100,7 +115,7 @@ c chosen arbitrarily; but it would be normal to choose the product
 c kr = k_c r_c = k_j r_(n+1-j) = k_(n+1-j) r_j
 c to be about 1 (or 2, or pi, to taste).
 c
-c The FFTLog algorithm is (see Hamilton 1999):
+c The FFTLog algorithm is (see Hamilton 2000):
 c 1. FFT the input array a_j to obtain the Fourier coefficients c_m ;
 c 2. Multiply c_m by 
 c       u_m = (kr)^[- i 2 m pi/(n dlnr)] U_mu[q + i 2 m pi/(n dlnr)]
@@ -228,6 +243,12 @@ c fhti should be called each time n, mu, q, dlnr, or kr is changed.
 c The work array wsave should not be changed between calls to fftl,
 c fht, or fhtq.
 c
+c If you are using the g77 fortran compiler, which by default does not
+c save locally declared variables (unlike most other fortran compilers),
+c then you should explicitly
+c       save wsave
+c in the calling program.
+c
 c  Input: n = number of points in the array to be transformed;
 c             n may be any positive integer, but the NCAR FFT routines
 c             run fastest if n is a product of small primes 2, 3, 5.
@@ -265,15 +286,23 @@ c         ok = .true. if all went ok;
 c              .false. if not; currently only occurs if interactive
 c                      response causes exit.
 c
+c        parameters
       real*8 PI
-      parameter (PI=3.141592653589793238462643383279502884197)
+      parameter (PI=3.141592653589793238462643383279502884197d0)
+      real*8 ZERO,ONE,TWO
+      parameter (ZERO=0.d0,ONE=1.d0,TWO=2.d0)
       real*8 ROUND
       parameter (ROUND=1.d-15)
-c
+c        externals
+      integer lnblnk,stblnk
+      real*8 krgood
+      complex*16 cdgamma
+c        local (automatic) variables
       character*1 go
+      character*64 temp
       integer l,m
-      real*8 amp,arg,d,krgood,ln2,ln2kr,xm,xp,y
-      complex*16 cdgamma,zm,zp
+      real*8 amp,arg,d,ln2,ln2kr,xm,xp,y
+      complex*16 zm,zp
 c
 c--------adjust kr
 c        keep kr as is
@@ -285,16 +314,22 @@ c        change kr to low-ringing kr quietly
 c        change kr to low-ringing kr verbosely
       elseif (kropt.eq.2) then
         d=krgood(mu,q,dlnr,kr)
-        if (abs(kr/d-1.).gt.ROUND) then
+        if (abs(kr/d-ONE).gt.ROUND) then
           kr=d
           write (*,'(" kr changed to",g24.16)') kr
         endif
 c        option to change kr to low-ringing kr interactively
       else
         d=krgood(mu,q,dlnr,kr)
-        if (abs(kr/d-1.).gt.ROUND) then
-          print *,'change kr =',kr,' to low-ringing kr =',d,
-     &      ' [CR,y=yes, n=no]?'
+        if (abs(kr/d-ONE).gt.ROUND) then
+c        fortran demonstrates its inferiority to C
+          write (*,'(" change kr = ",$)')
+          write (temp,*) kr
+          write (*,'(a,$)') temp(stblnk(temp):lnblnk(temp))
+          write (*,'(" to low-ringing kr = ",$)')
+          write (temp,*) d
+          write (*,'(a,$)') temp(stblnk(temp):lnblnk(temp))
+          write (*,'("? [CR,y=yes, n=no, x=exit]: ",$)')
           read (*,'(a1)') go
           if (go.eq.' '.or.go.eq.'y'.or.go.eq.'Y') then
             kr=d
@@ -320,9 +355,9 @@ c--------put q, dlnr, kr in next 3 elements of wsave
 c        so far used 2*n+18 elements of wsave
       l=l+3
 c--------rest of wsave used by fhtq - unbiased case (q = 0)
-      if (q.eq.0.) then
-        ln2kr=log(2/kr)
-        xp=(mu+1)/2
+      if (q.eq.ZERO) then
+        ln2kr=log(TWO/kr)
+        xp=(mu+ONE)/TWO
         d=PI/(n*dlnr)
         do m=1,n/2
 c        y = m pi/(n dlnr)
@@ -330,7 +365,7 @@ c        y = m pi/(n dlnr)
           zp=dcmplx(xp,y)
           zp=cdgamma(zp,1)
 c        Argument of kr^(-2 i y) U_mu(2 i y)
-          arg=2*(ln2kr*y+dimag(zp))
+          arg=TWO*(ln2kr*y+dimag(zp))
           wsave(l+2*m-1)=cos(arg)
           wsave(l+2*m)=sin(arg)
         enddo
@@ -338,28 +373,28 @@ c Altogether 2*n+18 + 2*(n/2) = 2*((3*n)/2)+18 elements used for q = 0,
 c which is 3*n+18 for even n, 3*n+17 for odd n.
 c--------rest of wsave used by fhtq - biased case (q != 0)
       else
-        ln2=log(2.d0)
-        ln2kr=log(2/kr)
-        xp=(mu+1+q)/2
-        xm=(mu+1-q)/2
+        ln2=log(TWO)
+        ln2kr=log(TWO/kr)
+        xp=(mu+ONE+q)/TWO
+        xm=(mu+ONE-q)/TWO
 c........first element of rest of wsave
-        y=0.
+        y=ZERO
 c        case where xp or xm is a negative integer
-        if ((anint(xp).eq.xp.and.anint(xp).le.0.)
-     *    .or.(anint(xm).eq.xm.and.anint(xm).le.0.)) then
+        if ((anint(xp).eq.xp.and.anint(xp).le.ZERO)
+     *    .or.(anint(xm).eq.xm.and.anint(xm).le.ZERO)) then
 c        case where xp and xm are both negative integers
 c U_mu(q) = 2^q Gamma[xp]/Gamma[xm] is finite in this case
-          if ((anint(xp).eq.xp.and.anint(xp).le.0.)
-     *      .and.(anint(xm).eq.xm.and.anint(xm).le.0.)) then
+          if ((anint(xp).eq.xp.and.anint(xp).le.ZERO)
+     *      .and.(anint(xm).eq.xm.and.anint(xm).le.ZERO)) then
 c        Amplitude and Argument of U_mu(q)
             amp=exp(ln2*q)
             if (xp.gt.xm) then
               do m=1,nint(xp-xm)
-                amp=amp*(xm+m-1)
+                amp=amp*(xm+m-ONE)
               enddo
             elseif (xp.lt.xm) then
               do m=1,nint(xm-xp)
-                amp=amp/(xp+m-1)
+                amp=amp/(xp+m-ONE)
               enddo
             endif
             arg=anint(xp+xm)*PI
@@ -370,7 +405,7 @@ c and inverse transformation is singular if xm is -ve integer,
 c but transformation may be well-defined if sum_j a_j = 0,
 c as may well occur in physical cases.
 c Policy is to drop the potentially infinite constant in the transform.
-            if (anint(xp).eq.xp.and.anint(xp).le.0.) then
+            if (anint(xp).eq.xp.and.anint(xp).le.ZERO) then
               print *,'fhti: (mu+1+q)/2 =',nint(xp),
      &          ' is -ve integer, yields singular transform:'
               print *,'   transform will omit additive constant that is 
@@ -387,8 +422,8 @@ c Policy is to drop the potentially infinite constant in the transform.
               print *,'   the sum of the elements of the input array a_j
      & is zero.'
             endif
-            amp=0.
-            arg=0.
+            amp=ZERO
+            arg=ZERO
           endif
 c        neither xp nor xm is a negative integer
         else
@@ -497,28 +532,31 @@ c                where jc = (n+1)/2 = central index of array.
 c         a on output is the transformed array Ã(k):
 c             a(j) is Ã(k_j) at k_j = k_c exp[(j-jc) dlnr].
 c
+c        parameters
+      real*8 ONE,TWO,HALF
+      parameter (ONE=1.d0,TWO=2.d0,HALF=ONE/TWO)
+c        local (automatic) variables
       integer j,l
-      real*8 dlnr,h,jc,kr,lnkr,lnrk,q
+      real*8 dlnr,jc,kr,lnkr,lnrk,q
 c
       l=2*n+15
       q=wsave(l+1)
       dlnr=wsave(l+2)
       kr=wsave(l+3)
 c........a(r) = A(r) (r/rc)^[-dir*(q-.5)]
-      h=1./2.d0
 c        centre point of array
-      jc=(n+1)/2.d0
+      jc=dble(n+1)/TWO
       do j=1,n
-        a(j)=a(j)*exp(-dir*(q-h)*(j-jc)*dlnr)
+        a(j)=a(j)*exp(-dir*(q-HALF)*(j-jc)*dlnr)
       enddo
 c........transform a(r) -> ã(k)
-        call fhtq(n,a,dir,wsave)
+      call fhtq(n,a,dir,wsave)
 c........Ã(k) = ã(k) k^[-dir*(q+.5)] rc^[-dir*(q-.5)]
 c        = ã(k) (k/kc)^[-dir*(q+.5)] (kc rc)^(-dir*q) (rc/kc)^(dir*.5)
       lnkr=log(kr)
       lnrk=log(rk)
       do j=1,n
-        a(j)=a(j)*exp(-dir*((q+h)*(j-jc)*dlnr+q*lnkr-h*lnrk))
+        a(j)=a(j)*exp(-dir*((q+HALF)*(j-jc)*dlnr+q*lnkr-HALF*lnrk))
       enddo
       return
       end
@@ -570,6 +608,10 @@ c                where jc = (n+1)/2 = central index of array.
 c         a on output is the transformed array Ã(k):
 c             a(j) is Ã(k_j) at k_j = k_c exp[(j-jc) dlnr].
 c
+c        parameters
+      real*8 ZERO,TWO
+      parameter (ZERO=0.d0,TWO=2.d0)
+c        local (automatic) variables
       integer j,l
       real*8 dlnr,jc,kr,lnkr,q
 c
@@ -578,18 +620,18 @@ c
       dlnr=wsave(l+2)
       kr=wsave(l+3)
 c........a(r) = A(r) (r/rc)^(-dir*q)
-      if (q.ne.0.) then
+      if (q.ne.ZERO) then
 c        centre point of array
-        jc=(n+1)/2.d0
+        jc=dble(n+1)/TWO
         do j=1,n
           a(j)=a(j)*exp(-dir*q*(j-jc)*dlnr)
         enddo
       endif
 c........transform a(r) -> ã(k)
-        call fhtq(n,a,dir,wsave)
+      call fhtq(n,a,dir,wsave)
 c........Ã(k) = ã(k) (k rc)^(-dir*q)
 c             = ã(k) (k/kc)^(-dir*q) (kc rc)^(-dir*q)
-      if (q.ne.0.) then
+      if (q.ne.ZERO) then
         lnkr=log(kr)
         do j=1,n
           a(j)=a(j)*exp(-dir*q*((j-jc)*dlnr+lnkr))
@@ -633,6 +675,10 @@ c                 where jc = (n+1)/2 = central index of array.
 c         a on output is the transformed periodic array ã(k):
 c             a(j) is ã(k_j) at k_j = k_c exp[(j-jc) dlnr].
 c
+c        parameters
+      real*8 ZERO
+      parameter (ZERO=0.d0)
+c        local (automatic) variables
       integer l,m
       real*8 ai,ar,q
 c
@@ -642,7 +688,7 @@ c
 c--------normal FFT
       call drfftf(n,a,wsave)
 c--------unbiased (q = 0) transform
-      if (q.eq.0.) then
+      if (q.eq.ZERO) then
 c........multiply by
 c        (kr)^[- i 2 m pi/(n dlnr)] U_mu[i 2 m pi/(n dlnr)]
         do m=1,(n-1)/2
@@ -690,10 +736,10 @@ c        backward transform: divide by amplitude
         elseif (dir.eq.-1) then
 c        amplitude of m=0 element
           ar=wsave(l+1)
-          if (ar.eq.0.) then
+          if (ar.eq.ZERO) then
 c Amplitude of m=0 element can be zero for some mu, q combinations
 c (singular inverse); policy is to drop potentially infinite constant.
-            a(1)=0.
+            a(1)=ZERO
           else
             a(1)=a(1)/ar
           endif
@@ -756,29 +802,53 @@ c	  kr = suggested value of kr.
 c Output: krgood = low-ringing value of kr nearest to input kr.
 c                  ln(krgood) is always within dlnr/2 of ln(kr).
 c
+c        parameters
       real*8 PI
-      parameter (PI=3.141592653589793238462643383279502884197)
-c
+      parameter (PI=3.141592653589793238462643383279502884197d0)
+      real*8 ZERO,ONE,TWO
+      parameter (ZERO=0.d0,ONE=1.d0,TWO=2.d0)
+c        externals
+      complex*16 cdgamma
+c        local (automatic) variables
       real*8 arg,iarg,xm,xp,y
-      complex*16 cdgamma,zm,zp
+      complex*16 zm,zp
 c
       krgood=kr
-      if (dlnr.eq.0.) return
-      xp=(mu+1+q)/2
-      xm=(mu+1-q)/2
-      y=PI/(2*dlnr)
+      if (dlnr.eq.ZERO) return
+      xp=(mu+ONE+q)/TWO
+      xm=(mu+ONE-q)/TWO
+      y=PI/(TWO*dlnr)
       zp=dcmplx(xp,y)
       zm=dcmplx(xm,y)
       zp=cdgamma(zp,1)
       zm=cdgamma(zm,1)
 c        low-ringing condition is that following should be integral
-      arg=log(2/kr)/dlnr+(dimag(zp)+dimag(zm))/PI
+      arg=log(TWO/kr)/dlnr+(dimag(zp)+dimag(zm))/PI
       iarg=anint(arg)
 c        if should ensure arg = +-Infinity dealt with correctly
       if (arg.ne.iarg) then
 c        low-ringing kr
         krgood=kr*exp((arg-iarg)*dlnr)
       endif
+      return
+      end
+c
+c-----------------------------------------------------------------------
+      integer function stblnk(string)
+      character*(*) string
+c
+c        externals
+      integer lnblnk
+c        local (automatic) variables
+      integer i
+c *
+c * Return index of first non-blank character in string.
+c * If string is all blank, returned index is 1+lnblnk(string).
+c *
+      do i=1,lnblnk(string)
+        if (string(i:i).ne.' ') goto 120
+      enddo
+  120 stblnk=i
       return
       end
 c

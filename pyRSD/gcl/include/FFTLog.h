@@ -13,6 +13,7 @@ public:
     bool Transform(parray& a, int dir=1);
     int Nwsave() const;
     double KR() const;
+    double GetWSave(int i);
     FFTLog(const FFTLog& old);
     FFTLog& operator=(const FFTLog& old); 
 
@@ -27,7 +28,7 @@ private:
     double mu, q, dlnr;
     double kr;
     bool ok;
-    parray wsave;
+    double *wsave;
 };
 
 #endif

@@ -237,7 +237,7 @@ c
 c
 c-----------------------------------------------------------------------
       subroutine dradfg (ido,ip,l1,idl1,cc,c1,c2,ch,ch2,wa)
-      integer ido, ip, l1, idl1
+      integer ido, ip, l1
       real*8 cc(ido,ip,l1), c1(ido,l1,ip), c2(idl1,ip),
      &  ch(ido,l1,ip), ch2(idl1,ip), wa(*)
 c
@@ -245,7 +245,7 @@ c
 c        2 pi
       parameter (TPI = 6.2831853071 7958647692 5286766559 00577d0)
 c
-      integer i, ic, idij, idp2, ik, ipph, ipp2, is,
+      integer i, ic, idij, idl1, idp2, ik, ipph, ipp2, is,
      &   j, jc, j2, k, l, lc, nbd
       real*8 ai1, ai2, ar1, ar1h, ar2, ar2h, arg, dc2, dcp, ds2, dsp
 c

@@ -5,7 +5,7 @@ using namespace Common;
 static const int NUM_PTS = 1024;
 static const double RMIN = 1e-2;
 static const double RMAX = 1e5;
-static const int NMAX = 31;
+static const int NMAX = 30;
 
 
 ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_) 
@@ -13,7 +13,17 @@ ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_)
 {    
     // compute the integrals and mesh parameters
     sigma_sq = P_L.VelocityDispersion();
-    r = parray::logspace(RMIN, RMAX, NUM_PTS);        
+   
+    r = parray(NUM_PTS);     
+    nc = 0.5*double(NUM_PTS+1);
+    double logrmin = log10(RMIN); 
+    double logrmax = log10(RMAX);
+    logrc = 0.5*(logrmin+logrmax);
+    dlogr = (logrmax - logrmin)/NUM_PTS; 
+    
+    for (int i = 1; i <= NUM_PTS; i++)
+        r[i-1] = pow(10., (logrc+(i-nc)*dlogr));
+    
     XX = P_L.X_Zel(r) + 2.*sigma_sq;
     YY = P_L.Y_Zel(r); 
 }
@@ -86,7 +96,6 @@ void ZeldovichPS::SetSigma8(double new_sigma8) {
 double ZeldovichPS::fftlog_compute(double k, double factor) const {
     
     double q = 0; // unbiased
-    double kcrc = 1; // good first guess
     double mu;
     
     // the input/output arrays
@@ -95,34 +104,44 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
 
     // logspaced between RMIN and RMAX
     double this_Pk = 0.;
-    double dlnr = (log(RMAX) - log(RMIN)) / NUM_PTS;
-    double L = log(r[NUM_PTS-1]/r[0]) * NUM_PTS/(NUM_PTS-1.);
+    // double dlnr = (log(RMAX) - log(RMIN)) / NUM_PTS;
+    // double L = log(r[NUM_PTS-1]/r[0]) * NUM_PTS/(NUM_PTS-1.);
     
-    for (int n = 0; n < NMAX; n++) {
+    for (int n = 0; n <= NMAX; n++) {
         
         // the order of the Bessel function
         mu = 0.5 + double(n);
         
         // compute a(r)
-        if (n == 0)
+        if (n == 0) 
             Fprim(a, r, k);
         else
             Fsec(a, r, k, double(n));
 
         // do the fft
-        FFTLog fftlogger(NUM_PTS, dlnr, mu, q, kcrc, 1);
-        fftlogger.Transform(a, 1);
+        FFTLog fftlogger(NUM_PTS, dlogr*log(10.), mu, q, 1.0, 1);
+                    
+        bool ok = fftlogger.Transform(a, 1);
+        if (!ok) error("FFTLog failed\n");
         double kr = fftlogger.KR();
-       
-        // compute k corresponding to input r
-        double k0r0 = kr * exp(-L);
-        kmesh[0] = k0r0/r[0];
-        for(int j = 1; j < NUM_PTS; j++)
-            kmesh[j] = kmesh[0] * exp(j*L/NUM_PTS);
+        double logkc = log10(kr) - logrc;
+
+        for(int j = 1; j <= NUM_PTS; j++) 
+            kmesh[j-1] = pow(10., (logkc+(j-nc)*dlogr));
+            
+        // // compute k corresponding to input r
+        // double k0r0 = kr * exp(-L);
+        // kmesh[0] = k0r0/r[0];
+        // for(int j = 1; j < NUM_PTS; j++)
+        //     kmesh[j] = kmesh[0] * exp(j*L/NUM_PTS);
         
         // sum it up
-        Spline spl = LinearSpline(kmesh, a);
-        this_Pk += factor*sqrt(0.5*M_PI)*pow(k, -1.5)*spl(k);
+        //Spline spl = LinearSpline(kmesh, a);
+        double out;
+        nearest_interp_1d(NUM_PTS, (double*)(kmesh), (double*)(a), 1, &k, &out);
+
+        //info("      %.5e\n", out);
+        this_Pk += factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out;
     }
         
     return this_Pk;

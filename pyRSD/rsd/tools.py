@@ -390,9 +390,7 @@ def monopole(f):
     
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
-        print "computing P(k,mu) to integrate.."
         Pkmus = f(self, mus)
-        print "done"
         return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
     return wrapper
 #-------------------------------------------------------------------------------

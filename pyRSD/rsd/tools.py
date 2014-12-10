@@ -4,7 +4,8 @@ from scipy.interpolate import interp1d
 from scipy.integrate import simps
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
-
+import warnings
+    
 def extrap1d(interpolator):
     """
     A 1d extrapolator function, using linear extrapolation
@@ -384,6 +385,9 @@ def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function
     """ 
+    # warnings from simps
+    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
+    
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         print "computing P(k,mu) to integrate.."
@@ -396,6 +400,9 @@ def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
     """ 
+    # warnings from simps
+    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
+    
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
@@ -420,6 +427,9 @@ def hexadecapole(f):
     """
     Decorator to compute the hexadecapole from a `self.power` function
     """ 
+    # warnings from simps
+    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
+    
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)

@@ -491,24 +491,24 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
     #---------------------------------------------------------------------------
     @tools.monopole
-    def Pgal_mono(self):
+    def Pgal_mono(self, mu):
         """
         The total redshift-space galaxy monopole moment
         """
-        return self.Pgal()
+        return self.Pgal(mu)
     #---------------------------------------------------------------------------
     @tools.quadrupole
     def Pgal_quad(self, mu):
         """
         The total redshift-space galaxy quadrupole moment
         """
-        return self.Pgal()
+        return self.Pgal(mu)
     #---------------------------------------------------------------------------
     @tools.hexadecapole
-    def Pgal_hexadec(self):
+    def Pgal_hexadec(self, mu):
         """
         The total redshift-space galaxy hexadecapole moment
         """
-        return self.Pgal()
+        return self.Pgal(mu)
     #---------------------------------------------------------------------------
     

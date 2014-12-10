@@ -148,39 +148,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # VELOCITY DISPERSIONS
     #---------------------------------------------------------------------------
     @property
-    def sigma_cAs(self):
-        """
-        The FOG velocity dispersion for Pgal_cAs 
-        """
-        try:
-            return self._sigma_cAs
-        except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_cAs' attribute.")
-            
-    @sigma_cAs.setter
-    def sigma_cAs(self, val):
-        self._sigma_cAs = val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_cBs(self):
-        """
-        The FOG velocity dispersion for Pgal_cBs 
-        """
-        try:
-            return self._sigma_cBs
-        except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_cBs' attribute.")
-            
-    @sigma_cBs.setter
-    def sigma_cBs(self, val):
-        self._sigma_cBs = val
-    
-    #---------------------------------------------------------------------------
-    @property
     def sigma_cc(self):
         """
-        The FOG velocity dispersion for centrals auto spectra Pgal_cc.
+        The central-central FOG velocity dispersion
         """
         try:
             return self._sigma_cc
@@ -193,49 +163,30 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     
     #---------------------------------------------------------------------------
     @property
-    def sigma_sAsA(self):
+    def sigma_cs(self):
         """
-        The FOG velocity dispersion for Pgal_sAsA. 
+        The central-satellite FOG velocity dispersion, given by
+        
+        :math: \sigma_{cs} = \sqrt{(\sigma_{cc}^2 + \sigma_{ss}^2)/2} 
         """
-        try:
-            return self._sigma_sAsA
-        except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sAsA' attribute.")
-            
-    @sigma_sAsA.setter
-    def sigma_sAsA(self, val):
-        self._sigma_sAsA = val
+        return ((self.sigma_cc**2 + self.sigma_ss**2)/2.)**0.5
+                
     #---------------------------------------------------------------------------
     @property
-    def sigma_sAsB(self):
+    def sigma_ss(self):
         """
-        The FOG velocity dispersion for Pgal_sAsB. 
-        """
-        try:
-            return self._sigma_sAsB
-        except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sAsB' attribute.")
-            
-    @sigma_sAsB.setter
-    def sigma_sAsB(self, val):
-        self._sigma_sAsB = val
-        
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_sBsB(self):
-        """
-        The FOG velocity dispersion for Pgal_sBsB. 
+        The satellite-satellite FOG velocity dispersion for Pgal_sAsA. 
         """
         try:
-            return self._sigma_sBsB
+            return self._sigma_ss
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sBsB' attribute.")
+            raise ValueError("Must specify velocity dispersion 'sigma_ss' attribute.")
             
-    @sigma_sBsB.setter
-    def sigma_sBsB(self, val):
-        self._sigma_sBsB = val
+    @sigma_ss.setter
+    def sigma_ss(self, val):
+        self._sigma_ss = val
         
-    #---------------------------------------------------------------------------
+   #---------------------------------------------------------------------------
     @property
     def fog_model(self):
         """
@@ -299,6 +250,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @one_halo_sBsB_args.setter
     def one_halo_sBsB_args(self, val):
         self._one_halo_sBsB_args = val
+    
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
     #---------------------------------------------------------------------------
@@ -312,11 +264,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1     = self.b1_c
         self.b1_bar = self.b1_c
            
-        x = self.sigma_cc * mu * self.k
-        G = self.fog_model(x)
+        # FOG damping
+        G = self.fog_model(self.sigma_cc * mu * self.k)
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
+        
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_cAs(self, mu):
@@ -333,11 +286,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        x = self.sigma_cAs * mu * self.k
-        G = self.fog_model(x)
+        G_cen = self.fog_model(self.sigma_cc * mu * self.k)
+        G_sat =  self.fog_model(self.sigma_ss * mu * self.k)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G_cen*G_sat*self.power(mu)
+        
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_sAsA(self, mu):
@@ -350,11 +304,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sA
         
         # the FOG damping
-        x = self.sigma_sAsA * mu * self.k
-        G = self.fog_model(x)
+        G = self.fog_model(self.sigma_ss*mu*self.k)
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
+        
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_sAsB(self, mu):
@@ -371,9 +325,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_sB
         
         # the FOG damping
-        x = self.sigma_sAsB * mu * self.k
-        G = self.fog_model(x)
-        
+        G = self.fog_model(self.sigma_ss*mu*self.k)
+
         # now return the power spectrum here
         return G**2 * self.power(mu)
     
@@ -402,11 +355,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        x = self.sigma_cBs * mu * self.k
-        G = self.fog_model(x)
+        G_cen = self.fog_model(self.sigma_cc * mu * self.k)
+        G_sat =  self.fog_model(self.sigma_ss * mu * self.k)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G_cen*G_sat * self.power(mu)
     
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
@@ -416,9 +369,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         same halo and satellites, with mu dependence introduced by the 
         FOG damping
         """
-        x = self.sigma_cBs * mu * self.k
-        G = self.fog_model(x)
-        return G**2 * self.one_halo_model(self.k, *self.one_halo_cBs_args)
+        # the FOG damping
+        G_cen = self.fog_model(self.sigma_cc * mu * self.k)
+        G_sat =  self.fog_model(self.sigma_ss * mu * self.k)
+        
+        return G_cen*G_sat * self.one_halo_model(self.k, *self.one_halo_cBs_args)
 
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
@@ -441,8 +396,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sB
         
         # the FOG damping terms
-        x = self.sigma_sBsB * mu * self.k
-        G = self.fog_model(x)
+        G = self.fog_model(self.sigma_ss*mu*self.k)
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
@@ -454,8 +408,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The 1-halo term for the auto spectrum of satellits with other sats 
         in the same halo, with mu dependence introduced by the FOG damping
         """
-        x = self.sigma_sBsB * mu * self.k
-        G = self.fog_model(x)
+        G = self.fog_model(self.sigma_ss*mu*self.k)
         return G**2 * self.one_halo_model(self.k, *self.one_halo_sBsB_args)
         
     #---------------------------------------------------------------------------

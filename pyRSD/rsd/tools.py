@@ -414,10 +414,16 @@ def mu_vectorize(f):
     """ 
     def wrapper(self, *args):
         mu = args[0]
-        if np.isscalar(mu): 
-            return f(self, mu)
+        scalar = np.isscalar(mu)
+        if scalar: 
+            mu = [mu]
         else:
-            return np.vstack([f(self, imu) for imu in mu]).T
+            mu = np.asarray(mu)
+            if mu.ndim > 1: return f(self, mu)
+        mu = np.array([mu,]*len(self.k)).transpose()
+        
+        P_out = f(self, mu)
+        return P_out[0,:] if scalar else P_out.transpose()
         
     return wrapper
 #-------------------------------------------------------------------------------

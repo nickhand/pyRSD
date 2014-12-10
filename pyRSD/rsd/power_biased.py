@@ -70,7 +70,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._stoch_args
         except:
-            return tools.stochasticity(np.sqrt(self.b1*self.b1_bar), self.z)
+            return self.default_stoch_args(np.sqrt(self.b1*self.b1_bar), self.z)
             
     @stoch_args.setter
     def stoch_args(self, val):
@@ -79,6 +79,21 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete dependencies
         if hasattr(self, '_P00_ss'): del self._P00_ss
         if hasattr(self, '_stochasticity'): del self._stochasticity
+    
+    #---------------------------------------------------------------------------
+    @property
+    def default_stoch_args(self):
+        """
+        The default stochasticity parameters (constant and sloe), which are
+        computed using simulation results to interpolate lambda as a 
+        function of bias and redshift
+        """
+        try:
+            return self._default_stoch_args
+        except:
+            self._default_stoch_args = tools.LambdaStochasticity()
+            return self._default_stoch_args
+        
     #---------------------------------------------------------------------------
     @property
     def stochasticity(self):

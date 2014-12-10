@@ -38,114 +38,164 @@ def extrap1d(interpolator):
 
 #-------------------------------------------------------------------------------
 
-# the stochasticity fit parameters at z = 0
-lambda_z0 = {'3.05': (-19202.9, 111.395), 
-             '2.04': (-3890.46, -211.452), 
-             '1.47': (-645.891, -365.149),
-             '1.18': (83.2376, -246.78)}
- 
-# the stochasticity fit parameters at z = 0.509
-lambda_z1 = {'4.82': (-35181.3, -5473.79), 
-             '3.13': (-6813.82, -241.446), 
-             '2.18': (-1335.54, -104.929),
-             '1.64': (-168.216, -137.268)}
-             
-# the stochasticity fit parameters at z = 1.0
-lambda_z2 = {'4.64': (-16915.5, -3215.98), 
-             '3.17': (-2661.11, -229.627), 
-             '2.32': (-427.779, -41.3676)}              
-lambdas = [(0., lambda_z0), (0.509, lambda_z1), (0.989, lambda_z2)]
-
-def stochasticity(bias, z, *args, **kwargs):
+class LambdaStochasticity(object):
     """
-    Given a linear bias and redshift, return the stochasticity based on 
-    the mean of simulation results.
+    Class implementing the fits to the scale-dependent stochasticity lambda
     """
-    assert np.isscalar(z), 'Redshift input must be scalar'
+    # the stochasticity fit parameters at z = 0
+    lambda_z0 = {'3.05': (-19202.9, 111.395), 
+                 '2.04': (-3890.46, -211.452), 
+                 '1.47': (-645.891, -365.149),
+                 '1.18': (83.2376, -246.78)}
+
+    # the stochasticity fit parameters at z = 0.509
+    lambda_z1 = {'4.82': (-35181.3, -5473.79), 
+                 '3.13': (-6813.82, -241.446), 
+                 '2.18': (-1335.54, -104.929),
+                 '1.64': (-168.216, -137.268)}
+
+    # the stochasticity fit parameters at z = 1.0
+    lambda_z2 = {'4.64': (-16915.5, -3215.98), 
+                 '3.17': (-2661.11, -229.627), 
+                 '2.32': (-427.779, -41.3676)} 
+                              
+    lambdas = [(0., lambda_z0), (0.509, lambda_z1), (0.989, lambda_z2)]
+
+    def __init__(self, return_nan=False, corr_model="linear"):
+        
+        # whether to return NaNs outside bounds, rather than raising exception
+        self.return_nan = return_nan
+        
+        # GP correlation model
+        self.corr_model = corr_model
+        
+        # setup sim data
+        self._setup_sim_results()
+        
+        # setup the gaussian processes
+        self._setup_gps()
+     
+    #__init__
     
-    return_nan = kwargs.pop('return_nan', False)
-    if len(args) > 0: 
-        corr_model = args[0]
-    else:
-        corr_model = 'linear'
+    #---------------------------------------------------------------------------   
+    def _setup_sim_results(self):
+        """
+        Construct the pandas DataFrame holding the lambda data from sims
+        """
+        keys = []
+        data = []
+        for red, params in LambdaStochasticity.lambdas:
+            for b in sorted(params.keys()):
+                keys.append((red, float(b)))
+                data.append(params[b])
+
+        index = pd.MultiIndex.from_tuples(keys, names=['z', 'b1'])
+        self.data = pd.DataFrame(data, index=index, columns=['constant', 'slope'])
+        
+        # save the redshift info too
+        self.redshifts = np.array(self.data.index.levels[0])
+        self.zmax = np.amax(self.redshifts)
+        self.zmin = np.amin(self.redshifts)
+        
+    #end _setup_sim_results
     
-    # first construct the pandas DataFrame
-    # make a data frame holding the lambda data from sims
-    keys = []
-    data = []
-    for red, params in lambdas:
-        for b in sorted(params.keys()):
-            keys.append((red, float(b)))
-            data.append(params[b])
+    #--------------------------------------------------------------------------- 
+    def _check_z_bounds(self, z):   
+        """
+        Check the redshift bounds
+        """
+        assert np.isscalar(z), 'Redshift input must be scalar'
+        
+        # check redshift value
+        if z > self.zmax: 
+            if self.return_nan: 
+                return (np.nan, np.nan)
+            else:
+                raise ValueError("Cannot determine stochasticity for z > %s" %self.zmax)
+
+        if z < self.zmin: 
+            if self.return_nan: 
+                return (np.nan, np.nan)
+            else:
+                raise ValueError("Cannot determine stochasticity for z < %s" %self.zmin)
+                
+    #end _check_z_bounds
+    
+    #---------------------------------------------------------------------------
+    def _setup_gps(self):
+        """
+        Setup the Gaussian Processes as a function of bias at each redshift
+        """
+        self.gps = {}
+        # loop over each redshift
+        for z in self.redshifts:
+
+            self.gps[z] = {}
             
-    index = pd.MultiIndex.from_tuples(keys, names=['z', 'b1'])
-    data = pd.DataFrame(data, index=index, columns=['constant', 'slope'])
-    redshifts = np.array(data.index.levels[0])
+            frame = self.data.xs(z)
+            biases = np.array(frame.index)
+            
+            # initialize the Gaussian Process
+            gp_const = GaussianProcess(corr=self.corr_model, theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
+            gp_slope = GaussianProcess(corr=self.corr_model, theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
+            x = np.atleast_2d(biases).T
+            
+            # the constant
+            y_const = np.atleast_2d(frame.constant).T
+            gp_const.fit(x, y_const)
+            self.gps[z]['constant'] = gp_const
+            
+            # the slope
+            y_slope = np.atleast_2d(frame.slope).T
+            gp_slope.fit(x, y_slope)
+            self.gps[z]['slope'] = gp_slope
+    #end _setup_gps
     
-    # check redshift value
-    if z > np.amax(redshifts): 
-        if return_nan: 
-            return (np.nan, np.nan)
+    #---------------------------------------------------------------------------
+    def __call__(self, bias, z):
+        """
+        Evaluate lambda at specified bias and redshift
+        """
+        self._check_z_bounds(z)
+        
+        # determine the z indices
+        redshifts = []
+        if z in self.redshifts:
+            redshifts.append(z)
         else:
-            raise ValueError("Cannot determine stochasticity for z > %s" %np.amax(redshifts))
+
+            index_zhi = bisect.bisect(self.redshifts, z)
+            index_zlo = index_zhi - 1
+            zhi = self.redshifts[index_zhi]
+            zlo = self.redshifts[index_zlo]
+            redshifts.append(zlo)
+            redshifts.append(zhi)
         
-    if z < np.amin(redshifts): 
-        if return_nan: 
-            return (np.nan, np.nan)
+        params = []
+        for zi in redshifts:
+
+            # predict the constant
+            f = getattr(self.gps[zi]['constant'], 'predict')
+            constant = f(np.atleast_2d(bias).T)
+
+            f = getattr(self.gps[zi]['slope'], 'predict')
+            slope = f(np.atleast_2d(bias).T)
+
+            params.append((constant, slope))
+            
+        if len(params) == 1:
+            return  params[0][0], params[0][1]
         else:
-            raise ValueError("Cannot determine stochasticity for z < %s" %np.amin(redshifts))
 
-    # determine the z indices
-    redshift_lambdas = {}
-    if z in redshifts:
-        redshift_lambdas[z] = data.xs(z, level=0)
-    else:
-        
-        index_zhi = bisect.bisect(redshifts, z)
-        index_zlo = index_zhi - 1
-        zhi = redshifts[index_zhi]
-        zlo = redshifts[index_zlo]
-        
-        redshift_lambdas[zlo] = data.xs(zlo, level=0)
-        redshift_lambdas[zhi] = data.xs(zhi, level=0)
-
-    # now get the mean values for this bias, at this redshift
-    params = []
-    for k, v in redshift_lambdas.iteritems():
-                  
-        # biases at this redshift
-        biases = np.array(v.index)
             
-        # initialize the Gaussian Process
-        gp = GaussianProcess(corr=corr_model, theta0=1e-2, thetaL=1e-4, thetaU=1e-1, random_start=100)
+            zlo, zhi = redshifts[0], redshifts[1]
+            w = (z - zlo) / (zhi - zlo) 
+            constant = (1 - w)*params[0][0] + w*params[1][0]
+            slope = (1 - w)*params[0][1] + w*params[1][1]
 
-        # setup the fitting        
-        x = np.atleast_2d(biases).T
-        y_const = np.atleast_2d(v.constant).T
-        y_slope = np.atleast_2d(v.slope).T
-        
-        # do the fitting and prediction at this bias value
-        gp.fit(x, y_const)
-        constant = gp.predict(np.atleast_2d(bias).T)
-
-        gp.fit(x, y_slope)
-        slope = gp.predict(np.atleast_2d(bias).T)
-            
-        params.append((constant, slope))
-        
-    if len(params) == 1:
-        return  params[0][0], params[0][1]
-    else:
-        
-        z_sorted = sorted(redshift_lambdas.keys())
-        zlo, zhi = z_sorted[0], z_sorted[1]
-        w = (z - zlo) / (zhi - zlo) 
-        constant = (1 - w)*params[0][0] + w*params[1][0]
-        slope = (1 - w)*params[0][1] + w*params[1][1]
+            return constant, slope
+    #end __call__
     
-        return constant, slope
-#end stochasticity
-
 #-------------------------------------------------------------------------------
 def b2_00(bias, z):
     """

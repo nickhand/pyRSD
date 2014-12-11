@@ -217,7 +217,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_sAsB
         except AttributeError:
-            #raise ValueError("Must specify velocity dispersion 'sigma_sAsB' attribute.")
+            raise ValueError("Must specify velocity dispersion 'sigma_sAsB' attribute.")
             
     @sigma_sAsB.setter
     def sigma_sAsB(self, val):

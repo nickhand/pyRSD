@@ -392,7 +392,7 @@ def monopole(f):
     warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
     
     def wrapper(self, *args):
-        mus = np.linspace(0., 1., 101)
+        mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus)
         return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
     return wrapper
@@ -405,7 +405,7 @@ def quadrupole(f):
     warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
     
     def wrapper(self, *args):
-        mus = np.linspace(0., 1., 101)
+        mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus)
         kern = 2.5*(3*mus**2 - 1.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
@@ -438,7 +438,7 @@ def hexadecapole(f):
     warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
     
     def wrapper(self, *args):
-        mus = np.linspace(0., 1., 101)
+        mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus)
         kern = 9./8.*(35*mus**4 - 30.*mu**2 + 3.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])

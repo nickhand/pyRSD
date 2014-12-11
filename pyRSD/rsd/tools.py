@@ -1,7 +1,10 @@
+from .. import pygcl
+
 import numpy as np
 import bisect
 from scipy.interpolate import interp1d
 from scipy.integrate import simps
+from scipy.optimize import brentq
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
 import warnings
@@ -440,4 +443,78 @@ def hexadecapole(f):
         kern = 9./8.*(35*mus**4 - 30.*mu**2 + 3.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
     return wrapper
+    
 #-------------------------------------------------------------------------------
+def mass_from_bias(bias, z, linearPS):
+    """
+    Given an input bias, return the corresponding mass, using Tinker et al.
+    bias fits
+    """
+    mass_norm = 1e13
+    
+    # critical density in units of h^2 M_sun / Mpc^3
+    kms_Mpc = pygcl.Constants.km/pygcl.Constants.second/pygcl.Constants.Mpc
+    crit_dens = 3*(pygcl.Constants.H_0*kms_Mpc)**2 / (8*np.pi*pygcl.Constants.G) 
+    
+    unit_conversion = (pygcl.Constants.M_sun/pygcl.Constants.Mpc**3)
+    crit_dens /= unit_conversion
+    
+    # mean density at z = 0
+    cosmo = linearPS.GetCosmology()
+    mean_dens = crit_dens * cosmo.Omega0_m()
+    
+    # convert mass to radius
+    mass_to_radius = lambda M: (3.*M*mass_norm/(4.*np.pi*mean_dens))**(1./3.)
+    
+    # growth factor at this z
+    z_Plin = linearPS.GetRedshift()
+    Dz = 1.
+    if z_Plin != z: 
+        Dz = (cosmo.D_z(z) / cosmo.D_z(z_Plin))
+    
+    
+    def objective(mass):
+        sigma = Dz*linearPS.Sigma(mass_to_radius(mass))
+        return bias - bias_Tinker(sigma)
+        
+    return brentq(objective, 1e-5, 1e5)*mass_norm
+#end mass_from_bias
+
+#-------------------------------------------------------------------------------
+def bias_Tinker(sigmas, delta_c=1.686, delta_halo=200):
+    """
+    Return the halo bias for the Tinker form.
+    
+    Tinker, J., et al., 2010. ApJ 724, 878-886.
+    http://iopscience.iop.org/0004-637X/724/2/878
+    """
+
+    y = np.log10(delta_halo)
+    
+    # get the parameters as a function of halo overdensity
+    A = 1. + 0.24*y*np.exp(-(4./y)**4)
+    a = 0.44*y - 0.88
+    B = 0.183
+    b = 1.5
+    C = 0.019 + 0.107*y + 0.19*np.exp(-(4./y)**4)
+    c = 2.4
+    
+    nu = delta_c / sigmas
+    return 1. - A * (nu**a)/(nu**a + delta_c**a) + B*nu**b + C*nu**c
+#end bias_Tinker
+
+#-------------------------------------------------------------------------------
+def sigma_from_bias(bias, z, linearPS):
+    """
+    Return sigma from bias
+    """
+    # normalized Teppei's sims at z = 0.509 and sigma_sAsA = 3.6
+    sigma0 = 3.6 # in Mpc/h
+    M0 = 5.4903e13 # in M_sun / h
+    return sigma0 * (mass_from_bias(bias, z, linearPS) / M0)**(1./3)
+ 
+#end sigma_from_bias
+
+#-------------------------------------------------------------------------------  
+    
+    

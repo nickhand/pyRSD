@@ -155,7 +155,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_cAs
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_cAs' attribute.")
+            #raise ValueError("Must specify velocity dispersion 'sigma_cAs' attribute.")
+            return tools.sigma_from_bias(self.b1_s, self.z, self.power_lin)
             
     @sigma_cAs.setter
     def sigma_cAs(self, val):
@@ -170,7 +171,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_cBs
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_cBs' attribute.")
+            #raise ValueError("Must specify velocity dispersion 'sigma_cBs' attribute.")
+            return tools.sigma_from_bias(self.b1_s, self.z, self.power_lin)
             
     @sigma_cBs.setter
     def sigma_cBs(self, val):
@@ -200,7 +202,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_sAsA
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sAsA' attribute.")
+            #raise ValueError("Must specify velocity dispersion 'sigma_sAsA' attribute.")
+            return tools.sigma_from_bias(self.b1_sA, self.z, self.power_lin)
             
     @sigma_sAsA.setter
     def sigma_sAsA(self, val):
@@ -214,7 +217,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_sAsB
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sAsB' attribute.")
+            #raise ValueError("Must specify velocity dispersion 'sigma_sAsB' attribute.")
             
     @sigma_sAsB.setter
     def sigma_sAsB(self, val):
@@ -229,7 +232,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_sBsB
         except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_sBsB' attribute.")
+            #raise ValueError("Must specify velocity dispersion 'sigma_sBsB' attribute.")
+            return tools.sigma_from_bias(self.b1_sB, self.z, self.power_lin)
             
     @sigma_sBsB.setter
     def sigma_sBsB(self, val):
@@ -333,11 +337,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        x = self.sigma_cAs * mu * self.k
+        x = tools.sigma_from_bias(self.b1_s, self.z, self.power_lin) * mu * self.k
         G = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G * self.power(mu)
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
     def Pgal_sAsA(self, mu):
@@ -350,7 +354,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sA
         
         # the FOG damping
-        x = self.sigma_sAsA * mu * self.k
+        x = tools.sigma_from_bias(self.b1_sA, self.z, self.power_lin) * mu * self.k
         G = self.fog_model(x)
         
         # now return the power spectrum here
@@ -371,11 +375,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_sB
         
         # the FOG damping
-        x = self.sigma_sAsB * mu * self.k
-        G = self.fog_model(x)
+        x = tools.sigma_from_bias(self.b1_sA, self.z, self.power_lin) * mu * self.k
+        G1 = self.fog_model(x)
+        x = tools.sigma_from_bias(self.b1_sB, self.z, self.power_lin) * mu * self.k
+        G2 = self.fog_model(x)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G1*G2 * self.power(mu)
     
     #---------------------------------------------------------------------------
     @tools.mu_vectorize
@@ -441,7 +447,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sB
         
         # the FOG damping terms
-        x = self.sigma_sBsB * mu * self.k
+        x = tools.sigma_from_bias(self.b1_sB, self.z, self.power_lin) * mu * self.k
         G = self.fog_model(x)
         
         # now return the power spectrum here
@@ -454,7 +460,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The 1-halo term for the auto spectrum of satellits with other sats 
         in the same halo, with mu dependence introduced by the FOG damping
         """
-        x = self.sigma_sBsB * mu * self.k
+        x = tools.sigma_from_bias(self.b1_sB, self.z, self.power_lin) * mu * self.k
         G = self.fog_model(x)
         return G**2 * self.one_halo_model(self.k, *self.one_halo_sBsB_args)
         

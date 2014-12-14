@@ -12,7 +12,7 @@ from .. import numpy as np
 
 class BiasedSpectrum(power_dm.DMSpectrum):
     
-    
+    allowable_kwargs = power_dm.DMSpectrum.allowable_kwargs + ['sigma_from_sims']
     _power_atts = ['_P00_ss', '_P00_ss_no_stoch', '_P01_ss', '_P11_ss', 
                    '_P02_ss', '_P12_ss', '_P22_ss', '_P03_ss', '_P13_ss', 
                    '_P04_ss']

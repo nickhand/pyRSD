@@ -15,6 +15,7 @@ from scipy.integrate import quad
 
 class DMSpectrum(object):
     
+    allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', 'max_mu', 'DM_model']
     _power_atts = ['_P00', '_P01', '_P11', '_P02', '_P12', '_P22', '_P03', '_P13', '_P04']
     
     def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),

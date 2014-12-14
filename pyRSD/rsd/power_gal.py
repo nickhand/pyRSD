@@ -11,7 +11,8 @@ from .. import numpy as np
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     
-                
+    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['use_mean_bias']
+    
     def __init__(self, use_mean_bias=False, **kwargs):
         
         # initalize the dark matter power spectrum

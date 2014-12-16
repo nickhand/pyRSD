@@ -45,10 +45,13 @@ class ExtrapolatedMultipole(object):
         assert (ell in [0, 2]), "Multipole number must be 0 or 2"
         self.ell = ell
 
-        if (self.ell == 0):
-            self.Pspec = self.power.monopole(linear=self.linear)
+        if self.linear:
+            self.Pspec = self.kaiser(self.power.k)
         else:
-            self.Pspec = self.power.quadrupole(linear=self.linear)
+            if (self.ell == 0):
+                self.Pspec = self.power.monopole()
+            else:
+                self.Pspec = self.power.quadrupole()
         
         # check kmin value
         if self.kmin_model > 0.05: 

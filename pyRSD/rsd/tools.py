@@ -392,6 +392,7 @@ def monopole(f):
         Pkmus = f(self, mus)
         return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
     return wrapper
+
 #-------------------------------------------------------------------------------
 def quadrupole(f):
     """
@@ -403,19 +404,7 @@ def quadrupole(f):
         kern = 2.5*(3*mus**2 - 1.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
     return wrapper
-#-------------------------------------------------------------------------------
-def mu_vectorize(f):
-    """
-    Vectorize the function to handle scalar or array_like `mu` input
-    """ 
-    def wrapper(self, *args):
-        mu = args[0]
-        if np.isscalar(mu):
-            return f(self, mu)
-        else:
-            return np.vstack([f(self, imu) for imu in mu]).T
-        
-    return wrapper
+
 #-------------------------------------------------------------------------------
 def hexadecapole(f):
     """

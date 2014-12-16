@@ -10,7 +10,7 @@
 from .. import pygcl, data_dir, os, numpy as np
 from . import integrals, dm_power_moments, tools
  
-import scipy.interpolate as interp
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from scipy.integrate import quad
 
 class DMSpectrum(object):
@@ -84,19 +84,48 @@ class DMSpectrum(object):
     #---------------------------------------------------------------------------
     # UTILITY FUNCTIONS
     #---------------------------------------------------------------------------
+    def k_true(self, k_obs, mu_obs):
+        """
+        Return the `true` k values, given an observed (k, mu)
+        """
+        F = self.alpha_par / self.alpha_perp
+        if (F != 1.):
+            return (k_obs/self.alpha_perp)*(1 + mu_obs**2*(1./F**2 - 1))**0.5
+        else:
+            return k_obs/self.alpha_perp
+            
+    #end k_true
+    
+    #---------------------------------------------------------------------------
+    def mu_true(self, mu_obs):
+        """
+        Return the `true` mu values, given an observed mu
+        """
+        F = self.alpha_par / self.alpha_perp
+        return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)
+            
+    #end mu_true
+    #-------------------------------------------------------------------------------
     def update(self, **kwargs):
         for k, v in kwargs.iteritems():
             if hasattr(self, k): 
                 if getattr(self, k) != v: setattr(self, k, v)
     
+    #end update
     #---------------------------------------------------------------------------
     def _delete_power(self):
         """
         Delete all power spectra attributes.
         """
+        # delete the power attributes
         for a in DMSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
             
+        # also delete the P_mu* splines
+        for a in ['_P_mu0_spline', '_P_mu2_spline', '_P_mu4_spline', '_P_mu6_spline']
+            if hasattr(self, a): delattr(self, a)
+            
+    #end _delete_power
     #---------------------------------------------------------------------------
     # INPUT ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -124,8 +153,8 @@ class DMSpectrum(object):
     def mu_obs(self, val):
         self._mu_obs = val
         
-        # delete k_true
-        del self.k, self.mu
+        # delete dependencies
+        del self.mu
         
     #---------------------------------------------------------------------------
     @property
@@ -244,11 +273,12 @@ class DMSpectrum(object):
         try:
             return self._k
         except AttributeError:
-            F = self.alpha_par / self.alpha_perp
-            if (F != 1.):
-                self._k = (self.k_obs/self.alpha_perp) * (1 + self.mu_obs**2*(1./F**2 - 1))**0.5
-            else:
-                self._k = (self.k_obs/self.alpha_perp)
+            k_mu0 = self.k_true(self.k_obs, 0.)
+            k_mu1 = self.k_true(self.k_obs, 1.)
+            kmin = min(k_mu0, k_mu1)
+            kmax = max(k_mu0, k_mu1)
+            
+            self._k = np.logspace(np.log10(kmin), np.log10(kmax), 500)
             return self._k
             
     @k.deleter
@@ -259,28 +289,6 @@ class DMSpectrum(object):
             pass
         self._delete_power()
         
-    #---------------------------------------------------------------------------
-    @property
-    def mu(self):
-        """
-        Return the true mu values, given the current AP rescaling factors and
-        the observed mu values, stored in `self.mu_obs`
-        """
-        try:
-            return self._mu
-        except AttributeError:
-
-            F = self.alpha_par / self.alpha_perp
-            self._mu = (self.mu_obs/F) * (1 + self.mu_obs**2*(1./F**2 - 1))**(-0.5)
-            return self._mu
-            
-    @mu.deleter
-    def mu(self):
-        try:
-            del self._mu
-        except AttributeError:
-            pass
-            
     #---------------------------------------------------------------------------
     @property
     def z(self):
@@ -364,7 +372,7 @@ class DMSpectrum(object):
             return
             
         self._alpha_perp = val
-        del self.k, self.mu
+        del self.k
         
     #---------------------------------------------------------------------------
     @property
@@ -386,7 +394,7 @@ class DMSpectrum(object):
             return
             
         self._alpha_par = val
-        del self.k, self.mu
+        del self.k
     
     #---------------------------------------------------------------------------
     # DERIVED ATTRIBUTES
@@ -622,45 +630,63 @@ class DMSpectrum(object):
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)
     #---------------------------------------------------------------------------
-    @property
-    def P_mu0(self):
+    def P_mu0(self, k):
         """
         The full power spectrum term with no angular dependence. Contributions
         from P00.
         """
-        return self.P00.total.mu0
+        try:
+            return self._P_mu0_spline(k)
+        except AttributeError:
+            Pk = self.P00.total.mu0
+            self._P_mu0_spline = spline(self.k, Pk)
+            return self._P_mu0_spline(k)
+        
+    #end P_mu0
     #---------------------------------------------------------------------------
-    @property
-    def P_mu2(self):
+    def P_mu2(self, k):
         """
         The full power spectrum term with mu^2 angular dependence. Contributions
         from P01, P11, and P02.
         """
-        return self.P01.total.mu2 + self.P11.total.mu2 + self.P02.total.mu2
+        try:
+            return self._P_mu2_spline(k)
+        except AttributeError:
+            Pk = self.P01.total.mu2 + self.P11.total.mu2 + self.P02.total.mu2
+            self._P_mu2_spline = spline(self.k, Pk)
+            return self._P_mu2_spline(k)
+        
+    #end P_mu2
     #---------------------------------------------------------------------------
-    @property
-    def P_mu4(self):
+    def P_mu4(self, k):
         """
         The full power spectrum term with mu^4 angular dependence. Contributions
         from P11, P02, P12, P22, P03, P13 (2-loop), and P04 (2-loop).
         """
-        P_mu4 = self.P11.total.mu4 + self.P02.total.mu4 + self.P12.total.mu4 + \
-                    self.P22.total.mu4 + self.P03.total.mu4 
-        if self.include_2loop:
-            P_mu4 += self.P13.total.mu4 + self.P04.total.mu4
-        return P_mu4
+        try:
+            return self._P_mu4_spline(k)
+        except AttributeError:
+            Pk = self.P11.total.mu4 + self.P02.total.mu4 + self.P12.total.mu4 + self.P22.total.mu4 + self.P03.total.mu4
+            if self.include_2loop: Pk += self.P13.total.mu4 + self.P04.total.mu4
+            self._P_mu4_spline = spline(self.k, Pk)
+            return self._P_mu4_spline(k)
+
+    #end P_mu4
     #---------------------------------------------------------------------------
-    @property
-    def P_mu6(self):
+    def P_mu6(self, k):
         """
         The full power spectrum term with mu^6 angular dependence. Contributions
         from P12, P22, P13, and P04 (2-loop).
         """
-        P_mu6 = self.P12.total.mu6 + self.P22.total.mu6 + self.P13.total.mu6
-        if self.include_2loop:
-            P_mu6 += self.P04.total.mu6
-        return P_mu6
-        
+        try:
+            return self._P_mu6_spline(k)
+        except AttributeError:
+            Pk = self.P12.total.mu6 + self.P22.total.mu6 + self.P13.total.mu6
+            if self.include_2loop: Pk += self.P04.total.mu6
+            self._P_mu6_spline = spline(self.k, Pk)
+            return self._P_mu6_spline(k)
+            
+    #end P_mu6
     #---------------------------------------------------------------------------
     @property
     def Pdd(self):
@@ -1139,41 +1165,55 @@ class DMSpectrum(object):
                         
             return self._P04
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
-    def power(self, mu):
+    def _power_one_mu(self, mu_obs):
+        """
+        Internal function to evaluate P(k, mu) at a scalar mu value
+        """
+        # set the observed mu value
+        mu = self.mu_true(mu_obs)
+        k = self.k_true(self.k_obs, mu_obs)
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+                
+        if self.max_mu == 0:
+            P_out = self.P_mu0(k)
+        elif self.max_mu == 2:
+            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k)
+        elif self.max_mu == 4:
+            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k)
+        elif self.max_mu == 6:
+            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k) + mu**6*self.P_mu6(k)
+        elif self.max_mu == 8:
+            raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
+            
+        return vol_scaling*P_out
+    #end power
+    
+    #---------------------------------------------------------------------------
+    def power(self, mu, flatten=False):
         """
         Return the redshift space power spectrum at the specified value of mu, 
         including terms up to ``mu**self.max_mu``.
         
         Parameters
         ----------
-        mu : {float, array_like}
+        mu : float, array_like
             The mu values to evaluate the power at.
         
         Returns
         -------
-        Pkmu : array_like
+        Pkmu : float, array_like
             The power model P(k, mu). If `mu` is a scalar, return dimensions
             are `(len(self.k), )`. If `mu` has dimensions (N, ), the return
             dimensions are `(len(k), N)`, i.e., each column corresponds is the
-            model evaluated at different `mu` values
+            model evaluated at different `mu` values. If `flatten = True`, then
+            the returned array is raveled, with dimensions of `(N*len(self.k), )`
         """
-        # set the observed mu value
-        self.mu_obs = mu        
-        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
-        
-        if self.max_mu == 0:
-            P_out = self.P_mu0
-        elif self.max_mu == 2:
-            P_out = self.P_mu0 + self.mu**2 * self.P_mu2
-        elif self.max_mu == 4:
-            P_out = self.P_mu0 + self.mu**2 * self.P_mu2 + self.mu**4 * self.P_mu4
-        elif self.max_mu == 6:
-            P_out = self.P_mu0 + self.mu**2 * self.P_mu2 + self.mu**4 * self.P_mu4 + self.mu**6 * self.P_mu6 
-        elif self.max_mu == 8:
-            raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
-            
-        return vol_scaling*P_out
+        if np.isscalar(mu):
+            return self._power_one_mu(mu)
+        else:
+            toret = np.vstack([self._power_one_mu(imu) for imu in mu]).T
+            if flatten: toret = np.ravel(toret, order='F')
+            return toret
     #end power
     
     #---------------------------------------------------------------------------
@@ -1200,7 +1240,7 @@ class DMSpectrum(object):
     
     #---------------------------------------------------------------------------
     @tools.hexadecapole
-    def hexadecapole(self, linear=False):
+    def hexadecapole(self, mu):
         """
         The hexadecapole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
@@ -1223,7 +1263,7 @@ class DMSpectrum(object):
             w = 1./np.array(errs)
         else:
             w = None
-        s = interp.InterpolatedUnivariateSpline(k_data, power_data, w=w)
+        s = spline(k_data, power_data, w=w)
         
         if mu_term is not None:
             setattr(self, "%s_%s_loaded" %(power_name, mu_term), s)

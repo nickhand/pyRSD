@@ -245,7 +245,10 @@ class DMSpectrum(object):
             return self._k
         except AttributeError:
             F = self.alpha_par / self.alpha_perp
-            self._k = (self.k_obs/self.alpha_perp) * (1 + self.mu_obs**2*(1./F**2 - 1))**0.5                        
+            if (F != 1.):
+                self._k = (self.k_obs/self.alpha_perp) * (1 + self.mu_obs**2*(1./F**2 - 1))**0.5
+            else:
+                self._k = (self.k_obs/self.alpha_perp)
             return self._k
             
     @k.deleter

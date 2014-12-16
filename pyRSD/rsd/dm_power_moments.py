@@ -7,11 +7,11 @@
  creation date: 11/12/2014
 """
 from .. import pygcl, numpy as np, os
-from scipy.interpolate import interp1d, InterpolatedUnivariateSpline as spline
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import collections
 import bisect
 
-KSPLINE = np.logspace(-3, 0, 100)
+KSPLINE = np.logspace(-3, 0, 200)
 SIGMA8_MIN = 0.5
 SIGMA8_MAX = 1.2
 INTERP_PTS = 25
@@ -72,12 +72,9 @@ class DarkMatterPowerMoment(object):
 
         self.dR1_dlna = spline(z_center, np.diff(R1) / np.diff(np.log(1./(1+z_spline))))
         self.dR2_dlna = spline(z_center, np.diff(R2) / np.diff(np.log(1./(1+z_spline))))
-        self.dR3_dlna = spline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline))))
-    
+        self.dR3_dlna = spline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline)))) 
     #end _initialize_Rparam_splines
-    
 
-            
     #---------------------------------------------------------------------------
     @property
     def power_lin(self):
@@ -216,7 +213,7 @@ class DarkMatterP00(DarkMatterPowerMoment):
         sigma8s = np.linspace(SIGMA8_MIN, SIGMA8_MAX, INTERP_PTS)
         for sigma8 in sigma8s:
             P00.SetSigma8(sigma8)
-            self.zeldovich_power_table[sigma8] = interp1d(KSPLINE, P00(KSPLINE))
+            self.zeldovich_power_table[sigma8] = spline(KSPLINE, P00(KSPLINE))
 
     #end _compute_zeldovich_power_table
     
@@ -235,8 +232,8 @@ class DarkMatterP00(DarkMatterPowerMoment):
             # base model params for model A
             A0 = 743.854 * (sigma8/0.81)**3.902
             R1 = self.R1_spline(self.z)
-            R2 = self.R1_spline(self.z)
-            R3 = self.R1_spline(self.z)
+            R2 = self.R2_spline(self.z)
+            R3 = self.R3_spline(self.z)
             return A0, R1, R2, R3
         else:
             
@@ -307,13 +304,13 @@ class DarkMatterP01(DarkMatterPowerMoment):
         Compute the interpolation table for the Zeldovich power as a function
         of sigma8
         """
-        P01 = pygcl.ZeldovichP00(self.zeldovich_base)
+        P01 = pygcl.ZeldovichP01(self.zeldovich_base)
         
         self.zeldovich_power_table = collections.OrderedDict()
         sigma8s = np.linspace(SIGMA8_MIN, SIGMA8_MAX, INTERP_PTS)
         for sigma8 in sigma8s:
             P01.SetSigma8(sigma8)
-            self.zeldovich_power_table[sigma8] = interp1d(KSPLINE, P01(KSPLINE))
+            self.zeldovich_power_table[sigma8] = spline(KSPLINE, P01(KSPLINE))
 
     #end _compute_zeldovich_power_table
     
@@ -332,8 +329,8 @@ class DarkMatterP01(DarkMatterPowerMoment):
             # base model params for model A
             A0 = 743.854 * (sigma8/0.81)**3.902
             R1 = self.R1_spline(self.z)
-            R2 = self.R1_spline(self.z)
-            R3 = self.R1_spline(self.z)
+            R2 = self.R2_spline(self.z)
+            R3 = self.R3_spline(self.z)
             dR1_dlna = self.dR1_dlna(self.z)
             dR2_dlna = self.dR2_dlna(self.z)
             dR3_dlna = self.dR3_dlna(self.z)

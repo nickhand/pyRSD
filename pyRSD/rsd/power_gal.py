@@ -290,7 +290,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_cc(self, mu):
         """
         The central galaxy auto spectrum, assuming no FOG here. This is a 2-halo
@@ -307,7 +306,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G**2 * self.power(mu)
         
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_cAs(self, mu):
         """
         The cross spectrum between centrals with no satellites and satellites. 
@@ -329,7 +327,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G_c*G_s*self.power(mu)
         
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_sAsA(self, mu):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
@@ -346,7 +343,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G**2 * self.power(mu)
         
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_sAsB(self, mu):
         """
         The cross spectrum of satellites with and without no other sats in 
@@ -368,7 +364,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G_sA*G_sB*self.power(mu)
     
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_cBs(self, mu):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
@@ -377,7 +372,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.Pgal_cBs_2h(mu) + self.Pgal_cBs_1h(mu)
     
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_cBs_2h(self, mu):
         """
         The 2-halo term for the cross spectrum of centrals with sats in 
@@ -399,7 +393,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G_c*G_s*self.power(mu)
     
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_cBs_1h(self, mu):
         """
         The 1-halo term for the cross spectrum of centrals with sats in the 
@@ -413,7 +406,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G_c*G_s * self.one_halo_model(self.k, *self.one_halo_cBs_args)
 
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_sBsB(self, mu):
         """
         The auto spectrum of satellits with other sats in the same halo.
@@ -422,7 +414,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.Pgal_sBsB_2h(mu) + self.Pgal_sBsB_1h(mu)
     
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_sBsB_2h(self, mu):
         """
         The 2-halo term for the auto spectrum of satellits with other sats 
@@ -439,7 +430,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G**2 * self.power(mu)
         
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_sBsB_1h(self, mu):
         """
         The 1-halo term for the auto spectrum of satellits with other sats 
@@ -449,7 +439,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return G**2 * self.one_halo_model(self.k, *self.one_halo_sBsB_args)
         
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_ss(self, mu):
         """
         The 2-halo part of the total satellite auto spectrum.
@@ -460,7 +449,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
                     self.fsB**2 * self.Pgal_sBsB(mu) 
                     
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal_cs(self, mu):
         """
         The total central-satellite cross spectrum.
@@ -468,7 +456,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
     #---------------------------------------------------------------------------
-    @tools.mu_vectorize
     def Pgal(self, mu):
         """
         The total redshift-space galaxy power spectrum, combining the individual

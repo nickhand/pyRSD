@@ -439,11 +439,11 @@ class Integrals(object):
         ``\sigma^2_v(k)`` [units: `(Mpc/h)^2`]
         """
         try:
-            return self._power_norm*self.D**2 * self._sigmasq_k(k)
+            return self.power_norm*self.D**2 * self._sigmasq_k(k)
         except AttributeError:
             # integrate up to 0.5*k
             self._sigmasq_k = spline(K_SPLINE, self.power_lin.VelocityDispersion(K_SPLINE, 0.5), bounds_error=False, fill_value=0)
-            return self._power_norm*self.D**2 * self._sigmasq_k(k)
+            return self.power_norm*self.D**2 * self._sigmasq_k(k)
     #---------------------------------------------------------------------------
 #endclass Integrals
 

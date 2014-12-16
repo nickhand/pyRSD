@@ -40,7 +40,6 @@ using std::string;
 %include "Kmn.i"
 %include "ImnOneLoop.i"
 %include "ZeldovichPS.i"
-%include "RedshiftPowerSpectrum.i"
 
 
 

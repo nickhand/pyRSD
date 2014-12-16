@@ -8,110 +8,76 @@
 """
 from .. import pygcl, numpy as np, os
 from scipy.interpolate import interp1d, InterpolatedUnivariateSpline as spline
+import collections
+import bisect
 
-#-------------------------------------------------------------------------------
-def dRi_dlna(z):
-    """
-    These are the derivative of the R_i(z) parameters of model A, with respect
-    to the log of the scale factor 
-    
-    Parameters
-    ----------
-    z : float, array_like
-        The redshift to evaluate the R parameters
-        
-    Returns
-    -------
-    dR1_dlna, dR2_dlna, dR3_dlna : float, array_like
-        The derivative parameters evaluated at the input redshift
-    """
-    # compute R1, R2, R3 over 
-    z_spline = np.linspace(0., 2., 1000)
-    z_center = 0.5*(z_spline[1:] + z_spline[:-1])
-    R1, R2, R3 = Ri_z(z_spline)
-    
-    dR1_dlna = spline(z_center, np.diff(R1) / np.diff(np.log(1./(1+z_spline))))
-    dR2_dlna = spline(z_center, np.diff(R2) / np.diff(np.log(1./(1+z_spline))))
-    dR3_dlna = spline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline))))
-    
-    return dR1_dlna(z), dR2_dlna(z), dR3_dlna(z)
-#end dRi_dlna
-
-#-------------------------------------------------------------------------------
-def Ri_z(z):
-    """
-    These are the R_i(z) parameters of model A, as given by Zvonimir. They are
-    redshift dependent
-    
-    Parameters
-    ----------
-    z : float, array_like
-        The redshift to evaluate the R parameters
-        
-    Returns
-    -------
-    R1, R2, R3 : float, array_like
-        The parameters evaluated at the input redshift
-    """
-    # these are the values from Zvonimir
-    Ri_zs = np.array([0., 0.5, 1., 2.])
-    Ri = np.empty((4, 3))
-    Ri[0,:] = [2.8260, 2.30098, 1.3614]
-    Ri[1,:] = [2.3670, 1.5930, 0.7370]
-    Ri[2,:] = [2.2953, 1.3272, 0.00034365]
-    Ri[3,:] = [2.0858, 0.7878, 0.00017]
-
-    # now make the splines
-    R1_spline = spline(Ri_zs, Ri[:,0])
-    R2_spline = spline(Ri_zs, Ri[:,1])
-    R3_spline = spline(Ri_zs, Ri[:,2])
-    
-    # return R1, R2, R3 at this z
-    return R1_spline(z), R2_spline(z), R3_spline(z)
-#end Ri_z
-
-K_SPLINE = np.logspace(-3, np.log10(2.), 500)
+KSPLINE = np.logspace(-3, 0, 100)
+SIGMA8_MIN = 0.5
+SIGMA8_MAX = 1.2
+INTERP_PTS = 25
 
 #-------------------------------------------------------------------------------
 class DarkMatterPowerMoment(object):
     """
     A class to compute a generic dark matter power moment
     """
-    def __init__(self, k_eval, power_lin, z, sigma8, model_type='A'):
-        
-        # check input k_eval values
-        if (np.amin(k_eval) < 1e-3 or np.amax(k_eval) > 2.):
-            raise ValueError("Probably not a good idea to compute Zel'dovich power for k < 1e-3 or k > 2 h/Mpc")
-            
+    def __init__(self, power_lin, z, sigma8, model_type='A'):
+      
         # store the input arguments
-        self._k_eval    = k_eval
         self._power_lin = power_lin
+        self._cosmo     = self._power_lin.GetCosmology()
         self.model_type = model_type
         
         # make sure power spectrum redshift is 0
-        assert self._power_lin.GetRedshift() == 0., "Integrals: input linear power spectrum must be defined at z = 0"
+        msg = "Integrals: input linear power spectrum must be defined at z = 0"
+        assert self._power_lin.GetRedshift() == 0., msg
         
         # set the initial redshift, sigma8 
         self.z = z
         self.sigma8 = sigma8
-
+        
+        # initialize splines
+        self._initialize_Rparam_splines()
+        
+        # set up the zeldovich power interpolation table
+        self._compute_zeldovich_power_table()
     #end __init__
     
     #---------------------------------------------------------------------------
-    @property
-    def k_eval(self):
+    # initialization functions
+    #---------------------------------------------------------------------------
+    def _initialize_Rparam_splines(self):
         """
-        Wavenumbers to evaluate the spectrum at [units: `h/Mpc`]
+        Initialize the splines needed for the broadband correction
         """
-        return self._k_eval
-    
-    @k_eval.setter
-    def k_eval(self, val):
-        self._k_eval = val
+        # these are the values from Zvonimir
+        Ri_zs = np.array([0., 0.5, 1., 2.])
+        Ri = np.empty((4, 3))
+        Ri[0,:] = [2.8260, 2.30098, 1.3614]
+        Ri[1,:] = [2.3670, 1.5930, 0.7370]
+        Ri[2,:] = [2.2953, 1.3272, 0.00034365]
+        Ri[3,:] = [2.0858, 0.7878, 0.00017]
+        
+        # now make the splines
+        self.R1_spline = spline(Ri_zs, Ri[:,0])
+        self.R2_spline = spline(Ri_zs, Ri[:,1])
+        self.R3_spline = spline(Ri_zs, Ri[:,2])
+        
+        # compute R1, R2, R3 over 
+        z_spline = np.linspace(0., 2., 1000)
+        z_center = 0.5*(z_spline[1:] + z_spline[:-1])
+        R1 = self.R1_spline(z_spline)
+        R2 = self.R1_spline(z_spline)
+        R3 = self.R1_spline(z_spline)
 
-        # delete dependencies
-        del self.zeldovich_power
-                    
+        self.dR1_dlna = spline(z_center, np.diff(R1) / np.diff(np.log(1./(1+z_spline))))
+        self.dR2_dlna = spline(z_center, np.diff(R2) / np.diff(np.log(1./(1+z_spline))))
+        self.dR3_dlna = spline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline))))
+    
+    #end _initialize_Rparam_splines
+    
+
+            
     #---------------------------------------------------------------------------
     @property
     def power_lin(self):
@@ -119,6 +85,14 @@ class DarkMatterPowerMoment(object):
         Linear power spectrum object
         """
         return self._power_lin
+        
+    #---------------------------------------------------------------------------
+    @property
+    def cosmo(self):
+        """
+        The cosmology of the input linear power spectrum
+        """
+        return self._cosmo
         
     #---------------------------------------------------------------------------
     @property
@@ -132,9 +106,9 @@ class DarkMatterPowerMoment(object):
     def z(self, val):
         self._z = val
         
-        # delete dependencies
-        del self.D, self.sigma8_z, self.zeldovich_power
+        # compute new redshift power table
         self.zeldovich_base.SetRedshift(val)
+        self._compute_zeldovich_power_table()
     
     #---------------------------------------------------------------------------        
     @property
@@ -148,20 +122,7 @@ class DarkMatterPowerMoment(object):
     @sigma8.setter
     def sigma8(self, val):
         self._sigma8 = val
-        
-        # delete dependencies
-        del self.zeldovich_power
-        self.zeldovich_base.SetSigma8(val)
-    
-    #---------------------------------------------------------------------------
-    @property
-    def sigma8_norm(self):
-        """
-        The factor needed to normalize the spectrum to the desired sigma_8, as
-        specified by `self.sigma8`
-        """
-        return (self.sigma8 / self._power_lin.GetCosmology().sigma8())
-
+                
     #---------------------------------------------------------------------------
     @property
     def model_type(self):
@@ -177,66 +138,12 @@ class DarkMatterPowerMoment(object):
         self._model_type = val
             
     #---------------------------------------------------------------------------
-    # Derived quantities
-    #---------------------------------------------------------------------------
-    @property
-    def D(self):
-        """
-        Growth function at `self.z`, normalized to unity at z=0
-        """
-        try:
-            return self._D
-        except AttributeError:
-            self._D = self.power_lin.GetCosmology().D_z(self.z)
-            return self._D
-
-    @D.deleter
-    def D(self):
-        try:
-            del self._D
-        except AttributeError:
-            pass
-   
-    #---------------------------------------------------------------------------
-    @property
-    def f(self):
-        """
-        The growth rate, defined as the `dlnD/dlna`. 
-        
-        If the parameter has not been explicity set, it defaults to the value
-        at `self.z`
-        """
-        try:
-            return self._f
-        except AttributeError:
-            return self.power_lin.GetCosmology().f_z(self.z)
-
-    @f.setter
-    def f(self, val):
-        self._f = val
-        if hasattr(self, '_P01_model'): self.P01_model.f = val
-
-        # delete dependencies 
-        self._delete_power()
-    
-    #---------------------------------------------------------------------------
     @property
     def sigma8_z(self):
         """
         Sigma_8 at `self.z`
         """
-        try:
-            return self.sigma8_norm * self._sigma8_z
-        except AttributeError:
-            self._sigma8_z = self.power_lin.GetCosmology().Sigma8_z(self.z)
-            return self.sigma8_norm * self._sigma8_z
-
-    @sigma8_z.deleter
-    def sigma8_z(self):
-        try:
-            del self._sigma8_z
-        except AttributeError:
-            pass
+        return self.sigma8 * (self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8())
             
     #---------------------------------------------------------------------------
     @property
@@ -254,28 +161,32 @@ class DarkMatterPowerMoment(object):
     #---------------------------------------------------------------------------
     # The power attributes
     #---------------------------------------------------------------------------
-    @property
-    def zeldovich_power(self):
+    def zeldovich_power(self, k):
         """
         Return the power from the Zel'dovich term
         """
-        return self.k_eval*0.
+        keys = self.zeldovich_power_table.keys()
+        ihi = bisect.bisect(keys, self.sigma8)
+        ilo = ihi - 1
+        
+        s8_lo = keys[ilo]
+        s8_hi = keys[ihi]
+        w = (self.sigma8 - s8_lo) / (s8_hi - s8_lo) 
+        return (1 - w)*self.zeldovich_power_table[s8_lo](k) + w*self.zeldovich_power_table[s8_hi](k)
     
     #---------------------------------------------------------------------------
-    @property
-    def broadband_power(self):
+    def broadband_power(self, k):
         """
         Return the power from the broadband correction term
         """
-        return self.k_eval*0
+        return k*0
         
     #---------------------------------------------------------------------------
-    @property
-    def power(self):
+    def power(self, k):
         """
         Return the total power in units of (Mpc/h)^3
         """
-        return self.zeldovich_power + self.broadband_power
+        return k*0
         
     #---------------------------------------------------------------------------  
 #endclass DarkMatterPowerMoment
@@ -290,27 +201,23 @@ class DarkMatterP00(DarkMatterPowerMoment):
         
         # initalize the base class
         super(DarkMatterP00, self).__init__(*args, **kwargs)
-        
+ 
     #---------------------------------------------------------------------------
-    @property
-    def zeldovich_power(self):
+    def _compute_zeldovich_power_table(self):
         """
-        Return the power from the Zel'dovich term
+        Compute the interpolation table for the Zeldovich power as a function
+        of sigma8
         """
-        try:
-            return self._zeldovich_power
-        except AttributeError:
-            P00 = pygcl.ZeldovichP00(self.zeldovich_base)
-            self._zeldovich_power = P00(self.k_eval)
-            return self._zeldovich_power
+        P00 = pygcl.ZeldovichP00(self.zeldovich_base)
+        
+        self.zeldovich_power_table = collections.OrderedDict()
+        sigma8s = np.linspace(SIGMA8_MIN, SIGMA8_MAX, INTERP_PTS)
+        for sigma8 in sigma8s:
+            P00.SetSigma8(sigma8)
+            self.zeldovich_power_table[sigma8] = interp1d(KSPLINE, P00(KSPLINE))
+
+    #end _compute_zeldovich_power_table
     
-    @zeldovich_power.deleter
-    def zeldovich_power(self):
-        try:
-            del self._zeldovich_power
-        except AttributeError:
-            pass
-            
     #---------------------------------------------------------------------------
     @property
     def model_params(self):
@@ -325,7 +232,9 @@ class DarkMatterP00(DarkMatterPowerMoment):
 
             # base model params for model A
             A0 = 743.854 * (sigma8/0.81)**3.902
-            R1, R2, R3 = Ri_z(self.z)
+            R1 = self.R1_spline(self.z)
+            R2 = self.R1_spline(self.z)
+            R3 = self.R1_spline(self.z)
             return A0, R1, R2, R3
         else:
             
@@ -336,8 +245,7 @@ class DarkMatterP00(DarkMatterPowerMoment):
             return A0, A2, A4
             
     #---------------------------------------------------------------------------
-    @property
-    def broadband_power(self):
+    def broadband_power(self, k):
         """
         The broadband power correction in units of (Mpc/h)^3
         """ 
@@ -350,8 +258,14 @@ class DarkMatterP00(DarkMatterPowerMoment):
         # the redshift independent piece, C(k)
         Ck = lambda k, R0: 1. - 1./(1. + (R0*k)**2)
         
-        return Ck(self.k_eval, 31.)*Fk(self.k_eval, *self.model_params)
+        return Ck(k, 31.)*Fk(k, *self.model_params)
         
+    #---------------------------------------------------------------------------
+    def power(self, k):
+        """
+        Return the total power in units of (Mpc/h)^3
+        """
+        return self.zeldovich_power(k) + self.broadband_power(k)
     #---------------------------------------------------------------------------
 #endclass DarkMatterP00
 
@@ -366,27 +280,41 @@ class DarkMatterP01(DarkMatterPowerMoment):
         
         # initalize the base class
         super(DarkMatterP01, self).__init__(*args, **kwargs)
-        
-    #---------------------------------------------------------------------------
+          
+    #---------------------------------------------------------------------------      
     @property
-    def zeldovich_power(self):
+    def f(self):
         """
-        Return the power from the Zel'dovich term
+        The growth rate, defined as the `dlnD/dlna`. 
+     
+        If the parameter has not been explicity set, it defaults to the value
+        at `self.z`
         """
         try:
-            return 2*self.f*self._zeldovich_power
+            return self._f
         except AttributeError:
-            P01 = pygcl.ZeldovichP01(self.zeldovich_base)
-            self._zeldovich_power = P01(self.k_eval)
-            return 2*self.f*self._zeldovich_power
+            return self.cosmo.f_z(self.z)
     
-    @zeldovich_power.deleter
-    def zeldovich_power(self):
-        try:
-            del self._zeldovich_power
-        except AttributeError:
-            pass
-                    
+    @f.setter
+    def f(self, val):
+        self._f = val
+
+    #---------------------------------------------------------------------------
+    def _compute_zeldovich_power_table(self):
+        """
+        Compute the interpolation table for the Zeldovich power as a function
+        of sigma8
+        """
+        P01 = pygcl.ZeldovichP00(self.zeldovich_base)
+        
+        self.zeldovich_power_table = collections.OrderedDict()
+        sigma8s = np.linspace(SIGMA8_MIN, SIGMA8_MAX, INTERP_PTS)
+        for sigma8 in sigma8s:
+            P01.SetSigma8(sigma8)
+            self.zeldovich_power_table[sigma8] = interp1d(KSPLINE, P01(KSPLINE))
+
+    #end _compute_zeldovich_power_table
+    
     #---------------------------------------------------------------------------
     @property
     def model_params(self):
@@ -401,8 +329,12 @@ class DarkMatterP01(DarkMatterPowerMoment):
 
             # base model params for model A
             A0 = 743.854 * (sigma8/0.81)**3.902
-            R1, R2, R3 = Ri_z(self.z)
-            dR1_dlna, dR2_dlna, dR3_dlna = dRi_dlna(self.z)
+            R1 = self.R1_spline(self.z)
+            R2 = self.R1_spline(self.z)
+            R3 = self.R1_spline(self.z)
+            dR1_dlna = self.dR1_dlna(self.z)
+            dR2_dlna = self.dR2_dlna(self.z)
+            dR3_dlna = self.dR3_dlna(self.z)
             
             params = (A0, R1, R2, R3)
             derivs = (3.9*self.f*A0, dR1_dlna, dR2_dlna, dR3_dlna)
@@ -416,8 +348,7 @@ class DarkMatterP01(DarkMatterPowerMoment):
             return 3.9*self.f*A0, 3.*self.f*A2, 2.2*self.f*A4
     
     #---------------------------------------------------------------------------
-    @property
-    def broadband_power(self):
+    def broadband_power(self, k):
         """
         The broadband power correction in units of (Mpc/h)^3
         """ 
@@ -442,10 +373,18 @@ class DarkMatterP01(DarkMatterPowerMoment):
         # the redshift independent piece, C(k)
         Ck = lambda k, R0: 1. - 1./(1. + (R0*k)**2)
         
-        return Ck(self.k_eval, 31.)*Fk(self.k_eval, *self.model_params)
+        return Ck(k, 31.)*Fk(k, *self.model_params)
         
     #---------------------------------------------------------------------------
+    def power(self, k):
+        """
+        Return the total power in units of (Mpc/h)^3
+        """
+        return 2*self.f*self.zeldovich_power(k) + self.broadband_power(k)
+    #---------------------------------------------------------------------------
+    
 #endclass DarkMatterP01
+#-------------------------------------------------------------------------------
 
 
     

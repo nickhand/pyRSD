@@ -7,7 +7,6 @@ from scipy.integrate import simps
 from scipy.optimize import brentq
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
-import warnings
     
 def extrap1d(interpolator):
     """
@@ -387,10 +386,7 @@ def sigma_from_sims(bias, z):
 def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function
-    """ 
-    # warnings from simps
-    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
-    
+    """     
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
@@ -400,10 +396,7 @@ def monopole(f):
 def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
-    """ 
-    # warnings from simps
-    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
-    
+    """     
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
@@ -428,9 +421,6 @@ def hexadecapole(f):
     """
     Decorator to compute the hexadecapole from a `self.power` function
     """ 
-    # warnings from simps
-    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
-    
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus)

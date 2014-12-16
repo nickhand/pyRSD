@@ -8,9 +8,9 @@
  creation date: 11/30/2014
 """
 from .. import pygcl, numpy as np
-from scipy.interpolate import interp1d as spline
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
-K_SPLINE = np.logspace(-3, np.log10(2.), 500)
+K_SPLINE = np.logspace(-3, 0, 100)
 
 #-------------------------------------------------------------------------------
 class Integrals(object):
@@ -222,7 +222,7 @@ class Integrals(object):
     #---------------------------------------------------------------------------
     # Jmn integrals as a function of input k
     #---------------------------------------------------------------------------
-    def _getattr_Jmn(self, att_name, m, n):
+    def _getattr_Jmn(self, k, att_name, m, n):
         """
         Internal method to return Jmn as a function of k
         """
@@ -230,41 +230,35 @@ class Integrals(object):
         try:
             f = getattr(self, spline_name)
         except AttributeError:
-            f = spline(KSPLINE, self._Jmn(KSPLINE, m, n), bounds_error=False, fill_value=0)
+            f = spline(K_SPLINE, self._Jmn(K_SPLINE, m, n), bounds_error=False, fill_value=0)
             setattr(self, spline_name, f)
     
-        return (self.power_norm*self.D**2) * f(self.k_eval)       
+        return (self.power_norm*self.D**2) * f(k)       
     #end _getattr_Jmn
     
     #---------------------------------------------------------------------------
-    @property
-    def J00(self):
-        return self._getattr_Jmn('_J00', 0, 0)
+    def J00(self, k):
+        return self._getattr_Jmn(k, '_J00', 0, 0)
 
-    @property
-    def J01(self):
-         return self._getattr_Jmn('_J01', 0, 1)
+    def J01(self, k):
+         return self._getattr_Jmn(k, '_J01', 0, 1)
 
-    @property
-    def J10(self):
-        return self._getattr_Jmn('_J10', 1, 0)
+    def J10(self, k):
+        return self._getattr_Jmn(k, '_J10', 1, 0)
 
-    @property
-    def J11(self):
-        return self._getattr_Jmn('_J11', 1, 1)
+    def J11(self, k):
+        return self._getattr_Jmn(k, '_J11', 1, 1)
             
-    @property
-    def J02(self):
-        return self._getattr_Jmn('_J02', 0, 2)
+    def J02(self, k):
+        return self._getattr_Jmn(k, '_J02', 0, 2)
             
-    @property
-    def J20(self):
-        return self._getattr_Jmn('_J20', 2, 0)
+    def J20(self, k):
+        return self._getattr_Jmn(k, '_J20', 2, 0)
             
     #---------------------------------------------------------------------------
     # Imn integrals as a function of k
     #---------------------------------------------------------------------------
-    def _getattr_Imn(self, att_name, m, n):
+    def _getattr_Imn(self, k, att_name, m, n):
         """
         Internal method to return Imn as a function of k
         """
@@ -272,81 +266,65 @@ class Integrals(object):
         try:
             f = getattr(self, spline_name)
         except AttributeError:
-            f = spline(KSPLINE, self._Imn(KSPLINE, m, n), bounds_error=False, fill_value=0)
+            f = spline(K_SPLINE, self._Imn(K_SPLINE, m, n), bounds_error=False, fill_value=0)
             setattr(self, spline_name, f)
 
-        return (self.power_norm*self.D**2)**2 * f(self.k_eval)
+        return (self.power_norm*self.D**2)**2 * f(k)
     #end _getattr_Imn
     
     #---------------------------------------------------------------------------    
-    @property
-    def I00(self):
-        return self._getattr_Imn('_I00', 0, 0)
-
-    @property
-    def I01(self):
-        return self._getattr_Imn('_I01', 0, 1)
-
-    @property
-    def I02(self):
-        return self._getattr_Imn('_I02', 0, 2)
-
-    @property
-    def I03(self):
-        return self._getattr_Imn('_I03', 0, 3)
-
-    @property
-    def I10(self):
-        return self._getattr_Imn('_I10', 1, 0)
+    def I00(self, k):
+        return self._getattr_Imn(k, '_I00', 0, 0)
     
-    @property
-    def I11(self):
-        return self._getattr_Imn('_I11', 1, 1)
+    def I01(self, k):
+        return self._getattr_Imn(k, '_I01', 0, 1)
 
-    @property
-    def I12(self):
-        return self._getattr_Imn('_I12', 1, 2)
+    def I02(self, k):
+        return self._getattr_Imn(k, '_I02', 0, 2)
+    
+    def I03(self, k):
+        return self._getattr_Imn(k, '_I03', 0, 3)
+    
+    def I10(self, k):
+        return self._getattr_Imn(k, '_I10', 1, 0)
+    
+    def I11(self, k):
+        return self._getattr_Imn(k, '_I11', 1, 1)
+    
+    def I12(self, k):
+        return self._getattr_Imn(k, '_I12', 1, 2)
 
-    @property
-    def I13(self):
-        return self._getattr_Imn('_I13', 1, 3)
+    def I13(self, k):
+        return self._getattr_Imn(k, '_I13', 1, 3)
+    
+    def I20(self, k):
+        return self._getattr_Imn(k, '_I20', 2, 0)
+    
+    def I21(self, k):
+        return self._getattr_Imn(k, '_I21', 2, 1)
+    
+    def I22(self, k):
+        return self._getattr_Imn(k, '_I22', 2, 2)
+    
+    def I23(self, k):
+        return self._getattr_Imn(k, '_I23', 2, 3)
+    
+    def I30(self, k):
+        return self._getattr_Imn(k, '_I30', 3, 0)
+    
+    def I31(self, k):
+        return self._getattr_Imn(k, '_I31', 3, 1) 
+    
+    def I32(self, k):
+        return self._getattr_Imn(k, '_I32', 3, 2)
 
-    @property
-    def I20(self):
-        return self._getattr_Imn('_I20', 2, 0)
-
-    @property
-    def I21(self):
-        return self._getattr_Imn('_I21', 2, 1)
-
-    @property
-    def I22(self):
-        return self._getattr_Imn('_I22', 2, 2)
-
-    @property
-    def I23(self):
-        return self._getattr_Imn('_I23', 2, 3)
-
-    @property
-    def I30(self):
-        return self._getattr_Imn('_I30', 3, 0)
-
-    @property
-    def I31(self):
-        return self._getattr_Imn('_I31', 3, 1) 
-
-    @property
-    def I32(self):
-        return self._getattr_Imn('_I32', 3, 2)
-
-    @property
-    def I33(self):
-        return self._getattr_Imn('_I33', 3, 3)
+    def I33(self, k):
+        return self._getattr_Imn(k, '_I33', 3, 3)
 
     #---------------------------------------------------------------------------
     # Kmn integrals
     #---------------------------------------------------------------------------
-    def _getattr_Kmn(self, att_name, m, n, tidal=False, part=0):
+    def _getattr_Kmn(self, k, att_name, m, n, tidal=False, part=0):
         """
         Internal method to return Kmn as a function of k
         """
@@ -354,64 +332,51 @@ class Integrals(object):
         try:
             f = getattr(self, spline_name)
         except AttributeError:
-            f = spline(KSPLINE, self._Kmn(KSPLINE, m, n, tidal, part), bounds_error=False, fill_value=0)
+            f = spline(K_SPLINE, self._Kmn(K_SPLINE, m, n, tidal, part), bounds_error=False, fill_value=0)
             setattr(self, spline_name, f)
             
-        return (self.power_norm*self.D**2)**2 * f(self.k_eval)
+        return (self.power_norm*self.D**2)**2 * f(k)
     #end _getattr_Kmn
     
     #---------------------------------------------------------------------------
-    @property
-    def K00(self):
-        return self._getattr_Kmn('_K00', 0, 0)
+    def K00(self, k):
+        return self._getattr_Kmn(k, '_K00', 0, 0)
     
-    @property
-    def K00s(self):
-        return self._getattr_Kmn('_K00s', 0, 0, tidal=True)
-          
-    @property
-    def K01(self):
-        return self._getattr_Kmn('_K01', 0, 1)
+    def K00s(self, k):
+        return self._getattr_Kmn(k, '_K00s', 0, 0, tidal=True)
+              
+    def K01(self, k):
+        return self._getattr_Kmn(k, '_K01', 0, 1)
 
-    @property
-    def K01s(self):
-        return self._getattr_Kmn('_K01s', 0, 1, tidal=True)
+    def K01s(self, k):
+        return self._getattr_Kmn(k, '_K01s', 0, 1, tidal=True)
             
-    @property
-    def K02s(self):
-        return self._getattr_Kmn('_K02s', 0, 2, tidal=True)
-            
-    @property
-    def K10(self):
-        return self._getattr_Kmn('_K10', 1, 0)
+    def K02s(self, k):
+        return self._getattr_Kmn(k, '_K02s', 0, 2, tidal=True)
+                
+    def K10(self, k):
+        return self._getattr_Kmn(k, '_K10', 1, 0)
 
-    @property
-    def K10s(self):
-        return self._getattr_Kmn('_K10s', 1, 0, tidal=True)
+    def K10s(self, k):
+        return self._getattr_Kmn(k, '_K10s', 1, 0, tidal=True)
+        
+    def K11(self, k):
+        return self._getattr_Kmn(k, '_K11', 1, 1)
     
-    @property
-    def K11(self):
-        return self._getattr_Kmn('_K11', 1, 1)
+    def K11s(self, k):
+        return self._getattr_Kmn(k, '_K11s', 1, 1, tidal=True)
 
-    @property
-    def K11s(self):
-        return self._getattr_Kmn('_K11s', 1, 1, tidal=True)
+    def K20_a(self, k):
+        return self._getattr_Kmn(k, '_K20_a', 2, 0, tidal=False, part=0)
+                
+    def K20_b(self, k):
+        return self._getattr_Kmn(k, '_K20_b', 2, 0, tidal=False, part=1)
 
-    @property
-    def K20_a(self):
-        return self._getattr_Kmn('_K20_a', 2, 0, tidal=False, part=0)
-            
-    @property
-    def K20_b(self):
-        return self._getattr_Kmn('_K20_b', 2, 0, tidal=False, part=1)
-
-    @property
-    def K20s_a(self):
-        return self._getattr_Kmn('_K20s_a', 2, 0, tidal=True, part=0)
-
-    @property
-    def K20s_b(self):
-        return self._getattr_Kmn('_K20s_b', 2, 0, tidal=True, part=1)
+    def K20s_a(self, k):
+        return self._getattr_Kmn(k, '_K20s_a', 2, 0, tidal=True, part=0)
+        
+    def K20s_b(self, k):
+        return self._getattr_Kmn(k, '_K20s_b', 2, 0, tidal=True, part=1)
             
     #---------------------------------------------------------------------------
     # 2-LOOP INTEGRALS
@@ -422,9 +387,9 @@ class Integrals(object):
         """
         driver = getattr(self, driver_name)
         if not hasattr(self, att_name):
-            I_lin   = spline(KSPLINE, getattr(driver, 'EvaluateLinear')(KSPLINE, m, n))
-            I_cross = spline(KSPLINE, getattr(driver, 'EvaluateCross')(KSPLINE, m, n))
-            I_1loop = spline(KSPLINE, getattr(driver, 'EvaluateOneLoop')(KSPLINE, m, n))
+            I_lin   = spline(K_SPLINE, getattr(driver, 'EvaluateLinear')(K_SPLINE, m, n), bounds_error=False, fill_value=0)
+            I_cross = spline(K_SPLINE, getattr(driver, 'EvaluateCross')(K_SPLINE, m, n), bounds_error=False, fill_value=0)
+            I_1loop = spline(K_SPLINE, getattr(driver, 'EvaluateOneLoop')(K_SPLINE, m, n), bounds_error=False, fill_value=0)
 
             setattr(self, att_name, [I_lin, I_cross, I_1loop])
 
@@ -433,25 +398,25 @@ class Integrals(object):
         return norm**2*splines[0](k) + norm**3*splines[1](k) + norm**4*splines[2](k)
             
     #---------------------------------------------------------------------------
-    def Ivvdd_h01(self):        
+    def Ivvdd_h01(self, k):        
         return self._getattr_2loop(k, "_Ivvdd_h01_spline", "_Imn1Loop_vvdd", 0, 1)
 
-    def Ivvdd_h02(self):
+    def Ivvdd_h02(self, k):
         return self._getattr_2loop(k, "_Ivvdd_h02_spline", "_Imn1Loop_vvdd", 0, 2)
 
-    def Idvdv_h03(self):
+    def Idvdv_h03(self, k):
         return self._getattr_2loop(k, "_Idvdv_h03_spline", "_Imn1Loop_dvdv", 0, 3)
 
-    def Idvdv_h04(self):
+    def Idvdv_h04(self, k):
         return self._getattr_2loop(k, "_Idvdv_h04_spline", "_Imn1Loop_dvdv", 0, 4)
         
-    def Ivvvv_f23(self):
+    def Ivvvv_f23(self, k):
         return self._getattr_2loop(k, "_Ivvdv_f23_spline", "_Imn1Loop_vvvv", 2, 3)
 
-    def Ivvvv_f32(self):
+    def Ivvvv_f32(self, k):
         return self._getattr_2loop(k, "_Ivvdv_f32_spline", "_Imn1Loop_vvvv", 3, 2)
     
-    def Ivvvv_f33(self):
+    def Ivvvv_f33(self, k):
         return self._getattr_2loop(k, "_Ivvdv_f33_spline", "_Imn1Loop_vvvv", 3, 3)
         
     #---------------------------------------------------------------------------
@@ -467,6 +432,18 @@ class Integrals(object):
             self._velocity_kurtosis = self.P22bar.VelocityKurtosis()
             return (self.power_norm*self.D**2)**2 * self._velocity_kurtosis
             
+    #---------------------------------------------------------------------------
+    def sigmasq_k(self, k):
+        """
+        The dark matter velocity dispersion at z, as a function of k, 
+        ``\sigma^2_v(k)`` [units: `(Mpc/h)^2`]
+        """
+        try:
+            return self._power_norm*self.D**2 * self._sigmasq_k(k)
+        except AttributeError:
+            # integrate up to 0.5*k
+            self._sigmasq_k = spline(K_SPLINE, self.power_lin.VelocityDispersion(K_SPLINE, 0.5), bounds_error=False, fill_value=0)
+            return self._power_norm*self.D**2 * self._sigmasq_k(k)
     #---------------------------------------------------------------------------
 #endclass Integrals
 

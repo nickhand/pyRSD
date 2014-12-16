@@ -275,8 +275,8 @@ class DMSpectrum(object):
         except AttributeError:
             k_mu0 = self.k_true(self.k_obs, 0.)
             k_mu1 = self.k_true(self.k_obs, 1.)
-            kmin = min(k_mu0, k_mu1)
-            kmax = max(k_mu0, k_mu1)
+            kmin = min(np.amin(k_mu0), np.amin(k_mu1))
+            kmax = max(np.amax(k_mu0), np.amax(k_mu1))
             
             self._k = np.logspace(np.log10(kmin), np.log10(kmax), 500)
             return self._k

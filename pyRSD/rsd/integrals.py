@@ -10,7 +10,7 @@
 from .. import pygcl, numpy as np
 from scipy.interpolate import interp1d as spline
 
-K_SPLINE = np.logspace(-3, 0, 100)
+K_SPLINE = np.logspace(-3, 0, 256)
 
 #-------------------------------------------------------------------------------
 class Integrals(object):

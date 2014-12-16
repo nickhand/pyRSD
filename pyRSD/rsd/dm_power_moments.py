@@ -11,10 +11,10 @@ from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import collections
 import bisect
 
-KSPLINE = np.logspace(-3, 0, 200)
+KSPLINE = np.logspace(-3, 0, 256)
 SIGMA8_MIN = 0.5
 SIGMA8_MAX = 1.2
-INTERP_PTS = 25
+INTERP_PTS = 30
 
 #-------------------------------------------------------------------------------
 class DarkMatterPowerMoment(object):

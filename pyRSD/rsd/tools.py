@@ -7,7 +7,8 @@ from scipy.integrate import simps
 from scipy.optimize import brentq
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
-    
+import warnings
+
 def extrap1d(interpolator):
     """
     A 1d extrapolator function, using linear extrapolation
@@ -386,23 +387,25 @@ def sigma_from_sims(bias, z):
 def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function
-    """     
+    """ 
+    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")    
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
-        return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
+        return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
     return wrapper
 
 #-------------------------------------------------------------------------------
 def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
-    """     
+    """  
+    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")    
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
         kern = 2.5*(3*mus**2 - 1.)
-        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
+        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
     return wrapper
 
 #-------------------------------------------------------------------------------
@@ -410,11 +413,12 @@ def hexadecapole(f):
     """
     Decorator to compute the hexadecapole from a `self.power` function
     """ 
+    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy") 
     def wrapper(self, *args):
         mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus)
         kern = 9./8.*(35*mus**4 - 30.*mu**2 + 3.)
-        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
+        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
     return wrapper
     
 #-------------------------------------------------------------------------------

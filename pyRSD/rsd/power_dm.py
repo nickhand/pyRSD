@@ -18,7 +18,7 @@ class DMSpectrum(object):
     allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', 'max_mu', 'DM_model']
     _power_atts = ['_P00', '_P01', '_P11', '_P02', '_P12', '_P22', '_P03', '_P13', '_P04']
     
-    def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),
+    def __init__(self, k_obs=np.logspace(-2, np.log10(0.5), 100),
                        z=0., 
                        cosmo="planck1_WP.ini",
                        include_2loop=False,
@@ -28,8 +28,8 @@ class DMSpectrum(object):
         """
         Parameters
         ----------
-        k : array_like, optional
-            The wavenumbers to compute the power spectrum at [units: h/Mpc]. 
+        k_obs : array_like, optional
+            The wavenumbers to compute power spectrum at [units: `h/Mpc`]
             
         z : float, optional
             The redshift to compute the power spectrum at. Default = 0.
@@ -53,6 +53,9 @@ class DMSpectrum(object):
         
         DM_model : {`A`, `B`, None}, optional
             Use the specified dark matter model for P00, P01 terms
+        
+        k_spline : array_like, optional
+            The wavenumbers to compute to the splines as a function of k
         """
         # determine the type of transfer fit
         self.transfer_fit = transfer_fit
@@ -69,23 +72,24 @@ class DMSpectrum(object):
         # store the input parameters
         self._max_mu        = max_mu
         self._include_2loop = include_2loop
-        self.__k            = np.array(k, copy=False, ndmin=1)
         self._transfer_fit  = transfer_fit
         self._z             = z 
+        self._k_obs         = k_obs
         
-        # set the sigma8 to the value for the input cosmo
+        # set sigma8 to its initial value for this cosmology
         self.sigma8 = self.cosmo.sigma8()
-        
+
         # set the DM model term
         self.DM_model = DM_model
         
-        
     #end __init__
+    
+    #---------------------------------------------------------------------------
+    # UTILITY FUNCTIONS
     #---------------------------------------------------------------------------
     def update(self, **kwargs):
         for k, v in kwargs.iteritems():
-            if hasattr(self, k):
-                setattr(self, k, v)
+            if hasattr(self, k): setattr(self, k, v)
     
     #---------------------------------------------------------------------------
     def _delete_power(self):
@@ -94,17 +98,37 @@ class DMSpectrum(object):
         """
         for a in DMSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
-                
+            
     #---------------------------------------------------------------------------
     # INPUT ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
-    def k(self):
+    def k_obs(self):
         """
-        Wavenumbers to evaluate power spectrum at [units: `h/Mpc`] 
+        The "observed" wavenumbers to compute the power spectrum at. This should
+        be read-only.
         """
-        return self.__k
-
+        return self._k_obs
+    
+    #---------------------------------------------------------------------------
+    @property
+    def mu_obs(self):
+        """
+        The "observed" mu to compute the power spectrum at. This can be set, and
+        note that the "true" wavenumbers depend on this value
+        """
+        try:
+            return self._mu_obs           
+        except AttributeError:
+            raise AttributeError("need to set `mu_obs` first")
+        
+    @mu_obs.setter
+    def mu_obs(self, val):
+        self._mu_obs = val
+        
+        # delete k_true
+        del self.k, self.mu
+        
     #---------------------------------------------------------------------------
     @property
     def cosmo(self):
@@ -117,17 +141,26 @@ class DMSpectrum(object):
     #---------------------------------------------------------------------------
     @property
     def max_mu(self):
+        """
+        Only compute the power terms up to and including `max_mu`
+        """
         return self._max_mu
+        
+    @max_mu.setter
+    def max_mu(self, val):        
+        self._max_mu = val
+        self._delete_power()
         
     #---------------------------------------------------------------------------
     @property
     def include_2loop(self):
+        """
+        Whether to include 2-loop terms in the power spectrum calculation
+        """
         return self._include_2loop
         
     @include_2loop.setter
-    def include_2loop(self, val):
-        assert isinstance(val, bool), '`include_2loop` must be True/False'
-        
+    def include_2loop(self, val):        
         self._include_2loop = val
         self._delete_power()
         
@@ -205,6 +238,59 @@ class DMSpectrum(object):
     # SET PARAMETERS
     #---------------------------------------------------------------------------
     @property
+    def k(self):
+        """
+        Return the true k values, given the current AP rescaling factors and
+        the observed (k, mu) values, stored in `self.k_obs` and `self.mu_obs`
+        """
+        try:
+            return self._k
+        except AttributeError:
+            F = self.alpha_par / self.alpha_perp
+            self._k = (self.k_obs/self.alpha_perp) * (1 + self.mu_obs**2*(1./F**2 - 1))**0.5
+            
+            # set the dependencies
+            if hasattr(self, '_integrals'): self.integrals.k_eval = self._k
+            if hasattr(self, '_P00_model'): self.P00_model.k_eval = self._k
+            if hasattr(self, '_P01_model'): self.P01_model.k_eval = self._k
+                        
+            return self._k
+            
+    @k.deleter
+    def k(self):
+        try:
+            del self._k
+        except AttributeError:
+            pass
+        
+        # deal with the dependencies 
+        self._delete_power()
+        del self.sigmasq_k
+
+    #---------------------------------------------------------------------------
+    @property
+    def mu(self):
+        """
+        Return the true mu values, given the current AP rescaling factors and
+        the observed mu values, stored in `self.mu_obs`
+        """
+        try:
+            return self._mu
+        except AttributeError:
+
+            F = self.alpha_par / self.alpha_perp
+            self._mu = (self.mu_obs/F) * (1 + self.mu_obs**2*(1./F**2 - 1))**(-0.5)
+            return self._mu
+            
+    @mu.deleter
+    def mu(self):
+        try:
+            del self._mu
+        except AttributeError:
+            pass
+            
+    #---------------------------------------------------------------------------
+    @property
     def z(self):
         """
         Redshift to evaluate power spectrum at
@@ -214,14 +300,15 @@ class DMSpectrum(object):
     @z.setter
     def z(self, val):
         self._z = val
+        
+        # deal with the dependencies 
         if hasattr(self, '_integrals'): self.integrals.z = val
         if hasattr(self, '_P00_model'): self.P00_model.z = val
         if hasattr(self, '_P01_model'): self.P01_model.z = val
-        
-        # delete things depending on z
-        del self.f, self.D, self.conformalH
+        del self.D, self.conformalH
         self._delete_power()
         
+    #---------------------------------------------------------------------------
     @property
     def sigma8(self):
         """
@@ -233,13 +320,77 @@ class DMSpectrum(object):
     @sigma8.setter
     def sigma8(self, val):
         self._sigma8 = val
+        
+        # deal with the dependencies 
         if hasattr(self, '_integrals'): self.integrals.sigma8 = val
         if hasattr(self, '_P00_model'): self.P00_model.sigma8 = val
         if hasattr(self, '_P01_model'): self.P01_model.sigma8 = val
-        
-        # delete dependencies 
         self._delete_power()
+
+    #---------------------------------------------------------------------------
+    @property
+    def f(self):
+        """
+        The growth rate, defined as the `dlnD/dlna`. 
         
+        If the parameter has not been explicity set, it defaults to the value
+        at `self.z`
+        """
+        try:
+            return self._f
+        except AttributeError:
+            return self.cosmo.f_z(self.z)
+
+    @f.setter
+    def f(self, val):
+        self._f = val
+        
+        # deal with the dependencies 
+        if hasattr(self, '_P01_model'): self.P01_model.f = val
+        self._delete_power()
+    
+    #---------------------------------------------------------------------------
+    @property
+    def alpha_perp(self):
+        """
+        The perpendicular Alcock-Paczynski effect scaling parameter, where
+        :math: `k_{perp, true} = k_{perp, true} / alpha_{perp}`
+        
+        If the parameter has not been explicity set, it defaults to unity
+        """
+        try: 
+            return self._alpha_perp
+        except AttributeError:
+            return 1.  
+        
+    @alpha_perp.setter
+    def alpha_perp(self, val):
+        self._alpha_perp = val
+        
+        # deal with the dependencies
+        del self.k, self.mu
+        
+    #---------------------------------------------------------------------------
+    @property
+    def alpha_par(self):
+        """
+        The parallel Alcock-Paczynski effect scaling parameter, where
+        :math: `k_{par, true} = k_{par, true} / alpha_{par}`
+        
+        If the parameter has not been explicity set, it defaults to unity
+        """
+        try: 
+            return self._alpha_par
+        except AttributeError:
+            return 1.  
+        
+    @alpha_par.setter
+    def alpha_par(self, val):
+        self._alpha_par = val
+        
+        # deal with the dependencies
+        del self.k, self.mu
+    
     #---------------------------------------------------------------------------
     # DERIVED ATTRIBUTES
     #---------------------------------------------------------------------------    
@@ -260,26 +411,7 @@ class DMSpectrum(object):
             del self._D
         except AttributeError:
             pass
-    
-    #---------------------------------------------------------------------------
-    @property
-    def f(self):
-        """
-        The growth rate, defined as the `dlnD/dlna`
-        """
-        try:
-            return self._f
-        except AttributeError:
-            self._f = self.cosmo.f_z(self.z)
-            return self._f
-
-    @f.deleter
-    def f(self):
-        try:
-            del self._f
-        except AttributeError:
-            pass
-    
+        
     #---------------------------------------------------------------------------
     @property
     def conformalH(self):
@@ -298,6 +430,7 @@ class DMSpectrum(object):
             del self._conformalH
         except AttributeError:
             pass
+    
     #---------------------------------------------------------------------------
     def normed_power_lin(self, k):
         """
@@ -349,7 +482,14 @@ class DMSpectrum(object):
             # integrate up to 0.5*k
             self._sigmasq_k = self.power_lin.VelocityDispersion(self.k, 0.5)
             return self._power_norm*self.D**2 * self._sigmasq_k
-            
+    
+    @sigmasq_k.deleter
+    def sigmasq_k(self):
+        try:
+            del self._sigmasq_k
+        except AttributeError:
+            pass
+    
     #---------------------------------------------------------------------------
     @property
     def sigma_v(self):
@@ -583,9 +723,8 @@ class DMSpectrum(object):
         try:
             return self._P00
         except AttributeError:
+            
             self._P00 = PowerTerm()
-            
-            
             
             # check and return any user-loaded values
             if hasattr(self, '_P00_mu0_loaded'):
@@ -1039,60 +1178,48 @@ class DMSpectrum(object):
             dimensions are `(len(k), N)`, i.e., each column corresponds is the
             model evaluated at different `mu` values
         """
+        # set the observed mu value
+        self.mu_obs = mu
+        print self.mu_obs, self.mu
+        
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+        
         if self.max_mu == 0:
-            P_out = self.P_mu0 * (mu*0. + 1.)
+            P_out = self.P_mu0
         elif self.max_mu == 2:
-            P_out = self.P_mu0 * (mu*0. + 1.) + mu**2 * self.P_mu2
+            P_out = self.P_mu0 + self.mu**2 * self.P_mu2
         elif self.max_mu == 4:
-            P_out = self.P_mu0 * (mu*0. + 1.) + mu**2 * self.P_mu2 + mu**4 * self.P_mu4
+            P_out = self.P_mu0 + self.mu**2 * self.P_mu2 + self.mu**4 * self.P_mu4
         elif self.max_mu == 6:
-            P_out = self.P_mu0 * (mu*0. + 1.) + mu**2 * self.P_mu2 + mu**4 * self.P_mu4 + mu**6 * self.P_mu6 
+            P_out = self.P_mu0 + self.mu**2 * self.P_mu2 + self.mu**4 * self.P_mu4 + self.mu**6 * self.P_mu6 
         elif self.max_mu == 8:
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
             
-        return P_out
+        return vol_scaling*P_out
     #end power
     
     #---------------------------------------------------------------------------
-    def monopole(self, linear=False):
+    @tools.monopole
+    def monopole(self, mu):
         """
         The monopole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        if linear:
-            beta = self.f/self.b1
-            return (1. + 2./3*beta + 1./5*beta**2) * self.b1**2 * self.normed_power_lin(self.k)
-        else:
-            if self.max_mu == 0:
-                return self.P_mu0
-            elif self.max_mu == 2:
-                return self.P_mu0 + (1./3)*self.P_mu2
-            elif self.max_mu == 4:
-                return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4
-            elif self.max_mu == 6:
-                return self.P_mu0 + (1./3)*self.P_mu2 + (1./5)*self.P_mu4 + (1./7)*self.P_mu6
-            elif self.max_mu == 8:
-                raise NotImplementedError("Cannot compute monopole including terms with order higher than mu^6")
+        return self.power(mu)
+        
     #end monopole
+    
     #---------------------------------------------------------------------------
-    def quadrupole(self, linear=False):
+    @tools.quadrupole
+    def quadrupole(self, mu):
         """
         The quadrupole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        if linear:
-            beta = self.f/self.b1
-            return (4./3*beta + 4./7*beta**2) * self.b1**2 * self.normed_power_lin(self.k)
-        else:
-            if self.max_mu == 2:
-                return (2./3)*self.P_mu2
-            elif self.max_mu == 4:
-                return (2./3)*self.P_mu2 + (4./7)*self.P_mu4
-            elif self.max_mu == 6:
-                return (2./3)*self.P_mu2 + (4./7)*self.P_mu4 + (10./21)*self.P_mu6
-            elif self.max_mu == 8:
-                raise NotImplementedError("Cannot compute quaadrupole including terms with order higher than mu^6")
+        return self.power(mu)
+        
     #end quadrupole
+    
     #---------------------------------------------------------------------------
     def hexadecapole(self, linear=False):
         """
@@ -1188,6 +1315,7 @@ class Angular(object):
         self.mu8 = 0.
 
 #-------------------------------------------------------------------------------
+
 
         
         

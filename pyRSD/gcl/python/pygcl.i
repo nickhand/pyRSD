@@ -12,6 +12,8 @@
     import_array();
 %}
 
+%module(directors="1") pygcl
+
 %include "typemaps.i"
 %include "std_string.i"
 using std::string;
@@ -38,6 +40,7 @@ using std::string;
 %include "Kmn.i"
 %include "ImnOneLoop.i"
 %include "ZeldovichPS.i"
+%include "RedshiftPowerSpectrum.i"
 
 
 

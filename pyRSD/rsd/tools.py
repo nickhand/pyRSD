@@ -392,7 +392,7 @@ def monopole(f):
     warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
     
     def wrapper(self, *args):
-        mus = np.linspace(0., 1., 1001)
+        mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
         return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
     return wrapper
@@ -405,7 +405,7 @@ def quadrupole(f):
     warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
     
     def wrapper(self, *args):
-        mus = np.linspace(0., 1., 1001)
+        mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus)
         kern = 2.5*(3*mus**2 - 1.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k))])
@@ -417,16 +417,10 @@ def mu_vectorize(f):
     """ 
     def wrapper(self, *args):
         mu = args[0]
-        scalar = np.isscalar(mu)
-        if scalar: 
-            mu = [mu]
+        if np.isscalar(mu):
+            return f(self, mu)
         else:
-            mu = np.asarray(mu)
-            if mu.ndim > 1: return f(self, mu)
-        mu = np.array([mu,]*len(self.k)).transpose()
-        
-        P_out = f(self, mu)
-        return P_out[0,:] if scalar else P_out.transpose()
+            return np.vstack([f(self, imu) for imu in mu]).T
         
     return wrapper
 #-------------------------------------------------------------------------------

@@ -7,7 +7,7 @@
  creation date: 11/12/2014
 """
 from .. import pygcl, numpy as np, os
-from scipy.interpolate import InterpolatedUnivariateSpline
+from scipy.interpolate import interp1d, InterpolatedUnivariateSpline as spline
 
 #-------------------------------------------------------------------------------
 def dRi_dlna(z):
@@ -30,9 +30,9 @@ def dRi_dlna(z):
     z_center = 0.5*(z_spline[1:] + z_spline[:-1])
     R1, R2, R3 = Ri_z(z_spline)
     
-    dR1_dlna = InterpolatedUnivariateSpline(z_center, np.diff(R1) / np.diff(np.log(1./(1+z_spline))))
-    dR2_dlna = InterpolatedUnivariateSpline(z_center, np.diff(R2) / np.diff(np.log(1./(1+z_spline))))
-    dR3_dlna = InterpolatedUnivariateSpline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline))))
+    dR1_dlna = spline(z_center, np.diff(R1) / np.diff(np.log(1./(1+z_spline))))
+    dR2_dlna = spline(z_center, np.diff(R2) / np.diff(np.log(1./(1+z_spline))))
+    dR3_dlna = spline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline))))
     
     return dR1_dlna(z), dR2_dlna(z), dR3_dlna(z)
 #end dRi_dlna
@@ -62,20 +62,22 @@ def Ri_z(z):
     Ri[3,:] = [2.0858, 0.7878, 0.00017]
 
     # now make the splines
-    R1_spline = InterpolatedUnivariateSpline(Ri_zs, Ri[:,0])
-    R2_spline = InterpolatedUnivariateSpline(Ri_zs, Ri[:,1])
-    R3_spline = InterpolatedUnivariateSpline(Ri_zs, Ri[:,2])
+    R1_spline = spline(Ri_zs, Ri[:,0])
+    R2_spline = spline(Ri_zs, Ri[:,1])
+    R3_spline = spline(Ri_zs, Ri[:,2])
     
     # return R1, R2, R3 at this z
     return R1_spline(z), R2_spline(z), R3_spline(z)
 #end Ri_z
+
+K_SPLINE = np.logspace(-3, np.log10(2.), 500)
 
 #-------------------------------------------------------------------------------
 class DarkMatterPowerMoment(object):
     """
     A class to compute a generic dark matter power moment
     """
-    def __init__(self, k_eval, z, power_lin, sigma8, model_type='A'):
+    def __init__(self, k_eval, power_lin, z, sigma8, model_type='A'):
         
         # check input k_eval values
         if (np.amin(k_eval) < 1e-3 or np.amax(k_eval) > 2.):
@@ -103,6 +105,13 @@ class DarkMatterPowerMoment(object):
         """
         return self._k_eval
     
+    @k_eval.setter
+    def k_eval(self, val):
+        self._k_eval = val
+
+        # delete dependencies
+        del self.zeldovich_power
+                    
     #---------------------------------------------------------------------------
     @property
     def power_lin(self):
@@ -124,7 +133,7 @@ class DarkMatterPowerMoment(object):
         self._z = val
         
         # delete dependencies
-        del self.D, self.f, self.sigma8_z, self.zeldovich_power
+        del self.D, self.sigma8_z, self.zeldovich_power
         self.zeldovich_base.SetRedshift(val)
     
     #---------------------------------------------------------------------------        
@@ -192,20 +201,23 @@ class DarkMatterPowerMoment(object):
     @property
     def f(self):
         """
-        Growth rate at `self.z`, given by `dlnD/dlna`
+        The growth rate, defined as the `dlnD/dlna`. 
+        
+        If the parameter has not been explicity set, it defaults to the value
+        at `self.z`
         """
         try:
             return self._f
         except AttributeError:
-            self._f = self.power_lin.GetCosmology().f_z(self.z)
-            return self._f
+            return self.power_lin.GetCosmology().f_z(self.z)
 
-    @f.deleter
-    def f(self):
-        try:
-            del self._f
-        except AttributeError:
-            pass
+    @f.setter
+    def f(self, val):
+        self._f = val
+        if hasattr(self, '_P01_model'): self.P01_model.f = val
+
+        # delete dependencies 
+        self._delete_power()
     
     #---------------------------------------------------------------------------
     @property

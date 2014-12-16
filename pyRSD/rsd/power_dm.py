@@ -1159,9 +1159,7 @@ class DMSpectrum(object):
             model evaluated at different `mu` values
         """
         # set the observed mu value
-        self.mu_obs = mu
-        print self.mu_obs, self.mu
-        
+        self.mu_obs = mu        
         vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
         
         if self.max_mu == 0:

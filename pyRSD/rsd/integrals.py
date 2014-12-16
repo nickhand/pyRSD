@@ -411,13 +411,13 @@ class Integrals(object):
         return self._getattr_2loop(k, "_Idvdv_h04_spline", "_Imn1Loop_dvdv", 0, 4)
         
     def Ivvvv_f23(self, k):
-        return self._getattr_2loop(k, "_Ivvdv_f23_spline", "_Imn1Loop_vvvv", 2, 3)
+        return self._getattr_2loop(k, "_Ivvvv_f23_spline", "_Imn1Loop_vvvv", 2, 3)
 
     def Ivvvv_f32(self, k):
-        return self._getattr_2loop(k, "_Ivvdv_f32_spline", "_Imn1Loop_vvvv", 3, 2)
+        return self._getattr_2loop(k, "_Ivvvv_f32_spline", "_Imn1Loop_vvvv", 3, 2)
     
     def Ivvvv_f33(self, k):
-        return self._getattr_2loop(k, "_Ivvdv_f33_spline", "_Imn1Loop_vvvv", 3, 3)
+        return self._getattr_2loop(k, "_Ivvvv_f33_spline", "_Imn1Loop_vvvv", 3, 3)
         
     #---------------------------------------------------------------------------
     @property

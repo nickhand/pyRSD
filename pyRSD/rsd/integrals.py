@@ -8,7 +8,7 @@
  creation date: 11/30/2014
 """
 from .. import pygcl, numpy as np
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
+from scipy.interpolate import interp1d as spline
 
 K_SPLINE = np.logspace(-3, 0, 100)
 

@@ -2,3 +2,4 @@
 /pygcl_wrap.cpp
 pygcl.py
 _pygcl.so
+pygcl_wrap.h

@@ -9,6 +9,7 @@
 """
 from . import power_dm, tools
 from .. import numpy as np
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 class BiasedSpectrum(power_dm.DMSpectrum):
     
@@ -35,9 +36,15 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         """
         Delete all integral and power spectra attributes.
         """
+        # delete the power attributes
         for a in power_dm.DMSpectrum._power_atts + BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
             
+        # also delete the P_mu* splines
+        for a in ['_P_mu0_spline', '_P_mu2_spline', '_P_mu4_spline', '_P_mu6_spline']:
+            if hasattr(self, a): delattr(self, a)
+        
+    #end _delete_power    
     #---------------------------------------------------------------------------
     # SET ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -702,44 +709,68 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._P04_ss
             
     #---------------------------------------------------------------------------
-    @property
-    def P_mu0(self):
+    def P_mu0(self, k):
         """
         The full halo power spectrum term with no angular dependence. Contributions
         from P00_ss.
         """
-        return self.P00_ss.total.mu0
-        
+        try:
+            return self._P_mu0_spline(k)
+        except AttributeError:
+            Pk = self.P00_ss.total.mu0
+            self._P_mu0_spline = spline(self.k, Pk)
+            return self._P_mu0_spline(k)
+
+    #end P_mu0
     #---------------------------------------------------------------------------
-    @property
-    def P_mu2(self):
+    def P_mu2(self, k):
         """
         The full halo power spectrum term with mu^2 angular dependence. Contributions
         from P01_ss, P11_ss, and P02_ss.
         """
-        return self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2
-        
+        try:
+            return self._P_mu2_spline(k)
+        except AttributeError:
+            Pk = self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2
+            self._P_mu2_spline = spline(self.k, Pk)
+            return self._P_mu2_spline(k)
+    
+    #end P_mu2
     #---------------------------------------------------------------------------
-    @property
-    def P_mu4(self):
+    def P_mu4(self, k):
         """
         The full halo power spectrum term with mu^4 angular dependence. Contributions
         from P11_ss, P02_ss, P12_ss, P03_ss, P13_ss, P22_ss, and P04_ss.
         """
-        return self.P11_ss.total.mu4 + self.P02_ss.total.mu4 + self.P12_ss.total.mu4 + \
-                self.P22_ss.total.mu4 + self.P03_ss.total.mu4 + self.P13_ss.total.mu4 + \
-                self.P04_ss.total.mu4
+        try:
+            return self._P_mu4_spline(k)
+        except AttributeError:
+            Pk = self.P11_ss.total.mu4 + self.P02_ss.total.mu4 + self.P12_ss.total.mu4 + \
+                 self.P22_ss.total.mu4 + self.P03_ss.total.mu4 + self.P13_ss.total.mu4 + \
+                 self.P04_ss.total.mu4
+                 
+            self._P_mu4_spline = spline(self.k, Pk)
+            return self._P_mu4_spline(k)
+            
+        return 
                 
     #---------------------------------------------------------------------------
-    @property
-    def P_mu6(self):
+    def P_mu6(self, k):
         """
         The full halo power spectrum term with mu^6 angular dependence. Contributions
         from P12_ss, P13_ss, P22_ss.
         """
-        return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.integrals.I32(self.k)
-        
+        try:
+            return self._P_mu6_spline(k)
+        except AttributeError:
+            Pk = self.P12_ss.total.mu6 + 1./8*self.f**4 * self.integrals.I32(self.k)
+            self._P_mu6_spline = spline(self.k, Pk)
+            return self._P_mu6_spline(k)
+            
+    #end P_mu6
     #---------------------------------------------------------------------------
-#enclass BiasedSpectrum       
+    
+#enclass BiasedSpectrum     
+#-------------------------------------------------------------------------------  
 
         

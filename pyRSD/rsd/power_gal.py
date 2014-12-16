@@ -455,17 +455,24 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
+        
     #---------------------------------------------------------------------------
-    def Pgal(self, mu):
+    def Pgal(self, mu, flatten=False):
         """
         The total redshift-space galaxy power spectrum, combining the individual
-        terms
+        terms.
+        
+        If `flatten = True`, return a flatenned array with dimensions 
+        (len(self.k_obs)*len(mu), )
         """
         fss = self.fs**2
         fcs = 2.*self.fs*(1 - self.fs)
         fcc = (1. - self.fs)**2
         
-        return fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
+        toret = fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
+        if flatten: toret = np.ravel(toret, order='F')
+        return toret
+    
     #---------------------------------------------------------------------------
     @tools.monopole
     def Pgal_mono(self, mu):
@@ -473,6 +480,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The total redshift-space galaxy monopole moment
         """
         return self.Pgal(mu)
+        
     #---------------------------------------------------------------------------
     @tools.quadrupole
     def Pgal_quad(self, mu):
@@ -480,6 +488,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The total redshift-space galaxy quadrupole moment
         """
         return self.Pgal(mu)
+        
     #---------------------------------------------------------------------------
     @tools.hexadecapole
     def Pgal_hexadec(self, mu):
@@ -487,5 +496,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The total redshift-space galaxy hexadecapole moment
         """
         return self.Pgal(mu)
+        
     #---------------------------------------------------------------------------
     

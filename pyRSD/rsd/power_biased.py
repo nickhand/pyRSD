@@ -40,9 +40,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         for a in power_dm.DMSpectrum._power_atts + BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
             
-        # also delete the P_mu* splines
-        for a in ['_P_mu0_spline', '_P_mu2_spline', '_P_mu4_spline', '_P_mu6_spline']:
-            if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
         
     #end _delete_power    
     #---------------------------------------------------------------------------
@@ -67,6 +65,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete dependencies
         if hasattr(self, '_P00_ss'): del self._P00_ss
         if hasattr(self, '_stochasticity'): del self._stochasticity
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
+        
     #---------------------------------------------------------------------------
     @property
     def stoch_args(self):
@@ -86,6 +86,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete dependencies
         if hasattr(self, '_P00_ss'): del self._P00_ss
         if hasattr(self, '_stochasticity'): del self._stochasticity
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
     
     #---------------------------------------------------------------------------
     @property
@@ -138,11 +139,13 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
         # delete P00_ss if it exists
         if hasattr(self, '_P00_ss'): del self._P00_ss
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
         
     @stochasticity.deleter
     def stochasticity(self):
         if hasattr(self, '_stochasticity'): del self._stochasticity
         if hasattr(self, '_P00_ss'): del self._P00_ss
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
         
     #---------------------------------------------------------------------------
     @property
@@ -180,6 +183,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         for a in ['_P02', '_P12', '_P22', '_P03', '_P13', '_P04']:
             if hasattr(self, a): delattr(self, a)
             if hasattr(self, a+'_ss'): delattr(self, a+'_ss')
+        self._delete_splines()
             
     #---------------------------------------------------------------------------
     @property
@@ -217,6 +221,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        
+        self._delete_splines()
             
         # also delete the other biases, that could depend on b1
         for a in ['_b2_00', '_b2_01', '_bs']:
@@ -242,6 +248,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         self._b2_00 = val
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
     
     #---------------------------------------------------------------------------
     @property
@@ -263,6 +270,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
             
     #---------------------------------------------------------------------------
     @property
@@ -284,6 +292,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
             
     #---------------------------------------------------------------------------
     # THE BIAS TERMS OF THE 2ND (BARRED) TRACER
@@ -311,6 +320,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # also delete the other biases, that could depend on b1
         for a in ['_b2_00_bar', '_b2_01_bar', '_bs_bar']:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
     
     #---------------------------------------------------------------------------
     @property
@@ -333,6 +343,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
     
     #---------------------------------------------------------------------------
     @property
@@ -355,6 +366,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
             
     #---------------------------------------------------------------------------
     @property
@@ -377,6 +389,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
+        self._delete_splines()
             
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)

@@ -121,11 +121,18 @@ class DMSpectrum(object):
         for a in DMSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
             
+        self._delete_splines()
+    #end _delete_power
+    
+    #---------------------------------------------------------------------------
+    def _delete_splines(self):
+        """
+        Delete the power splines P_mu*
+        """
         # also delete the P_mu* splines
         for a in ['_P_mu0_spline', '_P_mu2_spline', '_P_mu4_spline', '_P_mu6_spline']:
             if hasattr(self, a): delattr(self, a)
             
-    #end _delete_power
     #---------------------------------------------------------------------------
     # INPUT ATTRIBUTES
     #---------------------------------------------------------------------------

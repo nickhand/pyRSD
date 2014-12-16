@@ -286,6 +286,17 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @one_halo_sBsB_args.setter
     def one_halo_sBsB_args(self, val):
         self._one_halo_sBsB_args = val
+        
+    #---------------------------------------------------------------------------
+    def evaluate_fog(self, sigma, mu_obs):
+        """
+        Compute the FOG damping
+        """
+        k = self.k_true(self.k_obs, mu_obs)
+        if np.isscalar(mu_obs):
+            return self.fog_model(sigma*mu_obs*k)
+        else:
+            return np.vstack([self.fog_model(sigma*imu*k) for imu in mu_obs])
     
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
@@ -298,12 +309,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # set the linear biases first
         self.b1     = self.b1_c
         self.b1_bar = self.b1_c
-           
+        
         # FOG damping
-        G = self.fog_model(self.sigma_c*mu*self.k)
+        G = self.evaluate_fog(self.sigma_c, mu)
         
         # now return the power spectrum here
-        return G**2 * self.power(mu)
+        return G**2*self.power(mu)
         
     #---------------------------------------------------------------------------
     def Pgal_cAs(self, mu):
@@ -320,8 +331,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        G_c = self.fog_model(self.sigma_c*mu*self.k)
-        G_s = self.fog_model(self.sigma_s*mu*self.k)
+        G_c = self.evaluate_fog(self.sigma_c, mu)
+        G_s = self.evaluate_fog(self.sigma_s, mu)
         
         # now return the power spectrum here
         return G_c*G_s*self.power(mu)
@@ -337,7 +348,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sA
         
         # the FOG damping
-        G = self.fog_model(self.sigma_sA*mu*self.k)
+        G = self.evaluate_fog(self.sigma_sA, mu)
         
         # now return the power spectrum here
         return G**2 * self.power(mu)
@@ -357,8 +368,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_sB
         
         # the FOG damping
-        G_sA = self.fog_model(self.sigma_sA*mu*self.k)
-        G_sB = self.fog_model(self.sigma_sB*mu*self.k)
+        G_sA = self.evaluate_fog(self.sigma_sA, mu)
+        G_sB = self.evaluate_fog(self.sigma_sB, mu)
         
         # now return the power spectrum here
         return G_sA*G_sB*self.power(mu)
@@ -369,7 +380,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The cross spectrum of centrals with sats in the same halo and satellites.
         This has both a 1-halo and 2-halo term only.
         """
-        return self.Pgal_cBs_2h(mu) + self.Pgal_cBs_1h(mu)
+        # the FOG damping
+        G_c = self.evaluate_fog(self.sigma_c, mu)
+        G_s = self.evaluate_fog(self.sigma_s, mu)
+        
+        return G_c*G_s * (self.Pgal_cBs_2h(mu) + self.Pgal_cBs_1h(mu))
     
     #---------------------------------------------------------------------------
     def Pgal_cBs_2h(self, mu):
@@ -384,13 +399,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         else:
             self.b1     = self.b1_cB
             self.b1_bar = self.b1_s
-        
-        # the FOG damping
-        G_c = self.fog_model(self.sigma_c*mu*self.k)
-        G_s = self.fog_model(self.sigma_s*mu*self.k)
-        
-        # now return the power spectrum here
-        return G_c*G_s*self.power(mu)
+            
+        return self.power(mu)
     
     #---------------------------------------------------------------------------
     def Pgal_cBs_1h(self, mu):
@@ -399,11 +409,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         same halo and satellites, with mu dependence introduced by the 
         FOG damping
         """
-        # the FOG damping
-        G_c = self.fog_model(self.sigma_c*mu*self.k)
-        G_s = self.fog_model(self.sigma_s*mu*self.k)
-        
-        return G_c*G_s * self.one_halo_model(self.k, *self.one_halo_cBs_args)
+        return self.one_halo_model(self.k, *self.one_halo_cBs_args)
 
     #---------------------------------------------------------------------------
     def Pgal_sBsB(self, mu):
@@ -411,7 +417,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The auto spectrum of satellits with other sats in the same halo.
         This has both a 1-halo and 2-halo term only.
         """
-        return self.Pgal_sBsB_2h(mu) + self.Pgal_sBsB_1h(mu)
+        # the FOG damping terms
+        G = self.evaluate_fog(self.sigma_sB, mu)
+        
+        return G**2 * (self.Pgal_sBsB_2h(mu) + self.Pgal_sBsB_1h(mu))
     
     #---------------------------------------------------------------------------
     def Pgal_sBsB_2h(self, mu):
@@ -422,12 +431,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # set the linear biases first
         self.b1     = self.b1_sB
         self.b1_bar = self.b1_sB
-        
-        # the FOG damping terms
-        G = self.fog_model(self.sigma_sB*mu*self.k)
-        
-        # now return the power spectrum here
-        return G**2 * self.power(mu)
+
+        return self.power(mu)
         
     #---------------------------------------------------------------------------
     def Pgal_sBsB_1h(self, mu):
@@ -435,8 +440,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The 1-halo term for the auto spectrum of satellits with other sats 
         in the same halo, with mu dependence introduced by the FOG damping
         """
-        G = self.fog_model(self.sigma_sB*mu*self.k)
-        return G**2 * self.one_halo_model(self.k, *self.one_halo_sBsB_args)
+        return self.one_halo_model(self.k, *self.one_halo_sBsB_args)
         
     #---------------------------------------------------------------------------
     def Pgal_ss(self, mu):

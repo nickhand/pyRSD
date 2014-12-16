@@ -121,6 +121,8 @@ class DarkMatterPowerMoment(object):
 
     @sigma8.setter
     def sigma8(self, val):
+        if val < SIGMA8_MIN or val > SIGMA8_MAX:
+            raise ValueError("Sigma_8 out of range [%f, %f]" %(SIGMA8_MIN, SIGMA8_MAX))
         self._sigma8 = val
                 
     #---------------------------------------------------------------------------

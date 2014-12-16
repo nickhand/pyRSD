@@ -296,7 +296,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         if np.isscalar(mu_obs):
             return self.fog_model(sigma*mu_obs*k)
         else:
-            return np.vstack([self.fog_model(sigma*imu*k) for imu in mu_obs])
+            return np.vstack([self.fog_model(sigma*imu*k) for imu in mu_obs]).T
     
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS

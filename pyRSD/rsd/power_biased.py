@@ -203,8 +203,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @b1.setter
     def b1(self, val):
+        if hasattr(self, '_b1') and val == self._b1: 
+            return
         self._b1 = val
-            
+        
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
@@ -227,11 +229,12 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @b2_00.setter
     def b2_00(self, val):
-        self._b2_00 = val
+        if hasattr(self, '_b2_00') and val == self._b2_00: 
+            return
             
-        # delete terms depending on the bias
+        self._b2_00 = val
         for a in BiasedSpectrum._power_atts:
-            if a in self.__dict__: del self.__dict__[a]
+            if hasattr(self, a): delattr(self, a)
     
     #---------------------------------------------------------------------------
     @property
@@ -247,7 +250,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @b2_01.setter
     def b2_01(self, val):
-        self._b2_01 = val
+        if hasattr(self, '_b2_01') and val == self._b2_01: 
+            return
         
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
@@ -267,7 +271,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @bs.setter
     def bs(self, val):
-        self._bs = val
+        if hasattr(self, '_bs') and val == self._bs: 
+            return
             
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
@@ -288,6 +293,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @b1_bar.setter
     def b1_bar(self, val):
+        if hasattr(self, '_b1_bar') and val == self._b1_bar: 
+            return
         self._b1_bar = val
             
         # delete terms depending on the bias
@@ -312,6 +319,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @b2_00_bar.setter
     def b2_00_bar(self, val):
+        if hasattr(self, '_b2_00_bar') and val == self._b2_00_bar: 
+            return
         self._b2_00_bar = val
             
         # delete terms depending on the bias
@@ -332,6 +341,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @b2_01_bar.setter
     def b2_01_bar(self, val):
+        if hasattr(self, '_b2_01_bar') and val == self._b2_01_bar: 
+            return
         self._b2_01_bar = val
         
         # delete terms depending on the bias
@@ -352,6 +363,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
     @bs_bar.setter
     def bs_bar(self, val):
+        if hasattr(self, '_bs_bar') and val == self._bs_bar: 
+            return
         self._bs_bar = val
             
         # delete terms depending on the bias
@@ -391,8 +404,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             bs, bs_bar = self.bs, self.bs_bar
             
             # get the integral attributes
-            K00 = self.integrals.K00
-            K00s = self.integrals.K00s
+            K00 = self.integrals.K00(self.k)
+            K00s = self.integrals.K00s(self.k)
             
             self._P00_ss_no_stoch = power_dm.PowerTerm()
             term1 = (b1*b1_bar) * self.P00.total.mu0
@@ -423,10 +436,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 2:
                 
                 # get the integral attributes
-                K10  = self.integrals.K10
-                K10s = self.integrals.K10s
-                K11  = self.integrals.K11
-                K11s = self.integrals.K11s
+                K10  = self.integrals.K10(self.k)
+                K10s = self.integrals.K10s(self.k)
+                K11  = self.integrals.K11(self.k)
+                K11s = self.integrals.K11s(self.k)
                 
                 term1 = (b1*b1_bar) * self.P01.total.mu2
                 term2 = -self.Pdv * ( b1*(1. - b1_bar) + b1_bar*(1. - b1) )
@@ -457,8 +470,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 2:
                 
                 # get the integral attributes
-                K20_a = self.integrals.K20_a
-                K20s_a = self.integrals.K20s_a
+                K20_a = self.integrals.K20_a(self.k)
+                K20s_a = self.integrals.K20s_a(self.k)
                 
                 term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
                 term2_mu2 =  -(self.f*self.D*self.k*self.sigma_v)**2 * self.P00_ss_no_stoch.total.mu0
@@ -469,8 +482,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 if self.max_mu >= 4:
                     
                     # get the integral attributes
-                    K20_b = self.integrals.K20_b
-                    K20s_b = self.integrals.K20s_b
+                    K20_b = self.integrals.K20_b(self.k)
+                    K20s_b = self.integrals.K20s_b(self.k)
                     
                     term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
                     term2_mu4 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
@@ -499,8 +512,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 2:
                 
                 # this is C11 at 2-loop order
-                I1 = self.integrals.Ivvdd_h01 
-                I2 = self.integrals.Idvdv_h03
+                I1 = self.integrals.Ivvdd_h01(self.k)
+                I2 = self.integrals.Idvdv_h03(self.k)
                 self._P11_ss.total.mu2 = (b1*b1_bar)*self.f**2 * (I1 + I2)
                 
                 # do mu^4 terms?
@@ -508,8 +521,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     Plin = self.normed_power_lin(self.k)
                     
                     # get the integral attributes
-                    I22 = self.integrals.I22
-                    J10 = self.integrals.J10
+                    I22 = self.integrals.I22(self.k)
+                    J10 = self.integrals.J10(self.k)
                     
                     # first term is mu^4 part of P11
                     term1_mu4 = self.P11.total.mu4
@@ -518,8 +531,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                     term2_mu4 = (b1 + b1_bar - 2.)*self.f**2 * (6.*self.k**2*Plin*J10 + 2*I22)
                     
                     # third term is mu^4 part of C11 (at 2-loop)
-                    I1 = self.integrals.Ivvdd_h02  
-                    I2 = self.integrals.Idvdv_h04
+                    I1 = self.integrals.Ivvdd_h02(self.k)
+                    I2 = self.integrals.Idvdv_h04(self.k)
                     term3_mu4 =  (b1*b1_bar - 1)*self.f**2 * (I1 + I2)
 
                     self._P11_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
@@ -563,9 +576,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 Plin = self.normed_power_lin(self.k)
                 
                 # get the integral attributes
-                I12 = self.integrals.I12
-                I03 = self.integrals.I03
-                J02 = self.integrals.J02
+                I12 = self.integrals.I12(self.k)
+                I03 = self.integrals.I03(self.k)
+                J02 = self.integrals.J02(self.k)
                 
                 term1_mu4 = self.f**3 * (I12 - 0.5*(b1 + b1_bar)*I03 + 2*self.k**2 * J02*Plin)
                 term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_v)**2 * self.P01_ss.total.mu2
@@ -575,9 +588,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 if self.max_mu >= 6:
                     
                     # get the integral attributes
-                    I21 = self.integrals.I21
-                    I30 = self.integrals.I30
-                    J20 = self.integrals.J20
+                    I21 = self.integrals.I21(self.k)
+                    I30 = self.integrals.I30(self.k)
+                    J20 = self.integrals.J20(self.k)
                     
                     self._P12_ss.total.mu6 = self.f**3 * (I21 - 0.5*(b1+b1_bar)*I30 + 2*self.k**2*J20*Plin)
             
@@ -634,7 +647,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 term1 = self.P22.no_velocity.mu4
                 
                 # add convolution to P22bar
-                term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.sigmasq_k**2
+                term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.integrals.sigmasq_k(self.k)**2
                 
                 # b1 * P02_bar
                 term3 = -0.5*(self.k*self.f*self.D*self.sigma_v)**2 * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
@@ -724,7 +737,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         The full halo power spectrum term with mu^6 angular dependence. Contributions
         from P12_ss, P13_ss, P22_ss.
         """
-        return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.integrals.I32
+        return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.integrals.I32(self.k)
         
     #---------------------------------------------------------------------------
 #enclass BiasedSpectrum       

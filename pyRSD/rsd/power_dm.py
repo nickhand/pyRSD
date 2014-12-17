@@ -93,7 +93,6 @@ class DMSpectrum(object):
             return (k_obs/self.alpha_perp)*(1 + mu_obs**2*(1./F**2 - 1))**0.5
         else:
             return k_obs/self.alpha_perp
-            
     #end k_true
     
     #---------------------------------------------------------------------------
@@ -102,9 +101,9 @@ class DMSpectrum(object):
         Return the `true` mu values, given an observed mu
         """
         F = self.alpha_par / self.alpha_perp
-        return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)
-            
+        return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)        
     #end mu_true
+    
     #-------------------------------------------------------------------------------
     def update(self, **kwargs):
         for k, v in kwargs.iteritems():
@@ -112,6 +111,15 @@ class DMSpectrum(object):
                 if getattr(self, k) != v: setattr(self, k, v)
     
     #end update
+    
+    #---------------------------------------------------------------------------
+    def initialize(self):
+        """
+        Initialize the underlying splines, etc
+        """
+        self.power(0.5)
+    #end initialize
+    
     #---------------------------------------------------------------------------
     def _delete_power(self):
         """

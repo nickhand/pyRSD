@@ -7,7 +7,6 @@
  creation date: 03/18/2014
 """
 from pyRSD import rsd
-from pyRSD import cosmology
 
 import scipy.interpolate as interp
 import numpy as np
@@ -35,7 +34,7 @@ def fitting_function(p, fjac=None, k=None, y=None, err=None, PTmodel=None):
 #end fitting_function
 
 #-------------------------------------------------------------------------------
-def fit_P00(params, k_transition=0.1, plot=False, save=True):
+def fit_P00(k_transition=0.1, plot=False, save=True):
     
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
@@ -51,7 +50,7 @@ def fit_P00(params, k_transition=0.1, plot=False, save=True):
         inds = np.where(x < k_transition)
 
         # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit='CAMB', include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit='CLASS', include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
         PTmodel = Pspec.P00.total.mu0
 
         # measure the exponential scale
@@ -63,7 +62,7 @@ def fit_P00(params, k_transition=0.1, plot=False, save=True):
         k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
         
         # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit='CAMB', include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit='CLASS', include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
         PTmodel = Pspec.P00.total.mu0
         PTmodel   = Pspec.P00.total.mu0
         pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
@@ -96,7 +95,7 @@ def fit_P00(params, k_transition=0.1, plot=False, save=True):
 #end fit_P00
 
 #-------------------------------------------------------------------------------
-def fit_P01(params, k_transition=0.1, plot=False, save=True):
+def fit_P01(k_transition=0.1, plot=False, save=True):
     
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
@@ -112,7 +111,7 @@ def fit_P01(params, k_transition=0.1, plot=False, save=True):
         inds = np.where(x < k_transition)
 
         # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CAMB", include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
         PTmodel = Pspec.P01.total.mu2
 
         # measure the exponential scale
@@ -124,7 +123,7 @@ def fit_P01(params, k_transition=0.1, plot=False, save=True):
         k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
         
         # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit='CAMB', include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit='CLASS', include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
         PTmodel    = Pspec.P01.total.mu2
         pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
         
@@ -157,7 +156,7 @@ def fit_P01(params, k_transition=0.1, plot=False, save=True):
 #end fit_P01
 
 #-------------------------------------------------------------------------------
-def fit_P11(params, k_transition=0.1, plot=False, save=True):
+def fit_P11(k_transition=0.1, plot=False, save=True):
     
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
@@ -175,7 +174,7 @@ def fit_P11(params, k_transition=0.1, plot=False, save=True):
         inds = np.where(x < k_transition)
 
         # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CAMB", include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=Non)
         PTmodel = getattr(Pspec.P11.total, mu)
 
         # measure the exponential scale
@@ -187,7 +186,7 @@ def fit_P11(params, k_transition=0.1, plot=False, save=True):
         k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
 
         # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit="CAMB", include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=Non)
         PTmodel   = getattr(Pspec.P11.total, mu)
         pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
 
@@ -219,7 +218,7 @@ def fit_P11(params, k_transition=0.1, plot=False, save=True):
 #end fit_P11   
 
 #-------------------------------------------------------------------------------
-def fit_Pdv(params, k_transition=0.1, plot=False, save=True):
+def fit_Pdv(k_transition=0.1, plot=False, save=True):
     
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
@@ -239,7 +238,7 @@ def fit_Pdv(params, k_transition=0.1, plot=False, save=True):
         k_lo = x[inds]
         
         # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CAMB", include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=None)
         PTmodel = Pspec.Pdv
 
         # measure the exponential scale
@@ -251,7 +250,7 @@ def fit_Pdv(params, k_transition=0.1, plot=False, save=True):
         k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
 
         # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit="CAMB", include_2loop=False, num_threads=4, cosmo=params)
+        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=None)
         PTmodel   = Pspec.Pdv
         pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
 
@@ -285,15 +284,11 @@ def fit_Pdv(params, k_transition=0.1, plot=False, save=True):
 
 #-------------------------------------------------------------------------------
 def main(args):
-        
-    # the cosmological parameters used in the simulations (close to WMAP5)
-    cosmo_params = {'force_flat' : True, 'default' : 'WMAP5', 'h' : 0.701, 'n' : 0.96, 'sigma_8' : 0.807, 'omegac': (1-0.165)*0.279, 'omegal': 0.721, 'omegab': 0.165*0.279, 'omegar': 0.}
-    params = cosmology.cosmo.Cosmology(cosmo_params)
-    
-    fit_P00(params, k_transition=args.k_transition, plot=args.plot, save=args.save)
-    fit_P01(params, k_transition=args.k_transition, plot=args.plot, save=args.save)
-    fit_P11(params, k_transition=args.k_transition, plot=args.plot, save=args.save)
-    fit_Pdv(params, k_transition=args.k_transition, plot=args.plot, save=args.save)
+            
+    #fit_P00(k_transition=args.k_transition, plot=args.plot, save=args.save)
+    #fit_P01(k_transition=args.k_transition, plot=args.plot, save=args.save)
+    fit_P11(k_transition=args.k_transition, plot=args.plot, save=args.save)
+    #fit_Pdv(k_transition=args.k_transition, plot=args.plot, save=args.save)
     
 #-------------------------------------------------------------------------------    
 if __name__ == '__main__':

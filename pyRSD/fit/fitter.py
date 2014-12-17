@@ -34,14 +34,15 @@ class GalaxyRSDFitter(object):
     """
     Subclass of `emcee.EnsembleSampler` to compute parameter fits for RSD models
     """
-    def __init__(param_file, num_walkers=20, verbose=False, figure_verbose=False):
+    def __init__(param_file, num_walkers=20, verbose=False, fig_verbose=False):
         
         # read the parameters
         params = ParamDict(param_file)
+        self.tag = params['tag']
         
         # initialize the output
-        if not os.path.exists("output_%s" %params['tag']):
-            os.path.makedirs("output_%s" %params['tag'])
+        if not os.path.exists("output_%s" %self.tag):
+            os.path.makedirs("output_%s" %self.tag)
                 
         # store the info about parameters
         self.pars = ModelParameters(params['parameters'])
@@ -66,8 +67,8 @@ class GalaxyRSDFitter(object):
         self.find_ml_solution()
         
         # initialize the sampler (must be last)
-        self.num_walkers = num_walkers
-        pos = [free_ml + 1.e-4*np.random.randn(self.N_free) for i in range(self.num_walkers)]
+        self.num_walkers = params['walkers']
+        self.num_iters = params['iterations']
         self.sampler = emcee.EnsembleSampler(self.num_walkers, self.N_free, functools.partial(GalaxyRSDFitter.lnprob, self))
     
     #end __init__
@@ -112,7 +113,11 @@ class GalaxyRSDFitter(object):
         if self.C.shape != (ndim, ndim):
             raise ValueError("loaded covariance matrix has wrong shape; expected (%d, %d), got %s" \
                                 %(ndim, ndim, self.C.shape))
-                                
+        
+        # rescale by volume
+        volume_factor = (params['covariance_vol'] / params['measurement_vol'])**3
+        self.C *= volume_factor / params['N_realizations']    
+        
         # invert the covariance matrix
         self.C_inv = np.linalg.inv(self.C)
     
@@ -125,17 +130,23 @@ class GalaxyRSDFitter(object):
         """
         # initialize the galaxy power spectrum class
         kwargs = {k:params[k] for k in power_gal.GalaxySpectrum.allowable_kwargs if k in params}
+        kwargs['k'] = np.array(self.measurements.index)
         self.model = rsd.power_gal.GalaxySpectrum(**kwargs)
         
         # determine the model callables -- function that returns model at set of k
         self.model_callables = []
         for stat in params['statistics']:
             if stat == 'pkmu':
-                for mu in params['mus']:
-                    self.model_callables.append(functools.partial(getattr(self.model, 'power'), mu))
+                self.model_callables.append(functools.partial(getattr(self.model, 'Pgal'), params['mus'], flatten=True))
+            elif stat == 'monopole':
+                self.model_callables.append(getattr(self.model, 'Pgal_mono'))
+            elif stat == 'quadrupole':
+                self.model_callables.append(getattr(self.model, 'Pgal_quad'))
             else:
                 assert stat in ['monopole', 'quadrupole'], "Statistic must be one of ['pkmu', 'monopole', 'quadrupole']"
-                self.model_callables.append(getattr(self.model, stat))
+                
+        # initialize the model
+        self.model.initialize()
     #end _initialize_model
     
     #---------------------------------------------------------------------------
@@ -205,4 +216,21 @@ class GalaxyRSDFitter(object):
     #end find_ml_solution
     
     #---------------------------------------------------------------------------
-        
+    def run(self):
+        """
+        Run the MCMC sampler
+        """
+        if params['save_chains']:
+            f = open("chain.dat", "w")
+            f.close()
+
+            pos0 = [self.free_ml + 1e-4*np.random.randn(self.N_free) for i in range(self.num_walkers)]
+            for result in self.sampler.sample(pos0, iterations=self.num_iters, storechain=False):
+                position = result[0]
+                f = open("chain.dat", "a")
+                for k in range(position.shape[0]):
+                    f.write("{0:4d} {1:s}\n".format(k, " ".join(position[k])))
+            f.close()
+        else:
+            self.sampler.run_mcmc(pos, self.num_iters, rstate0=np.random.get_state())
+    #---------------------------------------------------------------------------

@@ -11,9 +11,9 @@ from .. import numpy as np
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     
-    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['use_mean_bias']
+    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['use_mean_bias', 'fog_model']
     
-    def __init__(self, use_mean_bias=False, **kwargs):
+    def __init__(self, use_mean_bias=False, fog_model=lambda x: 1./(1 + 0.5*x**2)**2, **kwargs):
         
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
@@ -22,7 +22,16 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self._include_2loop = False
         
         self.use_mean_bias = use_mean_bias
+        self.fog_model = fog_model
     #end __init__
+    
+    #---------------------------------------------------------------------------
+    def initialize(self):
+        """
+        Initialize the underlying splines, etc
+        """
+        self.Pgal(0.5)
+    #end initialize
     
     #---------------------------------------------------------------------------
     # THE GALAXY FRACTIONS
@@ -292,11 +301,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         Compute the FOG damping
         """
-        k = self.k_true(self.k_obs, mu_obs)
         if np.isscalar(mu_obs):
-            return self.fog_model(sigma*mu_obs*k)
+            return self.fog_model(sigma*mu_obs*self.k_true(self.k_obs, mu_obs))
         else:
-            return np.vstack([self.fog_model(sigma*imu*k) for imu in mu_obs]).T
+            return np.vstack([self.fog_model(sigma*imu*self.k_true(self.k_obs, imu)) for imu in mu_obs]).T
     
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS

@@ -12,9 +12,9 @@ import collections
 import bisect
 
 KSPLINE = np.logspace(-3, 0, 100)
-SIGMA8_MIN = 0.5
-SIGMA8_MAX = 1.2
-INTERP_PTS = 25
+SIGMA8_MIN = 0.1
+SIGMA8_MAX = 2.5
+INTERP_PTS = 50
 
 #-------------------------------------------------------------------------------
 class DarkMatterPowerMoment(object):
@@ -118,8 +118,6 @@ class DarkMatterPowerMoment(object):
 
     @sigma8.setter
     def sigma8(self, val):
-        if val < SIGMA8_MIN or val > SIGMA8_MAX:
-            raise ValueError("Sigma_8 out of range [%f, %f]" %(SIGMA8_MIN, SIGMA8_MAX))
         self._sigma8 = val
                 
     #---------------------------------------------------------------------------
@@ -164,6 +162,9 @@ class DarkMatterPowerMoment(object):
         """
         Return the power from the Zel'dovich term
         """
+        # return NaNs if we are out of bounds
+        if self.sigma8 < SIGMA8_MIN or self.sigma8 > SIGMA8_MAX: return np.nan*k
+        
         keys = self.zeldovich_power_table.keys()
         ihi = bisect.bisect(keys, self.sigma8)
         ilo = ihi - 1

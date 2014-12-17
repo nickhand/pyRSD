@@ -111,15 +111,7 @@ class DMSpectrum(object):
                 if getattr(self, k) != v: setattr(self, k, v)
     
     #end update
-    
-    #---------------------------------------------------------------------------
-    def initialize(self):
-        """
-        Initialize the underlying splines, etc
-        """
-        self.power(0.5)
-    #end initialize
-    
+        
     #---------------------------------------------------------------------------
     def _delete_power(self):
         """
@@ -1200,8 +1192,9 @@ class DMSpectrum(object):
         elif self.max_mu == 8:
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
             
-        return vol_scaling*P_out
-    #end power
+        return np.nan_to_num(vol_scaling*P_out)
+        
+    #end _power_one_mu
     
     #---------------------------------------------------------------------------
     def power(self, mu, flatten=False):

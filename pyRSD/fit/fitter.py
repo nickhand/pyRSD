@@ -47,7 +47,9 @@ class GalaxyRSDFitter(object):
             os.makedirs("output_%s" %self.tag)
                 
         # store the info about parameters
-        self.pars = ModelParameters(params['parameters'])
+        self.pars = ModelParameters()
+        for k in sorted(params['parameters'].keys()):
+            self.pars[k] = params['parameters'][k]
         
         # number of total and free parameters
         self.N_total = len(self.pars)
@@ -90,10 +92,10 @@ class GalaxyRSDFitter(object):
             
             # make the index or check for consistency
             if i == 0:
-                x = this_stat[:, meas[stat]['xcol']]
+                x_full = this_stat[:, meas[stat]['xcol']]
                 if params.get('k_max', None) is not None:
-                    inds = np.where(x < params['k_max'])
-                index = Index(x[inds], name='k')
+                    inds = np.where(x_full < params['k_max'])
+                index = Index(x_full[inds], name='k')
             else:
                 assert np.all(index == data[:, meas[stat]['xcol']])
                 
@@ -122,7 +124,7 @@ class GalaxyRSDFitter(object):
         # trim the covariance matrix to the correct k_max
         if params.get('k_max', None) is not None:
             N_stats = len(self.measurements.columns)
-            x = np.concatenate([np.array(self.measurements.index) for i in range(N_stats)])
+            x = np.concatenate([x_full for i in range(N_stats)])
             xx, yy = np.meshgrid(x, x)
             inds = np.where((xx <= params['k_max'])*(yy <= params['k_max']))
             self.C = self.C[inds]
@@ -228,11 +230,12 @@ class GalaxyRSDFitter(object):
         Find the parameters that maximizes the likelihood
         """
         # set up the fit
-        chi2 = lambda theta: -2 * self.lnlike(theta)
+        chi2 = lambda theta: -2 * self.lnprob(theta)
         free_fiducial = np.array([self.pars(i)['fiducial'] for i in range(self.N_total) if self.pars(i)['free']])
         
         # get the max-likelihood values
-        result = opt.minimize(chi2, free_fiducial, method = 'Nelder-Mead')
+        bounds = [self.pars(i)['bounds'] for i in range(self.N_total) if self.pars(i)['free']]
+        result = opt.minimize(chi2, free_fiducial, method='L-BFGS-B', bounds=bounds)
         if result['status'] > 0:
             raise Exception(result['message'])
             

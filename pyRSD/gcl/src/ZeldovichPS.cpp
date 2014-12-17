@@ -5,7 +5,7 @@ using namespace Common;
 static const int NUM_PTS = 1024;
 static const double RMIN = 1e-2;
 static const double RMAX = 1e5;
-static const int NMAX = 30;
+static const int NMAX = 15;
 
 
 ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_) 
@@ -45,7 +45,6 @@ static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi
                 d = d2;
             }
         }
-       
         if (xi[i] > xd[k]) {
             l = k+1;
             yi[i] = yd[l] + (yd[k] - yd[l])/(xd[k] - xd[l])*(xi[i]-xd[l]);
@@ -105,10 +104,7 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
     parray kmesh(NUM_PTS);
 
     // logspaced between RMIN and RMAX
-    double this_Pk = 0.;
-    // double dlnr = (log(RMAX) - log(RMIN)) / NUM_PTS;
-    // double L = log(r[NUM_PTS-1]/r[0]) * NUM_PTS/(NUM_PTS-1.);
-    
+    double this_Pk = 0.;   
     for (int n = 0; n <= NMAX; n++) {
         
         // the order of the Bessel function
@@ -119,7 +115,7 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
             Fprim(a, r, k);
         else
             Fsec(a, r, k, double(n));
-
+        
         // do the fft
         FFTLog fftlogger(NUM_PTS, dlogr*log(10.), mu, q, 1.0, 1);
                     
@@ -130,20 +126,14 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
 
         for(int j = 1; j <= NUM_PTS; j++) 
             kmesh[j-1] = pow(10., (logkc+(j-nc)*dlogr));
-            
-        // // compute k corresponding to input r
-        // double k0r0 = kr * exp(-L);
-        // kmesh[0] = k0r0/r[0];
-        // for(int j = 1; j < NUM_PTS; j++)
-        //     kmesh[j] = kmesh[0] * exp(j*L/NUM_PTS);
         
         // sum it up
-        //Spline spl = LinearSpline(kmesh, a);
         double out;
         nearest_interp_1d(NUM_PTS, (double*)(kmesh), (double*)(a), 1, &k, &out);
-
-        //info("      %.5e\n", out);
-        this_Pk += factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out;
+        double toadd = factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out; 
+        
+        this_Pk += toadd;        
+        if (fabs(toadd/this_Pk) < 0.005) break;
     }
         
     return this_Pk;

@@ -7,8 +7,9 @@
  contact: nhand@berkeley.edu
  creation date: 12/13/2014
 """
-from . import ParamDict
-from .. import rsd, numpy as np, os
+from . import param_reader
+from .. import numpy as np, os
+from ..rsd import power_gal
     
 import emcee
 import scipy.optimize as opt
@@ -34,15 +35,16 @@ class GalaxyRSDFitter(object):
     """
     Subclass of `emcee.EnsembleSampler` to compute parameter fits for RSD models
     """
-    def __init__(param_file, num_walkers=20, verbose=False, fig_verbose=False):
+    def __init__(self, param_file, num_walkers=20, verbose=False, fig_verbose=False):
         
         # read the parameters
-        params = ParamDict(param_file)
+        params = param_reader.ParamDict(param_file)
         self.tag = params['tag']
+        self.save_chains = params['save_chains']
         
         # initialize the output
         if not os.path.exists("output_%s" %self.tag):
-            os.path.makedirs("output_%s" %self.tag)
+            os.makedirs("output_%s" %self.tag)
                 
         # store the info about parameters
         self.pars = ModelParameters(params['parameters'])
@@ -84,11 +86,14 @@ class GalaxyRSDFitter(object):
         for i, stat in enumerate(params['statistics']):
             
             # load the data file for this statistic
-            this_stat = np.loadtxt(meas[stat])
+            this_stat = np.loadtxt(meas[stat]['file'])
             
             # make the index or check for consistency
             if i == 0:
-                index = Index(data[:, meas[stat]['xcol']], name='k')
+                x = this_stat[:, meas[stat]['xcol']]
+                if params.get('k_max', None) is not None:
+                    inds = np.where(x < params['k_max'])
+                index = Index(x[inds], name='k')
             else:
                 assert np.all(index == data[:, meas[stat]['xcol']])
                 
@@ -97,19 +102,35 @@ class GalaxyRSDFitter(object):
                 for i, mu in enumerate(params['mus']):
                     tag = 'pkmu_%s' %mu
                     self.measurement_names.append(tag)
-                    data[tag] = this_stat[:, meas[stat]['ycol'][i]]
+                    y = this_stat[:, meas[stat]['ycol'][i]]
+                    if params.get('k_max', None) is not None: y = y[inds]
+                    data[tag] = y
                 
             else:
                 self.measurement_names.append(stat)
-                data[stat] = this_stat[:, meas[stat]['ycol']]
+                y = this_stat[:, meas[stat]['ycol']][inds]
+                if params.get('k_max', None) is not None: y = y[inds]
+                data[stat] = y
 
         # make a data frame
-        self.measurements = DataFrame(d=data, index=index)
+        self.measurements = DataFrame(data=data, index=index)
         self.measurement_y = np.concatenate([self.measurements[col] for col in self.measurement_names])
         
         # now load the covariance matrix
         self.C = pickle.load(open(params['covariance_matrix'], 'r'))
-        ndim = len(self.measurements.columns)*self.measurements.ndim
+        
+        # trim the covariance matrix to the correct k_max
+        if params.get('k_max', None) is not None:
+            N_stats = len(self.measurements.columns)
+            x = np.concatenate([np.array(self.measurements.index) for i in range(N_stats)])
+            xx, yy = np.meshgrid(x, x)
+            inds = np.where((xx <= params['k_max'])*(yy <= params['k_max']))
+            self.C = self.C[inds]
+            shape = self.C.shape[0]
+            self.C = self.C.reshape(int(shape**0.5), int(shape**0.5))
+        
+        # check that we have the right dimensions
+        ndim = len(self.measurements.columns)*len(self.measurements)
         if self.C.shape != (ndim, ndim):
             raise ValueError("loaded covariance matrix has wrong shape; expected (%d, %d), got %s" \
                                 %(ndim, ndim, self.C.shape))
@@ -131,13 +152,13 @@ class GalaxyRSDFitter(object):
         # initialize the galaxy power spectrum class
         kwargs = {k:params[k] for k in power_gal.GalaxySpectrum.allowable_kwargs if k in params}
         kwargs['k'] = np.array(self.measurements.index)
-        self.model = rsd.power_gal.GalaxySpectrum(**kwargs)
+        self.model = power_gal.GalaxySpectrum(**kwargs)
         
         # determine the model callables -- function that returns model at set of k
         self.model_callables = []
         for stat in params['statistics']:
             if stat == 'pkmu':
-                self.model_callables.append(functools.partial(getattr(self.model, 'Pgal'), params['mus'], flatten=True))
+                self.model_callables.append(functools.partial(getattr(self.model, 'Pgal'), np.array(params['mus']), flatten=True))
             elif stat == 'monopole':
                 self.model_callables.append(getattr(self.model, 'Pgal_mono'))
             elif stat == 'quadrupole':
@@ -146,6 +167,8 @@ class GalaxyRSDFitter(object):
                 assert stat in ['monopole', 'quadrupole'], "Statistic must be one of ['pkmu', 'monopole', 'quadrupole']"
                 
         # initialize the model
+        p = {par : self.pars[par]['fiducial'] for par in self.pars}
+        for k, v in p.iteritems(): setattr(self.model, k, v)
         self.model.initialize()
     #end _initialize_model
     
@@ -200,7 +223,7 @@ class GalaxyRSDFitter(object):
     #end lnprob
     
     #---------------------------------------------------------------------------
-    def find_ml_solution(self, theta):
+    def find_ml_solution(self):
         """
         Find the parameters that maximizes the likelihood
         """
@@ -209,7 +232,10 @@ class GalaxyRSDFitter(object):
         free_fiducial = np.array([self.pars(i)['fiducial'] for i in range(self.N_total) if self.pars(i)['free']])
         
         # get the max-likelihood values
-        result = opt.minimize(chi2, free_fiducial)
+        result = opt.minimize(chi2, free_fiducial, method = 'Nelder-Mead')
+        if result['status'] > 0:
+            raise Exception(result['message'])
+            
         self.ml_values = self.all_param_values(result['x'])
         self.ml_free = result["x"]
         self.ml_minchi2 = self.lnlike(result["x"])*(-2.)
@@ -220,11 +246,11 @@ class GalaxyRSDFitter(object):
         """
         Run the MCMC sampler
         """
-        if params['save_chains']:
+        pos0 = [self.ml_free + 1e-4*np.random.randn(self.N_free) for i in range(self.num_walkers)]
+        if self.save_chains:
             f = open("chain.dat", "w")
             f.close()
 
-            pos0 = [self.free_ml + 1e-4*np.random.randn(self.N_free) for i in range(self.num_walkers)]
             for result in self.sampler.sample(pos0, iterations=self.num_iters, storechain=False):
                 position = result[0]
                 f = open("chain.dat", "a")
@@ -232,5 +258,5 @@ class GalaxyRSDFitter(object):
                     f.write("{0:4d} {1:s}\n".format(k, " ".join(position[k])))
             f.close()
         else:
-            self.sampler.run_mcmc(pos, self.num_iters, rstate0=np.random.get_state())
+            self.sampler.run_mcmc(pos0, self.num_iters, rstate0=np.random.get_state())
     #---------------------------------------------------------------------------

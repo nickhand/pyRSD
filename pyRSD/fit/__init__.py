@@ -1,2 +1,3 @@
-from .fitter import RSDFitter
-from .param_reader import ParamDict
+from .fitter import GalaxyRSDFitter
+
+__all__ = ['GalaxyRSDFitter']

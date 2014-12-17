@@ -8,6 +8,7 @@
 """
 from .. import data_dir, os
 from . import parsing_tools
+import string
 
 class ParamDict(dict):
     """
@@ -36,7 +37,7 @@ class ParamDict(dict):
         """
         # try to find the file 
         if os.path.exists(filename):
-            continue
+            pass
         elif (os.path.exists("%s/%s" %(data_dir, filename))):
             filename = "%s/%s" %(data_dir, filename)
         else:
@@ -46,11 +47,25 @@ class ParamDict(dict):
         D = {} if clear_current else self.copy()
             
         linecount = 0
+        old = ''
         for line in open(filename, 'r'):
-            linecount += 1
-            line = ' '.join(line.split('#')[:1]).split('\\')
-            line = ' '.join(line)
-
+            line = line.strip()
+            if len(line) == 0 or line[0] == '#':
+                continue
+            s = line.split('#')
+            line = s[0]
+            s = line.split('\\')
+            if len(s) > 1:
+                old = string.join([old, s[0]])
+                continue
+            else:
+                line = string.join([old, s[0]])
+                old = ''
+            for i in xrange(len(line)):
+                if line[i]!=' ':
+                    line = line[i:]
+                    break
+                    
             line = line.split('=')
             line = [x.strip() for x in line]
 

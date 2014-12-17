@@ -39,6 +39,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     
     @fs.setter
     def fs(self, val):
+        if hasattr(self, '_fs') and val == self._fs: return
         self._fs = val
         
     #---------------------------------------------------------------------------
@@ -54,6 +55,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     
     @fcB.setter
     def fcB(self, val):
+        if hasattr(self, '_fcB') and val == self._fcB: return
         self._fcB = val
         
     #---------------------------------------------------------------------------
@@ -69,6 +71,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     
     @fsB.setter
     def fsB(self, val):
+        if hasattr(self, '_fsB') and val == self._fsB: return
         self._fsB = val
         
     #---------------------------------------------------------------------------
@@ -86,7 +89,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @b1_cA.setter
     def b1_cA(self, val):
+        if hasattr(self, '_b1_cA') and val == self._b1_cA: return
         self._b1_cA = val
+    
     #---------------------------------------------------------------------------
     @property
     def b1_cB(self):
@@ -100,7 +105,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @b1_cB.setter
     def b1_cB(self, val):
+        if hasattr(self, '_b1_cB') and val == self._b1_cB: return
         self._b1_cB = val
+    
     #---------------------------------------------------------------------------
     @property
     def b1_c(self):
@@ -109,6 +116,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         but is computed as weighted mean of b1_cA and b1_cB.
         """
         return self.fcB * self.b1_cB + (1. - self.fcB) * self.b1_cA
+    
     #---------------------------------------------------------------------------
     @property
     def b1_sA(self):
@@ -122,7 +130,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @b1_sA.setter
     def b1_sA(self, val):
+        if hasattr(self, '_b1_sA') and val == self._b1_sA: return
         self._b1_sA = val
+        
     #---------------------------------------------------------------------------
     @property
     def b1_sB(self):
@@ -136,7 +146,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @b1_sB.setter
     def b1_sB(self, val):
+        if hasattr(self, '_b1_sB') and val == self._b1_sB: return
         self._b1_sB = val
+        
     #---------------------------------------------------------------------------
     @property
     def b1_s(self):
@@ -145,6 +157,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         but is computed as weighted mean of b1_sA and b1_sB.
         """
         return self.fsB * self.b1_sB + (1. - self.fsB) * self.b1_sA
+        
     #---------------------------------------------------------------------------
     # VELOCITY DISPERSIONS
     #---------------------------------------------------------------------------
@@ -161,6 +174,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @sigma_c.setter
     def sigma_c(self, val):
+        if hasattr(self, '_sigma_c') and val == self._sigma_c: return
         self._sigma_c = val
     
     #---------------------------------------------------------------------------
@@ -176,6 +190,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @sigma_s.setter
     def sigma_s(self, val):
+        if hasattr(self, '_sigma_s') and val == self._sigma_s: return
         self._sigma_s = val
         
     @sigma_s.deleter
@@ -195,6 +210,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @sigma_sA.setter
     def sigma_sA(self, val):
+        if hasattr(self, '_sigma_sA') and val == self._sigma_sA: return
         self._sigma_sA = val
         
     @sigma_sA.deleter
@@ -214,6 +230,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
     @sigma_sB.setter
     def sigma_sB(self, val):
+        if hasattr(self, '_sigma_sB') and val == self._sigma_sB: return
         self._sigma_sB = val
     
     @sigma_sB.deleter
@@ -240,52 +257,35 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # 1-HALO ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
-    def one_halo_model(self):
+    def N_cBs(self):
         """
-        Attribute determining the model for 1-halo terms
+        Constant for the P_cBs 1-halo term
         """
         try:
-            return self._one_halo_model
+            return self._N_cBs
         except AttributeError:
-            raise ValueError("Must specify 1-halo model 'one_halo_model' attribute.")
+            raise ValueError("Must specify 1-halo 'N_cBs' attribute.")
             
-    @one_halo_model.setter
-    def one_halo_model(self, val):
-        if not callable(val):
-            raise TypeError("Input 1-halo model must a callable function.")
-        self._one_halo_model = val
+    @N_cBs.setter
+    def N_cBs(self, val):
+        if hasattr(self, '_N_cBs') and val == self._N_cBs: return
+        self._N_cBs = val
     
     #---------------------------------------------------------------------------
     @property
-    def one_halo_cBs_args(self):
+    def N_sBsB(self):
         """
-        Any arguments to pass to the one halo model function held in 
-        ``self.one_halo_model`` for P_cBs.
-        """
-        try:
-            return self._one_halo_cBs_args
-        except AttributeError:
-            raise ValueError("Must specify 1-halo args 'one_halo_cBs_args' attribute.")
-            
-    @one_halo_cBs_args.setter
-    def one_halo_cBs_args(self, val):
-        self._one_halo_cBs_args = val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def one_halo_sBsB_args(self):
-        """
-        Any arguments to pass to the one halo model function held in 
-        ``self.one_halo_model`` for P_sBsB.
+        Constant for the P_sBsB 1-halo term
         """
         try:
-            return self._one_halo_sBsB_args
+            return self._N_sBsB
         except AttributeError:
-            raise ValueError("Must specify 1-halo args 'one_halo_sBsB_args' attribute.")
+            raise ValueError("Must specify 1-halo 'N_sBsB' attribute.")
             
-    @one_halo_sBsB_args.setter
-    def one_halo_sBsB_args(self, val):
-        self._one_halo_sBsB_args = val
+    @N_sBsB.setter
+    def N_sBsB(self, val):
+        if hasattr(self, '_N_sBsB') and val == self._N_sBsB: return
+        self._N_sBsB = val
         
     #---------------------------------------------------------------------------
     def evaluate_fog(self, sigma, mu_obs):
@@ -384,7 +384,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G_c = self.evaluate_fog(self.sigma_c, mu)
         G_s = self.evaluate_fog(self.sigma_s, mu)
         
-        return G_c*G_s * (self.Pgal_cBs_2h(mu) + self.Pgal_cBs_1h(mu))
+        return G_c*G_s * (self.Pgal_cBs_2h(mu) + self.N_cBs)
     
     #---------------------------------------------------------------------------
     def Pgal_cBs_2h(self, mu):
@@ -403,15 +403,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.power(mu)
     
     #---------------------------------------------------------------------------
-    def Pgal_cBs_1h(self, mu):
-        """
-        The 1-halo term for the cross spectrum of centrals with sats in the 
-        same halo and satellites, with mu dependence introduced by the 
-        FOG damping
-        """
-        return self.one_halo_model(self.k, *self.one_halo_cBs_args)
-
-    #---------------------------------------------------------------------------
     def Pgal_sBsB(self, mu):
         """
         The auto spectrum of satellits with other sats in the same halo.
@@ -420,7 +411,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # the FOG damping terms
         G = self.evaluate_fog(self.sigma_sB, mu)
         
-        return G**2 * (self.Pgal_sBsB_2h(mu) + self.Pgal_sBsB_1h(mu))
+        return G**2 * (self.Pgal_sBsB_2h(mu) + self.N_sBsB)
     
     #---------------------------------------------------------------------------
     def Pgal_sBsB_2h(self, mu):
@@ -433,15 +424,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_sB
 
         return self.power(mu)
-        
-    #---------------------------------------------------------------------------
-    def Pgal_sBsB_1h(self, mu):
-        """
-        The 1-halo term for the auto spectrum of satellits with other sats 
-        in the same halo, with mu dependence introduced by the FOG damping
-        """
-        return self.one_halo_model(self.k, *self.one_halo_sBsB_args)
-        
+            
     #---------------------------------------------------------------------------
     def Pgal_ss(self, mu):
         """

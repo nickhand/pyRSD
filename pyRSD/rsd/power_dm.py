@@ -656,7 +656,7 @@ class DMSpectrum(object):
         try:
             return self._P11_model
         except AttributeError:
-            self._P11_model = dm_power_moments.DarkMatterP00(self.power_lin, self.z, self.sigma8, self.f)
+            self._P11_model = dm_power_moments.DarkMatterP11(self.power_lin, self.z, self.sigma8, self.f)
             return self._P11_model
     
     #---------------------------------------------------------------------------

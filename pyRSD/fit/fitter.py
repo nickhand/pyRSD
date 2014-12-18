@@ -387,10 +387,11 @@ class GalaxyRSDFitter(object):
         print "MCMC result: mean (+/-68%) (+/-95%)"
         for name, fit in self.mcmc_fits.iteritems():
             index = self.all_param_names.index(name)
-            x = fit['1-sigma']
-            y = fit['2-sigma']
-            args = (name, fit['mean'], x[0], x[1], y[0], y[1], self.fiducial[index])
-            print "   %-12s = %f (+%f -%f) (+%f -%f) (fiducial = %f)" %args
+            if self.is_free[index]:
+                x = fit['1-sigma']
+                y = fit['2-sigma']
+                args = (name, fit['mean'], x[0], x[1], y[0], y[1], self.fiducial[index])
+                print "   %-12s = %f (+%f -%f) (+%f -%f) (fiducial = %f)" %args
             
     #end print_ml_result
     
@@ -402,13 +403,14 @@ class GalaxyRSDFitter(object):
         if not hasattr(self, 'mcmc_fits'):
             self.compute_quantiles()
             
-        out = open("output_%s/mcmc_result.dat", 'w')
+        out = open("output_%s/mcmc_result.dat" %self.tag, 'w')
         out.write("%f %d %d\n" % (self.ml_minchi2, len(self.data_y), self.N_free))
         for name, fit in self.mcmc_fits.iteritems():
             index = self.all_param_names.index(name)
             x = fit['1-sigma']
             y = fit['2-sigma']
-            out.write("%s: %f %f %f %f %f %f\n" %(name, fit['mean'], x[0], x[1], y[0], y[1], self.fiducial[index]))
+            args = (name, fit['mean'], x[0], x[1], y[0], y[1], self.fiducial[index])
+            out.write("%-15s: %f %f %f %f %f %f\n" %args)
             
         out.close()
     #end write_mcmc_results
@@ -455,7 +457,7 @@ class GalaxyRSDFitter(object):
         ax.axhline(y=0, c='k', ls='--')
         ax.set_xlabel("wavenumber k", fontsize=16)
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
-        ax.legend(loc=0)
+        ax.legend(loc=0, ncol=2)
         
         if extra_tag != "":
             plt.savefig("output_%s/model_residuals_%s.png" %(self.tag, extra_tag))
@@ -475,7 +477,7 @@ class GalaxyRSDFitter(object):
         for i, name in enumerate(self.free_param_names):
             axes[i].plot(self.sampler.chain[:, :, i].T, color="k", alpha=0.4)
             axes[i].yaxis.set_major_locator(MaxNLocator(5))
-            axes[i].axhline(self.free_ml[i], color="#888888", lw=2)
+            axes[i].axhline(self.ml_free[i], color="#888888", lw=2)
             axes[i].set_ylabel(name)
 
         fig.tight_layout(h_pad=0.0)
@@ -492,7 +494,7 @@ class GalaxyRSDFitter(object):
         
         plt.clf()
         fig = triangle.corner(samples, labels=self.free_param_names, truths=fid_free)
-        fig.savefig("challenge_output/triangle.png" %self.tag)
+        fig.savefig("output_%s/triangle.png" %self.tag)
     #end make_triangle_plot
     
     #---------------------------------------------------------------------------
@@ -576,7 +578,7 @@ class GalaxyRSDFitter(object):
         # run the MCMC, either saving the chain or not
         pos0 = [self.ml_free + 1e-4*np.random.randn(self.N_free) for i in range(self.N_walkers)]
         if self.save_chains:
-            chain_file = "output_%s/RSDFit_chain.dat" %self.tag
+            chain_file = "output_%s/chain.dat" %self.tag
             f = open(chain_file, "w")
             f.close()
 
@@ -590,13 +592,19 @@ class GalaxyRSDFitter(object):
             self.sampler.run_mcmc(pos0, self.N_iters, rstate0=np.random.get_state())
         if self.verbose: print "...done"      
         
+        # save the results
+        self.write_mcmc_results()
+            
+        # print out info
         if self.verbose:
             print "Mean acceptance fraction: ", np.mean(self.sampler.acceptance_fraction)
             print "Autocorrelation time: ", self.sampler.get_autocorr_time()
-            self.print_mcmc_results()
-            
-        # save the results
-        self.write_mcmc_results()
+            self.print_mcmc_result()
+        
+        # make plots
+        if self.fig_verbose:
+            self.make_timeline_plot()
+            self.make_triangle_plot()
     #end run
     
     #---------------------------------------------------------------------------

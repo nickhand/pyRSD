@@ -752,8 +752,8 @@ class DMSpectrum(object):
             return self._Pdv_loaded(self.k)
         else:
             # use the DM model
-             if self.DM_model is not None:
-                 return self.Pdv_model.power(self.k)
+            if self.DM_model is not None:
+                return self.Pdv_model.power(self.k)
             else:
                 norm = self._power_norm*self.D**2
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self.integrals.Pdv(self.k))

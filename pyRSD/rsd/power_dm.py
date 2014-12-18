@@ -320,6 +320,8 @@ class DMSpectrum(object):
         if hasattr(self, '_integrals'): self.integrals.z = val
         if hasattr(self, '_P00_model'): self.P00_model.z = val
         if hasattr(self, '_P01_model'): self.P01_model.z = val
+        if hasattr(self, '_P11_model'): self.P11_model.f = val
+        if hasattr(self, '_Pdv_model'): self.Pdv_model.f = val
         del self.D, self.conformalH
         self._delete_power()
 
@@ -341,6 +343,8 @@ class DMSpectrum(object):
         if hasattr(self, '_integrals'): self.integrals.sigma8 = val
         if hasattr(self, '_P00_model'): self.P00_model.sigma8 = val
         if hasattr(self, '_P01_model'): self.P01_model.sigma8 = val
+        if hasattr(self, '_P11_model'): self.P11_model.f = val
+        if hasattr(self, '_Pdv_model'): self.Pdv_model.f = val
         self._delete_power()
 
     #---------------------------------------------------------------------------
@@ -364,6 +368,8 @@ class DMSpectrum(object):
             
         self._f = val
         if hasattr(self, '_P01_model'): self.P01_model.f = val
+        if hasattr(self, '_P11_model'): self.P11_model.f = val
+        if hasattr(self, '_Pdv_model'): self.Pdv_model.f = val
         self._delete_power()
     
     #---------------------------------------------------------------------------
@@ -638,8 +644,32 @@ class DMSpectrum(object):
         try:
             return self._P01_model
         except AttributeError:
-            self._P01_model = dm_power_moments.DarkMatterP01(self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
+            self._P01_model = dm_power_moments.DarkMatterP01(self.f, self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
             return self._P01_model
+    
+    #---------------------------------------------------------------------------
+    @property
+    def P11_model(self):
+        """
+        The class holding the model for the P11 dark matter term
+        """
+        try:
+            return self._P11_model
+        except AttributeError:
+            self._P11_model = dm_power_moments.DarkMatterP00(self.power_lin, self.z, self.sigma8, self.f)
+            return self._P11_model
+    
+    #---------------------------------------------------------------------------
+    @property
+    def Pdv_model(self):
+        """
+        The class holding the model for the Pdv dark matter term
+        """
+        try:
+            return self._Pdv_model
+        except AttributeError:
+            self._Pdv_model = dm_power_moments.DarkMatterPdv(self.power_lin, self.z, self.sigma8, self.f)
+            return self._Pdv_model
             
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)
@@ -721,8 +751,12 @@ class DMSpectrum(object):
         if hasattr(self, '_Pdv_loaded'):
             return self._Pdv_loaded(self.k)
         else:
-            norm = self._power_norm*self.D**2
-            return (-self.f)*norm*(self.power_lin(self.k) + norm*self.integrals.Pdv(self.k))
+            # use the DM model
+             if self.DM_model is not None:
+                 return self.Pdv_model.power(self.k)
+            else:
+                norm = self._power_norm*self.D**2
+                return (-self.f)*norm*(self.power_lin(self.k) + norm*self.integrals.Pdv(self.k))
           
     #---------------------------------------------------------------------------
     @property
@@ -839,28 +873,32 @@ class DMSpectrum(object):
                     if hasattr(self, '_P11_mu4_loaded'):
                         self._P11.total.mu4 = self._P11_mu4_loaded(self.k)
                     else:
-                          
-                        # compute the scalar mu^4 contribution
-                        if self.include_2loop:
-                            I1 = self.integrals.Ivvdd_h02(self.k)
-                            I2 = self.integrals.Idvdv_h04(self.k)
-                            C11_contrib = I1 + I2
+                        
+                        # use the DM model
+                        if self.DM_model is not None:
+                            self._P11.total.mu4 = self.P11_model.power(self.k)
                         else:
-                            C11_contrib = self.integrals.I13(self.k)
+                            # compute the scalar mu^4 contribution
+                            if self.include_2loop:
+                                I1 = self.integrals.Ivvdd_h02(self.k)
+                                I2 = self.integrals.Idvdv_h04(self.k)
+                                C11_contrib = I1 + I2
+                            else:
+                                C11_contrib = self.integrals.I13(self.k)
                     
-                        # the necessary integrals 
-                        I11 = self.integrals.I11(self.k)
-                        I22 = self.integrals.I22(self.k)
-                        J11 = self.integrals.J11(self.k)
-                        J10 = self.integrals.J10(self.k)
+                            # the necessary integrals 
+                            I11 = self.integrals.I11(self.k)
+                            I22 = self.integrals.I22(self.k)
+                            J11 = self.integrals.J11(self.k)
+                            J10 = self.integrals.J10(self.k)
                     
-                        Plin = self.normed_power_lin(self.k)
-                        part2 = 2*I11 + 4*I22 + 6*self.k**2 * (J11 + 2*J10)*Plin
-                        P_scalar = self.f**2 * (Plin + part2 + C11_contrib) - self._P11.vector.mu4
+                            Plin = self.normed_power_lin(self.k)
+                            part2 = 2*I11 + 4*I22 + 6*self.k**2 * (J11 + 2*J10)*Plin
+                            P_scalar = self.f**2 * (Plin + part2 + C11_contrib) - self._P11.vector.mu4
                     
-                        # save the scalar/vector mu^4 terms
-                        self._P11.scalar.mu4 = P_scalar
-                        self._P11.total.mu4 = self._P11.scalar.mu4 + self._P11.vector.mu4
+                            # save the scalar/vector mu^4 terms
+                            self._P11.scalar.mu4 = P_scalar
+                            self._P11.total.mu4 = self._P11.scalar.mu4 + self._P11.vector.mu4
             
             return self._P11
     #---------------------------------------------------------------------------

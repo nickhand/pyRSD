@@ -106,10 +106,17 @@ class DMSpectrum(object):
     
     #-------------------------------------------------------------------------------
     def update(self, **kwargs):
+        """
+        Update the attributes. Checks that the current value is not equal to 
+        the new value before setting.
+        """
         for k, v in kwargs.iteritems():
-            if hasattr(self, k): 
-                if getattr(self, k) != v: setattr(self, k, v)
-    
+            try:
+                if hasattr(self, k) and getattr(self, k) == v: 
+                    continue
+                setattr(self, k, v)
+            except:
+                pass
     #end update
         
     #---------------------------------------------------------------------------

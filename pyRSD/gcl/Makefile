@@ -3,7 +3,7 @@
 
 MDIR := $(shell pwd)
 WRKDIR = $(MDIR)/build
-DATADIR := $(shell cd ../data; pwd )
+DATADIR := $(shell cd ../data/params; pwd )
 
 .base:
 	if ! [ -e $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;

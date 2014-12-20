@@ -499,7 +499,7 @@ class GalaxyRSDFitter(object):
     
     #---------------------------------------------------------------------------
     # Likelihood functions
-    #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------            
     def lnprior(self, theta):
         """
         Return the log of the prior, assuming uniform priors on all parameters
@@ -513,7 +513,7 @@ class GalaxyRSDFitter(object):
     def lnlike(self, theta):
         """
         The log of likelihood function for the specified model function
-        """
+        """    
         # get the array of fixed+free parameters
         value_array = self.all_param_values(theta)
         
@@ -524,7 +524,6 @@ class GalaxyRSDFitter(object):
         # this is chi squared
         diff = model_values - self.data_y
         chi2 = np.dot(diff, np.dot(self.C_inv, diff))
-        
         return -0.5*chi2
     #end lnlike
     
@@ -548,10 +547,12 @@ class GalaxyRSDFitter(object):
         free_fiducial = self.fiducial[self.free_indices]
         
         # get the max-likelihood values
-        bounds = self.bounds[self.free_indices]
-        result = opt.minimize(chi2, free_fiducial, method='L-BFGS-B', bounds=bounds)
-        if result['status'] > 0:
-            raise Exception(result['message'])
+        result = opt.minimize(chi2, free_fiducial, method='Nelder-Mead')
+        if result['status'] > 1:
+            bounds = self.bounds[self.free_indices]
+            result = opt.minimize(chi2, free_fiducial, method='L-BFGS-B', bounds=bounds)
+            if result['status'] > 1:
+                raise Exception(result['message'])
             
         self.ml_values = self.all_param_values(result['x'])
         self.ml_free = result["x"]

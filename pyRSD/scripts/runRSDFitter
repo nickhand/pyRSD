@@ -1,0 +1,47 @@
+#!/usr/bin/env python
+"""
+ runRSDFitter
+ pyRSD: run the RSD MCMC fitter
+ 
+ author: Nick Hand
+ contact: nhand@berkeley.edu
+ creation date: 12/22/2014
+"""
+from pyRSD.fit import GalaxyRSDFitter
+import argparse
+
+#-------------------------------------------------------------------------------
+def main(args):
+    """
+    The main function
+    """
+    # initialize the fitter
+    fitter = GalaxyRSDFitter(args.param_file, verbose=bool(args.verbose), fig_verbose=bool(args.fig_verbose))
+
+    # find the ML solution
+    fitter.find_ml_solution()
+    
+    # run
+    fitter.run()
+    
+    # save
+    fitter.save_chain()
+#end main
+
+#-------------------------------------------------------------------------------
+if __name__ == '__main__':
+    
+    # parse the input arguments
+    desc = "run the RSD MCMC fitter"
+    parser = argparse.ArgumentParser(description=desc)
+    
+    h = 'the name of the parameter file'
+    parser.add_argument('param_file', type=str, help=h) 
+    
+    h = 'verbosity level'
+    parser.add_argument('--verbose', type=int, choices=[0, 1], default=1, help=h)
+    
+    h = 'figure verbosity level'
+    parser.add_argument('--fig_verbose', type=int, choices=[0, 1], default=1, help=h)
+    args = parser.parse_args()
+    main(args)

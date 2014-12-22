@@ -90,7 +90,7 @@ class DMSpectrum(object):
         """
         F = self.alpha_par / self.alpha_perp
         if (F != 1.):
-            return (k_obs/self.alpha_perp)*(1 + mu_obs**2*(1./F**2 - 1))**0.5
+            return (k_obs/self.alpha_perp)*(1 + mu_obs**2*(1./F**2 - 1))**(0.5)
         else:
             return k_obs/self.alpha_perp
     #end k_true

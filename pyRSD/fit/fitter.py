@@ -12,10 +12,12 @@ from .. import numpy as np, os
 from ..rsd import power_gal
     
 import emcee
+from emcee.utils import MPIPool
 import scipy.optimize as opt
 import functools
 import collections
 import pickle
+import sys
 from pandas import DataFrame, Index
 
 from matplotlib.ticker import MaxNLocator
@@ -103,10 +105,7 @@ class GalaxyRSDFitter(object):
         if self.verbose: print "Initializing the model..."
         self._initialize_model(params)
         if self.verbose: print "...done"
-        
-        # initialize the sampler (must be last)
-        objective = functools.partial(GalaxyRSDFitter.lnprob, self)
-        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective) 
+    
     #end __init__
     
     #---------------------------------------------------------------------------
@@ -118,6 +117,14 @@ class GalaxyRSDFitter(object):
         String names of all the parameter (fixed + free), in the correct order
         """
         return self.pars.keys()
+    
+    #---------------------------------------------------------------------------
+    @property
+    def mcmc_free(self):
+        """
+        MCMC values for free parameters
+        """
+        return np.array([self.mcmc_fits[par]['mean'] for par in self.free_param_names])
     
     #---------------------------------------------------------------------------
     def reshape_pkmu(self, pkmu):
@@ -424,15 +431,17 @@ class GalaxyRSDFitter(object):
             plt.clf()
             
             # do the plot
-            model, data = self.get_model_fit(theta, data_name)
-            plt.errorbar(*data, label='measured data')
-            plt.loglog(*model, c='k', label='model fit')
+            (_, model), (k, data, err) = self.get_model_fit(theta, data_name)
+            y = data / model
+            err = y*err/data
+            plt.errorbar(k, y, err)
             
             # make it look nice
             ax = plt.gca()
+            ax.axhline(y=1, c='k', ls='--')
             ax.legend(loc=0)
             ax.set_xlabel("wavenumber k", fontsize=16)
-            ax.set_ylabel(data_name, fontsize=16)
+            ax.set_ylabel(data_name + " data/model", fontsize=16)
             
             if extra_tag != "":
                 plt.savefig("output_%s/model_fit_%s_%s.png" %(self.tag, extra_tag, data_name))
@@ -574,10 +583,19 @@ class GalaxyRSDFitter(object):
         # find maximum likelihood solution, if we haven't yet
         if not hasattr(self, 'ml_free'):
             self.find_ml_solution()
-          
+            
+        pool = MPIPool()    
+        if not pool.is_master():
+            pool.wait()
+            sys.exit(0)
+                            
+        # initialize the sampler (must be last)
+        objective = functools.partial(GalaxyRSDFitter.lnprob, self)
+        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, pool=pool)
+  
         if self.verbose: print "Running MCMC..."  
         # run the MCMC, either saving the chain or not
-        pos0 = [self.ml_free + 1e-4*np.random.randn(self.N_free) for i in range(self.N_walkers)]
+        pos0 = [self.ml_free + 1e-2*np.random.randn(self.N_free) for i in range(self.N_walkers)]
         if self.save_chains:
             chain_file = "output_%s/chain.dat" %self.tag
             f = open(chain_file, "w")
@@ -627,6 +645,14 @@ class GalaxyRSDFitter(object):
                 self.mcmc_fits[par] = {'mean':self.fiducial[i], '1-sigma':[0., 0.], '2-sigma':[0., 0.]}       
 
     #end compute_quantiles
+    #---------------------------------------------------------------------------
+    def save_chain(self):
+        """
+        Save the chain as a pickle
+        """
+        pickle.dump(self.sampler.chain, open("output_%s/chain.pickle" %self.tag, 'w'))
+    
+    #end save_chain
     #---------------------------------------------------------------------------
 
 #endclass GalaxyRSDFitter

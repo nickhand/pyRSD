@@ -47,5 +47,6 @@ setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
         maintainer=MAINTAINER,
         maintainer_email=MAINTAINER_EMAIL,
         version=VERSION,
-        packages=['pyRSD', 'pyRSD.data', 'pyRSD.rsd']
+        packages=['pyRSD', 'pyRSD.data', 'pyRSD.rsd'],
+        scripts=['pyRSD/scripts/' + script for script in os.listdir('pyRSD/scripts')]
     )

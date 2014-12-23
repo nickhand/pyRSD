@@ -7,8 +7,14 @@
  contact: nhand@berkeley.edu
  creation date: 12/22/2014
 """
+try:
+    from mpi4py import MPI
+    haveMPI = True
+except ImportError:
+    haveMPI = False
 from pyRSD.fit import GalaxyRSDFitter
 import argparse
+import sys
 
 def boolean(string):
     string = string.lower()
@@ -24,9 +30,23 @@ def main(args):
     """
     The main function
     """
+    # set up the mpi variables
+    if haveMPI:
+        comm = MPI.COMM_WORLD
+        nprocs = comm.Get_size()
+        myrank = comm.Get_rank()
+        
+    pool = None
+    if haveMPI and nprocs > 1:        
+        pool = MPIPool()    
+        if not pool.is_master():
+            pool.wait()
+            sys.exit(0)
+
+            
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
-                             threads=args.threads,
+                             pool=pool,
                              verbose=args.verbose, 
                              fig_verbose=args.fig_verbose)
 
@@ -50,9 +70,6 @@ if __name__ == '__main__':
     h = 'the name of the parameter file'
     parser.add_argument('param_file', type=str, help=h) 
 
-    h = 'the number of processors'
-    parser.add_argument('--np', dest='threads', type=int, default=1, help=h)
-    
     h = 'verbosity level'
     parser.add_argument('-v', '--verbose', type=boolean, default=True, help=h)
     

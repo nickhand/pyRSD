@@ -8,12 +8,32 @@
 """
 from . import power_biased, tools
 from .. import numpy as np
+import sys
+
+def fog_modified_lorentzian(x):
+    """
+    Modified Lorentzian FOG model 
+    """
+    return 1./(1 + 0.5*x**2)**2
+
+def fog_lorentzian(x):
+    """
+    Lorentzian FOG model 
+    """
+    return 1./(1 + 0.5*x**2)
+
+def fog_gaussian(x):
+    """
+    Gaussian FOG model 
+    """
+    return np.exp(-0.5*x**2)
+    
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     
     allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['use_mean_bias', 'fog_model']
     
-    def __init__(self, use_mean_bias=False, fog_model=lambda x: 1./(1 + 0.5*x**2)**2, **kwargs):
+    def __init__(self, use_mean_bias=False, fog_model='modified_lorentzian', **kwargs):
         
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
@@ -245,7 +265,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @sigma_sB.deleter
     def sigma_sB(self, val):
         if hasattr(self, '_sigma_sB'): delattr(self, '_sigma_sB')
-        
+    
     #---------------------------------------------------------------------------
     @property
     def fog_model(self):
@@ -253,14 +273,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Function to return the FOG suppression factor, which reads in a 
         single variable `x = k \mu \sigma`
         """
-        try:
-            return self._fog_model
-        except AttributeError:
-            raise ValueError("Must specify the FOG damping model 'fog_model'")
+        return self._fog_model
     
     @fog_model.setter
     def fog_model(self, val):
-        self._fog_model = val
+        assert val in ['modified_lorentzian', 'lorentzian', 'gaussian']
+        mod = sys.modules[__name__]
+        self._fog_model = getattr(mod, 'fog_'+val)
         
     #---------------------------------------------------------------------------
     # 1-HALO ATTRIBUTES

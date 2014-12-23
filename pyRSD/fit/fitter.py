@@ -12,7 +12,6 @@ from .. import numpy as np, os
 from ..rsd import power_gal
     
 import emcee
-from emcee.utils import MPIPool
 import scipy.optimize as opt
 import functools
 import collections

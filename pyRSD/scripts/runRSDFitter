@@ -12,10 +12,14 @@ try:
     haveMPI = True
 except ImportError:
     haveMPI = False
+if haveMPI:
+    from emcee.utils import MPIPool
+        
 from pyRSD.fit import GalaxyRSDFitter
 import argparse
 import sys
 
+#-------------------------------------------------------------------------------
 def boolean(string):
     string = string.lower()
     if string in ['0', 'f', 'false', 'no', 'off']:

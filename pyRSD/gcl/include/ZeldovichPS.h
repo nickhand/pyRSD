@@ -15,7 +15,9 @@
 class ZeldovichPS  {
 public:
        
+    // constructors
     ZeldovichPS(const PowerSpectrum& P_L);
+    ZeldovichPS(const PowerSpectrum& P_L, double z, double sigma8, double sigma_sq, const parray& X, const parray& Y);
     virtual ~ZeldovichPS();
     
     virtual double Evaluate(double k) const; 
@@ -29,12 +31,16 @@ public:
     const double& GetRedshift() const { return z; }
     const double& GetSigma8() const { return sigma8; }
     const Cosmology& GetCosmology() const { return P_L.GetCosmology(); }
- 
+    parray GetXZel() const { return XX; }
+    parray GetYZel() const { return YY; }
+    const double& GetSigmaSq() const { return sigma_sq; }
+            
+            
     // set the redshift and sigma8
     // convenience tracking so we don't recompute XX, YY, sigma_sq if sigma8, z change
     void SetRedshift(double z); 
     void SetSigma8(double sigma8);
-     
+         
 protected:
 
     // power spectrum reference
@@ -48,6 +54,7 @@ protected:
     double sigma_sq;
     parray r, XX, YY; 
     
+    void InitializeR();
     double fftlog_compute(double k, const double factor = 1) const;
     virtual void Fprim(parray&, const parray&, double) const;
     virtual void Fsec(parray&, const parray&, double, double) const;

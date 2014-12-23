@@ -12,7 +12,8 @@ double KMIN = 1e-5;
 double KMAX = 1e1;
 int NUM_PTS = 1000;
 
-OneLoopPS::OneLoopPS(const PowerSpectrum& P_L_, double epsrel) : P_L(P_L_), I(P_L, epsrel), J(P_L, epsrel) {}
+OneLoopPS::OneLoopPS(const PowerSpectrum& P_L_, double epsrel_) : P_L(P_L_), 
+epsrel(epsrel_), I(P_L, epsrel), J(P_L, epsrel) {}
 
 double OneLoopPS::EvaluateFull(double k) const {
     if (k > KMAX)

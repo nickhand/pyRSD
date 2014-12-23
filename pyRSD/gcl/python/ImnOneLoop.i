@@ -16,5 +16,21 @@ public:
 
     double EvaluateOneLoop(double k, int m, int n) const;
     parray EvaluateOneLoop(const parray& k, int m, int n) const;
+    
+    const OneLoopPS& GetOneLoopPS1() const;
+    const OneLoopPS& GetOneLoopPS2() const;
+    const double& GetEpsrel() const;
+    const bool GetEqual() const;
 };
+
+%extend ImnOneLoop {
+%pythoncode {
+    def __reduce__(self):
+        if (self.GetEqual()):
+            args = self.GetOneLoopPS1(), self.GetEpsrel()
+        else:
+            args = self.GetOneLoopPS1(), self.GetOneLoopPS2(), self.GetEpsrel()
+        return self.__class__, args
+}
+}
 

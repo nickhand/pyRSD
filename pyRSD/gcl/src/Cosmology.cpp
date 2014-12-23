@@ -17,16 +17,9 @@ Cosmology::Cosmology() {}
 
 Cosmology::~Cosmology() {}
 
-Cosmology::Cosmology(const ClassParams& pars,  TransferFit tf, const std::string& tkfile, const std::string& precision_file) 
-: ClassCosmology(pars, precision_file), sigma8_(0.), delta_H_(1.), transfer_fit_(tf)
-{
- 
-    // initialize the transfer object
-    InitializeTransferFunction(tf, tkfile);
-}
-
 Cosmology::Cosmology(const std::string& param_file,  TransferFit tf, const std::string& tkfile, const std::string& precision_file)
-: ClassCosmology(param_file, precision_file), sigma8_(0.), delta_H_(1.), transfer_fit_(tf)
+: ClassCosmology(param_file, precision_file), sigma8_(0.), delta_H_(1.), 
+  transfer_fit_(tf), param_file_(param_file), transfer_file_(tkfile), precision_file_(precision_file)
 {
     InitializeTransferFunction(tf, tkfile);
 }

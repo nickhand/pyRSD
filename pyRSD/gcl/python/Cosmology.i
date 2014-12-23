@@ -7,7 +7,6 @@ class Cosmology : public ClassCosmology {
 public:    
     enum TransferFit {CLASS, EH, EH_NoWiggle, BBKS, FromFile};
     
-    Cosmology(const ClassParams& pars, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
     Cosmology(const std::string& param_file, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
     ~Cosmology();
 
@@ -22,7 +21,18 @@ public:
     double delta_H() const;
     double sigma8() const;
     
-    TransferFit transfer_fit() const;
+    TransferFit GetTransferFit() const;
+    const std::string& GetParamFile() const;
+    const std::string& GetTransferFile() const;
+    const std::string& GetPrecisionFile() const;
     double EvaluateTransfer(double k) const;
 
 };
+
+%extend Cosmology {
+%pythoncode {
+    def __reduce__(self):
+        args = self.GetParamFile(), self.GetTransferFit(), self.GetTransferFile(), self.GetPrecisionFile()
+        return self.__class__, args
+}
+}

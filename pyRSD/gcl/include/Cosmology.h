@@ -30,8 +30,6 @@ public:
     
         
     Cosmology();
-    // construct from a ClassParams object
-    Cosmology(const ClassParams& pars, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
     // construct directly from a parameter file
     Cosmology(const std::string& param_file, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
     
@@ -59,8 +57,12 @@ public:
     inline double A_s() const { return ClassCosmology::A_s() * Common::pow2(sigma8_/ClassCosmology::sigma8()); }
     inline double ln_1e10_A_s() const { return log(1e10*A_s()); }
     
-    // the type of transfer fit
-    inline TransferFit transfer_fit() const { return transfer_fit_; }
+    // accessors
+    inline TransferFit GetTransferFit() const { return transfer_fit_; }
+    inline const std::string& GetParamFile() const { return param_file_; }
+    inline const std::string& GetTransferFile() const { return transfer_file_; }
+    inline const std::string& GetPrecisionFile() const { return precision_file_; }
+    
     
     // evaluate at k in h/Moc
     double EvaluateTransfer(double k) const;
@@ -71,6 +73,7 @@ private:
     double sigma8_;      /* power spectrum variance smoothed at 8 Mpc/h */
     double delta_H_;     /* normalization of linear power spectrum at z = 0 */
     TransferFit transfer_fit_;   /* the transfer fit method */
+    std::string param_file_, transfer_file_, precision_file_;
     
     parray ki, Ti;
     double k0, T0, T0_nw;        // k and T(k) of left-most data point

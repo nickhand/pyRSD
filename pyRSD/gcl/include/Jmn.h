@@ -30,6 +30,9 @@ public:
     parray EvaluateMany(const parray& k, int m, int n) const;
     parray operator()(const parray& k, int m, int n) const { return EvaluateMany(k, m, n); }
     
+    const PowerSpectrum& GetLinearPS() const { return P_L; }
+    const double& GetEpsrel() const { return epsrel; }
+    
 private:
     const PowerSpectrum& P_L;
     double epsrel;

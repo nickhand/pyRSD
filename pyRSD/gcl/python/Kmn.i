@@ -12,5 +12,16 @@ public:
     
     // translated to __call__ -> calls EvaluateMany(K)
     parray operator()(const parray& k, int m, int n, bool tidal=false, int part=0) const;
+    
+    const LinearPS& GetLinearPS() const;
+    const double& GetEpsrel() const;
 };
+
+%extend Kmn {
+%pythoncode {
+    def __reduce__(self):
+        args = self.GetLinearPS(), self.GetEpsrel()
+        return self.__class__, args
+}
+}
 

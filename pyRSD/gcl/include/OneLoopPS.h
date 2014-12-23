@@ -30,10 +30,12 @@ public:
     const PowerSpectrum& GetLinearPS() const { return P_L; }
     const double& GetRedshift() const { return P_L.GetRedshift(); }
     const Cosmology& GetCosmology() const { return P_L.GetCosmology(); }
-
+    const double& GetEpsrel() const { return epsrel; }
+    
 protected:
     
     const PowerSpectrum& P_L;
+    double epsrel;
     Imn I; 
     Jmn J;
     Spline oneloop_spline; 

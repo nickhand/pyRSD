@@ -11,10 +11,20 @@ public:
     double EvaluateFull(double k) const;
     parray EvaluateFull(const parray& k) const;
     
-    const PowerSpectrum& GetLinearPS() const;
+    const LinearPS& GetLinearPS() const;
     const double& GetRedshift() const;
     const Cosmology& GetCosmology() const;
+    const double& GetEpsrel() const;
 };
+
+%extend OneLoopPS {
+%pythoncode {
+    def __reduce__(self):
+        args = self.GetLinearPS(), self.GetEpsrel()
+        return self.__class__, args
+}
+}
+
 
 class OneLoopPdd : public OneLoopPS {
 

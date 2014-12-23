@@ -11,9 +11,21 @@ static const int NMAX = 15;
 ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_) 
     : P_L(P_L_), z(P_L.GetRedshift()), sigma8(P_L.GetCosmology().sigma8())
 {    
-    // compute the integrals and mesh parameters
-    sigma_sq = P_L.VelocityDispersion();
-   
+    InitializeR();
+
+    sigma_sq = P_L.VelocityDispersion();    
+    XX = P_L.X_Zel(r) + 2.*sigma_sq;
+    YY = P_L.Y_Zel(r); 
+}
+
+ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_, double z_, double sigma8_, double sigmasq,
+                         const parray& X, const parray& Y) 
+: P_L(P_L_), z(z_), sigma8(sigma8_), sigma_sq(sigmasq), XX(X), YY(Y)
+{
+    InitializeR();     
+}
+void ZeldovichPS::InitializeR() {
+    
     r = parray(NUM_PTS);     
     nc = 0.5*double(NUM_PTS+1);
     double logrmin = log10(RMIN); 
@@ -23,9 +35,6 @@ ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_)
     
     for (int i = 1; i <= NUM_PTS; i++)
         r[i-1] = pow(10., (logrc+(i-nc)*dlogr));
-    
-    XX = P_L.X_Zel(r) + 2.*sigma_sq;
-    YY = P_L.Y_Zel(r); 
 }
 
 ZeldovichPS::~ZeldovichPS() {}

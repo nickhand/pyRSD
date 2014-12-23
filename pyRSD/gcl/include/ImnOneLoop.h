@@ -37,6 +37,12 @@ public:
     double EvaluateOneLoop(double k, int m, int n) const;
     parray EvaluateOneLoop(const parray& k, int m, int n) const;
     
+    // accessors
+    const OneLoopPS& GetOneLoopPS1() const { return P_1; }
+    const OneLoopPS& GetOneLoopPS2() const { return P_2; }
+    const double& GetEpsrel() const { return epsrel; }
+    const bool GetEqual() const { return equal; }
+    
 protected:
     const OneLoopPS& P_1;
     double epsrel;

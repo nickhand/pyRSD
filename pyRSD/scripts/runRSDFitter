@@ -10,13 +10,25 @@
 from pyRSD.fit import GalaxyRSDFitter
 import argparse
 
+def boolean(string):
+    string = string.lower()
+    if string in ['0', 'f', 'false', 'no', 'off']:
+        return False
+    elif string in ['1', 't', 'true', 'yes', 'on']:
+        return True
+    else:
+        raise ValueError()
+
 #-------------------------------------------------------------------------------
 def main(args):
     """
     The main function
     """
     # initialize the fitter
-    fitter = GalaxyRSDFitter(args.param_file, verbose=bool(args.verbose), fig_verbose=bool(args.fig_verbose))
+    fitter = GalaxyRSDFitter(args.param_file, 
+                             threads=args.threads,
+                             verbose=args.verbose, 
+                             fig_verbose=args.fig_verbose)
 
     # find the ML solution
     fitter.find_ml_solution()
@@ -37,11 +49,16 @@ if __name__ == '__main__':
     
     h = 'the name of the parameter file'
     parser.add_argument('param_file', type=str, help=h) 
+
+    h = 'the number of processors'
+    parser.add_argument('--np', dest='threads', type=int, default=1, help=h)
     
     h = 'verbosity level'
-    parser.add_argument('--verbose', type=int, choices=[0, 1], default=1, help=h)
+    parser.add_argument('-v', '--verbose', type=boolean, default=True, help=h)
     
     h = 'figure verbosity level'
-    parser.add_argument('--fig_verbose', type=int, choices=[0, 1], default=1, help=h)
+    parser.add_argument('-fv', '--fig_verbose', type=boolean, default=True, help=h)
     args = parser.parse_args()
     main(args)
+    
+#-------------------------------------------------------------------------------

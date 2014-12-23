@@ -27,6 +27,54 @@ except:
     import matplotlib.pyplot as plt
 
 #-------------------------------------------------------------------------------
+class Likelihood(object):
+	def __init__(self, fitter):
+		self.fitter = fitter
+
+	def __call__(self, theta):
+		return lnprob(self.fitter, theta)
+
+#---------------------------------------------------------------------------
+# Likelihood functions
+#---------------------------------------------------------------------------            
+def lnprior(fitter, theta):
+    """
+    Return the log of the prior, assuming uniform priors on all parameters
+    """
+    value_array = fitter.all_param_values(theta)
+    cond = [fitter.bounds[i][0] < value_array[i] < fitter.bounds[i][1] for i in xrange(fitter.N_total)]
+    return 0. if all(cond) else -np.inf    
+#end lnprior
+
+#---------------------------------------------------------------------------
+def lnlike(fitter, theta):
+    """
+    The log of likelihood function for the specified model function
+    """    
+    # get the array of fixed+free parameters
+    value_array = fitter.all_param_values(theta)
+
+    # update the model 
+    fitter.model.update(**fitter.model_kwargs(value_array))
+    model_values = np.concatenate([f() for f in fitter.model_callables])
+
+    # this is chi squared
+    diff = model_values - fitter.data_y
+    chi2 = np.dot(diff, np.dot(fitter.C_inv, diff))
+    return -0.5*chi2
+#end lnlike
+
+#---------------------------------------------------------------------------
+def lnprob(fitter, theta):
+    """
+    The log of the posterior probability function, defined as likelihood * prior
+    """
+    lp = fitter.lnprior(theta)
+    value_array = fitter.all_param_values(theta)
+    return lp + fitter.lnlike(theta) if np.isfinite(lp) else -np.inf 
+#end lnprob
+        
+#-------------------------------------------------------------------------------
 def normalize_covariance_matrix(covar):
     """
     Return the correlation matrix from a covariance matrix
@@ -68,12 +116,14 @@ class GalaxyRSDFitter(object):
     """
     Subclass of `emcee.EnsembleSampler` to compute parameter fits for RSD models
     """
-    def __init__(self, param_file, verbose=True, fig_verbose=True):
+    def __init__(self, param_file, threads=1, verbose=True, fig_verbose=True):
         """
         Parameters
         ----------
         param_file : str
             The name of the file holding the parameters to read
+        threads : int
+            The number of threads to use in multiprocessing
         verbose : bool, optional
             If `True`, print info about the fit to standard output
         fig_verbose : bool, optional
@@ -90,6 +140,7 @@ class GalaxyRSDFitter(object):
         self.burnin      = params['burnin']
         self.verbose     = verbose
         self.fig_verbose = fig_verbose
+        self.threads     = threads
         
         # initialize the output directory
         if not os.path.exists("output_%s" %self.tag):
@@ -507,52 +558,12 @@ class GalaxyRSDFitter(object):
     #end make_triangle_plot
     
     #---------------------------------------------------------------------------
-    # Likelihood functions
-    #---------------------------------------------------------------------------            
-    def lnprior(self, theta):
-        """
-        Return the log of the prior, assuming uniform priors on all parameters
-        """
-        value_array = self.all_param_values(theta)
-        cond = [self.bounds[i][0] < value_array[i] < self.bounds[i][1] for i in xrange(self.N_total)]
-        return 0. if all(cond) else -np.inf    
-    #end lnprior
-    
-    #---------------------------------------------------------------------------
-    def lnlike(self, theta):
-        """
-        The log of likelihood function for the specified model function
-        """    
-        # get the array of fixed+free parameters
-        value_array = self.all_param_values(theta)
-        
-        # update the model 
-        self.model.update(**self.model_kwargs(value_array))
-        model_values = np.concatenate([f() for f in self.model_callables])
-
-        # this is chi squared
-        diff = model_values - self.data_y
-        chi2 = np.dot(diff, np.dot(self.C_inv, diff))
-        return -0.5*chi2
-    #end lnlike
-    
-    #---------------------------------------------------------------------------
-    def lnprob(self, theta):
-        """
-        The log of the posterior probability function, defined as likelihood * prior
-        """
-        lp = self.lnprior(theta)
-        value_array = self.all_param_values(theta)
-        return lp + self.lnlike(theta) if np.isfinite(lp) else -np.inf 
-    #end lnprob
-    
-    #---------------------------------------------------------------------------
     def find_ml_solution(self):
         """
         Find the parameters that maximizes the likelihood
         """
         # set up the fit
-        chi2 = lambda theta: -2 * self.lnlike(theta)
+        chi2 = lambda theta: -2 * lnlike(self, theta)
         free_fiducial = self.fiducial[self.free_indices]
         
         # get the max-likelihood values
@@ -565,7 +576,7 @@ class GalaxyRSDFitter(object):
             
         self.ml_values = self.all_param_values(result['x'])
         self.ml_free = result["x"]
-        self.ml_minchi2 = self.lnlike(result["x"])*(-2.)
+        self.ml_minchi2 = chi2(result['x'])
         
         if self.verbose:
             self.print_ml_result()
@@ -583,15 +594,10 @@ class GalaxyRSDFitter(object):
         # find maximum likelihood solution, if we haven't yet
         if not hasattr(self, 'ml_free'):
             self.find_ml_solution()
-            
-        pool = MPIPool()    
-        if not pool.is_master():
-            pool.wait()
-            sys.exit(0)
-                            
+  
         # initialize the sampler (must be last)
-        objective = functools.partial(GalaxyRSDFitter.lnprob, self)
-        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, pool=pool)
+        objective = Likelihood(self)
+        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, threads=self.threads)
   
         if self.verbose: print "Running MCMC..."  
         # run the MCMC, either saving the chain or not

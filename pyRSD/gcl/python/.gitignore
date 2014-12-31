@@ -1,5 +1,5 @@
 /build
-/pygcl_wrap.cpp
-pygcl.py
-_pygcl.so
-pygcl_wrap.h
+/gcl_wrap.cpp
+gcl.py
+_gcl.so
+gcl_wrap.h

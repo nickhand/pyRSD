@@ -28,15 +28,6 @@ public:
     
 };
 
-%extend ZeldovichPS {
-%pythoncode {
-    def __reduce__(self):
-        args = self.GetLinearPS(), self.GetRedshift(), self.GetSigma8(), \
-               self.GetSigmaSq(), self.GetXZel(), self.GetYZel()
-        return self.__class__, args
-}
-}
-
 class ZeldovichP00 : public ZeldovichPS {
 
 public:

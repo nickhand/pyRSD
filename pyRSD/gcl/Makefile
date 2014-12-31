@@ -93,7 +93,7 @@ FOBJS = fftlog.o cdgamma.o drfftb.o drffti.o drfftf.o
 # Libraries
 #-------------------------------------------------------------------------------
 LIBRARY = libgcl.a
-PY_LIBRARY = pygcl
+PY_LIBRARY = gcl
 
 #-------------------------------------------------------------------------------
 # Rules

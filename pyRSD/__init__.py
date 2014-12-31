@@ -1,4 +1,5 @@
-"""pyRSD
+"""
+pyRSD
 
 ``pyRSD`` is a collection of algorithms to compute the redshift space matter 
 power spectra using perturbation theory and the redshift space distortion (RSD) 

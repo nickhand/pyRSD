@@ -25,14 +25,21 @@ public:
     const std::string& GetParamFile() const;
     const std::string& GetTransferFile() const;
     const std::string& GetPrecisionFile() const;
+    parray GetKi() const { return ki; } 
+    parray GetTi() const { return Ti; }
+    
     double EvaluateTransfer(double k) const;
+    
 
 };
 
 %extend Cosmology {
-%pythoncode {
-    def __reduce__(self):
-        args = self.GetParamFile(), self.GetTransferFit(), self.GetTransferFile(), self.GetPrecisionFile()
-        return self.__class__, args
-}
+    %pythoncode {
+        def __setstate__(self, state):
+            self.__init__(*state['args'])
+
+        def __getstate__(self):
+            args = self.GetParamFile(), self.GetTransferFit(), self.GetTransferFile(), self.GetPrecisionFile()
+            return {'args': args}
+    }
 }

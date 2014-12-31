@@ -1,4 +1,4 @@
-%module pygcl
+%module gcl
 
 %{
 #define SWIG_FILE_WITH_INIT
@@ -11,8 +11,6 @@
 %init %{
     import_array();
 %}
-
-%module(directors="1") pygcl
 
 %include "typemaps.i"
 %include "std_string.i"

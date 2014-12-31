@@ -17,11 +17,3 @@ public:
     const double& GetEpsrel() const;
 };
 
-%extend Kmn {
-%pythoncode {
-    def __reduce__(self):
-        args = self.GetLinearPS(), self.GetEpsrel()
-        return self.__class__, args
-}
-}
-

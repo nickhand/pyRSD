@@ -20,7 +20,7 @@ os.environ['CXX'] = 'g++'
 # clean previous build
 for root, dirs, files in os.walk(".", topdown=False):
     for name in files:
-        if (not name.endswith(".i") and (name.startswith("pygcl") or name.startswith("_pygcl"))):
+        if (not name.endswith(".i") and (name.startswith("gcl") or name.startswith("_gcl"))):
             os.remove(os.path.join(root, name))
             
     for name in dirs:
@@ -28,8 +28,8 @@ for root, dirs, files in os.walk(".", topdown=False):
             shutil.rmtree(name)
 
 # setup the extension
-pygcl_module = Extension('_pygcl',
-                         sources=['pygcl.i'],
+gcl_module = Extension('_gcl',
+                         sources=['gcl.i'],
                          swig_opts=['-c++', '-Wall'], 
                          include_dirs=[numpy.get_include()],
                          extra_link_args=["-L..", "-g", "-fPIC"],
@@ -37,5 +37,5 @@ pygcl_module = Extension('_pygcl',
                          )
 
 # actually do the setup 
-setup(name = 'pygcl', version = '0.1', ext_modules = [pygcl_module], py_modules = ["pygcl"])
+setup(name = 'gcl', version = '0.1', ext_modules = [gcl_module], py_modules = ["gcl"])
        

@@ -10,10 +10,3 @@ public:
     const double& GetRedshift() const;
 };
 
-%extend LinearPS {
-%pythoncode {
-    def __reduce__(self):
-        args = self.GetCosmology(), self.GetRedshift()
-        return self.__class__, args
-}
-}

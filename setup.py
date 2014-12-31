@@ -7,7 +7,7 @@ import os
 class MyInstall(DistutilsInstall):
     
     def run(self):
-        ans = os.system("cd pyRSD/gcl; make pygcl;")
+        ans = os.system("cd pyRSD/gcl; make gcl;")
         if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue")
         DistutilsInstall.run(self)
 

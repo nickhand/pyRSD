@@ -94,7 +94,8 @@ static double g20(double r) {
 }
 
 static double JmnIntegrand(double (*g)(double), const PowerSpectrum& P_L, double k, double logq) {
-    double q = exp(logq), r = q/k;;
+    double q = exp(logq), r = q/k;
+    if (r == 1.) r = 1.-1e-10;
     return q * P_L(q) * g(r);
 }
 

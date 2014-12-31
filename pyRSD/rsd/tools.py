@@ -2,13 +2,69 @@ from .. import pygcl
 
 import numpy as np
 import bisect
-from scipy.interpolate import interp1d
+from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import simps
 from scipy.optimize import brentq
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
 import warnings
 
+#-------------------------------------------------------------------------------
+class RSDSpline(InterpolatedUnivariateSpline):
+    """
+    Class to implement a spline that remembers the x-domain
+    """
+    def __init__(self, *args, **kwargs):
+        
+        self.bounds_error = kwargs.pop('bounds_error', False)
+        self.fill_value = kwargs.pop('fill_value', 0.)
+        self.x = args[0]
+        super(RSDSpline, self).__init__(*args, **kwargs)
+
+    #----------------------------------------------------------------------------
+    def _check_bounds(self, x_new):
+        """
+        Check the inputs for being in the bounds of the interpolated data.
+
+        Parameters
+        ----------
+        x_new : array
+
+        Returns
+        -------
+        out_of_bounds : bool array
+            The mask on x_new of values that are out of the bounds.
+        """
+        # If self.bounds_error is True, we raise an error if any x_new values
+        # fall outside the range of x.  Otherwise, we return an array indicating
+        # which values are outside the boundary region.
+        below_bounds = x_new < self.x[0]
+        above_bounds = x_new > self.x[-1]
+
+        # !! Could provide more information about which values are out of bounds
+        if self.bounds_error and below_bounds.any():
+            raise ValueError("A value in x_new is below the interpolation "
+                "range.")
+        if self.bounds_error and above_bounds.any():
+            raise ValueError("A value in x_new is above the interpolation "
+                "range.")
+
+        out_of_bounds = np.logical_or(below_bounds, above_bounds)
+        return out_of_bounds
+            
+    #---------------------------------------------------------------------------
+    def __call__(self, x_new):
+        out_of_bounds = self._check_bounds(x_new)
+        y_new = InterpolatedUnivariateSpline.__call__(self, x_new)
+        if np.isscalar(y_new):
+            return self.fill_value if out_of_bounds else y_new
+        else:
+            y_new[out_of_bounds] = self.fill_value
+            return y_new
+    #---------------------------------------------------------------------------
+#endclass RSDSpline
+
+#-------------------------------------------------------------------------------
 def extrap1d(interpolator):
     """
     A 1d extrapolator function, using linear extrapolation

@@ -160,8 +160,11 @@ void Cosmology::InitializeTransferFunction(TransferFit tf, const std::string& tk
         LoadTransferFunction(tkfile);
     } else if (tf == CLASS) {
         
+        verbose("Computing CLASS transfer function\n");
         ki = parray::logspace(1e-5, k_max(), 500);
-        GetTk(0., ki, Ti);
+        int ans = GetTk(0., ki, Ti);
+        if (ans > 0) 
+            error("Error computing CLASS transfer spline in Cosmology\n");
     }
     
     // set EH params

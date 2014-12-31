@@ -19,14 +19,11 @@ public:
     double A_s() const;
     double ln_1e10_A_s() const;
     double delta_H() const;
-    double sigma8() const;
-    
+    double sigma8() const;    
     TransferFit GetTransferFit() const;
     const std::string& GetParamFile() const;
     const std::string& GetTransferFile() const;
     const std::string& GetPrecisionFile() const;
-    parray GetKi() const { return ki; } 
-    parray GetTi() const { return Ti; }
     
     double EvaluateTransfer(double k) const;
     

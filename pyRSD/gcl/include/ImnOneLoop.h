@@ -41,7 +41,7 @@ public:
     const OneLoopPS& GetOneLoopPS1() const { return P_1; }
     const OneLoopPS& GetOneLoopPS2() const { return P_2; }
     const double& GetEpsrel() const { return epsrel; }
-    const bool GetEqual() const { return equal; }
+    const bool& GetEqual() const { return equal; }
     
 protected:
     const OneLoopPS& P_1;

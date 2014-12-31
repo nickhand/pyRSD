@@ -63,7 +63,6 @@ public:
     inline const std::string& GetTransferFile() const { return transfer_file_; }
     inline const std::string& GetPrecisionFile() const { return precision_file_; }
     
-    
     // evaluate at k in h/Moc
     double EvaluateTransfer(double k) const;
     

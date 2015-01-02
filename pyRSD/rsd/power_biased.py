@@ -43,6 +43,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         self._delete_splines()
         
     #end _delete_power    
+    
     #---------------------------------------------------------------------------
     # SET ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -99,7 +100,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._default_stoch_args
         except:
-            self._default_stoch_args = tools.LambdaStochasticity()
+            self._default_stoch_args = tools.LambdaStochasticityFits()
             return self._default_stoch_args
         
     #---------------------------------------------------------------------------
@@ -149,6 +150,18 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         
     #---------------------------------------------------------------------------
     @property
+    def sigmav_fitter(self):
+        """
+        Interpolator from simulation data for sigmav
+        """
+        try:
+            return self._sigmav_fitter
+        except:
+            self._sigmav_fitter = tools.SigmavFits()
+            return self._sigmav_fitter
+            
+    #---------------------------------------------------------------------------
+    @property
     def sigma_v(self):
         """
         The velocity dispersion at z = 0. If not provided and ``sigma_from_sims
@@ -159,8 +172,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         except AttributeError:
             
             if self.sigma_from_sims:
-                mean_bias = np.sqrt(self.b1 * self.b1_bar)
-                sigma_v = tools.sigma_from_sims(mean_bias, self.z)
+                mean_bias = np.sqrt(self.b1*self.b1_bar)
+                sigma_v = self.sims_sigmav_fitter(mean_bias, self.z)
                 sigma_v /= (self.f*self.D*100.) # this should be in Mpc/h now
                 return sigma_v[0]
             else:
@@ -230,6 +243,18 @@ class BiasedSpectrum(power_dm.DMSpectrum):
     
     #---------------------------------------------------------------------------
     @property
+    def nonlinear_bias_fitter(self):
+        """
+        Interpolator from simulation data for sigmav
+        """
+        try:
+            return self._nonlinear_bias_fitter
+        except:
+            self._nonlinear_bias_fitter = tools.NonlinearBiasFits()
+            return self._nonlinear_bias_fitter
+    
+    #---------------------------------------------------------------------------
+    @property
     def b2_00(self):
         """
         The quadratic, local bias used for the P00_ss term.
@@ -237,7 +262,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_00
         except:
-            return tools.b2_00(self.b1, self.z)[0]
+            return self.nonlinear_bias_fitter(self.b1, self.z)[0]
             #raise ValueError("Must specify quadratic, local bias 'b2_00' attribute.")
             
     @b2_00.setter
@@ -259,7 +284,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_01
         except:
-            return tools.b2_01(self.b1, self.z)[0]
+            return self.nonlinear_bias_fitter(self.b1, self.z)[1]
             #raise ValueError("Must specify quadratic, local bias 'b2_01' attribute.")
             
     @b2_01.setter
@@ -331,7 +356,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_00_bar
         except:
-            return tools.b2_00(self.b1_bar, self.z)[0]
+            return self.nonlinear_bias_fitter(self.b1_bar, self.z)[0]
             #raise ValueError("Must specify quadratic, local bias 'b2_00' attribute.")
             
     @b2_00_bar.setter
@@ -354,7 +379,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_01_bar
         except:
-            return tools.b2_01(self.b1_bar, self.z)[0]
+            return self.nonlinear_bias_fitter(self.b1_bar, self.z)[1]
             #raise ValueError("Must specify quadratic, local bias 'b2_01' attribute.")
             
     @b2_01_bar.setter

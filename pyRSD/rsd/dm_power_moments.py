@@ -9,7 +9,7 @@
 from .. import pygcl, numpy as np, os
 from ..data import P11_mu4_z_0_000, P11_mu4_z_0_509, P11_mu4_z_0_989
 from ..data import Pdv_mu0_z_0_000, Pdv_mu0_z_0_509, Pdv_mu0_z_0_989
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
+from .tools import RSDSpline as spline
 import collections
 import bisect
 

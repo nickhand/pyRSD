@@ -175,7 +175,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 mean_bias = np.sqrt(self.b1*self.b1_bar)
                 sigma_v = self.sigmav_fitter(mean_bias, self.z)
                 sigma_v /= (self.f*self.D*100.) # this should be in Mpc/h now
-                return sigma_v[0]
+                return sigma_v
             else:
                 return self.sigma_lin
         

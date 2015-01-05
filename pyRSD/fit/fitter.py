@@ -653,11 +653,7 @@ class GalaxyRSDFitter(object):
         else:
             self.sampler.run_mcmc(pos0, self.N_iters, rstate0=state)
         if self.verbose: print "...done"      
-        
-        # close the pool processes
-        if self.pool is not None: 
-            self.pool.close()
-            
+                    
         # save the results
         self.write_mcmc_results()
             

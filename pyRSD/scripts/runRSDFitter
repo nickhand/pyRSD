@@ -11,7 +11,7 @@ try:
     from emcee.utils import MPIPool
 except ImportError:
     pass
-from pyRSD.fit import fitter
+from pyRSD import fit
 import argparse
 import sys
 
@@ -40,19 +40,19 @@ def main(args):
         sys.exit(0)
 
     # initialize the fitter
-    fitter = fitter.GalaxyRSDFitter(args.param_file, 
-                                    pool=pool,
-                                    burnin=args.burnin,
-                                    iterations=args.iterations,
-                                    walkers=args.walkers,
-                                    verbose=args.verbose, 
-                                    fig_verbose=args.fig_verbose)
+    f = fit.fitter.GalaxyRSDFitter(args.param_file, 
+                                pool=pool,
+                                burnin=args.burnin,
+                                iterations=args.iterations,
+                                walkers=args.walkers,
+                                verbose=args.verbose, 
+                                fig_verbose=args.fig_verbose)
 
     # run
-    fitter.run()
+    f.run()
     
     # save
-    fitter.save_results()
+    f.save_results()
 #end main
 
 #-------------------------------------------------------------------------------

@@ -23,7 +23,6 @@ from matplotlib.ticker import MaxNLocator
 import emcee
 from pandas import DataFrame, Index
 import plotify as pfy
-from utils import utilities
 
 #-------------------------------------------------------------------------------
 # TOOLS FOR THIS MODULE
@@ -638,21 +637,15 @@ class GalaxyRSDFitter(object):
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
         self.sampler = emcee.EnsembleSampler(self.walkers, self.N_free, objective, pool=self.pool)
         
-        # set up the progress bar
-        bar = utilities.initializeProgressBar(self.iterations)
-        i = 0
-        
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
         start = time.time()
         p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
-        for result in self.sampler.sample(p0, iterations=self.burnin):
-            bar.update(i+1)
-            i += 1
+        pos, prob, state = self.sampler.run_mcmc(p0, iterations=self.burnin):
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)
         
-        return result[0], result[2]
+        return pos, state
     #end run_burnin
     
     #---------------------------------------------------------------------------
@@ -665,27 +658,11 @@ class GalaxyRSDFitter(object):
              
         # reset the chain to remove the burn-in samples.
         self.sampler.reset()
-                                  
-        # set up the progress bar
-        bar = utilities.initializeProgressBar(self.iterations)
-        i = 0
-        
-        # output chain file
-        chain_file = "output_%s/chain.dat" %self.tag
-        f = open(chain_file, "w")
-        f.close()
-        
+                                          
         # run the MCMC, saving along the way
         if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
         start = time.time()
-        for result in self.sampler.sample(pos0, iterations=self.iterations, rstate0=state):
-            bar.update(i+1)
-            position = result[0]
-            f = open(chain_file, "a")
-            for k in range(position.shape[0]):
-                f.write("{0:4d} {1:s}\n".format(k, " ".join(str(x) for x in position[k])))
-            i += 1
-            f.close()
+        self.sampler.run_mcmc(pos0, self.iterations, rstate0=state):
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)    
         

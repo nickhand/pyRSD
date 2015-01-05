@@ -23,7 +23,7 @@ from matplotlib.ticker import MaxNLocator
 import emcee
 from pandas import DataFrame, Index
 import plotify as pfy
-from utils import utilities
+from utils impor
 
 #-------------------------------------------------------------------------------
 # TOOLS FOR THIS MODULE

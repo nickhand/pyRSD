@@ -13,19 +13,18 @@ from ..rsd import power_gal
  
 import copy_reg
 import types   
-import emcee
 import scipy.optimize as opt
 import functools
 import collections
 import pickle
-from pandas import DataFrame, Index
 import time
-
 from matplotlib.ticker import MaxNLocator
-try:
-    import plotify as plt
-except:
-    import matplotlib.pyplot as plt
+
+import emcee
+from pandas import DataFrame, Index
+import plotify as pfy
+from utils import utilities
+
 
 #-------------------------------------------------------------------------------
 def _pickle_method(method):
@@ -86,7 +85,14 @@ class GalaxyRSDFitter(object):
     """
     Subclass of `emcee.EnsembleSampler` to compute parameter fits for RSD models
     """
-    def __init__(self, param_file, pool=None, verbose=True, fig_verbose=True):
+    def __init__(self, 
+                 param_file, 
+                 pool=None, 
+                 burnin=50,
+                 iterations=500,
+                 walkers=20,
+                 verbose=True, 
+                 fig_verbose=True):
         """
         Parameters
         ----------
@@ -94,6 +100,12 @@ class GalaxyRSDFitter(object):
             The name of the file holding the parameters to read
         pool : int, optional
             The MPI pool
+        burnin : int, optional
+            The number of steps to use as the burn-in period. Default is 50.
+        iterations : int, optional
+            The number of iterations to run as part of the chain. Default is 500.
+        walkers : int, optional
+            The number of walkers to use. Default is 20.
         verbose : bool, optional
             If `True`, print info about the fit to standard output
         fig_verbose : bool, optional
@@ -104,10 +116,10 @@ class GalaxyRSDFitter(object):
         
         # store some useful parameters
         self.tag         = params['tag']
-        self.save_chains = params['save_chains']
-        self.N_walkers   = params['walkers']
-        self.N_iters     = params['iterations']
-        self.burnin      = params['burnin']
+        self.save_chains = save_chains
+        self.walkers     = walkers
+        self.iterations  = iterations
+        self.burnin      = burnin
         self.verbose     = verbose
         self.fig_verbose = fig_verbose
         self.pool        = pool    
@@ -392,11 +404,11 @@ class GalaxyRSDFitter(object):
         """
         Plot the correlation matrix (normalized covariance matrix)
         """
-        plt.clf()
+        pfy.clf()
         corr = normalize_covariance_matrix(self.C)
-        colormesh = plt.pcolormesh(corr, vmin=-1, vmax=1)
-        plt.colorbar(colormesh)
-        plt.savefig("output_%s/correlation_matrix.png" %self.tag)
+        colormesh = pfy.pcolormesh(corr, vmin=-1, vmax=1)
+        pfy.colorbar(colormesh)
+        pfy.savefig("output_%s/correlation_matrix.png" %self.tag)
     #end plot_covariance
     
     #---------------------------------------------------------------------------
@@ -459,24 +471,24 @@ class GalaxyRSDFitter(object):
         Plot the fit for each statistic using the input parameter value array
         """
         for data_name in self.data_names:
-            plt.clf()
+            pfy.clf()
             
             # do the plot
             (_, model), (k, data, err) = self.get_model_fit(theta, data_name)
             y = data / model
             err = y*err/data
-            plt.errorbar(k, y, err)
+            pfy.errorbar(k, y, err)
             
             # make it look nice
-            ax = plt.gca()
+            ax = pfy.gca()
             ax.axhline(y=1, c='k', ls='--')
             ax.set_xlabel("wavenumber k", fontsize=16)
             ax.set_ylabel(data_name + " data/model", fontsize=16)
             
             if extra_tag != "":
-                plt.savefig("output_%s/model_fit_%s_%s.png" %(self.tag, extra_tag, data_name))
+                pfy.savefig("output_%s/model_fit_%s_%s.png" %(self.tag, extra_tag, data_name))
             else:
-                plt.savefig("output_%s/model_fit_%s.png" %(self.tag, data_name))
+                pfy.savefig("output_%s/model_fit_%s.png" %(self.tag, data_name))
     #end plot_fit
     
     #---------------------------------------------------------------------------
@@ -485,23 +497,23 @@ class GalaxyRSDFitter(object):
         Plot the residuals of the fit for each statistic using the 
         input parameter value array
         """
-        plt.clf()
+        pfy.clf()
         for data_name in self.data_names:
             # do the plot
             res = self.get_model_residuals(theta, data_name)
-            plt.plot(self.ks, res, "o", label=data_name)
+            pfy.plot(self.ks, res, "o", label=data_name)
             
         # make it look nice
-        ax = plt.gca()
+        ax = pfy.gca()
         ax.axhline(y=0, c='k', ls='--')
         ax.set_xlabel("wavenumber k", fontsize=16)
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
         ax.legend(loc=0, ncol=2)
         
         if extra_tag != "":
-            plt.savefig("output_%s/model_residuals_%s.png" %(self.tag, extra_tag))
+            pfy.savefig("output_%s/model_residuals_%s.png" %(self.tag, extra_tag))
         else:
-            plt.savefig("output_%s/model_residuals.png" %(self.tag))
+            pfy.savefig("output_%s/model_residuals.png" %(self.tag))
     #end plot_residuals
     
     #---------------------------------------------------------------------------
@@ -509,8 +521,8 @@ class GalaxyRSDFitter(object):
         """
         Make the timeline plot of the chain
         """
-        plt.clf()
-        fig, axes = plt.subplots(self.N_free, 1, sharex=True, figsize=(8, 9))
+        pfy.clf()
+        fig, axes = pfy.subplots(self.N_free, 1, sharex=True, figsize=(8, 9))
 
         # plot for each free parameter
         for i, name in enumerate(self.free_param_names):
@@ -531,7 +543,7 @@ class GalaxyRSDFitter(object):
         samples = self.sampler.chain[:, self.burnin:, :].reshape((-1, self.N_free))
         fid_free = self.fiducial[self.free_indices]
         
-        plt.clf()
+        pfy.clf()
         fig = triangle.corner(samples, labels=self.free_param_names, truths=fid_free)
         fig.savefig("output_%s/triangle.png" %self.tag)
     #end make_triangle_plot
@@ -616,12 +628,12 @@ class GalaxyRSDFitter(object):
             
         # initialize the sampler
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
-        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, pool=self.pool)
+        self.sampler = emcee.EnsembleSampler(self.walkers, self.N_free, objective, pool=self.pool)
         
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
         start = time.clock()
-        p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.N_walkers)]
+        p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
         pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
         stop = time.clock()
         if self.verbose: print "...done. Time elapsed: %.4f" %(stop-start)
@@ -639,23 +651,17 @@ class GalaxyRSDFitter(object):
              
         # reset the chain to remove the burn-in samples.
         self.sampler.reset()
-                            
+                                  
+        # set up the progress bar
+        bar = utilities.InitializeProgressBar(self.iterations)
+        i = 0
+        
         # run the MCMC, either saving the chain or not
-        if self.verbose: print "Running %d full MCMC steps..." %(self.N_iters)
+        if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
         start = time.clock()
-        if self.save_chains:
-            chain_file = "output_%s/chain.dat" %self.tag
-            f = open(chain_file, "w")
-            f.close()
-
-            for result in self.sampler.sample(pos0, iterations=self.N_iters, rstate0=state):
-                position = result[0]
-                f = open(chain_file, "a")
-                for k in range(position.shape[0]):
-                    f.write("{0:4d} {1:s}\n".format(k, " ".join(str(x) for x in position[k])))
-            f.close()
-        else:
-            self.sampler.run_mcmc(pos0, self.N_iters, rstate0=state)
+        for result in self.sampler.sample(pos0, iterations=self.iterations, rstate0=state):
+            bar.update(i+1)
+            i += 1
         stop = time.clock()
         if self.verbose: print "...done. Time elapsed: %.4f" %(stop-start)    
         

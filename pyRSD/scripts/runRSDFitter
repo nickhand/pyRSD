@@ -42,6 +42,9 @@ def main(args):
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
                              pool=pool,
+                             burnin=args.burnin,
+                             iterations=args.iterations,
+                             walkers=args.walkers,
                              verbose=args.verbose, 
                              fig_verbose=args.fig_verbose)
 
@@ -56,17 +59,28 @@ def main(args):
 if __name__ == '__main__':
     
     # parse the input arguments
-    desc = "run the RSD MCMC fitter"
-    parser = argparse.ArgumentParser(description=desc)
+    desc = "Run the RSD MCMC fitter"
+    parser = argparse.ArgumentParser(description=desc, 
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     
-    h = 'the name of the parameter file'
+    h = 'The name of the parameter file'
     parser.add_argument('param_file', type=str, help=h) 
 
-    h = 'verbosity level'
+    h = 'Verbosity level'
     parser.add_argument('-v', '--verbose', type=boolean, default=True, help=h)
     
-    h = 'figure verbosity level'
-    parser.add_argument('-fv', '--fig_verbose', type=boolean, default=True, help=h)
+    h = 'Figure verbosity level'
+    parser.add_argument('-fv', '--fig-verbose', type=boolean, default=True, help=h)
+    
+    h = 'The number of steps to use as the burn-in period.'
+    parser.add_argument('--burnin', type=int, default=50, help=h)
+    
+    h = 'The number of iterations to run as part of the chain.'
+    parser.add_argument('--iterations', type=int, default=500, help=h)
+    
+    h = 'The number of walkers to use'
+    parser.add_argument('--walkers', type=int, default=20, help=h)
+    
     args = parser.parse_args()
     main(args)
     

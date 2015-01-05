@@ -714,6 +714,10 @@ class GalaxyRSDFitter(object):
         """
         Save the results as a pickle
         """
+        if self.verbose:
+            args = (self.sampler.iterations, self.iterations)
+            print "saving results... Completed %d out of %d iterations" %args
+            
         if hasattr(self, 'mcmc_fits'):
             data = [self.model, self.mcmc_all_dict, self.sampler.chain]
         else:

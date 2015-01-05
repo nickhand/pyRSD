@@ -8,13 +8,9 @@
  creation date: 12/22/2014
 """
 try:
-    from mpi4py import MPI
-    haveMPI = True
-except ImportError:
-    haveMPI = False
-if haveMPI:
     from emcee.utils import MPIPool
-        
+except ImportError:
+    pass
 from pyRSD.fit import GalaxyRSDFitter
 import argparse
 import sys
@@ -34,29 +30,21 @@ def main(args):
     """
     The main function
     """
-    # set up the mpi variables
-    if haveMPI:
-        comm = MPI.COMM_WORLD
-        nprocs = comm.Get_size()
-        myrank = comm.Get_rank()
-        
-    pool = None
-    if haveMPI and nprocs > 1:        
-        pool = MPIPool()    
-        if not pool.is_master():
-            pool.wait()
-            sys.exit(0)
+    try:        
+        pool = MPIPool()
+    except:
+        pool = None
+    
+    if pool is not None and if not pool.is_master():
+        pool.wait()
+        sys.exit(0)
 
-            
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
                              pool=pool,
                              verbose=args.verbose, 
                              fig_verbose=args.fig_verbose)
 
-    # find the ML solution
-    fitter.find_ml_solution()
-    
     # run
     fitter.run()
     

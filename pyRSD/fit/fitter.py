@@ -10,7 +10,9 @@
 from . import param_reader, triangle
 from .. import numpy as np, os
 from ..rsd import power_gal
-    
+ 
+import copy_reg
+import types   
 import emcee
 import scipy.optimize as opt
 import functools
@@ -24,6 +26,23 @@ try:
 except:
     import matplotlib.pyplot as plt
 
+#-------------------------------------------------------------------------------
+def _pickle_method(method):
+    func_name = method.im_func.__name__
+    obj = method.im_self
+    cls = method.im_class
+    return _unpickle_method, (func_name, obj, cls)
+ 
+def _unpickle_method(func_name, obj, cls):
+    for cls in cls.mro():
+        try:
+            func = cls.__dict__[func_name]
+        except KeyError:
+            pass
+        else:
+            break
+    return func.__get__(obj, cls)
+ 
 #-------------------------------------------------------------------------------
 def normalize_covariance_matrix(covar):
     """
@@ -106,6 +125,9 @@ class GalaxyRSDFitter(object):
         if self.verbose: print "Initializing the model..."
         self._initialize_model(params)
         if self.verbose: print "...done"
+        
+        # pickling methods
+        copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
     
     #end __init__
     
@@ -577,36 +599,59 @@ class GalaxyRSDFitter(object):
     #end find_ml_solution
     
     #---------------------------------------------------------------------------
-    def run(self):
+    def run_burnin(self):
         """
-        Run the MCMC sampler
-        """            
+        Run the burnin steps
+        """
         # find maximum likelihood solution, if we haven't yet
         if not hasattr(self, 'ml_free'):
             self.find_ml_solution()
-                            
-        # initialize the sampler (must be last)
+            
+        # initialize the sampler
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
         self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, pool=self.pool)
-  
-        if self.verbose: print "Running MCMC..."  
+        
+        # run the steps
+        if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
+        p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.N_walkers)]
+        pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
+        if self.verbose: print "...done"
+        
+        return pos, state
+    #end run_burnin
+    
+    #---------------------------------------------------------------------------
+    def run(self):
+        """
+        Run the MCMC sampler
+        """        
+        # run the burnin    
+        pos0, state = self.run_burnin()
+             
+        # reset the chain to remove the burn-in samples.
+        self.sampler.reset()
+                            
         # run the MCMC, either saving the chain or not
-        pos0 = [self.ml_free + 1e-2*np.random.randn(self.N_free) for i in range(self.N_walkers)]
+        if self.verbose: print "Running %d full MCMC steps..." %(self.N_iters)
         if self.save_chains:
             chain_file = "output_%s/chain.dat" %self.tag
             f = open(chain_file, "w")
             f.close()
 
-            for result in self.sampler.sample(pos0, iterations=self.N_iters):
+            for result in self.sampler.sample(pos0, iterations=self.N_iters, rstate0=state):
                 position = result[0]
                 f = open(chain_file, "a")
                 for k in range(position.shape[0]):
                     f.write("{0:4d} {1:s}\n".format(k, " ".join(str(x) for x in position[k])))
             f.close()
         else:
-            self.sampler.run_mcmc(pos0, self.N_iters, rstate0=np.random.get_state())
+            self.sampler.run_mcmc(pos0, self.N_iters, rstate0=state)
         if self.verbose: print "...done"      
         
+        # close the pool processes
+        if self.pool is not None: 
+            self.pool.close()
+            
         # save the results
         self.write_mcmc_results()
             
@@ -627,7 +672,7 @@ class GalaxyRSDFitter(object):
         """
         Compute the parameter quantiles
         """
-        samples = self.sampler.chain[:, self.burnin:, :].reshape((-1, self.N_free))
+        samples = self.sampler.chain.reshape((-1, self.N_free))
         mcmc = map(lambda v: (v[1], v[2]-v[1], v[1]-v[0], v[4]-v[1], v[1]-v[3]), \
                 zip(*np.percentile(samples, [15.86555, 50, 84.13445, 2.2775, 97.7225], axis=0)))
             

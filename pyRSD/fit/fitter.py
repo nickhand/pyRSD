@@ -148,6 +148,13 @@ class GalaxyRSDFitter(object):
         MCMC values for free parameters
         """
         return np.array([self.mcmc_fits[par]['mean'] for par in self.free_param_names])
+        
+    @property
+    def mcmc_all_dict(self):
+        """
+        MCMC values for all parameters in dict form
+        """
+        return dict((par, self.mcmc_fits[par]['mean']) for par in self.all_param_names)
     
     #---------------------------------------------------------------------------
     def reshape_pkmu(self, pkmu):
@@ -462,7 +469,6 @@ class GalaxyRSDFitter(object):
             # make it look nice
             ax = plt.gca()
             ax.axhline(y=1, c='k', ls='--')
-            ax.legend(loc=0)
             ax.set_xlabel("wavenumber k", fontsize=16)
             ax.set_ylabel(data_name + " data/model", fontsize=16)
             
@@ -687,11 +693,11 @@ class GalaxyRSDFitter(object):
 
     #end compute_quantiles
     #---------------------------------------------------------------------------
-    def save_chain(self):
+    def save_results(self):
         """
-        Save the chain as a pickle
+        Save the results as a pickle
         """
-        pickle.dump(self.sampler.chain, open("output_%s/chain.pickle" %self.tag, 'w'))
+        pickle.dump([self.model, self.mcmc_all_dict, self.sampler.chain], open("output_%s/results.pickle" %self.tag, 'w'))
     
     #end save_chain
     #---------------------------------------------------------------------------

@@ -641,7 +641,7 @@ class GalaxyRSDFitter(object):
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
         start = time.time()
         p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
-        pos, prob, state = self.sampler.run_mcmc(p0, iterations=self.burnin)
+        pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)
         
@@ -658,31 +658,36 @@ class GalaxyRSDFitter(object):
              
         # reset the chain to remove the burn-in samples.
         self.sampler.reset()
-                                          
-        # run the MCMC, saving along the way
-        if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
-        start = time.time()
-        self.sampler.run_mcmc(pos0, self.iterations, rstate0=state)
-        stop = time.time()
-        if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)    
+           
+        try:                               
+            # run the MCMC, saving along the way
+            if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
+            start = time.time()
+            self.sampler.run_mcmc(pos0, self.iterations, rstate0=state)
+            stop = time.time()
+            if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)    
         
-        # close the pool processes
-        if self.pool is not None: 
-            self.pool.close()
+            # close the pool processes
+            if self.pool is not None: 
+                self.pool.close()
             
-        # save the results
-        self.write_mcmc_results()
+            # save the results
+            self.write_mcmc_results()
             
-        # print out info
-        if self.verbose:
-            print "Mean acceptance fraction: ", np.mean(self.sampler.acceptance_fraction)
-            print "Autocorrelation time: ", self.sampler.get_autocorr_time()
-            self.print_mcmc_result()
+            # print out info
+            if self.verbose:
+                print "Mean acceptance fraction: ", np.mean(self.sampler.acceptance_fraction)
+                print "Autocorrelation time: ", self.sampler.get_autocorr_time()
+                self.print_mcmc_result()
         
-        # make plots
-        if self.fig_verbose:
-            self.make_timeline_plot()
-            self.make_triangle_plot()
+            # make plots
+            if self.fig_verbose:
+                self.make_timeline_plot()
+                self.make_triangle_plot()
+        except:
+            pass
+        finally:
+            self.save_results()
     #end run
     
     #---------------------------------------------------------------------------
@@ -709,7 +714,12 @@ class GalaxyRSDFitter(object):
         """
         Save the results as a pickle
         """
-        pickle.dump([self.model, self.mcmc_all_dict, self.sampler.chain], open("output_%s/results.pickle" %self.tag, 'w'))
+        if hasattr(self, 'mcmc_fits'):
+            data = [self.model, self.mcmc_all_dict, self.sampler.chain]
+        else:
+            data = [self.model, None, self.sampler.chain]
+         
+        pickle.dump(data, open("output_%s/results.pickle" %self.tag, 'w'))
     
     #end save_data
     #---------------------------------------------------------------------------

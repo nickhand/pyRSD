@@ -49,13 +49,7 @@ def main(args):
                                 fig_verbose=args.fig_verbose)
 
     # run
-    try:
-        f.run()
-    except:
-        pass
-    finally:
-        # save
-        f.save_results()
+    f.run()
         
 #end main
 

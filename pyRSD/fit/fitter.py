@@ -697,7 +697,7 @@ class GalaxyRSDFitter(object):
         """
         Save the results as a pickle
         """
-        pickle.dump([self.model, self.mcmc_all_dict, self.sampler.chain], open("output_%s/results.pickle" %self.tag, 'w'))
+        pickle.dump(self, open("output_%s/results.pickle" %self.tag, 'w'))
     
     #end save_chain
     #---------------------------------------------------------------------------

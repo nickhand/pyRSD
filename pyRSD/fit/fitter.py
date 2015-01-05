@@ -121,10 +121,8 @@ class GalaxyRSDFitter(object):
             If `True`, make a set of figures describing the fit
         """
         # read the parameters
-        print 'hey 9'
         params = param_reader.ParamDict(param_file)
         
-        print 'hey 10'
         # store some useful parameters
         self.tag         = params['tag']
         self.walkers     = walkers
@@ -138,7 +136,6 @@ class GalaxyRSDFitter(object):
         if not os.path.exists("output_%s" %self.tag):
             os.makedirs("output_%s" %self.tag)
                 
-        print 'hey 10'
         # initialize the fitting parameters
         self._initialize_fitting_params(params)
         

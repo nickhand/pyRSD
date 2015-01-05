@@ -85,14 +85,14 @@ class GalaxyRSDFitter(object):
     """
     Subclass of `emcee.EnsembleSampler` to compute parameter fits for RSD models
     """
-    def __init__(self, param_file, pool=None, verbose=True, fig_verbose=True):
+    def __init__(self, param_file, threads=1, verbose=True, fig_verbose=True):
         """
         Parameters
         ----------
         param_file : str
             The name of the file holding the parameters to read
-        pool : int, optional
-            The MPI pool
+        threads : int, optional
+            the number of threads to use
         verbose : bool, optional
             If `True`, print info about the fit to standard output
         fig_verbose : bool, optional
@@ -109,7 +109,7 @@ class GalaxyRSDFitter(object):
         self.burnin      = params['burnin']
         self.verbose     = verbose
         self.fig_verbose = fig_verbose
-        self.pool        = pool    
+        self.threads     = threads
             
         # initialize the output directory
         if not os.path.exists("output_%s" %self.tag):
@@ -615,7 +615,7 @@ class GalaxyRSDFitter(object):
             
         # initialize the sampler
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
-        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, pool=self.pool)
+        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, threads=self.threads)
         
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)

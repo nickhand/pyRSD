@@ -19,6 +19,7 @@ import functools
 import collections
 import pickle
 from pandas import DataFrame, Index
+import time
 
 from matplotlib.ticker import MaxNLocator
 try:
@@ -619,9 +620,11 @@ class GalaxyRSDFitter(object):
         
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
+        start = time.clock()
         p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.N_walkers)]
         pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
-        if self.verbose: print "...done"
+        stop = time.clock()
+        if self.verbose: print "...done. Time elapsed: %.4f" %(stop-start)
         
         return pos, state
     #end run_burnin
@@ -639,6 +642,7 @@ class GalaxyRSDFitter(object):
                             
         # run the MCMC, either saving the chain or not
         if self.verbose: print "Running %d full MCMC steps..." %(self.N_iters)
+        start = time.clock()
         if self.save_chains:
             chain_file = "output_%s/chain.dat" %self.tag
             f = open(chain_file, "w")
@@ -652,7 +656,8 @@ class GalaxyRSDFitter(object):
             f.close()
         else:
             self.sampler.run_mcmc(pos0, self.N_iters, rstate0=state)
-        if self.verbose: print "...done"      
+        stop = time.clock()
+        if self.verbose: print "...done. Time elapsed: %.4f" %(stop-start)    
         
         # close the pool processes
         if self.pool is not None: 

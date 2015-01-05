@@ -25,6 +25,15 @@ from pandas import DataFrame, Index
 import plotify as pfy
 from utils import utilities
 
+#-------------------------------------------------------------------------------
+# TOOLS FOR THIS MODULE
+#-------------------------------------------------------------------------------
+def hms_string(sec_elapsed):
+    h = int(sec_elapsed / (60 * 60))
+    m = int((sec_elapsed % (60 * 60)) / 60)
+    s = sec_elapsed % 60.
+    return "{}:{:>02}:{:>05.2f}".format(h, m, s)
+#end hms_string
 
 #-------------------------------------------------------------------------------
 def _pickle_method(method):
@@ -631,11 +640,11 @@ class GalaxyRSDFitter(object):
         
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
-        start = time.clock()
+        start = time.time()
         p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
         pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
-        stop = time.clock()
-        if self.verbose: print "...done. Time elapsed: %.4f" %(stop-start)
+        stop = time.time()
+        if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)
         
         return pos, state
     #end run_burnin
@@ -657,12 +666,12 @@ class GalaxyRSDFitter(object):
         
         # run the MCMC, either saving the chain or not
         if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
-        start = time.clock()
+        start = time.time()
         for result in self.sampler.sample(pos0, iterations=self.iterations, rstate0=state):
             bar.update(i+1)
             i += 1
-        stop = time.clock()
-        if self.verbose: print "...done. Time elapsed: %.4f" %(stop-start)    
+        stop = time.time()
+        if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)    
         
         # close the pool processes
         if self.pool is not None: 

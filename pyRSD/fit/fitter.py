@@ -641,7 +641,7 @@ class GalaxyRSDFitter(object):
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
         start = time.time()
         p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
-        pos, prob, state = self.sampler.run_mcmc(p0, iterations=self.burnin):
+        pos, prob, state = self.sampler.run_mcmc(p0, iterations=self.burnin)
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)
         
@@ -662,7 +662,7 @@ class GalaxyRSDFitter(object):
         # run the MCMC, saving along the way
         if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
         start = time.time()
-        self.sampler.run_mcmc(pos0, self.iterations, rstate0=state):
+        self.sampler.run_mcmc(pos0, self.iterations, rstate0=state)
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)    
         

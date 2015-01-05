@@ -27,7 +27,7 @@ def main(args):
     """
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
-                             threads=threads,
+                             threads=args.threads,
                              verbose=args.verbose, 
                              fig_verbose=args.fig_verbose)
 

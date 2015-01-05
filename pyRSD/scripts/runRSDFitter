@@ -30,7 +30,6 @@ def main(args):
     """
     The main function
     """
-    print 'hey 1'
     try:        
         pool = MPIPool()
     except:
@@ -40,13 +39,12 @@ def main(args):
         pool.wait()
         sys.exit(0)
 
-    print "hey 2"
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
                              pool=pool,
-                             burnin=args.burnin,
-                             iterations=args.iterations,
-                             walkers=args.walkers,
+                             burnin=int(args.burnin),
+                             iterations=int(args.iterations),
+                             walkers=int(args.walkers),
                              verbose=args.verbose, 
                              fig_verbose=args.fig_verbose)
 
@@ -75,13 +73,13 @@ if __name__ == '__main__':
     parser.add_argument('-fv', '--fig-verbose', type=boolean, default=True, help=h)
     
     h = 'The number of steps to use as the burn-in period.'
-    parser.add_argument('--burnin', type=int, default=50, help=h)
+    parser.add_argument('--burnin', type=float, default=50, help=h)
     
     h = 'The number of iterations to run as part of the chain.'
-    parser.add_argument('--iterations', type=int, default=500, help=h)
+    parser.add_argument('--iterations', type=float, default=500, help=h)
     
     h = 'The number of walkers to use'
-    parser.add_argument('--walkers', type=int, default=20, help=h)
+    parser.add_argument('--walkers', type=float, default=20, help=h)
     
     args = parser.parse_args()
     main(args)

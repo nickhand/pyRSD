@@ -638,15 +638,21 @@ class GalaxyRSDFitter(object):
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
         self.sampler = emcee.EnsembleSampler(self.walkers, self.N_free, objective, pool=self.pool)
         
+        # set up the progress bar
+        bar = utilities.initializeProgressBar(self.iterations)
+        i = 0
+        
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
         start = time.time()
         p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
-        pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
+        for result in self.sampler.sample(p0, iterations=self.burnin):
+            bar.update(i+1)
+            i += 1
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)
         
-        return pos, state
+        return result[0], result[2]
     #end run_burnin
     
     #---------------------------------------------------------------------------

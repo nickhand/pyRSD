@@ -116,7 +116,6 @@ class GalaxyRSDFitter(object):
         
         # store some useful parameters
         self.tag         = params['tag']
-        self.save_chains = save_chains
         self.walkers     = walkers
         self.iterations  = iterations
         self.burnin      = burnin

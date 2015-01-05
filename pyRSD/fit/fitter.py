@@ -652,7 +652,7 @@ class GalaxyRSDFitter(object):
         self.sampler.reset()
                                   
         # set up the progress bar
-        bar = utilities.InitializeProgressBar(self.iterations)
+        bar = utilities.initializeProgressBar(self.iterations)
         i = 0
         
         # run the MCMC, either saving the chain or not

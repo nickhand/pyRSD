@@ -7,8 +7,13 @@
  contact: nhand@berkeley.edu
  creation date: 12/22/2014
 """
+try:
+    from emcee.utils import MPIPool
+except ImportError:
+    pass
 from pyRSD.fit import GalaxyRSDFitter
 import argparse
+import sys
 
 #-------------------------------------------------------------------------------
 def boolean(string):
@@ -25,9 +30,18 @@ def main(args):
     """
     The main function
     """
+    try:        
+        pool = MPIPool()
+    except:
+        pool = None
+    
+    if pool is not None and not pool.is_master():
+        pool.wait()
+        sys.exit(0)
+
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
-                             threads=args.threads,
+                             pool=pool,
                              verbose=args.verbose, 
                              fig_verbose=args.fig_verbose)
 
@@ -47,9 +61,6 @@ if __name__ == '__main__':
     
     h = 'the name of the parameter file'
     parser.add_argument('param_file', type=str, help=h) 
-
-    h = 'the number of threads to use'
-    parser.add_argument('-np', dest='threads', type=int, default=1, help=h)
 
     h = 'verbosity level'
     parser.add_argument('-v', '--verbose', type=boolean, default=True, help=h)

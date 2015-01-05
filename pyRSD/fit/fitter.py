@@ -85,14 +85,14 @@ class GalaxyRSDFitter(object):
     """
     Subclass of `emcee.EnsembleSampler` to compute parameter fits for RSD models
     """
-    def __init__(self, param_file, threads=1, verbose=True, fig_verbose=True):
+    def __init__(self, param_file, pool=None, verbose=True, fig_verbose=True):
         """
         Parameters
         ----------
         param_file : str
             The name of the file holding the parameters to read
-        threads : int, optional
-            the number of threads to use
+        pool : int, optional
+            The MPI pool
         verbose : bool, optional
             If `True`, print info about the fit to standard output
         fig_verbose : bool, optional
@@ -109,7 +109,7 @@ class GalaxyRSDFitter(object):
         self.burnin      = params['burnin']
         self.verbose     = verbose
         self.fig_verbose = fig_verbose
-        self.threads     = threads
+        self.pool        = pool    
             
         # initialize the output directory
         if not os.path.exists("output_%s" %self.tag):
@@ -615,7 +615,7 @@ class GalaxyRSDFitter(object):
             
         # initialize the sampler
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
-        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, threads=self.threads)
+        self.sampler = emcee.EnsembleSampler(self.N_walkers, self.N_free, objective, pool=self.pool)
         
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
@@ -653,7 +653,11 @@ class GalaxyRSDFitter(object):
         else:
             self.sampler.run_mcmc(pos0, self.N_iters, rstate0=state)
         if self.verbose: print "...done"      
-                    
+        
+        # close the pool processes
+        if self.pool is not None: 
+            self.pool.close()
+            
         # save the results
         self.write_mcmc_results()
             
@@ -695,7 +699,7 @@ class GalaxyRSDFitter(object):
         """
         pickle.dump([self.model, self.mcmc_all_dict, self.sampler.chain], open("output_%s/results.pickle" %self.tag, 'w'))
     
-    #end save_results
+    #end save_data
     #---------------------------------------------------------------------------
 
 #endclass GalaxyRSDFitter

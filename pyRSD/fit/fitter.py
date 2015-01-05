@@ -689,19 +689,17 @@ class GalaxyRSDFitter(object):
                 fit = mcmc_iter.next()
                 self.mcmc_fits[par] = {'mean':fit[0], '1-sigma':[fit[1], fit[2]], '2-sigma':[fit[3], fit[4]]}
             else:
-                self.mcmc_fits[par] = {'mean':self.fiducial[i], '1-sigma':[0., 0.], '2-sigma':[0., 0.]}
+                self.mcmc_fits[par] = {'mean':self.fiducial[i], '1-sigma':[0., 0.], '2-sigma':[0., 0.]}       
+
     #end compute_quantiles
-    
     #---------------------------------------------------------------------------
     def save_results(self):
         """
         Save the results as a pickle
         """
-        self.pool = None
-        pickle.dump(self, open("output_%s/results.pickle" %self.tag, 'w'))
+        pickle.dump([self.model, self.mcmc_all_dict, self.sampler.chain], open("output_%s/results.pickle" %self.tag, 'w'))
     
     #end save_results
-    
     #---------------------------------------------------------------------------
 
 #endclass GalaxyRSDFitter

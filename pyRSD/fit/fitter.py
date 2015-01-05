@@ -257,6 +257,7 @@ class GalaxyRSDFitter(object):
         """
         Initialize the fitting parameters
         """
+        print "hey 3"
         # store the info about parameters
         self.pars = ModelParameters()
         for k in sorted(params['parameters'].keys()):

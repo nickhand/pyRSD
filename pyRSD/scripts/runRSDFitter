@@ -30,6 +30,7 @@ def main(args):
     """
     The main function
     """
+    print 'hey 1'
     try:        
         pool = MPIPool()
     except:
@@ -39,6 +40,7 @@ def main(args):
         pool.wait()
         sys.exit(0)
 
+    print "hey 2"
     # initialize the fitter
     fitter = GalaxyRSDFitter(args.param_file, 
                              pool=pool,

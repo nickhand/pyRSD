@@ -559,6 +559,7 @@ class GalaxyRSDFitter(object):
         self.model.update(**self.model_kwargs(value_array))
         model_values = np.concatenate([f() for f in self.model_callables])
 
+        print model_values
         # this is chi squared
         diff = model_values - self.data_y
         chi2 = np.dot(diff, np.dot(self.C_inv, diff))
@@ -572,7 +573,9 @@ class GalaxyRSDFitter(object):
         """
         lp = self.lnprior(theta)
         value_array = self.all_param_values(theta)
-        return lp + self.lnlike(theta) if np.isfinite(lp) else -np.inf 
+        toret = lp + self.lnlike(theta) if np.isfinite(lp) else -np.inf 
+        print toret
+        return toret
     #end lnprob
     
     #---------------------------------------------------------------------------

@@ -664,12 +664,22 @@ class GalaxyRSDFitter(object):
         bar = utilities.initializeProgressBar(self.iterations)
         i = 0
         
-        # run the MCMC, either saving the chain or not
+        # output chain file
+        chain_file = "output_%s/chain.dat" %self.tag
+        f = open(chain_file, "w")
+        f.close()
+        
+        # run the MCMC, saving along the way
         if self.verbose: print "Running %d full MCMC steps..." %(self.iterations)
         start = time.time()
         for result in self.sampler.sample(pos0, iterations=self.iterations, rstate0=state):
             bar.update(i+1)
+            position = result[0]
+            f = open(chain_file, "a")
+            for k in range(position.shape[0]):
+                f.write("{0:4d} {1:s}\n".format(k, " ".join(str(x) for x in position[k])))
             i += 1
+            f.close()
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)    
         

@@ -74,6 +74,12 @@ class OneLoopPdd(gcl.OneLoopPdd, PickalableSWIG):
     def __init__(self, *args):
         self.args = args
         gcl.OneLoopPdd.__init__(self, *args)
+        
+    def __getstate__(self):
+        args = self.args
+        if len(args) == 1: args += (self.GetEpsrel(), )
+        args += (self.GetOneLoopPower(), )
+        return {'args': args}
 
 #-------------------------------------------------------------------------------
 
@@ -83,7 +89,12 @@ class OneLoopPdv(gcl.OneLoopPdv, PickalableSWIG):
     def __init__(self, *args):
         self.args = args
         gcl.OneLoopPdv.__init__(self, *args)
-
+        
+    def __getstate__(self):
+        args = self.args
+        if len(args) == 1: args += (self.GetEpsrel(), )
+        args += (self.GetOneLoopPower(), )
+        return {'args': args}
 #-------------------------------------------------------------------------------
 
 # OneLoopPvv
@@ -92,7 +103,12 @@ class OneLoopPvv(gcl.OneLoopPvv, PickalableSWIG):
     def __init__(self, *args):
         self.args = args
         gcl.OneLoopPvv.__init__(self, *args)
-
+        
+    def __getstate__(self):
+        args = self.args
+        if len(args) == 1: args += (self.GetEpsrel(), )
+        args += (self.GetOneLoopPower(), )
+        return {'args': args}
 #-------------------------------------------------------------------------------
 
 # OneLoopP22Bar
@@ -101,7 +117,12 @@ class OneLoopP22Bar(gcl.OneLoopP22Bar, PickalableSWIG):
     def __init__(self, *args):
         self.args = args
         gcl.OneLoopP22Bar.__init__(self, *args)
-
+    
+    def __getstate__(self):
+        args = self.args
+        if len(args) == 1: args += (self.GetEpsrel(), )
+        args += (self.GetOneLoopPower(), )
+        return {'args': args}
 #-------------------------------------------------------------------------------
 
 # ZeldovichPS

@@ -19,9 +19,9 @@ public:
     const double& GetRedshift() const;
     const double& GetSigma8() const;
     const Cosmology& GetCosmology() const;
-    parray GetXZel();
-    parray GetYZel();
-    const double& GetSigmaSq();
+    parray GetXZel() const;
+    parray GetYZel() const;
+    const double& GetSigmaSq() const;
     
     void SetRedshift(double z); 
     void SetSigma8(double sigma8);

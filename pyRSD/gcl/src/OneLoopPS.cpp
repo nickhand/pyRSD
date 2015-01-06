@@ -13,7 +13,10 @@ double KMAX = 1e1;
 int NUM_PTS = 1000;
 
 OneLoopPS::OneLoopPS(const PowerSpectrum& P_L_, double epsrel_) : P_L(P_L_), 
-epsrel(epsrel_), I(P_L, epsrel), J(P_L, epsrel) {}
+epsrel(epsrel_) {}
+
+OneLoopPS::OneLoopPS(const PowerSpectrum& P_L_, double epsrel_, const parray& oneloop_power_) :
+P_L(P_L_), epsrel(epsrel_), oneloop_power(oneloop_power_) {}
 
 double OneLoopPS::EvaluateFull(double k) const {
     if (k > KMAX)
@@ -43,28 +46,41 @@ OneLoopPdd::OneLoopPdd(const PowerSpectrum& P_L, double epsrel) : OneLoopPS(P_L,
     OneLoopPdd::InitializeSpline(); 
 }
 
+OneLoopPdd::OneLoopPdd(const PowerSpectrum& P_L_, double epsrel_, const parray& oneloop_power_) : 
+OneLoopPS(P_L_, epsrel_, oneloop_power_) 
+{
+    parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
+    oneloop_spline = CubicSpline(k_spline, oneloop_power_);
+}
+
 void OneLoopPdd::InitializeSpline() {
         
     // spline seeded at these k values
     parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
     
     // need I00 and J00
+    Imn I(P_L, epsrel); 
+    Jmn J(P_L, epsrel);
     parray I00 = I(k_spline, 0, 0);
     parray J00 = J(k_spline, 0, 0);
     
-    
-    
     // linear and 1loop values at k_spline
     parray P_lin = P_L(k_spline);
-    parray P_1loop = 2*I00 + 6*k_spline*k_spline * J00 * P_lin;
-    
-    oneloop_spline = CubicSpline(k_spline, P_1loop);
-            
+    oneloop_power = 2*I00 + 6*k_spline*k_spline * J00 * P_lin;
+    oneloop_spline = CubicSpline(k_spline, oneloop_power);
+                
 }
 
 OneLoopPdv::OneLoopPdv(const PowerSpectrum& P_L, double epsrel) : OneLoopPS(P_L, epsrel) 
 { 
     OneLoopPdv::InitializeSpline(); 
+}
+
+OneLoopPdv::OneLoopPdv(const PowerSpectrum& P_L_, double epsrel_, const parray& oneloop_power_) : 
+OneLoopPS(P_L_, epsrel_, oneloop_power_)  
+{
+    parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
+    oneloop_spline = CubicSpline(k_spline, oneloop_power_);
 }
 
 void OneLoopPdv::InitializeSpline() {
@@ -73,14 +89,15 @@ void OneLoopPdv::InitializeSpline() {
     parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
     
     // need I01 and J01
+    Imn I(P_L, epsrel); 
+    Jmn J(P_L, epsrel);
     parray I01 = I(k_spline, 0, 1);
     parray J01 = J(k_spline, 0, 1);
     
     // linear and 1loop values at k_spline
     parray P_lin = P_L(k_spline);
-    parray P_1loop = 2*I01 + 6*k_spline*k_spline * J01 * P_lin;
-    
-    oneloop_spline = CubicSpline(k_spline, P_1loop);
+    oneloop_power = 2*I01 + 6*k_spline*k_spline * J01 * P_lin;
+    oneloop_spline = CubicSpline(k_spline, oneloop_power);
             
 }
 
@@ -89,20 +106,29 @@ OneLoopPvv::OneLoopPvv(const PowerSpectrum& P_L, double epsrel) : OneLoopPS(P_L,
     OneLoopPvv::InitializeSpline(); 
 }
 
+OneLoopPvv::OneLoopPvv(const PowerSpectrum& P_L_, double epsrel_, const parray& oneloop_power_) : 
+OneLoopPS(P_L_, epsrel_, oneloop_power_)  
+{
+    parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
+    oneloop_spline = CubicSpline(k_spline, oneloop_power_);
+}
+
+
 void OneLoopPvv::InitializeSpline() {
     
     // spline seeded at these k values
     parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
     
     // need I11 and J11
+    Imn I(P_L, epsrel); 
+    Jmn J(P_L, epsrel);
     parray I11 = I(k_spline, 1, 1);
     parray J11 = J(k_spline, 1, 1);
     
     // linear and 1loop values at k_spline
     parray P_lin = P_L(k_spline);
-    parray P_1loop = 2*I11 + 6*k_spline*k_spline * J11 * P_lin;
-    
-    oneloop_spline = CubicSpline(k_spline, P_1loop);
+    oneloop_power = 2*I11 + 6*k_spline*k_spline * J11 * P_lin;
+    oneloop_spline = CubicSpline(k_spline, oneloop_power);
             
 }
 
@@ -110,6 +136,14 @@ OneLoopP22Bar::OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel) : OneLoopP
 { 
     OneLoopP22Bar::InitializeSpline(); 
 }
+
+OneLoopP22Bar::OneLoopP22Bar(const PowerSpectrum& P_L_, double epsrel_, const parray& oneloop_power_) : 
+OneLoopPS(P_L_, epsrel_, oneloop_power_)  
+{
+    parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
+    oneloop_spline = CubicSpline(k_spline, oneloop_power_);
+}
+
 
 double OneLoopP22Bar::EvaluateFull(double k) const {
     if (k > KMAX)
@@ -132,6 +166,9 @@ void OneLoopP22Bar::InitializeSpline() {
     // spline seeded at these k values
     parray k_spline = parray::logspace(KMIN, KMAX, NUM_PTS);
     
+    // initialize Imn
+    Imn I(P_L, epsrel);
+    
     // I23 is the mu^0 part
     parray I23 = I(k_spline, 2, 3);
     
@@ -141,9 +178,9 @@ void OneLoopP22Bar::InitializeSpline() {
     // I33 is the mu^4 part
     parray I33 = I(k_spline, 3, 3);
     
-    // linear and 1loop values at k_spline
-    parray P_1loop = I23 + (2./3)*I32 + (1./5)*I33;
-    oneloop_spline = CubicSpline(k_spline, P_1loop);
+    // 1loop values at k_spline
+    oneloop_power = I23 + (2./3)*I32 + (1./5)*I33;
+    oneloop_spline = CubicSpline(k_spline, oneloop_power);
             
 }
 

@@ -21,7 +21,8 @@ class OneLoopPS : public PowerSpectrum {
 public:
     
     OneLoopPS(const PowerSpectrum& P_L, double epsrel = 1e-4);
-
+    OneLoopPS(const PowerSpectrum& P_L, double epsrel, const parray& oneloop_power);
+    
     // returns full spectrum (linear + 1-loop terms)
     virtual double EvaluateFull(double k) const;
     virtual parray EvaluateFull(const parray& k) const;
@@ -31,13 +32,14 @@ public:
     const double& GetRedshift() const { return P_L.GetRedshift(); }
     const Cosmology& GetCosmology() const { return P_L.GetCosmology(); }
     const double& GetEpsrel() const { return epsrel; }
+    parray GetOneLoopPower() const { return oneloop_power; }
+    
     
 protected:
     
     const PowerSpectrum& P_L;
     double epsrel;
-    Imn I; 
-    Jmn J;
+    parray oneloop_power; 
     Spline oneloop_spline; 
     
 };
@@ -48,6 +50,7 @@ class OneLoopPdd : public OneLoopPS {
 public:
     
     OneLoopPdd(const PowerSpectrum& P_L, double epsrel = 1e-4);
+    OneLoopPdd(const PowerSpectrum& P_L, double epsrel, const parray& oneloop_power);
 
 private:
     
@@ -60,7 +63,8 @@ class OneLoopPdv : public OneLoopPS {
 
 public:
     
-    OneLoopPdv(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+    OneLoopPdv(const PowerSpectrum& P_L, double epsrel = 1e-4);
+    OneLoopPdv(const PowerSpectrum& P_L, double epsrel, const parray& oneloop_power); 
     
 private:
     
@@ -75,6 +79,7 @@ class OneLoopPvv : public OneLoopPS {
 public:
     
     OneLoopPvv(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+    OneLoopPvv(const PowerSpectrum& P_L, double epsrel, const parray& oneloop_power);
 
 private:
     
@@ -89,6 +94,7 @@ class OneLoopP22Bar : public OneLoopPS {
 public:
     
     OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel = 1e-4); 
+    OneLoopP22Bar(const PowerSpectrum& P_L, double epsrel, const parray& oneloop_power);
     
     // dont need P_L term here
     double EvaluateFull(double k) const;

@@ -30,7 +30,10 @@ def fog_gaussian(x):
     
 
 class GalaxySpectrum(power_biased.BiasedSpectrum):
-    
+    """
+    The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
+    for biased redshift space power spectra
+    """
     allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['use_mean_bias', 'fog_model']
     
     def __init__(self, use_mean_bias=False, fog_model='modified_lorentzian', **kwargs):
@@ -52,7 +55,21 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         self.Pgal(0.5)
     #end initialize
-    
+    #---------------------------------------------------------------------------
+    @property
+    def sigma_bias_relation(self):
+        """
+        The sigma-bias relation
+        """
+        try:
+            if hasattr(self, '_sigma_bias_relation'):
+                if self._sigma_bias_relation.z != self.z:
+                    raise AttributeError()
+            return self._sigma_bias_relation
+        except AttributeError:
+            self._sigma_bias_relation = tools.SigmaBiasRelation(self.z, self.power_lin)
+            return self._sigma_bias_relation
+        
     #---------------------------------------------------------------------------
     # THE GALAXY FRACTIONS
     #---------------------------------------------------------------------------
@@ -215,7 +232,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_s
         except AttributeError:
-            return tools.sigma_from_bias(self.b1_s, self.z, self.power_lin)
+            return self.sigma_bias_relation.sigma(self.b1_s)
             
     @sigma_s.setter
     def sigma_s(self, val):
@@ -235,7 +252,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_sA
         except AttributeError:
-            return tools.sigma_from_bias(self.b1_sA, self.z, self.power_lin)
+            return self.sigma_bias_relation.sigma(self.b1_sA)
             
     @sigma_sA.setter
     def sigma_sA(self, val):
@@ -255,7 +272,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         try:
             return self._sigma_sB
         except AttributeError:
-            return tools.sigma_from_bias(self.b1_sB, self.z, self.power_lin)
+            return self.sigma_bias_relation.sigma(self.b1_sB)
             
     @sigma_sB.setter
     def sigma_sB(self, val):
@@ -285,35 +302,35 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # 1-HALO ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
-    def N_cBs(self):
+    def NcBs(self):
         """
         Constant for the P_cBs 1-halo term
         """
         try:
-            return self._N_cBs
+            return self._NcBs
         except AttributeError:
-            raise ValueError("Must specify 1-halo 'N_cBs' attribute.")
+            raise ValueError("Must specify 1-halo 'NcBs' attribute.")
             
-    @N_cBs.setter
-    def N_cBs(self, val):
-        if hasattr(self, '_N_cBs') and val == self._N_cBs: return
-        self._N_cBs = val
+    @NcBs.setter
+    def NcBs(self, val):
+        if hasattr(self, '_NcBs') and val == self._NcBs: return
+        self._NcBs = val
     
     #---------------------------------------------------------------------------
     @property
-    def N_sBsB(self):
+    def NsBsB(self):
         """
         Constant for the P_sBsB 1-halo term
         """
         try:
-            return self._N_sBsB
+            return self._NsBsB
         except AttributeError:
-            raise ValueError("Must specify 1-halo 'N_sBsB' attribute.")
+            raise ValueError("Must specify 1-halo 'NsBsB' attribute.")
             
-    @N_sBsB.setter
-    def N_sBsB(self, val):
-        if hasattr(self, '_N_sBsB') and val == self._N_sBsB: return
-        self._N_sBsB = val
+    @NsBsB.setter
+    def NsBsB(self, val):
+        if hasattr(self, '_NsBsB') and val == self._NsBsB: return
+        self._NsBsB = val
         
     #---------------------------------------------------------------------------
     def evaluate_fog(self, sigma, mu_obs):
@@ -411,7 +428,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G_c = self.evaluate_fog(self.sigma_c, mu)
         G_s = self.evaluate_fog(self.sigma_s, mu)
         
-        return G_c*G_s * (self.Pgal_cBs_2h(mu) + self.N_cBs)
+        return G_c*G_s * (self.Pgal_cBs_2h(mu) + self.NcBs)
     
     #---------------------------------------------------------------------------
     def Pgal_cBs_2h(self, mu):
@@ -438,7 +455,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # the FOG damping terms
         G = self.evaluate_fog(self.sigma_sB, mu)
         
-        return G**2 * (self.Pgal_sBsB_2h(mu) + self.N_sBsB)
+        return G**2 * (self.Pgal_sBsB_2h(mu) + self.NsBsB)
     
     #---------------------------------------------------------------------------
     def Pgal_sBsB_2h(self, mu):

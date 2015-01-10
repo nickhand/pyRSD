@@ -1,13 +1,57 @@
-"""
- parsing_tools.py
- pyRSD/fit: module with tools for reading parameters from file
- 
- author: Nick Hand
- contact: nhand@berkeley.edu
- creation date: 12/13/2014
-"""
+from ... import os, data_dir
 import ast 
 import sys
+
+#-------------------------------------------------------------------------------
+def find_file(filename):
+    """
+    Return the filename, searching in the `pyRSD.data_dir` as well
+    """
+    # try to find the file 
+    if os.path.exists(filename):
+        return filename
+    elif (os.path.exists("%s/%s" %(data_dir, filename))):
+        return "%s/%s" %(data_dir, filename)
+    else:
+        raise ValueError("Could not find file '%s', tried ./%s and %s/%s" \
+                         %(filename, filename, data_dir, filename))
+                         
+#-------------------------------------------------------------------------------
+def format(val):
+    try:
+        return float(val)
+    except:
+        return repr(val)
+        
+#-------------------------------------------------------------------------------
+def constraining_function(param_set, constraint, keys, modules, props='value'):
+    """
+    A constraining function to return the value of a `Parameter`, which 
+    depends on other `Parameters` in a `ParameterSet`
+    """
+    if not isinstance(props, list):
+        props = [props]*len(keys)
+        
+    formatted_constraint = constraint.format(**{k:param_set[k][att] for k, att in zip(keys, props)})
+    return eval(formatted_constraint, globals().update(modules))
+        
+#-------------------------------------------------------------------------------
+def text_between_chars(s, start_char="{", stop_char="}"):
+    """
+    Find the text between two characters, probably curly braces or 
+    parentheses. 
+    """
+    toret = []
+    start = 0
+    while True:
+        start = s.find( '{' , start, len(s))
+        end = s.find( '}', start, len(s))
+        if start != -1 and end != -1:
+            toret.append(s[start+1:end])
+            start = end
+        else:
+            break
+    return toret
 
 #-------------------------------------------------------------------------------
 class ParseCall(ast.NodeVisitor):

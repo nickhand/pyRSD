@@ -51,42 +51,6 @@ def _unpickle_method(func_name, obj, cls):
             break
     return func.__get__(obj, cls)
  
-#-------------------------------------------------------------------------------
-def normalize_covariance_matrix(covar):
-    """
-    Return the correlation matrix from a covariance matrix
-
-    Parameters
-    ----------
-    covar : numpy.ndarray, shape (N, N)
-        the covariance matrix to normalize
-    """
-    N, N = covar.shape
-    corr = covar.copy()
-    
-    # normalize the covariance matrix now
-    variances = np.diag(corr).copy()
-    i, j = np.triu_indices(N)
-    corr[i, j] /= np.sqrt(variances[i])*np.sqrt(variances[j])
-    
-    i, j = np.tril_indices(N, k=-1)
-    corr[i, j] /= (np.sqrt(variances[i])*np.sqrt(variances[j]))
-    
-    return corr
-#end normalize_covariance_matrix
-
-#-------------------------------------------------------------------------------
-class ModelParameters(collections.OrderedDict):
-    """
-    A subclass of collections.OrderedDict that adds __getitem__
-    """
-    def __init__(self, *args, **kwargs):
-        super(ModelParameters, self).__init__(*args, **kwargs)
-        
-    def __call__(self, key):
-        if not isinstance(key, int): raise KeyError("key must be an integer")
-        if key >= len(self): raise KeyError("key out of range")
-        return self[self.keys()[key]]
 
 #-------------------------------------------------------------------------------
 class GalaxyRSDFitter(object):
@@ -99,6 +63,7 @@ class GalaxyRSDFitter(object):
                  burnin=50,
                  iterations=500,
                  walkers=20,
+                 start='max-like'
                  verbose=True, 
                  fig_verbose=True):
         """
@@ -114,6 +79,10 @@ class GalaxyRSDFitter(object):
             The number of iterations to run as part of the chain. Default is 500.
         walkers : int, optional
             The number of walkers to use. Default is 20.
+        start: str, {`max-like`, `fiducial`, `random`} optional
+            Whether to use the maximum-likelihood values to start, the fiducial
+            values, or samples drawn randomly from the prior to initialize the
+            MCMC sampler
         verbose : bool, optional
             If `True`, print info about the fit to standard output
         fig_verbose : bool, optional
@@ -130,6 +99,7 @@ class GalaxyRSDFitter(object):
         self.verbose     = verbose
         self.fig_verbose = fig_verbose
         self.pool        = pool    
+        self.start       = start
             
         # initialize the output directory
         if not os.path.exists("output_%s" %self.tag):
@@ -625,14 +595,25 @@ class GalaxyRSDFitter(object):
     #end find_ml_solution
     
     #---------------------------------------------------------------------------
+    def _get_initial_position(self):
+        """
+        Compute the initial MCMC sampler position based on `self.start`
+        """
+        if self.start == 'max-like':
+            if not hasattr(self, 'ml_free'):
+                self.find_ml_solution()
+            p0 = [self.ml_free + 1e-2*np.random.randn(self.N_free) for i in range(self.walkers)]
+        elif self.start == 'fiducial':
+            free_fid = self.fiducial[self.free_indices]
+            p0 = [free_fid + 1e-2*np.random.randn(self.N_free) for i in range(self.walkers)]
+        elif self.start == 'random':
+            
+        
+    #---------------------------------------------------------------------------
     def run_burnin(self):
         """
         Run the burnin steps
-        """
-        # find maximum likelihood solution, if we haven't yet
-        if not hasattr(self, 'ml_free'):
-            self.find_ml_solution()
-            
+        """ 
         # initialize the sampler
         objective = functools.partial(GalaxyRSDFitter.lnprob, self)
         self.sampler = emcee.EnsembleSampler(self.walkers, self.N_free, objective, pool=self.pool)
@@ -640,7 +621,10 @@ class GalaxyRSDFitter(object):
         # run the steps
         if self.verbose: print "Running %d burn-in steps..." %(self.burnin)
         start = time.time()
-        p0 = [self.ml_free + 1e-3*np.random.randn(self.N_free) for i in range(self.walkers)]
+
+        # compute the initial position
+        if not self.start
+        p0 = 
         pos, prob, state = self.sampler.run_mcmc(p0, self.burnin)
         stop = time.time()
         if self.verbose: print "...done. Time elapsed: %s" %hms_string(stop-start)

@@ -7,10 +7,7 @@
  contact: nhand@berkeley.edu
  creation date: 12/22/2014
 """
-try:
-    from emcee.utils import MPIPool
-except ImportError:
-    pass
+from emcee.utils import MPIPool
 from pyRSD.fit import fitter
 import argparse
 import sys

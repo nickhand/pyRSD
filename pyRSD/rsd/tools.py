@@ -62,9 +62,9 @@ class RSDSpline(InterpolatedUnivariateSpline):
         Return the interpolated value
         """
         if self.extrap: 
-            return self.linear_extrap(x_new)
+            return self.linear_extrap(x_new)*1.
         else:
-            return self._evaluate_spline(x_new)
+            return self._evaluate_spline(x_new)*1.
        
     #--------------------------------------------------------------------------- 
     def _evaluate_spline(self, x_new):
@@ -412,6 +412,49 @@ def hexadecapole(f):
     return wrapper
     
 #-------------------------------------------------------------------------------
+# Sigma-Bias relation
+#-------------------------------------------------------------------------------
+class SigmaBiasRelation(object):
+    """
+    Class to represent the relation between velocity dispersion and halo bias
+    """
+    def __init__(self, z, linearPS):
+        """
+        Initialize and setup the splines
+        """
+        self.z = z
+        self.power_lin = linearPS
+        self._initialize_splines()
+        
+    #---------------------------------------------------------------------------
+    def _initialize_splines(self):
+        """
+        Initialize the splines we need
+        """
+        biases = np.linspace(1.0, 7.0, 100)
+        sigmas = np.array([sigma_from_bias(bias, self.z, self.power_lin) for bias in biases])
+        
+        self.sigma_to_bias_spline = RSDSpline(sigmas, biases, extrap=True)
+        self.bias_to_sigma_spline = RSDSpline(biases, sigmas, extrap=True)
+        
+    #---------------------------------------------------------------------------
+    def bias(self, sigma):
+        """
+        Return the linear bias for the input sigma in Mpc/h
+        """
+        return self.sigma_to_bias_spline(sigma)
+    
+    #-------------------------------------------------------------------------------
+    def sigma(self, bias):
+        """
+        Return the sigma in Mpc/h for the input linear bias value
+        """
+        return self.bias_to_sigma_spline(bias)
+    
+    #-------------------------------------------------------------------------------
+#endclass SigmaBiasRelation
+
+#-------------------------------------------------------------------------------        
 def mass_from_bias(bias, z, linearPS):
     """
     Given an input bias, return the corresponding mass, using Tinker et al.
@@ -438,11 +481,10 @@ def mass_from_bias(bias, z, linearPS):
     Dz = 1.
     if z_Plin != z: 
         Dz = (cosmo.D_z(z) / cosmo.D_z(z_Plin))
-    
-    
+
     def objective(mass):
         sigma = Dz*linearPS.Sigma(mass_to_radius(mass))
-        return bias - bias_Tinker(sigma)
+        return bias_Tinker(sigma) - bias
         
     return brentq(objective, 1e-5, 1e5)*mass_norm
 #end mass_from_bias

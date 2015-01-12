@@ -1,4 +1,4 @@
-from . import tools
+from . import tools, distributions as dists
 from ... import numpy as np
 
 from collections import OrderedDict, defaultdict
@@ -489,7 +489,8 @@ class Parameter(object):
     parameter values
     """
     _valid_keys = ['name', 'value', 'fiducial_value', 'vary', 'min', 'max', 
-                   'exclusive_min', 'exclusive_max', 'derived', 'description']
+                   'exclusive_min', 'exclusive_max', 'derived', 'description',
+                   'prior', 'posterior']
                    
     def __init__(self, name=None, **props):
                 
@@ -508,18 +509,28 @@ class Parameter(object):
         props.setdefault('exclusive_min', False)
         props.setdefault('exclusive_max', False)
         props.setdefault('fiducial_value', None)
-        
+        props.setdefault('posterior', None)
+        props.setdefault('prior', None)
+                        
         # remember initial settings
         self._initial = props.copy()
         
         # attach all keys to the class instance
         self.reset()    
         
+        # set default prior to be uniform if min/max supplied
+        if self.prior is None:
+            if self.min is not None and self.max is not None:
+                self.set_prior(name='uniform', lower=self.min, upper=self.max)
         
     #---------------------------------------------------------------------------
     def __getitem__(self, key):
-        return getattr(self, key)    
+        return getattr(self, key, None)    
     
+    #---------------------------------------------------------------------------
+    def __getattr__(self, key):
+        return None
+        
     #---------------------------------------------------------------------------
     def keys(self):
         return [k for k in self._valid_keys]
@@ -592,6 +603,37 @@ class Parameter(object):
             delattr(self, key)
     
     #---------------------------------------------------------------------------
+    def set_prior(self, **params):
+        """
+        Set the distribution of the parameter's prior.
+        
+        If no previous prior existed, it will be created.
+        If a previous prior existed, it's values will be overwritten.
+        
+        Example:
+        
+            >>> np.random.seed(100)
+            >>> mypar = Parameter(name='par')
+            >>> mypar.set_prior(name='uniform', lower=-1,upper=0.)
+            >>> prior = mypar.get_prior()
+            >>> print prior
+            Uniform(lower=-1., upper=0.)
+        """
+        if 'name' not in params:
+            raise ValueError("Must specify prior distribution name as a keyword argument")
+        
+        self.prior = dists.Distribution(params.pop('name'), **params)
+        
+    #---------------------------------------------------------------------------
+    def set_posterior(self, name, **params):
+        """
+        Set the distribution of the parameter's posterior.
+        """
+        if 'name' not in params:
+            raise ValueError("Must specify posterior distribution name as a keyword argument")
+        self.posterior = dists.Distribution(params.pop('name'), **params)
+        
+    #---------------------------------------------------------------------------
     @property
     def min(self):
         """
@@ -610,6 +652,12 @@ class Parameter(object):
         if val == -np.inf: 
             val = None
         self._min = val
+        
+        if self.prior is not None and self.prior.name == 'uniform':
+            if val is None:
+                self.prior = None
+            else:
+                self.prior.update(lower=val)
         
     def remove_lower_limit(self, val=None):
         """
@@ -639,6 +687,12 @@ class Parameter(object):
         if val == np.inf: 
             val = None
         self._max = val
+        
+        if self.prior is not None and self.prior.name == 'uniform':
+            if val is None:
+                self.prior = None
+            else:
+                self.prior.update(upper=val)
     
     def remove_upper_limit(self, val=None):
         """
@@ -746,9 +800,14 @@ class Parameter(object):
         """
         Get random values from the prior, of size `size`
         """
-        if not self.bounded:
+        # check a few things
+        if self.prior is None:
+            raise ValueError("Cannot draw from prior that does not exist")
+            
+        if self.prior.name == 'uniform' and not self.bounded:
             raise ValueError("Cannot draw value from unbounded uniform prior")
-        return np.random.uniform(size=size, low=self.min, high=self.max)
+            
+        return self.prior.draw(size=size)
     
     #---------------------------------------------------------------------------
     def set_value_from_prior(self):
@@ -756,7 +815,32 @@ class Parameter(object):
         Set a random value from the prior.
         """
         try:
-            value = self.get_value_from_prior()[0]
+            value = self.get_value_from_prior()
+        except ValueError:
+            return None
+        self.value = value
+    
+    #---------------------------------------------------------------------------
+    def get_value_from_posterior(self, size=1):
+        """
+        Get random values from the posterior, of size `size`
+        """
+        # check a few things
+        if self.posterior is None:
+            raise ValueError("Cannot draw from posterior that does not exist")
+            
+        if self.posterior.name == 'uniform' and not self.bounded:
+            raise ValueError("Cannot draw value from unbounded uniform posterior")
+            
+        return self.posterior.draw(size=size)
+    
+    #---------------------------------------------------------------------------
+    def set_value_from_posterior(self):
+        """
+        Set a random value from the posterior.
+        """
+        try:
+            value = self.get_value_from_posterior()
         except ValueError:
             return None
         self.value = value

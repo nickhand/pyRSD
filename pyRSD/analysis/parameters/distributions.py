@@ -9,7 +9,22 @@ valid_distributions = {'normal' : ['mu', 'sigma'], \
                        'uniform': ['lower', 'upper'], \
                        'trace' : ['trace'] }
 
-
+def Distribution(name, **kwargs):
+    """
+    Return the distribution specified by `name`
+    """
+    if name not in valid_distributions:
+        raise ValueError("Distribution name must be one of {0}".format(valid_distributions.keys()))
+        
+    if name == 'normal':
+        return Normal(kwargs['mu'], kwargs['sigma'])
+    elif name == 'uniform':
+        return Uniform(kwargs['lower'], kwargs['upper'])
+    elif name == 'trace':
+        return Trace(kwargs['trace'])
+        
+#-------------------------------------------------------------------------------
+        
 def histogram_bins(signal):
     """
     Return optimal number of bins.
@@ -75,8 +90,7 @@ class DistributionBase(object):
         for k, v in params.iteritems():
             if not hasattr(self, k):
                 raise AttributeError("Cannot update attribute '{0}'; no such attribute".format(k))
-            setattr(self, k, v)
-                
+            setattr(self, k, v)        
     #---------------------------------------------------------------------------
 #endclass DistributionBase
 

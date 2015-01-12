@@ -3,6 +3,10 @@ from ..parameters import ParameterSet, tools
 from . import CovarianceMatrix
 
 import pickle
+import logging
+
+logger = logging.getLogger('pyRSD.analysis.data')
+logger.addHandler(logging.NullHandler())
 
 #-------------------------------------------------------------------------------
 class PowerMeasurement(object):
@@ -56,7 +60,9 @@ class PowerMeasurement(object):
             self._error_input = None
             
         if power_type not in ['pkmu', 'pole']:
+            logger.error("PowerMeasurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
             raise ValueError("PowerMeasurement type must be either `pkmu` or `pole`")
+            
         self.type = power_type
         self._identifier = identifier
         
@@ -218,6 +224,7 @@ class PowerData(object):
             power_type, value = stat_name.lower().split('_')
             value = float(value)
             if power_type not in ['pkmu', 'pole']:
+                logger.error("Measurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
                 raise ValueError("Measurement type must be either `pkmu` or `pole`")
             
             # now make the PowerMeasurement object
@@ -227,6 +234,8 @@ class PowerData(object):
             args = info['file'], info['x_col'], info['y_col'], power_type, value
             kwargs = {'err_col' : info.get('err_col', None), 'k_trim' : self.k_trim}
             self.measurements.append(PowerMeasurement(*args, **kwargs))
+        
+        logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             
     #---------------------------------------------------------------------------
     def _setup_covariance(self):
@@ -234,28 +243,41 @@ class PowerData(object):
         Setup the combined covariance matrix
         """
         # load the covariance from a pickle
-        if 'covariance' in self.params and self.params['covariance'] is not None:
+        if self.params['covariance'] is not None:
             filename = tools.find_file(self.params['covariance'].value)
             C = pickle.load(open(filename, 'r'))
             index =  np.concatenate([d._k_input for d in self.measurements])
             self.covariance = CovarianceMatrix(C, index=index)
-        
+            logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename))
+            
             # possibly trim by a k_max
             if self.k_trim is not None:
                 self.covariance = self.covariance.trim_by_index(self.k_trim)
+                logger.info("Trimmed read covariance matrix to k_max = {k} h/Mpc".format(k=self.k_trim))
             
         # use the diagonals
         else:
             if any(isinstance(d.error, type(None)) for d in self.measurements):
-                raise ValueError("If no covariance matrix provided, all measurements must have errors")
+                msg = "If no covariance matrix provided, all measurements must have errors"
+                logger.error(msg)
+                raise ValueError(msg)
                 
             errors = np.concatenate([d.error for d in self.measurements])
             variances = errors**2
             self.covariance = CovarianceMatrix(variances, index=self.combined_k)
+            logger.info('Initialized diagonal covariance matrix from error columns')
+        
+        # rescale the covariance matrix
+        if self.params['covariance_rescaling'] is not None:
+            rescale = self.params['covariance_rescaling'].value
+            logger.info("Rescaled covariance matrix by value = {val}".format(val=str(rescale)))
+            self.covariance *= rescale
+        
         
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:
-            print len(self.combined_power), self.covariance.N
+            args = (len(self.combined_power), self.covariance.N)
+            logger.error("Combined power size {0}, covariance size {1}".format(*args))
             raise ValueError("Shape mismatch between covariance matrix and power data points")
             
     #---------------------------------------------------------------------------
@@ -317,3 +339,6 @@ class PowerData(object):
             return None
     
     #---------------------------------------------------------------------------
+#endclass PowerData
+
+#-------------------------------------------------------------------------------

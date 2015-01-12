@@ -13,7 +13,7 @@ class ParameterSet(OrderedDict):
     All keys must be strings and all values must be Parameters.
     """
     def __init__(self, *args, **kwargs):
-        super(ParameterSet, self).__init__(self)
+        super(ParameterSet, self).__init__()
         
         # keep track of constraints
         self.constraints = defaultdict(dict)
@@ -62,6 +62,13 @@ class ParameterSet(OrderedDict):
         else:
             self.update_param(**value)
 
+    #---------------------------------------------------------------------------
+    def __getitem__(self, key):
+        if key not in self:
+            return None
+        else:
+            return OrderedDict.__getitem__(self, key)
+    
     #---------------------------------------------------------------------------
     def __repr__(self):
         return "<ParameterSet (size: %d)>" %len(self)
@@ -147,6 +154,13 @@ class ParameterSet(OrderedDict):
                 self.add_lower_limit(key, rsplit[-1], exclusive=rexclusive)
     #end _parse_bounds
     
+    #---------------------------------------------------------------------------
+    def get(self, name, default=None):
+        """
+        Mirrors the `dict.get()` method behavior, but returns the parameter values
+        """
+        return self[name]() if name in self else default
+        
     #---------------------------------------------------------------------------
     def load(self, filename, clear_current=False):
         """

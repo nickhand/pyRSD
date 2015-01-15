@@ -17,7 +17,7 @@ class ParameterSet(OrderedDict):
         super(ParameterSet, self).__init__()
         
         # keep track of constraints
-        self.constraints = defaultdict(dict)
+        self.constraints = defaultdict(OrderedDict)
         
         # params_only
         self.params_only = kwargs.pop('params_only', False)

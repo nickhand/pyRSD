@@ -17,11 +17,14 @@ def find_file(filename):
                          %(filename, filename, data_dir, filename))
                          
 #-------------------------------------------------------------------------------
-def format(val):
+def is_floatable(val):
+    if isinstance(val, (basestring, bool)):
+        return False
     try:
-        return float(val)
+        float(val)
+        return True
     except:
-        return repr(val)
+        return False
         
 #-------------------------------------------------------------------------------
 def constraining_function(param_set, constraint, keys, modules, props='value'):

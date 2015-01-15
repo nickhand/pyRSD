@@ -5,6 +5,7 @@ from collections import OrderedDict, defaultdict
 import functools
 import itertools
 import string
+import copy
 
 #-------------------------------------------------------------------------------
 class ParameterSet(OrderedDict):
@@ -17,6 +18,9 @@ class ParameterSet(OrderedDict):
         
         # keep track of constraints
         self.constraints = defaultdict(dict)
+        
+        # params_only
+        self.params_only = kwargs.pop('params_only', False)
         
         if (len(args) == 1 and isinstance(args[0], basestring)):
             self.load(args[0])
@@ -55,9 +59,9 @@ class ParameterSet(OrderedDict):
             if all(k in Parameter._valid_keys for k in value.keys()):
                 value['name'] = key
                 value = Parameter(**value)
-        if value is not None and not isinstance(value, Parameter):
+        if not isinstance(value, Parameter):
             value = Parameter(value=value, name=key)
-        if key not in self:
+        if key not in self or self[key] is None:
             OrderedDict.__setitem__(self, key, value)
         else:
             self.update_param(**value)
@@ -72,6 +76,13 @@ class ParameterSet(OrderedDict):
     #---------------------------------------------------------------------------
     def __repr__(self):
         return "<ParameterSet (size: %d)>" %len(self)
+        
+    #---------------------------------------------------------------------------
+    def copy(self):
+        """
+        Return a copy
+        """
+        return copy.copy(self)
         
     #---------------------------------------------------------------------------
     def _verify_line(self, line, length, lineno):
@@ -169,7 +180,7 @@ class ParameterSet(OrderedDict):
         """
         # get the correct path
         filename = tools.find_file(filename)
-
+            
         D = {} 
         special_lines = {}
         old = ''
@@ -193,7 +204,8 @@ class ParameterSet(OrderedDict):
             
             # grab the special lines for later
             if "==" in line or any(op in line for op in ['<', '>']):
-                special_lines[linecount] = line
+                if not self.params_only:
+                    special_lines[linecount] = line
                 continue
                 
             line = line.split('=')
@@ -449,19 +461,19 @@ class ParameterSet(OrderedDict):
     @property
     def free_parameter_names(self):
         """
-        Return the free parameter names. `Free` means that `vary = True` and 
-        `constrained = False`
+        Return the free parameter names. `Free` means that `vary = True`,
+        `constrained = False, and `derived = False`
         """
-        return [k for k in self if self[k].vary and not self[k].constrained]
+        return [k for k in self if self[k].vary and not (self[k].constrained or self[k].derived)]
     
     #---------------------------------------------------------------------------
     @property
     def free_parameter_values(self):
         """
-        Return the free parameter values. `Free` means that `vary = True` and 
-        `constrained = False`
+        Return the free parameter values. `Free` means that `vary = True`,
+        `constrained = False, and `derived = False`
         """
-        return [self[k].value for k in self if self[k].vary and not self[k].constrained]
+        return np.array([self[k].value for k in self.free_parameter_names])
     
     #---------------------------------------------------------------------------
     @property
@@ -470,7 +482,34 @@ class ParameterSet(OrderedDict):
         Return the free `Parameter` objects. `Free` means that `vary = True` and 
         `constrained = False`
         """
-        return [self[k] for k in self if self[k].vary and not self[k].constrained]
+        return [self[k] for k in self.free_parameter_names]
+    
+    #---------------------------------------------------------------------------
+    @property
+    def constrained_parameter_names(self):
+        """
+        Return the constrained parameter names. `Constrained` means that 
+        `constrained = True` or `derived = True`
+        """
+        return [k for k in self if self[k].derived or self[k].constrained]
+    
+    #---------------------------------------------------------------------------
+    @property
+    def constrained_parameter_values(self):
+        """
+        Return the free parameter values. `Free` means that `vary = True` and 
+        `constrained = False`
+        """
+        return np.array([self[k].value for k in self.constrained_parameter_names])
+    
+    #---------------------------------------------------------------------------
+    @property
+    def constrained_parameters(self):
+        """
+        Return the free `Parameter` objects. `Free` means that `vary = True` and 
+        `constrained = False`
+        """
+        return [self[k] for k in self.constrained_parameter_names]
     
     #---------------------------------------------------------------------------
     def to_dict(self):
@@ -479,6 +518,7 @@ class ParameterSet(OrderedDict):
         as the (key, value) pairs
         """
         return {k : self[k].value for k in self}
+    #---------------------------------------------------------------------------
 #endclass ParameterSet
 
 #-------------------------------------------------------------------------------
@@ -504,8 +544,8 @@ class Parameter(object):
         # setup default properties
         props.setdefault('description', 'No description available')
         props.setdefault('derived', False)
-        props.setdefault('value', None)
         props.setdefault('vary', False)
+        props.setdefault('value', np.nan)
         props.setdefault('exclusive_min', False)
         props.setdefault('exclusive_max', False)
         props.setdefault('fiducial_value', None)
@@ -514,9 +554,8 @@ class Parameter(object):
                         
         # remember initial settings
         self._initial = props.copy()
-        
-        # attach all keys to the class instance
-        self.reset()    
+        for k, v in self._initial.iteritems():
+            setattr(self, k, v)
         
         # set default prior to be uniform if min/max supplied
         if self.prior is None:
@@ -526,11 +565,7 @@ class Parameter(object):
     #---------------------------------------------------------------------------
     def __getitem__(self, key):
         return getattr(self, key, None)    
-    
-    #---------------------------------------------------------------------------
-    def __getattr__(self, key):
-        return None
-        
+
     #---------------------------------------------------------------------------
     def keys(self):
         return [k for k in self._valid_keys]
@@ -548,24 +583,36 @@ class Parameter(object):
         Builtin representation method
         """
         s = []
-        s.append("%-15s" %("'" + self.name + "'"))
-        sval = tools.format(self.value)
-        sval = "value=%-15.5g" %sval
-        
-        fid_tag = ", fiducial" if self.value == self.fiducial_value else ""
-        if self.constrained:
-            t = " (constrained)"
-        elif self.derived:
-            t = " (derived)"
-        elif not self.vary:
-            t = " (fixed%s)" %fid_tag
+        s.append("{0:<15}".format("'" + self.name + "'"))
+        if tools.is_floatable(self.value):
+            sval = "value={0:<15.5g}".format(self.value)
         else:
-            t = " (free%s)" %fid_tag
-        sval += "%-20s" %t
+            sval = "value={0:<15s}".format(str(self.value) + ">")
+            s.append(sval)
+            
+        if tools.is_floatable(self.value):
+            fid_tag = ", fiducial" if self.value == self.fiducial_value else ""
+            if self.constrained:
+                t = " (constrained)"
+            elif self.derived:
+                t = " (derived)"
+            elif not self.vary:
+                t = " (fixed%s)" %fid_tag
+            else:
+                t = " (free%s)" %fid_tag
+            sval += "%-20s" %t
 
-        s.append(sval)
-        s.append("bounds=[%10.5g:%10.5g]" % (tools.format(self.min), tools.format(self.max)))
-        return "<Parameter %s>" % ' '.join(s)
+            s.append(sval)
+        
+            min_val = 'None'
+            max_val = 'None'
+            if tools.is_floatable(self.min):
+                min_val = "{:10.5g}".format(self.min).strip()
+            if tools.is_floatable(self.max):
+                max_val = "{:10.5g}".format(self.max).strip()
+
+            s.append("bounds={0:>10s}:{1:<10s}".format("["+min_val, max_val+"]>"))
+        return "<Parameter %s" % ' '.join(s)
     
     #---------------------------------------------------------------------------
     def __str__(self):
@@ -573,7 +620,7 @@ class Parameter(object):
         Builtin string method
         """
         return self.__repr__()    
-    
+            
     #---------------------------------------------------------------------------
     def reset(self):
         """
@@ -653,11 +700,12 @@ class Parameter(object):
             val = None
         self._min = val
         
-        if self.prior is not None and self.prior.name == 'uniform':
-            if val is None:
-                self.prior = None
-            else:
-                self.prior.update(lower=val)
+        if hasattr(self, 'prior'):
+            if self.prior is not None and self.prior.name == 'uniform':
+                if val is None:
+                    self.prior = None
+                else:
+                    self.prior.update(lower=val)
         
     def remove_lower_limit(self, val=None):
         """
@@ -688,11 +736,12 @@ class Parameter(object):
             val = None
         self._max = val
         
-        if self.prior is not None and self.prior.name == 'uniform':
-            if val is None:
-                self.prior = None
-            else:
-                self.prior.update(upper=val)
+        if hasattr(self, 'prior'):
+            if self.prior is not None and self.prior.name == 'uniform':
+                if val is None:
+                    self.prior = None
+                else:
+                    self.prior.update(upper=val)
     
     def remove_upper_limit(self, val=None):
         """
@@ -749,19 +798,21 @@ class Parameter(object):
         # if the parameter is derived, call the deriving function
         if self.derived:
             return self.deriving_function()
-            
+           
         try:
             if callable(self._value):
                 return self._value()
             else:
-                if self._value is None:
-                    raise AttributeError()
+                if self._value is not None:
+                    # check for default
+                    if tools.is_floatable(self._value) and np.isnan(self._value):
+                        raise AttributeError()
                 return self._value
         except AttributeError:
             if hasattr(self, 'fiducial_value') and self.fiducial_value is not None:
                 return self.fiducial_value
             else:
-                raise AttributeError("No value has been defined for parameter %s" %name)
+                raise AttributeError("No value has been defined for parameter %s" %self.name)
     
     @value.setter
     def value(self, val):
@@ -819,7 +870,14 @@ class Parameter(object):
         except ValueError:
             return None
         self.value = value
-    
+
+    #---------------------------------------------------------------------------
+    def has_prior(self):
+        """
+        Return `True` if the parameter has a prior function
+        """
+        return self.prior is not None
+
     #---------------------------------------------------------------------------
     def get_value_from_posterior(self, size=1):
         """
@@ -844,6 +902,13 @@ class Parameter(object):
         except ValueError:
             return None
         self.value = value
+        
+    #---------------------------------------------------------------------------
+    def has_posterior(self):
+        """
+        Return `True` if the parameter has a posterior function
+        """
+        return self.posterior is not None
         
     #---------------------------------------------------------------------------
     def deriving_function(self):

@@ -286,15 +286,7 @@ class GalaxyPowerTheory(object):
             
         # also update the model 
         self.update_model()
-    
-    #---------------------------------------------------------------------------
-    def set_params_from_result(self, results):
-        """
-        Set the free parameters from a results objects
-        """
-        theta = np.array([results[name].mean for name in self.free_parameter_names])
-        self.set_free_parameters(theta)
-        
+            
     #---------------------------------------------------------------------------
     @property
     def free_parameter_names(self):

@@ -265,6 +265,15 @@ class DataAnalysisDriver(object):
         self.theory.set_free_parameters(theta)
     
     #---------------------------------------------------------------------------
+    def set_fit_results(self):
+        """
+        Set the free parameters from the results objects and update the model
+        """
+        if self.results is not None:
+            theta = np.array([results[name].mean for name in self.theory.free_parameter_names])
+            self.theory.set_free_parameters(theta)
+            
+    #---------------------------------------------------------------------------
     def data_model_pairs(self):
         """
         Return the data - model pairs for each measurement

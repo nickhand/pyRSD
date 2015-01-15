@@ -183,7 +183,7 @@ class GalaxyPowerTheory(object):
     #---------------------------------------------------------------------------
     def __getstate__(self):
         lines = open(self._init_args[0], 'r').readlines()
-        return {'lines' : lines, 'k' : self._init_args[1]}
+        return {'lines' : lines, 'model' : self.model}
     
     def __setstate__(self, d):
         f = tempfile.NamedTemporaryFile(delete=False)
@@ -191,7 +191,21 @@ class GalaxyPowerTheory(object):
         lines = "\n".join(d['lines'])
         f.write(lines)
         f.close()
-        self.__init__(name, k=d['k'])
+    
+        # now set up the object
+        self.fit_params = GalaxyPowerParameters(name)
+
+        # now setup the model parameters; params are those not in `fit_params`
+        self.model_params = ParameterSet(name, params_only=True)
+        for param in self.model_params:
+            if self.fit_params._is_valid_key(param):
+                del self.model_params[param] 
+    
+        self.model = d['model']
+        
+        # setup any params depending on model
+        self._set_model_dependent_params()
+        
         if os.path.exists(name):
             os.remove(name)
     
@@ -273,6 +287,14 @@ class GalaxyPowerTheory(object):
         # also update the model 
         self.update_model()
     
+    #---------------------------------------------------------------------------
+    def set_params_from_result(self, results):
+        """
+        Set the free parameters from a results objects
+        """
+        theta = np.array([results[name].mean for name in self.free_parameter_names])
+        self.set_free_parameters(theta)
+        
     #---------------------------------------------------------------------------
     @property
     def free_parameter_names(self):

@@ -128,13 +128,14 @@ class EmceeResults(object):
         shape = (self.walkers, self.iterations, len(self.constrained_parameter_names))
         self.constrained_chain = np.zeros(shape)
         for niter in xrange(self.iterations):
-            for nwalker, free_param_vals in enumerate(self.chain[:,niter,:]):
+            for nwalker, theta in enumerate(self.chain[:,niter,:]):
                 
                 # set the free parameters
-                fit_params.set_free_parameters(free_param_vals)
-                
+                for val, name in zip(theta, self.free_parameter_names):
+                    fit_params[name].value = val
+                                
                 # set the constrained vals
-                constrained_vals = np.array([fit_params[name].value for name in fit_params.constrained_parameter_names])
+                constrained_vals = np.array([fit_params[name].value for name in self.constrained_parameter_names])
                 self.constrained_chain[nwalker, niter, :] = constrained_vals
             
     #---------------------------------------------------------------------------

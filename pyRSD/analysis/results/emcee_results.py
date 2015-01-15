@@ -23,7 +23,7 @@ class EmceeParameter(object):
         sig1 = self.one_sigma
         sig2 = self.two_sigma
         args = (self.name, self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
-        return "<EmceeParameter:{} {:10.4g} (+{:.4g} -{:.4g}, 68%) (+{:.4g} -{:.4g}, 95%)>".format(*args)
+        return "<EmceeParameter: {} {:.4g} (+{:.4g} -{:.4g}, 68%) (+{:.4g} -{:.4g}, 95%)>".format(*args)
         
     #---------------------------------------------------------------------------
     def __str__(self):

@@ -9,10 +9,28 @@ class EmceeParameter(object):
     """
     Class to hold the parameter fitting result
     """
-    def __init__(self, trace, burnin=0):
+    def __init__(self, name, trace, burnin=0):
         
+        self.name   = name
         self._trace = trace # shape is (nwalkers, niters)
         self.burnin = burnin
+        
+    #---------------------------------------------------------------------------
+    def __repr__(self):
+        """
+        Builtin representation method
+        """
+        sig1 = self.one_sigma
+        sig2 = self.two_sigma
+        args = (self.name, self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
+        return "<EmceeParameter:{} {:10.4g} (+{:.4g} -{:.4g}, 68%) (+{:.4g} -{:.4g}, 95%)>".format(*args)
+        
+    #---------------------------------------------------------------------------
+    def __str__(self):
+        """
+        Builtin string method
+        """
+        return self.__repr__()
         
     #---------------------------------------------------------------------------
     @property
@@ -45,9 +63,9 @@ class EmceeParameter(object):
         upper, lower
             The lower and upper 1-sigma error intervals 
         """
-        low = 50. - 15.86555
-        high = 84.13445 - 50.
-        return np.percentile(self.flat_trace, [high, low])
+        percentiles = [50., 15.86555, 84.13445]
+        vals = np.percentile(self.flat_trace, percentiles)
+        return vals[2] - vals[0], vals[0] - vals[1]
 
     #---------------------------------------------------------------------------
     @property
@@ -61,15 +79,16 @@ class EmceeParameter(object):
         upper, lower
             The lower and upper 1-sigma error intervals 
         """
-        low = 50. - 2.2775
-        high = 97.7225 - 50.
-        return np.percentile(self.flat_trace, [high, low])
+        percentiles = [50, 2.2775, 97.7225]
+        vals = np.percentile(self.flat_trace, percentiles)
+        return vals[2] - vals[0], vals[0] - vals[1]
     
     #--------------------------------------------------------------------------- 
     def trace(self, niter=None):
         """
-        Return the sample values at a specific iteration number. The output 
-        should have a length equal to the number of walkers
+        Return the sample values at a specific iteration number.
+        
+        shape: (nwalkers, niters)
         """
         if niter is None:
             return self._trace
@@ -137,7 +156,20 @@ class EmceeResults(object):
                 # set the constrained vals
                 constrained_vals = np.array([fit_params[name].value for name in self.constrained_parameter_names])
                 self.constrained_chain[nwalker, niter, :] = constrained_vals
-            
+                
+        # check for any constrained values that are fixed and remove
+        tocat = ()
+        names = []
+        for i in range(shape[-1]):
+            trace = self.constrained_chain[...,i]
+            fixed = len(np.unique(trace)) == 1
+            if not fixed:
+                tocat += (trace[...,None],)
+                names.append(self.constrained_parameter_names[i])
+                
+        self.constrained_parameter_names = names
+        self.constrained_chain = np.concatenate(tocat, axis=2)
+                
     #---------------------------------------------------------------------------
     def _save_results(self):
         """
@@ -147,12 +179,12 @@ class EmceeResults(object):
         
         # the free parameters
         for i, name in enumerate(self.free_parameter_names):
-            self._results[name] = EmceeParameter(self.chain[...,i])
+            self._results[name] = EmceeParameter(name, self.chain[...,i])
         
         # the constrained parameters
         if self.constrained_chain is not None:
             for i, name in enumerate(self.constrained_parameter_names):
-                self._results[name] = EmceeParameter(self.constrained_chain[...,i])
+                self._results[name] = EmceeParameter(name, self.constrained_chain[...,i])
                         
     #---------------------------------------------------------------------------
     # some convenience attributes
@@ -208,8 +240,12 @@ class EmceeResults(object):
         for i, name in enumerate(names):
             param = self[name]
             
-            # this does not exclude a burnin period
-            axes[i].plot(param.trace().T, color="k", alpha=0.4)
+            iter_num = range(self.iterations)[self.burnin:]
+            trace = param.trace()[:, self.burnin:]
+            
+            # this excludes the burnin period
+            for t in trace:
+                axes[i].plot(iter_num, t, color="k", alpha=0.4)
             axes[i].yaxis.set_major_locator(MaxNLocator(5))
             axes[i].axhline(param.mean, color="#888888", lw=2)
             axes[i].set_ylabel(name)
@@ -217,14 +253,16 @@ class EmceeResults(object):
     #---------------------------------------------------------------------------
     def plot_free_timelines(self):
         """
-        Plot the timeline chains of the free parameters
+        Plot the timeline chains of the free parameters, excluding any 
+        iterations in the burnin period
         """
         self._plot_timeline(self.free_parameter_names)
         
     #---------------------------------------------------------------------------
     def plot_constrained_timelines(self):
         """
-        Plot the timeline chains of the constrained parameters
+        Plot the timeline chains of the constrained parameters, excluding any 
+        iterations in the burnin period
         """
         if len(self.constrained_parameter_names) > 0:
             self._plot_timeline(self.constrained_parameter_names)
@@ -236,8 +274,7 @@ class EmceeResults(object):
         """
         samples = self.chain[:, self.burnin:, :].reshape((-1, self.ndim))
         pfy.clf()
-        fig = pfy.gcf()
-        fig = triangle.corner(samples, labels=self.free_parameter_names, fig=fig)
+        fig = triangle.corner(samples, labels=self.free_parameter_names)
         return fig
         
     #---------------------------------------------------------------------------
@@ -248,8 +285,7 @@ class EmceeResults(object):
         N = len(self.constrained_parameter_names)
         samples = self.constrained_chain[:, self.burnin:, :].reshape((-1, N))
         pfy.clf()
-        fig = pfy.gcf()
-        fig = triangle.corner(samples, labels=self.constrained_parameter_names, fig=fig)
+        fig = triangle.corner(samples, labels=self.constrained_parameter_names)
         return fig
         
     #---------------------------------------------------------------------------

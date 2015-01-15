@@ -1,1 +1,1 @@
-from .emcee_results import EmceeResults
+from .emcee_results import EmceeResults, EmceeParameter

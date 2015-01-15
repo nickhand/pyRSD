@@ -71,6 +71,22 @@ class PowerMeasurement(object):
         
     #---------------------------------------------------------------------------
     @property
+    def label(self):
+        """
+        Return the label associated with this kind of measurement
+        """
+        if self.type == 'pkmu':
+            return self.type + '_' + str(self.mu)
+        else:
+            if self.type == 'pole':
+                if self.ell == 0:
+                    return 'monopole'
+                elif self.ell == 2:
+                    return 'quadrupole'
+        raise NotImplementedError("Confused about what label corresponds to this measurement")
+        
+    #---------------------------------------------------------------------------
+    @property
     def k_trim(self):
         """
         Maximum k value to trim the results to in units of `h/Mpc`
@@ -235,6 +251,13 @@ class PowerData(object):
             kwargs = {'err_col' : info.get('err_col', None), 'k_trim' : self.k_trim}
             self.measurements.append(PowerMeasurement(*args, **kwargs))
         
+        # make sure all the ks are the same
+        tmp = self.measurements
+        if not all(np.array_equal(tmp[i].k, tmp[i+1].k) for i in range(len(tmp)-1)):
+            msg = "All measurements read do not have same wavenumber array"
+            logger.error(msg)
+            raise ValueError(msg)
+        
         logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             
     #---------------------------------------------------------------------------
@@ -243,17 +266,15 @@ class PowerData(object):
         Setup the combined covariance matrix
         """
         # load the covariance from a pickle
+        loaded = False
         if self.params['covariance'] is not None:
             filename = tools.find_file(self.params['covariance'].value)
             C = pickle.load(open(filename, 'r'))
             index =  np.concatenate([d._k_input for d in self.measurements])
             self.covariance = CovarianceMatrix(C, index=index)
-            logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename))
             
-            # possibly trim by a k_max
-            if self.k_trim is not None:
-                self.covariance = self.covariance.trim_by_index(self.k_trim)
-                logger.info("Trimmed read covariance matrix to k_max = {k} h/Mpc".format(k=self.k_trim))
+            logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename))            
+            loaded = True
             
         # use the diagonals
         else:
@@ -272,13 +293,34 @@ class PowerData(object):
             rescale = self.params['covariance_rescaling'].value
             logger.info("Rescaled covariance matrix by value = {val}".format(val=str(rescale)))
             self.covariance *= rescale
-        
+                    
+        if loaded:
+            # set errors for each indiv measurement to match cov
+            self._set_errs_from_cov()
+            
+            # possibly trim by a k_max
+            if self.k_trim is not None:
+                self.covariance = self.covariance.trim_by_index(self.k_trim)
+                logger.info("Trimmed read covariance matrix to k_max = {k} h/Mpc".format(k=self.k_trim))
         
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:
             args = (len(self.combined_power), self.covariance.N)
             logger.error("Combined power size {0}, covariance size {1}".format(*args))
             raise ValueError("Shape mismatch between covariance matrix and power data points")
+                
+    #---------------------------------------------------------------------------
+    def _set_errs_from_cov(self):
+        """
+        Set the errors for each individual measurement to match the diagonals
+        of the covariance matrix
+        """
+        # the variances
+        variances = self.covariance.diag()
+        for i, m in enumerate(self.measurements):
+            size = len(m._k_input)
+            errs = (variances[size*i : size*(i+1)])**0.5
+            m._error_input = errs
             
     #---------------------------------------------------------------------------
     @property

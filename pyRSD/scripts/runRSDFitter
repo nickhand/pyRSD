@@ -8,19 +8,30 @@
  creation date: 12/22/2014
 """
 from emcee.utils import MPIPool
-from pyRSD.fit import fitter
+from pyRSD.analysis import DataAnalysisDriver
+from pyRSD.analysis.parameters import ParameterSet
+
+import logging
 import argparse
 import sys
+import os
 
 #-------------------------------------------------------------------------------
-def boolean(string):
-    string = string.lower()
-    if string in ['0', 'f', 'false', 'no', 'off']:
-        return False
-    elif string in ['1', 't', 'true', 'yes', 'on']:
-        return True
-    else:
-        raise ValueError()
+def setup_logger(filename):
+
+    # set up logging to file
+    logging.basicConfig(level=logging.DEBUG,
+                        format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        datefmt='%m-%d %H:%M',
+                        filename=filename,
+                        filemode='w')
+                        
+    # define a Handler which writes INFO messages or higher to the sys.stderr
+    console = logging.StreamHandler()
+    console.setLevel(logging.INFO)
+    formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
+    console.setFormatter(formatter)
+    logging.getLogger('').addHandler(console)
 
 #-------------------------------------------------------------------------------
 def main(args):
@@ -35,46 +46,39 @@ def main(args):
     if pool is not None and not pool.is_master():
         pool.wait()
         sys.exit(0)
-
+        
+    # setup the logger
+    p = ParameterSet(args.params)
+    odir = p['output_dir'].value
+    if not os.path.exists(odir):
+        os.makedirs(odir)
+    filename = "{}/{}.log".format(odir, p['label'].value)
+    print filename
+    setup_logger(filename)
+        
     # initialize the fitter
-    f = fitter.GalaxyRSDFitter(args.param_file, 
-                                pool=pool,
-                                burnin=args.burnin,
-                                iterations=args.iterations,
-                                walkers=args.walkers,
-                                verbose=args.verbose, 
-                                fig_verbose=args.fig_verbose)
+    driver = DataAnalysisDriver(args.params, args.theory_params, args.data_params, pool=pool)
 
     # run
-    f.run()
-        
+    driver.run()
 #end main
 
 #-------------------------------------------------------------------------------
 if __name__ == '__main__':
     
     # parse the input arguments
-    desc = "Run the RSD MCMC fitter"
+    desc = "run the RSD model fitter"
     parser = argparse.ArgumentParser(description=desc)
     
-    h = 'The name of the parameter file'
-    parser.add_argument('param_file', type=str, help=h) 
+    h = 'The file name holding the general parameters'
+    parser.add_argument('params', type=str, help=h) 
+    
+    h = 'The file name holding the theory parameters'
+    parser.add_argument('theory_params', type=str, help=h)
+    
+    h = 'The file name holding the data params'
+    parser.add_argument('data_params', type=str, help=h)
 
-    h = 'Verbosity level'
-    parser.add_argument('-v', '--verbose', type=boolean, default=True, help=h)
-    
-    h = 'Figure verbosity level'
-    parser.add_argument('-fv', '--fig-verbose', type=boolean, default=True, help=h)
-    
-    h = 'The number of steps to use as the burn-in period.'
-    parser.add_argument('--burnin', type=int, default=50, help=h)
-    
-    h = 'The number of iterations to run as part of the chain.'
-    parser.add_argument('--iterations', type=int, default=500, help=h)
-    
-    h = 'The number of walkers to use'
-    parser.add_argument('--walkers', type=int, default=20, help=h)
-    
     args = parser.parse_args()
     main(args)
     

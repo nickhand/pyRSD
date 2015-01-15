@@ -496,6 +496,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         If `flatten = True`, return a flatenned array with dimensions 
         (len(self.k_obs)*len(mu), )
         """
+        
         fss = self.fs**2
         fcs = 2.*self.fs*(1 - self.fs)
         fcc = (1. - self.fs)**2

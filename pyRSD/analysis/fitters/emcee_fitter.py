@@ -1,10 +1,11 @@
-from ... import numpy as np
+from ... import numpy as np, os
 from ..results import EmceeResults
 
 import emcee
 import logging
 import time
 import scipy.stats
+import cPickle
 
 logger = logging.getLogger('pyRSD.analysis.emcee_fitter')
 logger.addHandler(logging.NullHandler())
@@ -245,37 +246,58 @@ def run(params, theory, objective, pool=None):
         nwalkers += 1
         logger.warning("EMCEE: number of walkers must be even: set to {}".format(nwalkers))
     
-    
     #---------------------------------------------------------------------------
     # initialize the parameters
     #---------------------------------------------------------------------------
+    filename = "{}/{}.results.pickle".format(params['output_dir'].value, params['label'].value)
+    old_results = None
+    start = 0
+    if os.isfile(filename) and init_from == 'previous_run':
+        
+        # try to load the old driver
+        old_driver = cPickle.load(open(filename, 'r'))
+        old_results = old_driver.results.copy()
+        del old_driver
+        
+        # get the attributes
+        chain = old_results.chain
+        lnprob0 = old_results.lnprob
+        start = chain.shape[1]
+        p0 = np.array(chain[:, -1, :])
+        
+        logger.warning("EMCEE: continuing previous run (starting at iteration {})".format(start))
+    
+    # or start from scratch
+    else:
+        lnprob0 = None
+        
+        # if previous_run was requested, if we end up here it was not possible.
+        # therefore we set to start from posteriors
+        if init_from == 'previous_run':
+            logger.warning("Cannot continue from previous run, falling back to start from posteriors")
+            init_from = 'posterior'
 
-    # if previous_run was requested, if we end up here it was not possible.
-    # therefore we set to start from posteriors
-    if init_from == 'previous_run':
-        logger.warning("Cannot continue from previous run, falling back to start from posteriors")
-        init_from = 'posterior'
-
-    # Initialize a set of parameters
-    try:
-        logger.warning("Attempting multivariate initialization from {}".format(init_from))
-        p0, drew_from = multivariate_init(theory, nwalkers, draw_from=init_from)
-        logger.warning("Initialized walkers from {} with multivariate normals".format(drew_from))
-    except ValueError:
-        logger.warning("Attempting univariate initialization")
-        p0, drew_from = univariate_init(theory, nwalkers, draw_from=init_from)
-        logger.warning("Initialized walkers from {} with univariate distributions".format(drew_from))
+        # Initialize a set of parameters
+        try:
+            logger.warning("Attempting multivariate initialization from {}".format(init_from))
+            p0, drew_from = multivariate_init(theory, nwalkers, draw_from=init_from)
+            logger.warning("Initialized walkers from {} with multivariate normals".format(drew_from))
+        except ValueError:
+            logger.warning("Attempting univariate initialization")
+            p0, drew_from = univariate_init(theory, nwalkers, draw_from=init_from)
+            logger.warning("Initialized walkers from {} with univariate distributions".format(drew_from))
     
     # initialize the sampler
     logger.warning("EMCEE: initializing sampler with {} walkers".format(nwalkers))
     sampler = emcee.EnsembleSampler(nwalkers, ndim, objective, pool=pool)
 
-    # and run!
+    # iterator interface allows us to trap ctrl+c and know where we are
+    exception = False
     try:                               
-        logger.warning("EMCEE: starting {} iterations with {} free parameters...".format(niters, ndim))
+        logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters-start, ndim))
         logger.warning("EMCEE: starting positions: {}".format(p0))
         start = time.time()    
-        generator = sampler.sample(p0, iterations=niters, storechain=True)
+        generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters-start, storechain=True)
         
         # loop over all the steps
         for niter, result in enumerate(generator):                    
@@ -299,12 +321,17 @@ def run(params, theory, objective, pool=None):
         logger.warning("EMCEE: mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
         logger.warning("EMCEE: autocorrelation time: {}".format(sampler.get_autocorr_time()))
         
-    except:
-        pass
+    except KeyboardInterrupt:
+        exception = True
+        logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
     finally:
-        results = EmceeResults(sampler, theory.fit_params, params.get('burnin', None))
+        burnin = 0 if start > 0 else params.get('burnin', None)
+        new_results = EmceeResults(sampler, theory.fit_params, burnin)
+        if old_results is not None:
+            new_results = old_results + new_results
         
-    return results
+    return new_results, exception
 #end run
+
 #-------------------------------------------------------------------------------
     

@@ -1,5 +1,6 @@
 from ... import numpy as np, os
 from ..results import EmceeResults
+from . import tools
 
 import emcee
 import logging
@@ -9,174 +10,6 @@ import cPickle
 
 logger = logging.getLogger('pyRSD.analysis.emcee_fitter')
 logger.addHandler(logging.NullHandler())
-
-#-------------------------------------------------------------------------------
-def hms_string(sec_elapsed):
-    h = int(sec_elapsed / (60 * 60))
-    m = int((sec_elapsed % (60 * 60)) / 60)
-    s = sec_elapsed % 60.
-    return "{}:{:>02}:{:>05.2f}".format(h, m, s)
-
-#-------------------------------------------------------------------------------
-def univariate_init(theory, nwalkers, draw_from='prior'):
-    """
-    Initializae variables from univariate prior
-    
-    Parameters
-    ----------
-    theory : pyRSD.analysis.theory.GalaxyPowerTheory
-        galaxy power theory object, which holds the free parameters for the
-        fitting procedure
-    nwalkers : int
-        the number of walkers used in fitting with `emcee`
-    draw_from : str, {'prior', 'posterior'}
-        either draw from the prior or the posterior to initialize
-    """
-    # get the free params
-    pars = theory.fit_params.free_parameters
-    
-    # draw function: if it's from posteriors and a par has no posterior, fall
-    # back to prior
-    if draw_from == 'posterior':
-        draw_funcs = ['get_value_from_posterior' if par.has_posterior() else 'get_value_from_prior' for par in pars]
-        get_funcs = ['get_posterior' if par.has_posterior() else 'get_prior' for par in pars]
-    else:
-        draw_funcs = ['get_value_from_prior' for par in pars]
-        get_funcs = ['get_prior' for par in pars]
-    
-    # create an initial set of parameters from the priors (shape: nwalkers x npar)
-    p0 = np.array([getattr(par, draw_func)(size=nwalkers) for par, draw_func in zip(pars, draw_funcs)]).T
-    
-    # we do need to check if all the combinations produce realistic models
-    exceed_max_try = 0
-    difficult_try = 0
-    
-    # loop over each parameter
-    for i, walker in enumerate(p0):
-        max_try = 100
-        current_try = 0
-        
-        # check the model for this set of parameters
-        while True:
-            
-            # Set the values
-            for par, value in zip(pars, walker):
-                par.value = value
-            
-            # if it checks out, continue checking the next one
-            if theory.check() or current_try > max_try:
-                if current_try > max_try:
-                    exceed_max_try += 1
-                elif current_try > 50:
-                    difficult_try += 1
-                p0[i] = walker
-                break
-            
-            current_try += 1
-            
-            # else draw a new value: for traces, we remember the index so that
-            # we can take the parameters from the same representation always
-            walker = []
-            for ii, par in enumerate(pars):
-                value = getattr(par, draw_funcs[ii])(size=1)                    
-                walker.append(value)
-    
-    # Perhaps it was difficult to initialise walkers, warn the user
-    if exceed_max_try or difficult_try:
-        logger.warning(("Out {} walkers, {} were difficult to initialise, and "
-                        "{} were impossible: probably your priors are very "
-                        "wide and allow many unphysical combinations of "
-                        "parameters.").format(len(p0), difficult_try, exceed_max_try))
-    
-    # report what was used to draw from:
-    if np.all(np.array(get_funcs)=='get_prior'):
-        drew_from = 'prior'
-    elif np.all(np.array(get_funcs)=='get_posterior'):
-        drew_from = 'posterior'
-    else:
-        drew_from = 'mixture of priors and posteriors'
-    
-    return p0, drew_from
-#end univariate_init
-
-#-------------------------------------------------------------------------------
-def multivariate_init(theory, nwalkers, draw_from='prior'):
-    """
-    Initialize parameters with multivariate normals
-
-    Parameters
-    ----------
-    theory : pyRSD.analysis.theory.GalaxyPowerTheory
-        galaxy power theory object, which holds the free parameters for the
-        fitting procedure
-    nwalkers : int
-        the number of walkers used in fitting with `emcee`
-    draw_from : str, {'prior', 'posterior'}
-        either draw from the prior or the posterior to initialize
-    """
-    # get the free params
-    pars = theory.fit_params.free_parameters
-    npars = len(pars)
-    
-    # draw function
-    draw_func = 'get_value_from_' + draw_from
-    
-    # getter
-    get_func = draw_from
-    
-    # check if distributions are traces, otherwise we can't generate
-    # multivariate distributions
-    for par in pars:
-        this_dist = getattr(par, get_func)
-        if this_dist is None:
-            raise ValueError(("No {} defined for parameter {}, cannot "
-                              "initialise "
-                              "multivariately").format(draw_from, par.name))
-        if not this_dist.name == 'trace':
-            raise ValueError(("Only trace distributions can be used to "
-                              "generate multivariate walkers ({} "
-                              "distribution given for parameter "
-                              "{})").format(this_dist, par.name))
-    
-    # extract averages and sigmas
-    averages = [getattr(par, get_func).loc for par in pars]
-    sigmas = [getattr(par, get_func).scale for par in pars]
-    
-    # Set correlation coefficients
-    cor = np.zeros((npars, npars))
-    for i, ipar in enumerate(pars):
-        for j, jpar in enumerate(pars):
-            prs = scipy.stats.pearsonr(getattr(ipar, get_func).trace,
-                                        getattr(jpar, get_func)().trace)[0]
-            cor[i, j] = prs * sigmas[i] * sigmas[j]
-
-    # sample is shape nwalkers x npars
-    sample = np.random.multivariate_normal(averages, cor, nwalkers)
-    
-    # Check if all initial values satisfy the limits and priors. If not,
-    # draw a new random sample and check again. Don't try more than 100 times,
-    # after that we just need to live with walkers that have zero probability
-    # to start with...
-    for i, walker in enumerate(sample):
-        max_try = 100
-        current_try = 0
-        while True:
-            # adopt the values in the system
-            for par, value in zip(pars, walker):
-                par.value = value
-                sample[i] = walker
-            # perform the check; if it doesn't work out, retry
-            if not theory.check() and current_try < max_try:
-                walker = np.random.multivariate_normal(averages, cor, 1)[0]
-                current_try += 1
-            else:
-                break
-        else:
-            logger.warning("Walker {} could not be initalised with valid parameters".format(i))
-    
-    return sample, draw_from
-#end multivariate_init
-
 
 #-------------------------------------------------------------------------------
 def update_progress(theory, sampler, niters, nwalkers, last=10):
@@ -209,9 +42,24 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     logger.warning(text)
 
 #-------------------------------------------------------------------------------
-def run(params, theory, objective, pool=None):
+def run(params, theory, objective, pool=None, ml_values=None):
     """
     Perform MCMC sampling of the parameter space of a system using `emcee`.
+        
+        
+    Parameters
+    ----------
+    params : ParameterSet
+        This holds the parameters needed to run the `emcee` fitter
+    theory : GalaxyPowerTheory
+        Theory object, which has the `fit_params` ParameterSet as an attribute
+    objective : callable
+        The function that results the log of the probability
+    pool : emcee.MPIPool, optional
+        Pool object if we are using MPI to run emcee
+    ml_values : array_like
+        Max-likelihood positions; if not `None`, initialize the emcee walkers
+        in a small, random ball around these positions
         
     Notes
     -----
@@ -253,7 +101,18 @@ def run(params, theory, objective, pool=None):
     old_results = None
     start = 0
     lnprob0 = None
-    if os.path.isfile(filename) and init_from == 'previous_run':
+    
+    # 1) initialixe from maximum likelihood values
+    if init_from == 'max-like':
+        if ml_values is None:
+            raise ValueError("EMCEE: cannot initialize from maximum likelihood values -- none provided")
+        
+        # initialize in random ball
+        # shape is (nwalkers, ndim)
+        p0 = np.array([ml_values + 1e-3*np.random.randn(ndim) for i in range(nwalkers)])
+            
+    # 2) initialize from past run
+    elif os.path.isfile(filename) and init_from == 'previous_run':
         
         # try to load the old driver
         old_driver = cPickle.load(open(filename, 'r'))
@@ -268,7 +127,7 @@ def run(params, theory, objective, pool=None):
         
         logger.warning("EMCEE: continuing previous run (starting at iteration {})".format(start))
     
-    # or start from scratch
+    # 3) start from scratch
     else:
         
         # if previous_run was requested, if we end up here it was not possible.
@@ -280,11 +139,11 @@ def run(params, theory, objective, pool=None):
         # Initialize a set of parameters
         try:
             logger.warning("Attempting multivariate initialization from {}".format(init_from))
-            p0, drew_from = multivariate_init(theory, nwalkers, draw_from=init_from)
+            p0, drew_from = tools.multivariate_init(theory, nwalkers, draw_from=init_from, logger=logger)
             logger.warning("Initialized walkers from {} with multivariate normals".format(drew_from))
         except ValueError:
             logger.warning("Attempting univariate initialization")
-            p0, drew_from = univariate_init(theory, nwalkers, draw_from=init_from)
+            p0, drew_from = tools.univariate_init(theory, nwalkers, draw_from=init_from, logger=logger)
             logger.warning("Initialized walkers from {} with univariate distributions".format(drew_from))
     
     # initialize the sampler
@@ -312,7 +171,7 @@ def run(params, theory, objective, pool=None):
                 update_progress(theory, sampler, niters, nwalkers)
 
         stop = time.time()
-        logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(hms_string(stop-start)))
+        logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(tools.hms_string(stop-start)))
 
         # close the pool processes
         if pool is not None: 
@@ -320,7 +179,10 @@ def run(params, theory, objective, pool=None):
 
         # acceptance fraction should be between 0.2 and 0.5 (rule of thumb)
         logger.warning("EMCEE: mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
-        logger.warning("EMCEE: autocorrelation time: {}".format(sampler.get_autocorr_time()))
+        try:
+            logger.warning("EMCEE: autocorrelation time: {}".format(sampler.get_autocorr_time()))
+        except:
+            pass
         
     except KeyboardInterrupt:
         exception = True

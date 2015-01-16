@@ -1,11 +1,10 @@
-from .. import numpy as np
+from .. import numpy as np, plotify as pfy
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData
 from .fitters import *
 
 import functools
-import plotify as pfy
 import logging
 import cPickle
 import copy_reg
@@ -96,12 +95,21 @@ class DataAnalysisDriver(object):
   
         # run the solver and store the results
         logger.info("Calling the '{}' fitter's solve function".format(solver_name))
-        self.results = solver(self.params, self.theory, objective, pool=self.pool)
+        self.results, exception = solver(self.params, self.theory, objective, pool=self.pool)
         logger.info("...fitting complete")
         
+        # set the results
+        self.set_fit_results()
+        
         # pickle everything
-        filename = "{}/{}.results.pickle".format(self.params['output_dir'].value, self.params['label'].value)
-        self.save(filename)
+        output_label = "{}/{}".format(self.params['output_dir'].value, self.params['label'].value)
+        self.save(output_label + ".results.pickle")
+        
+        if exception:
+            logger.error("Exception raised...exiting")
+            sys.exit()
+        else:
+            self.results.summarize_fit(output_label)
 
     #---------------------------------------------------------------------------
     def save(self, filename):
@@ -140,14 +148,22 @@ class DataAnalysisDriver(object):
                 mus.append(meas.mu)       
         self._mus = sorted(mus)
         
+        # initialize
         self._model_callables = {}
+        self._model_callables_hires = {}
+        
+        # pkmu
         self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus)
-        self._model_callables['pole'] = {}
+        self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True)
         
         # now get the multipoles
+        self._model_callables['pole'] = {}
+        self._model_callables_hires['pole'] = {}
+        
         for m in self.data.measurements:
             if m.type == 'pole':
                 self._model_callables['pole'][m.ell] = self.theory.model_callable('pole', m.ell)
+                self._model_callables_hires['pole'][m.ell] = self.theory.model_callable('pole', m.ell, hires=True)
                 
     #---------------------------------------------------------------------------
     @property
@@ -270,23 +286,28 @@ class DataAnalysisDriver(object):
         Set the free parameters from the results objects and update the model
         """
         if self.results is not None:
-            theta = np.array([results[name].mean for name in self.theory.free_parameter_names])
+            theta = np.array([self.results[name].mean for name in self.theory.free_parameter_names])
             self.theory.set_free_parameters(theta)
             
     #---------------------------------------------------------------------------
-    def data_model_pairs(self):
+    def data_model_pairs(self, hires=False):
         """
         Return the data - model pairs for each measurement
         
         Returns
         -------
         toret : list
-            A list of (k, model, data, err) for each measurement in 
+            A list of (k_model, model, k_data, data, err) for each measurement in 
             `self.data.measurements`
         """
+        if not hires:
+            callables = self._model_callables
+        else:
+            callables = self._model_callables_hires
+            
         # get any pkmu values
-        if 'pkmu' in self._model_callables:
-            pkmu_results = np.split(self._model_callables['pkmu'](), len(self._mus))
+        if 'pkmu' in callables:
+            pkmu_results = np.split(callables['pkmu'](), len(self._mus))
 
         # get the model and data measurements
         toret = []
@@ -295,9 +316,9 @@ class DataAnalysisDriver(object):
                 index = self._mus.index(m.mu)
                 model = pkmu_results[index]
             else:
-                model = self._model_callabels['pole'][m.ell]()
+                model = callables['pole'][m.ell]()
             
-            toret.append((m.k, model, m.power, m.error))
+            toret.append((self.theory.model.k_obs, model, m.k, m.power, m.error))
             
         return toret
     
@@ -319,7 +340,7 @@ class DataAnalysisDriver(object):
         for i, result in enumerate(results):
 
             # make the residual
-            k, model, data, errs = result
+            k, model, _, data, errs = result
             residual = (data - model) / errs
             
             # make the plot
@@ -340,7 +361,7 @@ class DataAnalysisDriver(object):
         P(k, mu) and multipoles on separate figures
         """
         # get the data - model pairs (k, model, data, err)
-        results = self.data_model_pairs()
+        results = self.data_model_pairs(hires=True)
         
         pkmu_results, pole_results = [], []
         mus, ells = [], []
@@ -384,16 +405,15 @@ class DataAnalysisDriver(object):
         offset = -0.1
         for i, mu in enumerate(mus):
             # unpack the result
-            k, model, data, errs = results[i]
+            k_model, model, k_data, data, errs = results[i]
             
-            # the norm
-            norm = Pnw_kaiser(k, mu)
-
             # plot the model
-            pfy.plot(k, model/norm + offset*i)
+            norm = Pnw_kaiser(k_model, mu)
+            pfy.plot(k_model, model/norm + offset*i)
             
             # plot the measurement
-            pfy.errorbar(k, data/norm + offset*i, errs/norm, zorder=2, label=r"$\mu = %s$" %mu)
+            norm = Pnw_kaiser(k_data, mu)
+            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=r"$\mu = %s$" %mu)
 
         ncol = 1 if len(mus) < 4 else 2
         ax.legend(loc=0, ncol=ncol)

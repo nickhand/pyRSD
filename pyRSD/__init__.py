@@ -34,3 +34,4 @@ except:
     
 # every module uses numpy
 import numpy
+import plotify

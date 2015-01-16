@@ -252,7 +252,8 @@ def run(params, theory, objective, pool=None):
     filename = "{}/{}.results.pickle".format(params['output_dir'].value, params['label'].value)
     old_results = None
     start = 0
-    if os.isfile(filename) and init_from == 'previous_run':
+    lnprob0 = None
+    if os.path.isfile(filename) and init_from == 'previous_run':
         
         # try to load the old driver
         old_driver = cPickle.load(open(filename, 'r'))
@@ -261,7 +262,7 @@ def run(params, theory, objective, pool=None):
         
         # get the attributes
         chain = old_results.chain
-        lnprob0 = old_results.lnprob
+        lnprob0 = old_results.lnprobs
         start = chain.shape[1]
         p0 = np.array(chain[:, -1, :])
         
@@ -269,7 +270,6 @@ def run(params, theory, objective, pool=None):
     
     # or start from scratch
     else:
-        lnprob0 = None
         
         # if previous_run was requested, if we end up here it was not possible.
         # therefore we set to start from posteriors
@@ -293,11 +293,12 @@ def run(params, theory, objective, pool=None):
 
     # iterator interface allows us to trap ctrl+c and know where we are
     exception = False
+    niters -= start
     try:                               
-        logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters-start, ndim))
-        logger.warning("EMCEE: starting positions: {}".format(p0))
+        logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
+        logger.warning("EMCEE: starting positions:\n{}".format(p0))
         start = time.time()    
-        generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters-start, storechain=True)
+        generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters, storechain=True)
         
         # loop over all the steps
         for niter, result in enumerate(generator):                    

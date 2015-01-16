@@ -116,11 +116,21 @@ class EmceeResults(object):
         self.free_parameter_names = fit_params.free_parameter_names
         self.constrained_parameter_names = fit_params.constrained_parameter_names
         
-        # sampler attributes
-        self.chain               = sampler.chain         # shape is (nwalkers, niters, npars)
-        self.lnprobs             = sampler.lnprobability # shape is (nwalkers, niters)
+        # chain
+        (walkers, _, ndim) = sampler.chain.shape
+        inds = np.nonzero(sampler.chain)
+        self.chain = sampler.chain[inds].reshape((walkers, -1, ndim)) # (nwalkers, niters, npars)
+        
+        # lnprob
+        inds = np.nonzero(sampler.lnprobability)
+        self.lnprobs = sampler.lnprobability[nonzero].reshape((self.walkers, -1)) # (nwalkers, niters)
+        
+        # other sampler attributes
         self.acceptance_fraction = sampler.acceptance_fraction
-        self.acor                = sampler.acor
+        try:
+            self.acor = sampler.acor
+        except:
+            self.acor = np.array([np.nan]*self.ndim)
         
         # make the constrained chain
         self._make_constrained_chain(fit_params)
@@ -207,7 +217,7 @@ class EmceeResults(object):
         Return a deep copy of the `EmceeResults` object
         """
         return copy.deepcopy(self)
-        
+            
     #---------------------------------------------------------------------------
     def _make_constrained_chain(self, fit_params):
         """

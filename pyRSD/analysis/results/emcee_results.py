@@ -18,7 +18,7 @@ class EmceeParameter(object):
         
         self.name   = name
         self._trace = trace # shape is (nwalkers, niters)
-        self.burnin = burnin
+        self.burnin = int(burnin)
         
     #---------------------------------------------------------------------------
     def __repr__(self):
@@ -140,7 +140,7 @@ class EmceeResults(object):
         
         # set the burnin
         if burnin is None: burnin = int(0.1*self.iterations)
-        self.burnin = burnin
+        self.burnin = int(burnin)
         
     #---------------------------------------------------------------------------
     def __str__(self):

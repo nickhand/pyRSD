@@ -35,7 +35,7 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     text += ["      acceptance_fraction ({}->{} (median {}))".format(acc_frac.min(), acc_frac.max(), np.median(acc_frac))]
     for i, par in enumerate(theory.free_parameters):
         pos = chain[:,-last:,i].ravel()
-        text.append("  {:15s} = {:.6g} +/- {:.6g} (best={:.6g})".format(par.name,
+        text.append("  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g})".format(par.name,
                                             np.median(pos), np.std(pos), chain[best_walker, best_iter, i]))
     
     text = "\n".join(text) +'\n'
@@ -99,7 +99,7 @@ def run(params, theory, objective, pool=None, ml_values=None):
     #---------------------------------------------------------------------------
     filename = "{}/{}.results.pickle".format(params['output_dir'].value, params['label'].value)
     old_results = None
-    start = 0
+    start_iter = 0
     lnprob0 = None
     
     # 1) initialixe from maximum likelihood values
@@ -122,7 +122,7 @@ def run(params, theory, objective, pool=None, ml_values=None):
         # get the attributes
         chain = old_results.chain
         lnprob0 = old_results.lnprobs
-        start = chain.shape[1]
+        start_iter = chain.shape[1]
         p0 = np.array(chain[:, -1, :])
         
         logger.warning("EMCEE: continuing previous run (starting at iteration {})".format(start))
@@ -152,7 +152,7 @@ def run(params, theory, objective, pool=None, ml_values=None):
 
     # iterator interface allows us to trap ctrl+c and know where we are
     exception = False
-    niters -= start
+    niters -= start_iter
     try:                               
         logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
         logger.warning("EMCEE: starting positions:\n{}".format(p0))
@@ -188,7 +188,7 @@ def run(params, theory, objective, pool=None, ml_values=None):
         exception = True
         logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
     finally:
-        burnin = 0 if start > 0 else params.get('burnin', None)
+        burnin = 0 if start_iter > 0 else params.get('burnin', None)
         new_results = EmceeResults(sampler, theory.fit_params, burnin)
         if old_results is not None:
             new_results = old_results + new_results

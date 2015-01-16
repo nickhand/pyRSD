@@ -1,8 +1,13 @@
-from ... import numpy as np
-from . import triangle
+from ... import numpy as np, plotify as pfy
+from . import triangle, tools
 
-import plotify as pfy
 from matplotlib.ticker import MaxNLocator
+import copy
+import logging
+import cPickle
+
+logger = logging.getLogger('pyRSD.analysis.emcee_results')
+logger.addHandler(logging.NullHandler())
 
 #-------------------------------------------------------------------------------
 class EmceeParameter(object):
@@ -22,8 +27,8 @@ class EmceeParameter(object):
         """
         sig1 = self.one_sigma
         sig2 = self.two_sigma
-        args = (self.name, self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
-        return "<EmceeParameter: {} {:.4g} (+{:.4g} -{:.4g}, 68%) (+{:.4g} -{:.4g}, 95%)>".format(*args)
+        args = (self.name+":", self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
+        return "<{:<15s} {:.4g} (+{:.4g} -{:.4g}) (+{:.4g} -{:.4g})>".format(*args)
         
     #---------------------------------------------------------------------------
     def __str__(self):
@@ -112,8 +117,10 @@ class EmceeResults(object):
         self.constrained_parameter_names = fit_params.constrained_parameter_names
         
         # sampler attributes
-        self.chain = sampler.chain # shape is (nwalkers, niters, npars)
-        self.lnprobs = sampler.lnprobability # shape is (nwalkers, niters)
+        self.chain               = sampler.chain         # shape is (nwalkers, niters, npars)
+        self.lnprobs             = sampler.lnprobability # shape is (nwalkers, niters)
+        self.acceptance_fraction = sampler.acceptance_fraction
+        self.acor                = sampler.acor
         
         # make the constrained chain
         self._make_constrained_chain(fit_params)
@@ -126,6 +133,31 @@ class EmceeResults(object):
         self.burnin = burnin
         
     #---------------------------------------------------------------------------
+    def __str__(self):
+        """
+        Builtin string method
+        """
+        free_params = [self[name] for name in self.free_parameter_names]
+        constrained_params = [self[name] for name in self.constrained_parameter_names]
+        
+        # first get the parameters
+        toret = "Free parameters [ mean (+/-68%) (+/-95%) ]\n" + "_"*15 + "\n"
+        toret += "\n".join(map(str, free_params))
+        
+        toret += "\n\nConstrained parameters [ mean (+/-68%) (+/-95%) ]\n" + "_"*22 + "\n"
+        toret += "\n".join(map(str, constrained_params))
+        
+        return toret
+    
+    #---------------------------------------------------------------------------
+    def __repr__(self):
+        """
+        Builtin representation
+        """
+        N = len(self.constrained_parameter_names)
+        return "<EmceeResults: {} free paremeters, {} constrained parameters>".format(self.ndim, N)
+        
+    #---------------------------------------------------------------------------
     def __getitem__(self, key):
         
         # check if key is the name of a free or constrained param
@@ -134,6 +166,48 @@ class EmceeResults(object):
         else:
             return getattr(self, key)
                     
+    #---------------------------------------------------------------------------
+    def __add__(self, other):
+        """
+        Add two `EmceeResults` objects together
+        """
+        if not isinstance(other, self.__class__):
+            raise NotImplemented("Can only add two `EmceeResults` objects together")
+        
+        # check a few things first
+        if self.free_parameter_names != other.free_parameter_names:
+            raise ValueError("Cannot add `EmceeResults` objects: mismatch in free parameters")
+        if self.constrained_parameter_names != other.constrained_parameter_names:
+            raise ValueError("Cannot add `EmceeResults` objects: mismatch in constrained parameters")
+        if self.walkers != other.chain.shape[0]:
+            raise ValueError("Cannot add `EmceeResults` objects: mismatch in number of walkers")
+        
+        # copy to return
+        toret = self.copy()
+        
+        # add the chains together
+        toret.chain = np.concatenate((self.chain, other.chain), axis=1)
+        toret.constrained_chain = np.concatenate((self.constrained_chain, other.constrained_chain), axis=1)
+        
+        # add the log probs together
+        toret.lnprobs = np.concatenate((self.lnprobs, other.lnprobs), axis=1)
+        
+        # update the new EmceeParameters
+        toret._save_results()
+        
+        return toret
+    
+    #---------------------------------------------------------------------------
+    def __radd__(self, other):
+        return self.__add__(other)
+            
+    #---------------------------------------------------------------------------
+    def copy(self):
+        """
+        Return a deep copy of the `EmceeResults` object
+        """
+        return copy.deepcopy(self)
+        
     #---------------------------------------------------------------------------
     def _make_constrained_chain(self, fit_params):
         """
@@ -233,7 +307,6 @@ class EmceeResults(object):
         """
         Internal method to make plot timelines for a set of parameters
         """
-        pfy.clf()
         fig, axes = pfy.subplots(len(names), 1, sharex=True, figsize=(8, 9))
 
         # plot timeline for each free parameter
@@ -250,43 +323,103 @@ class EmceeResults(object):
             axes[i].axhline(param.mean, color="#888888", lw=2)
             axes[i].set_ylabel(name)
             
+        return fig
+            
     #---------------------------------------------------------------------------
-    def plot_free_timelines(self):
+    def plot_free_timelines(self, outfile=None):
         """
         Plot the timeline chains of the free parameters, excluding any 
         iterations in the burnin period
         """
-        self._plot_timeline(self.free_parameter_names)
+        fig = self._plot_timeline(self.free_parameter_names)
+        if outfile is not None:
+            fig.savefig(outfile)
+            
+        return fig
         
     #---------------------------------------------------------------------------
-    def plot_constrained_timelines(self):
+    def plot_constrained_timelines(self, outfile=None):
         """
         Plot the timeline chains of the constrained parameters, excluding any 
         iterations in the burnin period
         """
         if len(self.constrained_parameter_names) > 0:
-            self._plot_timeline(self.constrained_parameter_names)
+            fig = self._plot_timeline(self.constrained_parameter_names)
+            return fig
         
     #---------------------------------------------------------------------------
-    def plot_free_triangle(self):
+    def plot_free_triangle(self, outfile=None):
         """
         Make the triange plot for the free parameters
         """
         samples = self.chain[:, self.burnin:, :].reshape((-1, self.ndim))
-        pfy.clf()
         fig = triangle.corner(samples, labels=self.free_parameter_names)
+        if outfile is not None:
+            fig.savefig(outfile)
         return fig
         
     #---------------------------------------------------------------------------
-    def plot_constrained_triangle(self):
+    def plot_constrained_triangle(self, outfile=None):
         """
         Make the triange plot for the constrained parameters
         """
         N = len(self.constrained_parameter_names)
         samples = self.constrained_chain[:, self.burnin:, :].reshape((-1, N))
-        pfy.clf()
         fig = triangle.corner(samples, labels=self.constrained_parameter_names)
+        if outfile is not None:
+            fig.savefig(outfile)
         return fig
+        
+    #---------------------------------------------------------------------------
+    def plot_2D_trace(self, param1, param2, outfile=None):
+        """
+        Plot the 2D traces of the given parameters, showing the 1 and 2 sigma
+        contours
+        """
+        fig = pfy.figure()
+        ax = fig.gca()
+        
+        names = self.free_parameter_names + self.constrained_parameter_names
+        if not all(name in names for name in [param1, param2]):
+            raise ValueError("Specified parameter names not valid")
+            
+        trace1 = self[param1].flat_trace
+        trace2 = self[param2].flat_trace
+        
+        ax = tools.plot_mcmc_trace(ax, trace1, trace2, True, colors='k')
+        ax.set_xlabel(param1, fontsize=16)
+        ax.set_ylabel(param2, fontsize=16)
+        
+        # plot the "mean"
+        ax.axvline(x=self[param1].mean, c="#888888", lw=1.5, alpha=0.4)
+        ax.axhline(y=self[param2].mean, c="#888888", lw=1.5, alpha=0.4)
+        
+        if outfile is not None:
+            fig.savefig(outfile)
+        return fig
+
+    #---------------------------------------------------------------------------
+    def summarize_fit(self, label):
+        """
+        Summarize the fit, by plotting figures and outputing the relevant 
+        information
+        """
+        args = (self.iterations, self.walkers, self.ndim)
+        hdr = "Emcee fitting finished: {} iterations, {} walkers, {} free parameters\n".format(*args)
+        
+        logp = np.amax(self.lnprobs)
+        chi2 = -2.*logp
+        hdr += "Best log likelihood value = {:4f}, corresponding to chi2 = {:.4f}\n\n".format(logp, chi2)
+        
+        # print the results to the logger
+        logger.info("\n"+hdr+str(self))
+        
+        # now make some plots
+        self.plot_free_triangle(outfile=label+".free_triangle.pdf")
+        self.plot_free_timeline(outfile=label+".free_timeline.pdf")
+        
+        self.plot_constrained_triangle(outfile=label+".constrained_triangle.pdf")
+        self.plot_constrained_timeline(outfile=label+".constrained_timeline.pdf")
         
     #---------------------------------------------------------------------------
 #endclass EmceeResults

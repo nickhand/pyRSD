@@ -183,7 +183,11 @@ class CovarianceMatrix(object):
         """
         Return the diagonal elements
         """
-        return np.array([self[i] for i in range(self.N)])
+        try:
+            return self._diag
+        except AttributeError:
+            self._diag = np.array([self[i] for i in range(self.N)])
+            return self._diag
     
     #---------------------------------------------------------------------------
     def full(self):

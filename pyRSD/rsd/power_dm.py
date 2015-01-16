@@ -144,12 +144,31 @@ class DMSpectrum(object):
     # INPUT ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
+    def hires(self):
+        """
+        If `True`, return "high-resolution" results with 20x as many wavenumber
+        data points. Return `False` by default
+        """
+        try:
+            return self._hires
+        except AttributeError:
+            return False
+    
+    @hires.setter
+    def hires(self, val):
+        self._hires = val
+        
+    #---------------------------------------------------------------------------
+    @property
     def k_obs(self):
         """
         The "observed" wavenumbers to compute the power spectrum at. This should
         be read-only.
         """
-        return self._k_obs
+        if not self.hires:
+            return self._k_obs
+        else:
+            return np.linspace(np.amin(self._k_obs), np.amax(self._k_obs), 20*len(self._k_obs))
     
     #---------------------------------------------------------------------------
     @property

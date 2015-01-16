@@ -488,14 +488,25 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
         
     #---------------------------------------------------------------------------
-    def Pgal(self, mu, flatten=False):
+    def Pgal(self, mu, flatten=False, hires=False):
         """
         The total redshift-space galaxy power spectrum, combining the individual
         terms.
         
-        If `flatten = True`, return a flatenned array with dimensions 
-        (len(self.k_obs)*len(mu), )
+        Parameters
+        ----------
+        mu : float, array
+            The cosine of the angle from the line of sight. Can be either a 
+            single or array of values
+        flatten : bool, optional    
+            If `True`, flatten the return array, which will have a length of 
+            `len(self.k_obs) * len(mu)`, or `len(self.k) * len(mu)` (the 
+            latter if `hires=True`). Default is `False`
+        hires : bool, optional
+            If `True`, return the values corresponding to `self.k`, otherwise
+            return those corresponding to `self.k`
         """
+        self.hires = hires
         
         fss = self.fs**2
         fcs = 2.*self.fs*(1 - self.fs)
@@ -507,27 +518,27 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     
     #---------------------------------------------------------------------------
     @tools.monopole
-    def Pgal_mono(self, mu):
+    def Pgal_mono(self, mu, hires=False):
         """
         The total redshift-space galaxy monopole moment
         """
-        return self.Pgal(mu)
+        return self.Pgal(mu, hires=hires)
         
     #---------------------------------------------------------------------------
     @tools.quadrupole
-    def Pgal_quad(self, mu):
+    def Pgal_quad(self, mu, hires=False):
         """
         The total redshift-space galaxy quadrupole moment
         """
-        return self.Pgal(mu)
+        return self.Pgal(mu, hires=hires)
         
     #---------------------------------------------------------------------------
     @tools.hexadecapole
-    def Pgal_hexadec(self, mu):
+    def Pgal_hexadec(self, mu, hires=False):
         """
         The total redshift-space galaxy hexadecapole moment
         """
-        return self.Pgal(mu)
+        return self.Pgal(mu, hires=hires)
         
     #---------------------------------------------------------------------------
     

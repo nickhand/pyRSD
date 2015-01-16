@@ -123,7 +123,7 @@ class EmceeResults(object):
         
         # lnprob
         inds = np.nonzero(sampler.lnprobability)
-        self.lnprobs = sampler.lnprobability[nonzero].reshape((self.walkers, -1)) # (nwalkers, niters)
+        self.lnprobs = sampler.lnprobability[inds].reshape((self.walkers, -1)) # (nwalkers, niters)
         
         # other sampler attributes
         self.acceptance_fraction = sampler.acceptance_fraction

@@ -28,7 +28,7 @@ class EmceeParameter(object):
         sig1 = self.one_sigma
         sig2 = self.two_sigma
         args = (self.name+":", self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
-        return "<{:<15s} {:.4g} (+{:.4g} -{:.4g}) (+{:.4g} -{:.4g})>".format(*args)
+        return "<Parameter {:<15s} {:.4g} (+{:.4g} -{:.4g}) (+{:.4g} -{:.4g})>".format(*args)
         
     #---------------------------------------------------------------------------
     def __str__(self):
@@ -355,6 +355,8 @@ class EmceeResults(object):
         """
         if len(self.constrained_parameter_names) > 0:
             fig = self._plot_timeline(self.constrained_parameter_names)
+            if outfile is not None:
+                fig.savefig(outfile)
             return fig
         
     #---------------------------------------------------------------------------
@@ -426,11 +428,18 @@ class EmceeResults(object):
         
         # now make some plots
         self.plot_free_triangle(outfile=label+".free_triangle.pdf")
-        self.plot_free_timeline(outfile=label+".free_timeline.pdf")
+        self.plot_free_timelines(outfile=label+".free_timeline.pdf")
         
         self.plot_constrained_triangle(outfile=label+".constrained_triangle.pdf")
-        self.plot_constrained_timeline(outfile=label+".constrained_timeline.pdf")
+        self.plot_constrained_timelines(outfile=label+".constrained_timeline.pdf")
         
+    #---------------------------------------------------------------------------
+    def values(self):
+        """
+        Convenience function to return the values for the free parameters
+        as an array
+        """
+        return np.array([self[name].mean for name in self.free_parameter_names])
     #---------------------------------------------------------------------------
 #endclass EmceeResults
 

@@ -72,14 +72,7 @@ class GalaxyPowerParameters(ParameterSet):
 
         # setup the dependencies
         if loaded: self._set_default_constraints()
-    
-    #---------------------------------------------------------------------------
-    def _is_valid_key(self, key):
-        """
-        Check if the key is valid
-        """
-        return key in self._valid_keys or key in self._extra_keys
-        
+            
     #---------------------------------------------------------------------------
     def __setitem__(self, key, value):
         """
@@ -89,6 +82,13 @@ class GalaxyPowerParameters(ParameterSet):
         if self._is_valid_key(key):
             ParameterSet.__setitem__(self, key, value)
     
+    #---------------------------------------------------------------------------
+    def _is_valid_key(self, key):
+        """
+        Check if the key is valid
+        """
+        return key in self._valid_keys or key in self._extra_keys
+        
     #---------------------------------------------------------------------------
     def _set_default_constraints(self):
         """
@@ -336,18 +336,26 @@ class GalaxyPowerTheory(object):
         return self.fit_params.constrained_parameters
 
     #---------------------------------------------------------------------------
-    def model_callable(self, power_type, identifier):
+    def model_callable(self, power_type, identifier, **kwargs):
         """
         Return the correct model function based on the type and identifier
         (from a PowerMeasurement)
+        
+        Any keyword arguments supplied will be passed to the callables
         """
         if power_type == 'pkmu':
-            return functools.partial(self.model.Pgal, np.array(identifier), flatten=True)
+            return functools.partial(self.model.Pgal, np.array(identifier), flatten=True, **kwargs)
         elif power_type == 'pole':
             if identifier == 0:
-                return self.model.monopole
+                if len(kwargs) == 0:
+                    return self.model.Pgal_mono
+                else:
+                    return functools.partial(self.model.Pgal_mono, *kwargs)
             elif identifier == 2:
-                return self.model.quadrupole
+                if len(kwargs) == 0:
+                    return self.model.Pgal_quad
+                else:
+                    return functools.partial(self.model.Pgal_quad, *kwargs)
                 
         # if we get here, we messed up
         msg = "No power spectrum model for measurement of type".format(power_type, identifier)

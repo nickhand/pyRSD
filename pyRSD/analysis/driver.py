@@ -86,17 +86,35 @@ class DataAnalysisDriver(object):
         The main function, this will run the whole analysis from start to 
         finish (hopefully)
         """
+        # if we are initializing from max-like, first call lmfit
+        init_from = self.params.get('init_from', None)
+        if init_from == 'max-like':
+            ml_values = self.do_maximum_likelihood()
+            
         # get the solver function
+        kwargs = {}
         solver_name = self.params.get('fitter', 'emcee').lower()
+        
+        # emcee
         if solver_name == 'emcee':
             solver = emcee_fitter.run
             objective = functools.partial(DataAnalysisDriver.lnprob, self)
+            
+            # add some kwargs to pass too
+            kwargs['pool'] = self.pool
+            if init_from == 'max-like': kwargs['ml_values'] = ml_values
+        # lmfit
+        elif solver_name == 'lmfit':
+            solver = lmfit_fitter.run
+            objective = functools.partial(DataAnalysisDriver.normed_residuals, self)
+        
+        # try again
         else:
             raise NotImplementedError("Fitter with name '{}' not currently available".format(solver_name))
-  
+          
         # run the solver and store the results
         logger.info("Calling the '{}' fitter's solve function".format(solver_name))
-        self.results, exception = solver(self.params, self.theory, objective, pool=self.pool)
+        self.results, exception = solver(self.params, self.theory, objective, **kwargs)
         logger.info("...fitting complete")
         
         # set the results
@@ -111,6 +129,27 @@ class DataAnalysisDriver(object):
             sys.exit()
         else:
             self.results.summarize_fit(output_label)
+
+    #---------------------------------------------------------------------------
+    def do_maximum_likelihood(self):
+        """
+        Compute the maximum likelihood values and return them as an array
+        """
+        # get the solver and objective
+        solver = lmfit_fitter.run
+        objective = functools.partial(DataAnalysisDriver.normed_residuals, self)
+        
+        # make params
+        params = ParameterSet()
+        params['lmfit_method'] = 'leastsq'
+        
+        logger.info("Computing the maximum likelihood values to use as initialization")
+        results, exception = solver(params, self.theory, objective)
+        logger.info("...done compute maximum likelihood")
+        
+        values = results.values()
+        del results
+        return values
 
     #---------------------------------------------------------------------------
     def save(self, filename):
@@ -215,6 +254,18 @@ class DataAnalysisDriver(object):
         return self.theory.lnprior
 
     #---------------------------------------------------------------------------
+    def normed_residuals(self, theta=None):
+        """
+        Return an array of the normed residuals: (model - data) / diag(covariance)**0.5
+        """
+        # set the free parameters
+        if theta is not None:
+            self.theory.set_free_parameters(theta)
+        
+        norm = np.sqrt(self.data.covariance.diag())
+        return  (self.combined_model - self.data.combined_power) / norm
+        
+    #---------------------------------------------------------------------------
     def chi2(self, theta=None):
         """
         The chi-squared for the specified model function, based 
@@ -287,7 +338,7 @@ class DataAnalysisDriver(object):
         Set the free parameters from the results objects and update the model
         """
         if self.results is not None:
-            theta = np.array([self.results[name].mean for name in self.theory.free_parameter_names])
+            theta = self.results.values()
             self.theory.set_free_parameters(theta)
             
     #---------------------------------------------------------------------------

@@ -304,7 +304,37 @@ class Uniform(DistributionBase):
             the upper limit of the distribution
         """
         super(Uniform, self).__init__('uniform', lower=lower, upper=upper)
-
+    
+    #---------------------------------------------------------------------------
+    @property
+    def lower(self):
+        """
+        Make this a property in case the supplied `lower` is actually a function
+        """
+        if callable(self._lower):
+            return self._lower()
+        else:
+            return self._lower
+            
+    @lower.setter
+    def lower(self, val):
+        self._lower = val
+        
+    #---------------------------------------------------------------------------
+    @property
+    def upper(self):
+        """
+        Make this a property in case the supplied `upper` is actually a function
+        """
+        if callable(self._upper):
+            return self._upper()
+        else:
+            return self._upper
+            
+    @upper.setter
+    def upper(self, val):
+        self._upper = val
+        
     #---------------------------------------------------------------------------
     def limits(self, factor=1.):
         """

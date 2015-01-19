@@ -1,0 +1,75 @@
+#!/usr/bin/env python
+"""
+ computeCovariance.py
+ 
+ author: Nick Hand
+ contact: nhand@berkeley.edu
+ creation date: 12/19/2014
+"""
+from utils import stats
+from lss import power_measurement
+
+import pickle
+from glob import glob
+import numpy as np
+import argparse
+
+#-------------------------------------------------------------------------------
+def main(args):
+    """
+    Compute the covariance matrix
+    """
+    files = glob(args.pattern)
+    
+    # load the data 
+    data = []
+    for f in files:
+        d = power_measurement.load(f)
+        if args.type == 'pkmu':
+            d = d['pkmu'] 
+            d.output_k_units = d.output_power_units = args.output_units
+            if args.subtract_shot_noise: d.subtract_shot_noise = True
+            stat = np.concatenate([d.Pk(mu).power for mu in d.mus])
+        else:
+            mono = d['monopole']
+            quad = d['quadrupole']
+            
+            mono.output_k_units = mono.output_power_units = args.output_units
+            quad.output_k_units = quad.output_power_units = args.output_units
+            if args.subtract_shot_noise: mono.subtract_shot_noise = True
+            stat = np.concatenate((mono.data.power, quad.data.power))
+            
+        data.append(stat)
+            
+    data = np.array(data)
+    covar = stats.compute_covariance_matrix(data)
+    pickle.dump(covar, open("%s/%s.dat" %(args.output_dir, args.tag), 'w'))
+    
+#end main
+#-------------------------------------------------------------------------------
+if __name__ == '__main__':
+    
+    # parse the input arguments
+    desc = "compute covariance matrix from a set of PowerMeasurements"
+    parser = argparse.ArgumentParser(description=desc)
+
+    h = 'the pattern to match files on'
+    parser.add_argument('pattern', type=str, help=h) 
+    
+    h = 'the type of measurement, either pkmu or poles'
+    parser.add_argument('type', type=str, choices=['pkmu', 'poles'], help=h) 
+    
+    h = 'the output tag'
+    parser.add_argument('tag', type=str, help=h)
+    
+    h = 'the output directory'
+    parser.add_argument('--output_dir', type=str, default='.', help=h)
+    
+    h = 'whether to subtract the shot noise'
+    parser.add_argument('--subtract_shot_noise', action='store_true', default=False, help=h)
+    
+    h = 'the type of output units'
+    parser.add_argument('--output_units', choices=['absolute', 'relative'], default='relative', help=h)
+    
+    args = parser.parse_args()
+    main(args)

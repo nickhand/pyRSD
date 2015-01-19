@@ -1,0 +1,78 @@
+#!/usr/bin/env python
+"""
+ poleDataForFits.py
+ code to save multipoles covariance matrix and ASCII data
+ 
+ author: Nick Hand
+ contact: nhand@berkeley.edu
+ creation date: 12/16/2014
+"""
+from lss import power_measurement, tools
+
+from glob import glob
+import numpy as np
+import argparse
+
+#-------------------------------------------------------------------------------
+def read_poles(pattern, output_units, subtract_shot_noise):
+    """
+    Read the pole files
+    """
+    files = glob(pattern)
+    
+    # load the data 
+    mono_data, quad_data = [], []
+    for f in files:
+        d = power_measurement.load(f)
+        if not isinstance(d, power_measurement.PowerMeasurements):
+            raise TypeError("Input data must be of type `PowerMeasurements`")
+            
+        mono = d['monopole']
+        quad = d['quadrupole']
+        
+        mono.output_k_units = mono.output_power_units = output_units
+        quad.output_k_units = quad.output_power_units = output_units
+        if subtract_shot_noise: mono.subtract_shot_noise = True
+        mono_data.append(mono)
+        quad_data.append(quad)
+            
+    return tools.weighted_mean(mono_data), tools.weighted_mean(quad_data) 
+#end read_poles
+
+#-------------------------------------------------------------------------------
+def main(args):
+    """
+    Do the work
+    """
+    # read the data
+    mono, quad = read_poles(args.pattern, args.output_units, args.subtract_shot_noise)
+
+    # also write out the data
+    power_measurement.write_multipoles("%s/%s_poles.dat" %(args.output_dir, args.tag), mono, quad)
+    
+#end main
+
+#-------------------------------------------------------------------------------
+if __name__ == '__main__':
+    
+    # parse the input arguments
+    desc = "code to save multipoles measurement as ASCII data"
+    parser = argparse.ArgumentParser(description=desc)
+    
+    h = 'the data pickle holding the power measurement'
+    parser.add_argument('pattern', type=str, help=h)
+    
+    h = 'the output tag'
+    parser.add_argument('tag', type=str, help=h)
+    
+    h = 'the output directory'
+    parser.add_argument('--output_dir', type=str, default='.', help=h)
+    
+    h = 'whether to subtract the shot noise'
+    parser.add_argument('--subtract_shot_noise', action='store_true', default=False, help=h)
+    
+    h = 'the type of output units'
+    parser.add_argument('--output_units', choices=['absolute', 'relative'], default='relative', help=h)
+    
+    args = parser.parse_args()
+    main(args)

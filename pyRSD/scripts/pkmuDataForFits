@@ -1,0 +1,64 @@
+#!/usr/bin/env python
+from lss import power_measurement, tools
+
+from glob import glob
+import numpy as np
+import argparse
+
+#-------------------------------------------------------------------------------
+def read_power(pattern, output_units, subtract_shot_noise):
+    """
+    Read the power files
+    """
+    files = glob(pattern)
+    
+    # load the data 
+    data = []
+    for f in files:
+        d = power_measurement.load(f)
+        if isinstance(d, power_measurement.PowerMeasurements):
+            d = d['pkmu'] 
+        d.output_k_units = d.output_power_units = output_units
+        if subtract_shot_noise: d.subtract_shot_noise = True
+        data.append(d)
+            
+    return tools.weighted_mean(data)
+#end read_power
+
+#-------------------------------------------------------------------------------
+def main(args):
+    """
+    Do the work
+    """
+    # read the data
+    data = read_power(args.pattern, args.output_units, args.subtract_shot_noise)
+                
+    # also write out the data
+    data.write("%s/%s_pkmu.dat" %(args.output_dir, args.tag))
+    
+#end main
+
+#-------------------------------------------------------------------------------
+if __name__ == '__main__':
+    
+    # parse the input arguments
+    desc = "code to save a P(k, mu) measurement as ASCII data"
+    parser = argparse.ArgumentParser(description=desc)
+    
+    h = 'the data pickle holding the power measurement'
+    parser.add_argument('pattern', type=str, help=h) 
+    
+    h = 'the output tag'
+    parser.add_argument('tag', type=str, help=h)
+    
+    h = 'the output directory'
+    parser.add_argument('--output_dir', type=str, default='.', help=h)
+    
+    h = 'whether to subtract the shot noise'
+    parser.add_argument('--subtract_shot_noise', action='store_true', default=False, help=h)
+    
+    h = 'the type of output units'
+    parser.add_argument('--output_units', choices=['absolute', 'relative'], default='relative', help=h)
+    
+    args = parser.parse_args()
+    main(args)

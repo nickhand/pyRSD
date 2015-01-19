@@ -9,6 +9,8 @@ import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
 import warnings
 
+warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
+
 #-------------------------------------------------------------------------------
 class RSDSpline(InterpolatedUnivariateSpline):
     """
@@ -377,8 +379,7 @@ class SigmavFits(SimInterpolator):
 def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function
-    """ 
-    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")    
+    """     
     def wrapper(self, *args, **kwargs):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus, **kwargs)
@@ -389,8 +390,7 @@ def monopole(f):
 def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
-    """  
-    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")    
+    """     
     def wrapper(self, *args, **kwargs):
         mus = np.linspace(0., 1., 101)
         Pkmus = f(self, mus, **kwargs)
@@ -402,8 +402,7 @@ def quadrupole(f):
 def hexadecapole(f):
     """
     Decorator to compute the hexadecapole from a `self.power` function
-    """ 
-    warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy") 
+    """  
     def wrapper(self, *args, **kwargs):
         mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus, **kwargs)

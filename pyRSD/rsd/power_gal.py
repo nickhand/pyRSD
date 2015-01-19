@@ -8,7 +8,9 @@
 """
 from . import power_biased, tools
 from .. import numpy as np
+from scipy.special import legendre
 import sys
+from scipy.integrate import simps
 
 def fog_modified_lorentzian(x):
     """
@@ -516,6 +518,42 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         if flatten: toret = np.ravel(toret, order='F')
         return toret
     
+    #---------------------------------------------------------------------------
+    def Pgal_poles(self, poles, flatten=False, hires=False):
+        """
+        Return the multipole moments specified by `poles`, where `poles` is a
+        list of integers, i.e., [0, 2, 4]
+        
+        Parameter
+        ---------
+        poles : float, array_like
+            The `ell` values of the multipole moments
+        flatten : bool, optional    
+            If `True`, flatten the return array, which will have a length of 
+            `len(self.k_obs) * len(mu)`, or `len(self.k) * len(mu)` (the 
+            latter if `hires=True`). Default is `False`
+        hires : bool, optional
+            If `True`, return the values corresponding to `self.k`, otherwise
+            return those corresponding to `self.k`
+        """
+        scalar = False
+        if np.isscalar(poles):
+            poles = [poles]
+            scalar = True
+            
+        toret = ()
+        mus = np.linspace(0., 1., 41)
+        Pkmus = self.Pgal(mus, hires=hires)
+        for ell in poles:
+            kern = (2*ell+1.)*legendre(ell)(mus)
+            val = np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+            toret += (val,)
+            
+        if scalar:
+            return toret[0]
+        else:
+            return toret if not flatten else np.ravel(toret)
+            
     #---------------------------------------------------------------------------
     @tools.monopole
     def Pgal_mono(self, mu, hires=False):

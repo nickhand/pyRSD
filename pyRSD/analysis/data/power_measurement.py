@@ -145,13 +145,13 @@ class PowerMeasurement(object):
     @property
     def ell(self):
         """
-        If `type` == `pole`, then this returns the multipole number, ell, 
-        associated with the measurement
+        If `type` == `pole`, then this returns the multipole number, ell (as
+        an integer), associated with the measurement
         """
         if self.type == 'pkmu':
             raise AttributeError("No `ell` attribute for `PowerMeasurement` of type `pkmu`")
         
-        return self._identifier
+        return int(self._identifier)
             
     #---------------------------------------------------------------------------
     def __repr__(self):
@@ -267,7 +267,7 @@ class PowerData(object):
         """
         # load the covariance from a pickle
         loaded = False
-        if self.params['covariance'] is not None:
+        if self.params['covariance'].value is not None:
             filename = tools.find_file(self.params['covariance'].value)
             C = pickle.load(open(filename, 'r'))
             index =  np.concatenate([d._k_input for d in self.measurements])

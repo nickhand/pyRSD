@@ -294,16 +294,28 @@ class ParameterSet(OrderedDict):
 
         values = []
         for combo in combos:
-            formatted_constraint = constraint.format(**{k:self[k][att] for k, att in zip(param_names, combo)})
-            value = eval(formatted_constraint, globals().update(modules))
+            to_fill = {k:self[k][att] for k, att in zip(param_names, combo)}
+            if any(v is None for v in to_fill.values()):
+                value = np.nan
+            else:
+                formatted_constraint = constraint.format(**to_fill)
+                value = eval(formatted_constraint, globals().update(modules))
             values.append(value)
         
-        min_combo = combos[values.index(min(values))]
-        max_combo = combos[values.index(max(values))]    
-        
         args = (self, constraint, param_names, modules)
-        fmin = functools.partial(tools.constraining_function, *args, props=list(min_combo))
-        fmax = functools.partial(tools.constraining_function, *args, props=list(max_combo))
+        this_min = min(values)
+        this_max = max(values)
+        if np.isnan(this_min):
+            fmin = None
+        else:
+            min_combo = combos[values.index(this_min)]
+            fmin = functools.partial(tools.constraining_function, *args, props=list(min_combo))
+            
+        if np.isnan(this_max):
+            fmax = None
+        else:
+            max_combo = combos[values.index(this_max)]
+            fmax = functools.partial(tools.constraining_function, *args, props=list(max_combo))
         
         setattr(self[name], 'min', fmin)
         setattr(self[name], 'max', fmax)
@@ -343,7 +355,7 @@ class ParameterSet(OrderedDict):
         if len(param_depends):
             self.constraints['value'][name] = constraint
             
-            # also need to set min/max based on parameter dependencies
+            # also try to set min/max based on parameter dependencies
             self._set_bounds_from_constraint(name, constraint, param_depends, modules)
         else:
             # delete constraint text stored

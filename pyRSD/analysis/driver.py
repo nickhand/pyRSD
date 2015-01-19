@@ -117,10 +117,12 @@ class DataAnalysisDriver(object):
         self.results, exception = solver(self.params, self.theory, objective, **kwargs)
         logger.info("...fitting complete")
         
-        # set the results
-        self.set_fit_results()
+        try:
+            self.set_fit_results()
+        except:
+            pass
         
-        # pickle everything
+        # pickle everything (do this even if an exception was raised)
         output_label = "{}/{}".format(self.params['output_dir'].value, self.params['label'].value)
         self.save(output_label + ".results.pickle")
         
@@ -128,6 +130,7 @@ class DataAnalysisDriver(object):
             logger.error("Exception raised...exiting")
             sys.exit()
         else:
+            # set the results and summarize
             self.results.summarize_fit(output_label)
 
     #---------------------------------------------------------------------------
@@ -181,29 +184,29 @@ class DataAnalysisDriver(object):
         """
         Compute the model callables
         """
-        # get the mu mapping
-        mus = []
+        # get the mu/ell mappings
+        mus, ells = [], []
         for i, meas in enumerate(self.data.measurements):
             if meas.type == 'pkmu':
                 mus.append(meas.mu)       
+            elif meas.type == 'pole':
+                ells.append(meas.ell)
         self._mus = sorted(mus)
+        self._ells = sorted(ells)
         
         # initialize
         self._model_callables = {}
         self._model_callables_hires = {}
         
         # pkmu
-        self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus)
-        self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True)
+        if len(self._mus) > 0:
+            self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus)
+            self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True)
         
-        # now get the multipoles
-        self._model_callables['pole'] = {}
-        self._model_callables_hires['pole'] = {}
-        
-        for m in self.data.measurements:
-            if m.type == 'pole':
-                self._model_callables['pole'][m.ell] = self.theory.model_callable('pole', m.ell)
-                self._model_callables_hires['pole'][m.ell] = self.theory.model_callable('pole', m.ell, hires=True)
+        # multipoles
+        if len(self._ells) > 0:
+            self._model_callables['pole'] = self.theory.model_callable('pole', self._ells)
+            self._model_callables_hires['pole'] = self.theory.model_callable('pole', self._ells, hires=True)
                 
     #---------------------------------------------------------------------------
     @property
@@ -212,14 +215,17 @@ class DataAnalysisDriver(object):
         A list of model values for each `PowerMeasurement` in 
         `self.data.measurements`
         """
-        # convert all the pkmu values
+        # split the pkmu/pole results
         if 'pkmu' in self._model_callables:
             pkmu_results = np.split(self._model_callables['pkmu'](), len(self._mus))
+        if 'pole' in self._model_callables:
+            pole_results = np.split(self._model_callables['pole'](), len(self._ells))
             
         toret = []
         for m in self.data.measurements:
             if m.type == 'pole':
-                toret.append(self._model_callabels['pole'][m.ell]())
+                index = self._ells.index(m.ell)
+                toret.append(pole_results[index])
             else:
                 index = self._mus.index(m.mu)
                 toret.append(pkmu_results[index])
@@ -357,9 +363,11 @@ class DataAnalysisDriver(object):
         else:
             callables = self._model_callables_hires
             
-        # get any pkmu values
+        # get the pkmu/pole values
         if 'pkmu' in callables:
             pkmu_results = np.split(callables['pkmu'](), len(self._mus))
+        if 'pole' in callables:
+            pole_results = np.split(callables['pole'](), len(self._ells))
 
         # get the model and data measurements
         toret = []
@@ -368,7 +376,8 @@ class DataAnalysisDriver(object):
                 index = self._mus.index(m.mu)
                 model = pkmu_results[index]
             else:
-                model = callables['pole'][m.ell]()
+                index = self._ells.index(m.ell)
+                model = pole_results[index]
             
             toret.append((self.theory.model.k_obs, model, m.k, m.power, m.error))
             
@@ -488,13 +497,11 @@ class DataAnalysisDriver(object):
         for i, ell in enumerate(ells):
             
             # unpack the result
-            k, model, data, errs = results[i]
+            k_model, model, k_data, data, errs = results[i]
             
-            # the norm
-            norm = mono_kaiser(k)
-
             # plot the model
-            pfy.plot(k, model/norm)
+            norm = mono_kaiser(k_model)
+            pfy.plot(k_model, model/norm)
             
             # plot the measurement
             if ell == 0:
@@ -503,7 +510,8 @@ class DataAnalysisDriver(object):
                 label = "quadrupole"
             else:
                 raise ValueError("Do not understand `ell` value for plotting purposes")
-            pfy.errorbar(k, data/norm, errs/norm, zorder=2, label=label)
+            norm = mono_kaiser(k_data)
+            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
 
         ax.legend(loc=0)
         ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)

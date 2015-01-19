@@ -18,31 +18,36 @@ class GalaxyPowerParameters(ParameterSet):
     A `ParameterSet` for the galaxy redshift space power spectrum in 
     `pyRSD.rsd.power_gal.GalaxySpectrum`
     """
-    _valid_keys = {'sigma8': 'mass variance at r = 8 Mpc/h',
-                   'f': 'growth rate, f = dlnD/dlna', 
-                   'alpha_perp': 'perpendicular Alcock-Paczynski effect parameter', 
-                   'alpha_par': 'parallel Alcock-Paczynski effect parameter', 
-                   'b1_sA': 'linear bias of sats w/o other sats in same halo',
-                   'b1_sB': 'linear bias of sats w/ other sats in same halo',
-                   'b1_cA': 'linear bias of cens w/o sats in same halo',
-                   'b1_cB': 'linear bias of cens w/ sats in same halo',
-                   'fcB': 'fraction of cens with sats in same halo',
-                   'fsB': 'fraction of sats with other sats in same halo', 
-                   'fs': 'fraction of total galaxies that are satellites',
-                   'NcBs': 'amplitude of 1-halo power for cenB-sat in (Mpc/h)^3', 
-                   'NsBsB': 'amplitude of 1-halo power for satB-satB in (Mpc/h)^3', 
-                   'sigma_c': 'centrals FOG damping in Mpc/h',
-                   'sigma_s': 'satellite FOG damping in Mpc/h',
-                   'sigma_sA': 'satA FOG damping in Mpc/h', 
-                   'sigma_sB': 'satB FOG damping in Mpc/h'}
+    _model_params = {'sigma8': 'mass variance at r = 8 Mpc/h',
+                     'f': 'growth rate, f = dlnD/dlna', 
+                     'alpha_perp': 'perpendicular Alcock-Paczynski effect parameter', 
+                     'alpha_par': 'parallel Alcock-Paczynski effect parameter', 
+                     'b1_sA': 'linear bias of sats w/o other sats in same halo',
+                     'b1_sB': 'linear bias of sats w/ other sats in same halo',
+                     'b1_cA': 'linear bias of cens w/o sats in same halo',
+                     'b1_cB': 'linear bias of cens w/ sats in same halo',
+                     'fcB': 'fraction of cens with sats in same halo',
+                     'fsB': 'fraction of sats with other sats in same halo', 
+                     'fs': 'fraction of total galaxies that are satellites',
+                     'NcBs': 'amplitude of 1-halo power for cenB-sat in (Mpc/h)^3', 
+                     'NsBsB': 'amplitude of 1-halo power for satB-satB in (Mpc/h)^3', 
+                     'sigma_c': 'centrals FOG damping in Mpc/h',
+                     'sigma_s': 'satellite FOG damping in Mpc/h',
+                     'sigma_sA': 'satA FOG damping in Mpc/h', 
+                     'sigma_sB': 'satB FOG damping in Mpc/h'}
                    
-    _extra_keys = {'b1_s': 'linear bias of satellites',
-                   'b1': 'the total linear bias', 
-                   'b1_c': 'linear bias of centrals', 
-                   'log10_NcBs' : 'log10 of NcBs', 
-                   'log10_NsBsB' : 'log10 of NsBsB',
-                   'fsigma8' : 'f(z)*sigma8(z) at z of measurement'}
+    _extra_params = {'b1_s': 'linear bias of satellites',
+                     'b1': 'the total linear bias', 
+                     'b1_c': 'linear bias of centrals', 
+                     'log10_NcBs' : 'log10 of NcBs', 
+                     'log10_NsBsB' : 'log10 of NsBsB',
+                     'fsigma8' : 'f(z)*sigma8(z) at z of measurement', 
+                     'Nbar_sat' : "the avg number of sats in halos with >1 sat",
+                     'nbar' : "the mean number density in (h/Mpc)^3"}
+                     
+    _valid_keys = _model_params.keys() + _extra_params.keys()
                    
+    #---------------------------------------------------------------------------
     def __init__(self, *args):
         """
         Initialize, optionally loading parameters from a file name
@@ -56,15 +61,15 @@ class GalaxyPowerParameters(ParameterSet):
             loaded = True
             self.load(args[0])
             
-        # load the valid_keys first
-        for name, desc in self._valid_keys.iteritems():
+        # load the model params first
+        for name, desc in self._model_params.iteritems():
             if name in self and self[name] is not None:
                 self.update_param(name, description=desc)
             else:
                 self[name] = Parameter(name=name, description=desc)
                 
-        # and the extras
-        for name, desc in self._extra_keys.iteritems():
+        # and the extra params
+        for name, desc in self._extra_params.iteritems():
             if name in self and self[name] is not None:
                 self.update_param(name, description=desc)
             else:
@@ -76,8 +81,8 @@ class GalaxyPowerParameters(ParameterSet):
     #---------------------------------------------------------------------------
     def __setitem__(self, key, value):
         """
-        Only allow names to be set if they are in `self._valid_keys` or 
-        `self._extra_keys`. If not, do nothing
+        Only allow names to be set if they are in `self._valid_keys`. 
+        If not, do nothing
         """
         if self._is_valid_key(key):
             ParameterSet.__setitem__(self, key, value)
@@ -87,7 +92,7 @@ class GalaxyPowerParameters(ParameterSet):
         """
         Check if the key is valid
         """
-        return key in self._valid_keys or key in self._extra_keys
+        return key in self._valid_keys
         
     #---------------------------------------------------------------------------
     def _set_default_constraints(self):
@@ -112,33 +117,11 @@ class GalaxyPowerParameters(ParameterSet):
     def model_params(self):
         """
         Return a dictionary of (name, value) for each name that is in 
-        `self._valid_keys`
+        `self._model_params`
         """
-        keys = self._valid_keys.keys()
-        return dict((key, self[key].value) for key in keys)
-    
-    #---------------------------------------------------------------------------
-    @property
-    def free_parameter_names(self):
-        """
-        Only return the free parameter names in `self._valid_keys`. This is 
-        useful for setting parameters of the model that have changed.
-        """
-        names = ParameterSet.free_parameter_names.fget(self)
-        return [name for name in names if name in self._valid_keys]
-    
-    #---------------------------------------------------------------------------
-    @property
-    def constrained_parameter_names(self):
-        """
-        Only return the constrained parameter names in `self._valid_keys`. This 
-        is useful for setting parameters of the model that have changed.
-        """
-        names = ParameterSet.constrained_parameter_names.fget(self)
-        return [name for name in names if name in self._extra_keys]
-    
-    #---------------------------------------------------------------------------
-    
+        keys = self._model_params.keys()
+        return dict((key, self[key].value) for key in keys)    
+    #---------------------------------------------------------------------------   
 #endclass GalaxyPowerParameters
 
 #-------------------------------------------------------------------------------
@@ -344,18 +327,9 @@ class GalaxyPowerTheory(object):
         Any keyword arguments supplied will be passed to the callables
         """
         if power_type == 'pkmu':
-            return functools.partial(self.model.Pgal, np.array(identifier), flatten=True, **kwargs)
+            return functools.partial(self.model.Pgal, np.array(identifier, ndmin=1), flatten=True, **kwargs)
         elif power_type == 'pole':
-            if identifier == 0:
-                if len(kwargs) == 0:
-                    return self.model.Pgal_mono
-                else:
-                    return functools.partial(self.model.Pgal_mono, *kwargs)
-            elif identifier == 2:
-                if len(kwargs) == 0:
-                    return self.model.Pgal_quad
-                else:
-                    return functools.partial(self.model.Pgal_quad, *kwargs)
+            return functools.partial(self.model.Pgal_poles, np.array(identifier, ndmin=1), flatten=True, **kwargs)
                 
         # if we get here, we messed up
         msg = "No power spectrum model for measurement of type".format(power_type, identifier)

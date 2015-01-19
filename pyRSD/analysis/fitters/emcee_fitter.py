@@ -155,7 +155,6 @@ def run(params, theory, objective, pool=None, ml_values=None):
     niters -= start_iter
     try:                               
         logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
-        logger.warning("EMCEE: starting positions:\n{}".format(p0))
         start = time.time()    
         generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters, storechain=True)
         

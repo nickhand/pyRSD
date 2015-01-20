@@ -104,7 +104,7 @@ class LmfitResults(object):
         return self[param1].correl[param2]
         
     #---------------------------------------------------------------------------
-    def summarize_fit(self, *args):
+    def summarize_fit(self, *args, **kwargs):
         """
         Summarize the fit by calling `lmfit.fit_report`
         """

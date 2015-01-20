@@ -411,7 +411,7 @@ class EmceeResults(object):
         return fig
 
     #---------------------------------------------------------------------------
-    def summarize_fit(self, label):
+    def summarize_fit(self, label, make_plots=False):
         """
         Summarize the fit, by plotting figures and outputing the relevant 
         information
@@ -427,11 +427,12 @@ class EmceeResults(object):
         logger.info("\n"+hdr+str(self))
         
         # now make some plots
-        self.plot_free_triangle(outfile=label+".free_triangle.pdf")
-        self.plot_free_timelines(outfile=label+".free_timeline.pdf")
+        if make_plots:            
+            self.plot_free_triangle(outfile=label+".free_triangle.pdf")
+            self.plot_free_timelines(outfile=label+".free_timeline.pdf")
         
-        self.plot_constrained_triangle(outfile=label+".constrained_triangle.pdf")
-        self.plot_constrained_timelines(outfile=label+".constrained_timeline.pdf")
+            self.plot_constrained_triangle(outfile=label+".constrained_triangle.pdf")
+            self.plot_constrained_timelines(outfile=label+".constrained_timeline.pdf")
         
     #---------------------------------------------------------------------------
     def values(self):

@@ -131,7 +131,8 @@ class DataAnalysisDriver(object):
             sys.exit()
         else:
             # set the results and summarize
-            self.results.summarize_fit(output_label)
+            make_plots = self.params.get('make_plots', False)
+            self.results.summarize_fit(output_label, make_plots=make_plots)
 
     #---------------------------------------------------------------------------
     def do_maximum_likelihood(self):

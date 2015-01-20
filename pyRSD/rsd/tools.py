@@ -367,8 +367,8 @@ class NonlinearBiasFits(SimInterpolator):
 
         kwargs['columns'] = ['b2_00', 'b2_01']
         kwargs['use_ratio'] = True
-        kwargs['corr_model'] = None
-        kwargs['spline_kwargs'] = {'extrap' : True, 'k' : 1}
+        #kwargs['corr_model'] = None
+        #kwargs['spline_kwargs'] = {'extrap' : True, 'k' : 1}
         super(NonlinearBiasFits, self).__init__(*args, **kwargs)
 
     #end __init__

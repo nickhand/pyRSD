@@ -102,7 +102,8 @@ class SimInterpolator(object):
     Class to interpolate simulation data as a function of bias and redshift
     """
     
-    def __init__(self, return_nan=False, corr_model="linear", columns=(), use_ratio=False):
+    def __init__(self, return_nan=False, corr_model="linear", spline_kwargs={}, 
+                columns=(), use_ratio=False):
         
         # store the sim specific variables
         self.columns = columns
@@ -111,14 +112,15 @@ class SimInterpolator(object):
         # whether to return NaNs outside bounds, rather than raising exception
         self.return_nan = return_nan
         
-        # GP correlation model
+        # GP correlation model, if None, use RSDSplines
         self.corr_model = corr_model
+        self.spline_kwargs = spline_kwargs
         
         # setup sim data
         self._setup_sim_results()
         
-        # setup the gaussian processes
-        self._setup_gps()
+        # setup the interpolator
+        self._setup_interpolator()
          
     #__init__
     
@@ -167,6 +169,16 @@ class SimInterpolator(object):
     #end _setup_sim_results
     
     #---------------------------------------------------------------------------
+    def _setup_interpolator(self):
+        """
+        Setup the backend interpolator, either a Gaussian Process or RSDSpline
+        """
+        if self.corr_model is not None:
+            self._setup_gps()
+        else:
+            self._setup_splines()
+        
+    #---------------------------------------------------------------------------
     def _setup_gps(self):
         """
         Setup the Gaussian Processes as a function of bias at each redshift
@@ -195,6 +207,27 @@ class SimInterpolator(object):
             
     #end _setup_gps
     
+    #---------------------------------------------------------------------------
+    def _setup_splines(self):
+        """
+        Setup the RSDSplines as a function of bias at each redshift
+        """
+        self.splines = {}
+        
+        # loop over each redshift
+        for z in self.redshifts:
+
+            self.splines[z] = {}
+            frame = self.data.xs(z)
+            biases = np.array(frame.index)
+            
+            # setup the spline
+            for col in self.columns:
+                sim_data = frame[col]
+                if self.use_ratio:
+                    sim_data /= biases
+                self.splines[z][col] = RSDSpline(biases, np.array(sim_data), **self.spline_kwargs)
+        
     #---------------------------------------------------------------------------
     def _check_scalar(self, val):
         """
@@ -244,8 +277,12 @@ class SimInterpolator(object):
         for zi in redshifts:
             values = ()
             for col in self.columns:
-                f = getattr(self.gps[zi][col], 'predict')
-                value = f(np.atleast_2d(bias).T)
+                
+                if self.corr_model is not None:
+                    f = getattr(self.gps[zi][col], 'predict')
+                    value = f(np.atleast_2d(bias).T)
+                else:
+                    value = self.splines[zi][col](bias)
                 if self.use_ratio: value *= bias
                 values += (value,)
             params.append(values)
@@ -330,6 +367,8 @@ class NonlinearBiasFits(SimInterpolator):
 
         kwargs['columns'] = ['b2_00', 'b2_01']
         kwargs['use_ratio'] = True
+        kwargs['corr_model'] = None
+        kwargs['spline_kwargs'] = {'extrap' : True, 'k' : 1}
         super(NonlinearBiasFits, self).__init__(*args, **kwargs)
 
     #end __init__

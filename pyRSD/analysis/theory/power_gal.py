@@ -39,13 +39,12 @@ class GalaxyPowerParameters(ParameterSet):
     _extra_params = {'b1_s': 'linear bias of satellites',
                      'b1': 'the total linear bias', 
                      'b1_c': 'linear bias of centrals', 
-                     'log10_NcBs' : 'log10 of NcBs', 
-                     'log10_NsBsB' : 'log10 of NsBsB',
                      'fsigma8' : 'f(z)*sigma8(z) at z of measurement', 
                      'Nbar_sat' : "the avg number of sats in halos with >1 sat",
                      'nbar' : "the mean number density in (h/Mpc)^3", 
                      'f1h_cBs' : 'fraction multiplying 1-halo term, NcBs',
-                     'f1h_sBsB' : 'fraction multiplying 1-halo term, NsBsB'}
+                     'f1h_sBsB' : 'fraction multiplying 1-halo term, NsBsB',
+                     'gamma' : 'fraction of halos that host a central galaxy'}
                      
     _valid_keys = _model_params.keys() + _extra_params.keys()
                    
@@ -109,10 +108,6 @@ class GalaxyPowerParameters(ParameterSet):
         
         # total bias
         self.add_constraint('b1', "(1 - {fs})*{b1_c} + {fs}*{b1_s}")
-        
-        # log of constants
-        self.add_constraint('log10_NcBs', "numpy.log10({NcBs})")
-        self.add_constraint('log10_NsBsB', "numpy.log10({NsBsB})")
         
     #---------------------------------------------------------------------------
     @property

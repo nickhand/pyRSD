@@ -43,7 +43,9 @@ class GalaxyPowerParameters(ParameterSet):
                      'log10_NsBsB' : 'log10 of NsBsB',
                      'fsigma8' : 'f(z)*sigma8(z) at z of measurement', 
                      'Nbar_sat' : "the avg number of sats in halos with >1 sat",
-                     'nbar' : "the mean number density in (h/Mpc)^3"}
+                     'nbar' : "the mean number density in (h/Mpc)^3", 
+                     'f1h_cBs' : 'fraction multiplying 1-halo term, NcBs',
+                     'f1h_sBsB' : 'fraction multiplying 1-halo term, NsBsB'}
                      
     _valid_keys = _model_params.keys() + _extra_params.keys()
                    

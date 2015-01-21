@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 from distutils.core import setup, Command
 from distutils.command.install import install as DistutilsInstall
+from setuptools import find_packages
 import os
 
 # my own install class to make pygcl before installing
@@ -47,6 +48,6 @@ setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
         maintainer=MAINTAINER,
         maintainer_email=MAINTAINER_EMAIL,
         version=VERSION,
-        packages=['pyRSD', 'pyRSD.data', 'pyRSD.rsd'],
+        packages=find_packages(),
         scripts=['pyRSD/scripts/' + script for script in os.listdir('pyRSD/scripts')]
     )

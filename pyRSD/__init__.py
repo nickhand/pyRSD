@@ -29,8 +29,8 @@ data_dir = _osp.join(pkg_dir, 'data')
 sys.path.append("%s/gcl/python" %pkg_dir)
 try:
     import pygcl
-except:
-    raise ImportError("Cannot import pygcl; package is unusable :(")
+except Exception as msg:
+    raise ImportError("Cannot use package without pygcl; original message: %s" %msg)
     
 # every module uses numpy
 import numpy

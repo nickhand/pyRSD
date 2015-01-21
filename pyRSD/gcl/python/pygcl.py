@@ -1,17 +1,17 @@
-import gcl
-from gcl import ClassCosmology
-from gcl import ClassParams
-from gcl import ComputeXiLM
-from gcl import Constants
-from gcl import CorrelationFunction
-from gcl import Cosmology
-from gcl import CubicSpline
-from gcl import Engine
-from gcl import CubicSpline
-from gcl import LinearSpline
-from gcl import ShiftedLinearSpline
-from gcl import SmoothedXiMultipole
-from gcl import Spline
+from . import gcl
+from .gcl import ClassCosmology
+from .gcl import ClassParams
+from .gcl import ComputeXiLM
+from .gcl import Constants
+from .gcl import CorrelationFunction
+from .gcl import Cosmology
+from .gcl import CubicSpline
+from .gcl import Engine
+from .gcl import CubicSpline
+from .gcl import LinearSpline
+from .gcl import ShiftedLinearSpline
+from .gcl import SmoothedXiMultipole
+from .gcl import Spline
 
 
 class PickalableSWIG:

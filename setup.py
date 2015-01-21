@@ -11,7 +11,13 @@ class MyInstall(DistutilsInstall):
         ans = os.system("cd pyRSD/gcl; make gcl;")
         if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue")
         DistutilsInstall.run(self)
-
+        
+        print "copying gcl shared object library to install dir"
+        args = self.install_libbase, self.config_vars['dist_name'] 
+        install_path = "{}/{}/gcl/python".format(*args)
+        ans = os.system("cp pyRSD/gcl/python/_gcl.so {}".format(install_path))
+        if (ans > 0): raise ValueError("Error copying shared object libraries")
+        
 # my own command to do a clean of all necessary files      
 class MyClean(Command):
     description = "custom clean command that removes build directories and runs make clean on pygcl"

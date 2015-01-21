@@ -27,11 +27,18 @@ public:
     
     double EvaluateTransfer(double k) const;
     
-
 };
 
 %extend Cosmology {
     %pythoncode {
+        
+        def __getitem__(self, key):
+            if hasattr(self, key):
+                f = getattr(self, key)
+                if callable(f):
+                    return f()
+            raise KeyError("Sorry, cannot return parameter '%s' in dict-like fashion" %key)
+        
         def __setstate__(self, state):
             self.__init__(*state['args'])
 

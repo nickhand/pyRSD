@@ -26,7 +26,7 @@ pkg_dir = _osp.abspath(_osp.dirname(__file__))
 data_dir = _osp.join(pkg_dir, 'data')
 
 # try to import pygcl; hopefully you succeed 
-sys.path.append(1, "%s/gcl/python" %pkg_dir)
+sys.path.insert(1, "%s/gcl/python" %pkg_dir)
 try:
     import pygcl
 except Exception as msg:

@@ -1,13 +1,21 @@
 from ... import numpy as np
 import copy
 from pandas import DataFrame, Index
+import pickle
+
+#-------------------------------------------------------------------------------
+def load_covariance(filename):
+    """
+    Load the covariance matrix
+    """
+    return pickle.load(open(filename, 'r'))
 
 #-------------------------------------------------------------------------------
 class CovarianceMatrix(object):
     """
     Class to represent a covariance matrix
     """
-    def __init__(self, data, index=None):
+    def __init__(self, data, index=None, verify=False):
         
         # make local copies
         data = np.asarray(data).copy()
@@ -18,8 +26,10 @@ class CovarianceMatrix(object):
         if data.ndim == 1:
             data = np.diag(data)
             
+        
         # check basic properties
-        self.check_properties(data)
+        if verify:
+            self.check_properties(data)
         
         # store the size
         self.N = np.shape(data)[0]
@@ -226,7 +236,7 @@ class CovarianceMatrix(object):
         Plot the correlation matrix (normalized covariance matrix), optionally
         saving if `filename != None`
         """
-        import plotify as pfy
+        from ... import plotify as pfy
         
         pfy.clf()
         corr = self.normalized().asarray()
@@ -262,6 +272,13 @@ class CovarianceMatrix(object):
             self._inverse = np.linalg.inv(self.full())
             return self._inverse
             
+    #---------------------------------------------------------------------------
+    def save(self, filename):
+        """
+        Pickle the CovarianceMatrix
+        """
+        pickle.dump(self, open(filename, 'w'))
+    
     #---------------------------------------------------------------------------
 #endclass CovarianceMatrix
 

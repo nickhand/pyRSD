@@ -13,10 +13,24 @@ def load_covariance(filename):
 #-------------------------------------------------------------------------------
 class CovarianceMatrix(object):
     """
-    Class to represent a covariance matrix
+    Class to represent a covariance matrix. The class has an associated 
+    `index`, which can be used to associated values with each element of the 
+    matrix. This is useful for trimming the matrix to a given `index` range.
     """
-    def __init__(self, data, index=None, verify=False):
-        
+    def __init__(self, data, index=None, verify=True):
+        """
+        Parameters
+        ----------
+        data : array_like
+            The data representing the covariance matrix. If 1D, the input
+            is interpreted as the diagonal elements, with all other elements
+            zero
+        index : array_like, optional
+            An array of values associated with each axis of the matrix
+        verify : bool, optional
+            If `True`, verify that the matrix is positive-semidefinite and
+            symmetric
+        """
         # make local copies
         data = np.asarray(data).copy()
         if index is not None:
@@ -26,7 +40,6 @@ class CovarianceMatrix(object):
         if data.ndim == 1:
             data = np.diag(data)
             
-        
         # check basic properties
         if verify:
             self.check_properties(data)
@@ -89,15 +102,12 @@ class CovarianceMatrix(object):
                 if self._duplicate_index:
                     raise ValueError("Key must be an integer if index contains duplicate keys")
         
-        # if index with duplicate keys, return based on 2D frame iloc   
-        if self._duplicate_index:
-            return self.full().iloc[i,j]
+        # if i, j are ints, return the data
+        if self._duplicate_index or (isinstance(i, int) and isinstance(j, int)):
+            index = self._get_contracted_index(i, j)
+            return self.data.iloc[index]
         
-        # if not duplicate index, just use the keys
-        if self.index is not None:      
-            if isinstance(i, int): i = self.index[i]
-            if isinstance(j, int): j = self.index[j]
-
+        # i, j should be floats
         if not (i, j) in self.data.index:
             if not (j, i) in self.data.index:
                 raise KeyError("Sorry, element (%s, %s) does not exist" %(i, j))
@@ -149,6 +159,17 @@ class CovarianceMatrix(object):
         return toret
                 
     #---------------------------------------------------------------------------
+    def _get_contracted_index(self, i, j):
+        """
+        Given the matrix element (i, j) return the index of the corresponding
+        element in `self.data`
+        """
+        if i > j:
+            i, j = j, i
+        
+        return i*(self.N-1) - sum(range(i)) + j
+        
+    #---------------------------------------------------------------------------
     def copy(self):
         """
         Return a deep copy of `self`
@@ -196,9 +217,21 @@ class CovarianceMatrix(object):
         try:
             return self._diag
         except AttributeError:
-            self._diag = np.array([self[i] for i in range(self.N)])
+            inds = [self._get_contracted_index(i, i) for i in range(self.N)]
+            self._diag = np.array(self.data.iloc[inds])
+            
             return self._diag
     
+    #---------------------------------------------------------------------------
+    def index_element(self, i, j):
+        """
+        Return the index element associated with matrix element (i, j)
+        """
+        if self.index is None: 
+            return None
+            
+        return self.index[i], self.index[j]
+        
     #---------------------------------------------------------------------------
     def full(self):
         """
@@ -247,17 +280,28 @@ class CovarianceMatrix(object):
     
         return colormesh
     #---------------------------------------------------------------------------
-    def trim_by_index(self, val):
+    def trim(self, lower=None, upper=None):
         """
-        Trim the covariance matrix to specified maximum value using the index 
+        Trim the covariance matrix to specified minimum/maximum values, 
+        using the index associated with the covariance matrix
         """
-        # get the index values that are less than the max value
-        inds = [(ki <= val and kj <= val) for ki, kj in self.data.index.values]
+        # check input
+        if self.index is None:
+            raise ValueError("Cannot trim covariance matrix without an index array")
+        if lower is None and upper is None:
+            raise ValueError("Specify at least one of `lower`, `upper` to trim")
+            
+        # if not provided, set to +/- infinity
+        if lower is None: lower = -np.inf
+        if upper is None: upper = np.inf
+        
+        # get the index values that are in the valid range
+        inds = [((lower <= ki <= upper) and (lower <= kj <= upper)) for ki, kj in self.data.index.values]
         sliced = self.data[inds].unstack()
         i_hi, j_hi = np.triu_indices_from(sliced, k=1)
         sliced.values[j_hi, i_hi] = sliced.values[i_hi, j_hi]
         
-        new_index = self.index[np.where(self.index <= val)]
+        new_index = self.index[np.where((lower <= self.index)&(self.index <= upper))]
         return CovarianceMatrix(np.array(sliced), index=new_index)
         
     #---------------------------------------------------------------------------

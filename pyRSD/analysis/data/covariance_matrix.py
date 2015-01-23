@@ -296,7 +296,9 @@ class CovarianceMatrix(object):
         if upper is None: upper = np.inf
         
         # get the index values that are in the valid range
-        inds = [((lower <= ki <= upper) and (lower <= kj <= upper)) for ki, kj in self.data.index.values]
+        N = len(self.index)
+        values = [(self.index[i], self.index[j]) for i in range(N) for j in range(i, N)]
+        inds = [((lower <= ki <= upper) and (lower <= kj <= upper)) for ki, kj in values]
         sliced = self.data[inds].unstack()
         i_hi, j_hi = np.triu_indices_from(sliced, k=1)
         sliced.values[j_hi, i_hi] = sliced.values[i_hi, j_hi]

@@ -1,6 +1,6 @@
 from ... import numpy as np
 from ..parameters import ParameterSet, tools
-from . import CovarianceMatrix
+from . import CovarianceMatrix, load_covariance
 
 import pickle
 import logging
@@ -21,7 +21,8 @@ class PowerMeasurement(object):
                  power_type, 
                  identifier, 
                  err_col=None, 
-                 k_trim=None):
+                 k_min=None,
+                 k_max=None):
         """
         Load the parameters and initialize
         
@@ -44,8 +45,10 @@ class PowerMeasurement(object):
         err_col : int, optional
             The integer giving the column number for the error data. 
             Power data should have units of `(Mpc/h)^3`
-        k_trim : float, optional
-            Trim results to this value, in units of `h/Mpc`
+        k_min : float, optional
+            The minimum wavenumber (inclusive) in units of `h/Mpc`
+        k_max : float, optional
+            The maximum wavenumber (inclusive) in units of `h/Mpc`
         """
         # find the correct path
         filename = tools.find_file(filename)
@@ -66,8 +69,9 @@ class PowerMeasurement(object):
         self.type = power_type
         self._identifier = identifier
         
-        # set the k_trim
-        self.k_trim = k_trim
+        # set the bounds
+        self.k_min = k_min
+        self.k_max = k_max
         
     #---------------------------------------------------------------------------
     @property
@@ -87,22 +91,47 @@ class PowerMeasurement(object):
         
     #---------------------------------------------------------------------------
     @property
-    def k_trim(self):
+    def k_max(self):
         """
         Maximum k value to trim the results to in units of `h/Mpc`
         """
-        return self._k_trim
+        return self._k_max
         
-    @k_trim.setter
-    def k_trim(self, val):
+    @k_max.setter
+    def k_max(self, val):
         if val is None:
-            self._k_trim = np.amax(self._k_input)
-            self._k_trim_inds = ()
+            self._k_max = np.amax(self._k_input)
+            self._k_max_inds = np.ones(len(self._k_input), dtype=bool)
         else:
-            self._k_trim = val
-            self._k_trim_inds = np.where(self._k_input <= val)
+            self._k_max = val
+            self._k_max_inds = np.where(self._k_input <= val)
             
-    #---------------------------------------------------------------------------    
+    #---------------------------------------------------------------------------
+    @property
+    def k_min(self):
+        """
+        Minimum k value to trim the results to in units of `h/Mpc`
+        """
+        return self._k_min
+        
+    @k_min.setter
+    def k_min(self, val):
+        if val is None:
+            self._k_min = np.amin(self._k_input)
+            self._k_min_inds = np.ones(len(self._k_input), dtype=bool)
+        else:
+            self._k_min = val
+            self._k_min_inds = np.where(self._k_input >= val)
+            
+    #---------------------------------------------------------------------------
+    @property
+    def _k_trim_inds(self):
+        """
+        The indices of the data points following between k_min and k_max
+        """    
+        return self._k_min_inds & self._k_max_inds
+        
+    #---------------------------------------------------------------------------
     @property
     def k(self):
         """
@@ -185,8 +214,9 @@ class PowerData(object):
         self.params = ParameterSet(param_file)
         
         # setup the measurements and covariances
-        self._setup_measurements()
-        self._setup_covariance()
+        self._set_measurements()
+        self._set_covariance()
+        self._set_fitting_range()
         
     #---------------------------------------------------------------------------
     def __repr__(self):
@@ -223,7 +253,7 @@ class PowerData(object):
         return self.measurements[key]
         
     #---------------------------------------------------------------------------
-    def _setup_measurements(self):
+    def _set_measurements(self):
         """
         Setup the measurements included in this `PowerData`
         """
@@ -248,7 +278,7 @@ class PowerData(object):
                 raise ValueError("Statistic `%s` must have associated parameter for info" %stat_name)
             info = self.params[stat_name].value
             args = info['file'], info['x_col'], info['y_col'], power_type, value
-            kwargs = {'err_col' : info.get('err_col', None), 'k_trim' : self.k_trim}
+            kwargs = {'err_col' : info.get('err_col', None)}
             self.measurements.append(PowerMeasurement(*args, **kwargs))
         
         # make sure all the ks are the same
@@ -264,18 +294,28 @@ class PowerData(object):
     def _setup_covariance(self):
         """
         Setup the combined covariance matrix
+        
+        Note: at this point, no k bounds have been applied
         """
-        # load the covariance from a pickle
         loaded = False
+        index =  np.concatenate([d.k for d in self.measurements])
+        
+        # load the covariance from a pickle
         if self.params['covariance'].value is not None:
+            
             filename = tools.find_file(self.params['covariance'].value)
-            C = pickle.load(open(filename, 'r'))
-            index =  np.concatenate([d._k_input for d in self.measurements])
-            self.covariance = CovarianceMatrix(C, index=index)
+            C = load_covariance(filename)            
             
-            logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename))            
-            loaded = True
+            if isinstance(C, np.ndarray):
+                self.covariance = CovarianceMatrix(C, index=index)
+            elif isinstance(C, CovarianceMatrix):
+                self.covariance = C
             
+            if not np.array_equal(self.covariance.index, index):
+                raise ValueError("Mismatch between loaded covariance matrix index and data measurements")
+            logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename)) 
+            loaded = True           
+                        
         # use the diagonals
         else:
             if any(isinstance(d.error, type(None)) for d in self.measurements):
@@ -285,7 +325,7 @@ class PowerData(object):
                 
             errors = np.concatenate([d.error for d in self.measurements])
             variances = errors**2
-            self.covariance = CovarianceMatrix(variances, index=self.combined_k)
+            self.covariance = CovarianceMatrix(variances, index=index)
             logger.info('Initialized diagonal covariance matrix from error columns')
         
         # rescale the covariance matrix
@@ -293,16 +333,21 @@ class PowerData(object):
             rescale = self.params['covariance_rescaling'].value
             logger.info("Rescaled covariance matrix by value = {val}".format(val=str(rescale)))
             self.covariance *= rescale
-                    
+            
+        # trim the covariance
+        if self.k_max is not None or self.k_min is not None:
+            self.covariance = self.covariance.trim(lower=self.k_min, upper=self.k_max)
+            logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.k_min, self.k_max))
+
+        # trim the measurements
+        for d in self.measurements:
+            d.k_max = self.k_max
+            d.k_min = self.k_min
+                  
+        # set errors for each indiv measurement to match any loaded covariance
         if loaded:
-            # set errors for each indiv measurement to match cov
             self._set_errs_from_cov()
             
-            # possibly trim by a k_max
-            if self.k_trim is not None:
-                self.covariance = self.covariance.trim_by_index(self.k_trim)
-                logger.info("Trimmed read covariance matrix to k_max = {k} h/Mpc".format(k=self.k_trim))
-        
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:
             args = (len(self.combined_power), self.covariance.N)
@@ -371,12 +416,23 @@ class PowerData(object):
             
     #---------------------------------------------------------------------------
     @property
-    def k_trim(self):
+    def k_min(self):
         """
-        The wavenumber of the data that the results have been trimmed to
+        The minimum wavenumber [units: `h/Mpc`] of allowed data points
         """
-        if 'k_trim' in self.params:
-            return self.params['k_trim'].value
+        if 'fitting_range' in self.params:
+            return self.params['fitting_range'].value[0]
+        else:
+            return None
+    
+    #---------------------------------------------------------------------------
+    @property
+    def k_max(self):
+        """
+        The maximum wavenumber [units: `h/Mpc`] of allowed data points
+        """
+        if 'fitting_range' in self.params:
+            return self.params['fitting_range'].value[1]
         else:
             return None
     

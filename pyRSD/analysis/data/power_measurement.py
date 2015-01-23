@@ -334,6 +334,10 @@ class PowerData(object):
             logger.info("Rescaled covariance matrix by value = {val}".format(val=str(rescale)))
             self.covariance *= rescale
             
+        # set errors for each indiv measurement to match any loaded covariance
+        if loaded:
+            self._set_errs_from_cov()
+            
         # trim the covariance
         if self.k_max is not None or self.k_min is not None:
             self.covariance = self.covariance.trim(lower=self.k_min, upper=self.k_max)
@@ -344,10 +348,6 @@ class PowerData(object):
             d.k_max = self.k_max
             d.k_min = self.k_min
                   
-        # set errors for each indiv measurement to match any loaded covariance
-        if loaded:
-            self._set_errs_from_cov()
-            
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:
             args = (len(self.combined_power), self.covariance.N)

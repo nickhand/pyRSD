@@ -216,7 +216,6 @@ class PowerData(object):
         # setup the measurements and covariances
         self._set_measurements()
         self._set_covariance()
-        self._set_fitting_range()
         
     #---------------------------------------------------------------------------
     def __repr__(self):
@@ -291,7 +290,7 @@ class PowerData(object):
         logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             
     #---------------------------------------------------------------------------
-    def _setup_covariance(self):
+    def _set_covariance(self):
         """
         Setup the combined covariance matrix
         

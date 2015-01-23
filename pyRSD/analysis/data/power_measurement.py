@@ -311,6 +311,8 @@ class PowerData(object):
                 self.covariance = C
             
             if not np.array_equal(self.covariance.index, index):
+                print self.covariance.index
+                print index
                 raise ValueError("Mismatch between loaded covariance matrix index and data measurements")
             logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename)) 
             loaded = True           

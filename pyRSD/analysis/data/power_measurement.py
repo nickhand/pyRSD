@@ -309,11 +309,10 @@ class PowerData(object):
                 self.covariance = CovarianceMatrix(C, index=index)
             elif isinstance(C, CovarianceMatrix):
                 self.covariance = C
-            
-            if not np.array_equal(self.covariance.index, index):
-                print self.covariance.index
-                print index
-                raise ValueError("Mismatch between loaded covariance matrix index and data measurements")
+                if self.params['index_rescaling'] is not None:
+                    rescale = self.params['index_rescaling'].value
+                    C.index *= rescale
+                    logger.info("Rescaled index of covariance matrix by value = {val}".format(val=str(rescale)))
             logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename)) 
             loaded = True           
                         

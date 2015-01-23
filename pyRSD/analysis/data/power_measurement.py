@@ -104,7 +104,7 @@ class PowerMeasurement(object):
             self._k_max_inds = np.ones(len(self._k_input), dtype=bool)
         else:
             self._k_max = val
-            self._k_max_inds = np.where(self._k_input <= val)
+            self._k_max_inds = self._k_input <= val
             
     #---------------------------------------------------------------------------
     @property
@@ -121,7 +121,7 @@ class PowerMeasurement(object):
             self._k_min_inds = np.ones(len(self._k_input), dtype=bool)
         else:
             self._k_min = val
-            self._k_min_inds = np.where(self._k_input >= val)
+            self._k_min_inds = self._k_input >= val
             
     #---------------------------------------------------------------------------
     @property

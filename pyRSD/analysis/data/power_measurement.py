@@ -20,7 +20,8 @@ class PowerMeasurement(object):
                  power_col,
                  power_type, 
                  identifier, 
-                 err_col=None, 
+                 err_col=None,
+                 width=None, 
                  k_min=None,
                  k_max=None):
         """
@@ -45,6 +46,9 @@ class PowerMeasurement(object):
         err_col : int, optional
             The integer giving the column number for the error data. 
             Power data should have units of `(Mpc/h)^3`
+        width : float, optional
+            If `power_type` == `pkmu`, this provides the width of the
+            mu bin
         k_min : float, optional
             The minimum wavenumber (inclusive) in units of `h/Mpc`
         k_max : float, optional
@@ -68,6 +72,7 @@ class PowerMeasurement(object):
             
         self.type = power_type
         self._identifier = identifier
+        self._width = width
         
         # set the bounds
         self.k_min = k_min
@@ -169,6 +174,21 @@ class PowerMeasurement(object):
             raise AttributeError("No `mu` attribute for `PowerMeasurement` of type `pole`")
         
         return self._identifier
+        
+    #---------------------------------------------------------------------------
+    @property
+    def dmu(self):
+        """
+        If `type` == `pkmu`, then this returns the width of the mu bin associated
+        with this measurement
+        """
+        if self.type == 'pole':
+            raise AttributeError("No `dmu` attribute for `PowerMeasurement` of type `pole`")
+        
+        try:
+            return self._width
+        except:
+            return None
             
     #---------------------------------------------------------------------------
     @property
@@ -277,7 +297,7 @@ class PowerData(object):
                 raise ValueError("Statistic `%s` must have associated parameter for info" %stat_name)
             info = self.params[stat_name].value
             args = info['file'], info['x_col'], info['y_col'], power_type, value
-            kwargs = {'err_col' : info.get('err_col', None)}
+            kwargs = {'err_col' : info.get('err_col', None), 'width' : info.get('width', None)}
             self.measurements.append(PowerMeasurement(*args, **kwargs))
         
         # make sure all the ks are the same

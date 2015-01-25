@@ -490,7 +490,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
         
     #---------------------------------------------------------------------------
-    def Pgal(self, mu, flatten=False, hires=False):
+    def Pgal(self, mu, flatten=False, hires=False, dmu=None):
         """
         The total redshift-space galaxy power spectrum, combining the individual
         terms.
@@ -507,16 +507,37 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         hires : bool, optional
             If `True`, return the values corresponding to `self.k`, otherwise
             return those corresponding to `self.k`
+        dmu : array_like, optional
+            If not `None`, specifies the bin width for each mu specified, and
+            the `mu` values given are interpreted as the mean of each bin. The
+            returned P(k,mu) values are integrated over the bin
         """
+        # setup if we are integrating across a mu bin
+        if dmu is not None:
+            mu, dmu = np.array(mu, ndmin=1), np.array(dmu, ndmin=1)
+            N = 19
+            lower = mu - dmu/2
+            upper = mu + dmu/2
+            Nmu = len(mu)
+            mu = np.concatenate([np.linspace(lower[i], upper[i], N) for i in range(Nmu)])
+        
         self.hires = hires
         
         fss = self.fs**2
         fcs = 2.*self.fs*(1 - self.fs)
         fcc = (1. - self.fs)**2
-        
         toret = fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
-        if flatten: toret = np.ravel(toret, order='F')
-        return toret
+        
+        # integrate over each mu bin
+        if dmu is not None:
+            pkmus = []
+            for i in range(Nmu):
+                val = np.array([simps(d[i*N : (i+1)*N], x=mu[i*N : (i+1)*N]) for d in toret])
+                pkmus.append(val / dmu[i])
+            return np.vstack(pkmus).T if not flatten else np.concatenate(pkmus)
+        # just return values at mu specified
+        else:
+            return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
     def Pgal_poles(self, poles, flatten=False, hires=False):
@@ -546,7 +567,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Pkmus = self.Pgal(mus, hires=hires)
         for ell in poles:
             kern = (2*ell+1.)*legendre(ell)(mus)
-            val = np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+            val = np.array([simps(kern*d, x=mus) for d in Pkmus])
             toret += (val,)
             
         if scalar:

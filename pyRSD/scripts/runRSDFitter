@@ -53,7 +53,6 @@ def main(args):
     if not os.path.exists(odir):
         os.makedirs(odir)
     filename = "{}/{}.log".format(odir, p['label'].value)
-    print filename
     setup_logger(filename)
         
     # initialize the fitter

@@ -186,13 +186,17 @@ class DataAnalysisDriver(object):
         Compute the model callables
         """
         # get the mu/ell mappings
-        mus, ells = [], []
+        mus, dmus, ells = [], [], []
         for i, meas in enumerate(self.data.measurements):
             if meas.type == 'pkmu':
-                mus.append(meas.mu)       
+                mus.append(meas.mu) 
+                if meas.dmu is not None: dmus.append(meas.dmu)      
             elif meas.type == 'pole':
                 ells.append(meas.ell)
-        self._mus = sorted(mus)
+        inds = np.argsort(mus)
+        self._mus = [mus[i] for i in inds]
+        if len(dmus) == len(mus):
+            self._dmus = [dmus[i] for i in inds]
         self._ells = sorted(ells)
         
         # initialize
@@ -201,8 +205,10 @@ class DataAnalysisDriver(object):
         
         # pkmu
         if len(self._mus) > 0:
-            self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus)
-            self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True)
+            kwargs = {}
+            if hasattr(self, '_dmus'): kwargs['dmu'] = self._dmus
+            self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus, **kwargs)
+            self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True, **kwargs)
         
         # multipoles
         if len(self._ells) > 0:

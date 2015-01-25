@@ -514,12 +514,17 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             # do mu^2 terms?
             if self.max_mu >= 2:
                 
+                # the mu^2 terms depending on velocity (velocities in Mpc/h)
+                sigma_lin = self.sigma_v
+                sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
+                sigsq_eff = sigma_lin**2 + sigma_02**2
+                
                 # get the integral attributes
                 K20_a = self.integrals.K20_a(self.k)
                 K20s_a = self.integrals.K20s_a(self.k)
                 
                 term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-                term2_mu2 =  -(self.f*self.D*self.k*self.sigma_v)**2 * self.P00_ss_no_stoch.total.mu0
+                term2_mu2 =  -(self.f*self.D*self.k)**2 * sigsq_eff * self.P00_ss_no_stoch.total.mu0
                 term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
                 self._P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
                 
@@ -597,7 +602,13 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
             # do mu^4 term?
             if self.max_mu >= 4:
-                self._P03_ss.total.mu4 = -0.5*(self.f*self.D*self.k*self.sigma_v)**2 * self.P01_ss.total.mu2
+                
+                # optionally add small scale velocity
+                sigma_lin = self.sigma_v 
+                sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
+                sigsq_eff = sigma_lin**2 + sigma_03**2
+                
+                self._P03_ss.total.mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
         
             return self._P03_ss
             
@@ -620,13 +631,18 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if self.max_mu >= 4:
                 Plin = self.normed_power_lin(self.k)
                 
+                # now do mu^4 terms depending on velocity (velocities in Mpc/h)
+                sigma_lin = self.sigma_v  
+                sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+                sigsq_eff = sigma_lin**2 + sigma_12**2
+                
                 # get the integral attributes
                 I12 = self.integrals.I12(self.k)
                 I03 = self.integrals.I03(self.k)
                 J02 = self.integrals.J02(self.k)
                 
                 term1_mu4 = self.f**3 * (I12 - 0.5*(b1 + b1_bar)*I03 + 2*self.k**2 * J02*Plin)
-                term2_mu4 = -0.5*(self.f*self.D*self.k*self.sigma_v)**2 * self.P01_ss.total.mu2
+                term2_mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
                 self._P12_ss.total.mu4 = term1_mu4 + term2_mu4
                 
                 # do mu^6 terms?
@@ -653,19 +669,29 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         except:
             self._P13_ss = power_dm.PowerTerm()
             
-            A = -(self.f*self.D*self.k*self.sigma_v)**2 
+            # vector small scale velocity additions
+            sigma_lin = self.sigma_v 
+            sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
+            
+            # the amplitude
+            A = -(self.f*self.D*self.k)**2
             
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
                 # using P11_ss mu^2 terms 
-                self._P13_ss.total.mu4 = A*self.P11_ss.total.mu2
+                self._P13_ss.total.mu4 = A*sigsq_eff_vector*self.P11_ss.total.mu2
             
                 # do mu^6 terms?
                 if self.max_mu >= 6:
                     
+                    # scalar small scale velocity additions
+                    sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+                    sigsq_eff_scalar = sigma_lin**2 + sigma_13_s**2
+                    
                     # using P11_ss mu^4 terms
-                    self._P13_ss.total.mu6 = A*self.P11_ss.total.mu4
+                    self._P13_ss.total.mu6 = A*sigsq_eff_scalar*self.P11_ss.total.mu4
             
             return self._P13_ss
             
@@ -687,6 +713,11 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
             # do mu^4 terms?
             if self.max_mu >= 4:
+                
+                # velocities in units of Mpc/h
+                sigma_lin = self.sigma_v
+                sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+                sigsq_eff = sigma_lin**2 + sigma_22**2
             
                 # 1-loop P22bar
                 term1 = self.P22.no_velocity.mu4
@@ -695,10 +726,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.integrals.sigmasq_k(self.k)**2
                 
                 # b1 * P02_bar
-                term3 = -0.5*(self.k*self.f*self.D*self.sigma_v)**2 * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
+                term3 = -0.5*(self.k*self.f*self.D)**2 * sigsq_eff * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
                 
                 # sigma^4 x P00_ss
-                term4 = 0.25*(self.k*self.f*self.D*self.sigma_v)**4 * self.P00_ss_no_stoch.total.mu0
+                term4 = 0.25*(self.k*self.f*self.D)**4 * sigsq_eff**2 * self.P00_ss_no_stoch.total.mu0
                 
                 self._P22_ss.total.mu4 = term1 + term2 + term3 + term4
                 
@@ -706,7 +737,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 if self.max_mu >= 6:
                     
                     term1 = self.P22.no_velocity.mu6
-                    term2 = -0.5*(self.k*self.f*self.D*self.sigma_v)**2 * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
+                    term2 = -0.5*(self.k*self.f*self.D)**2 * sigsq_eff * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
                     self._P22_ss.total.mu6 = term1 + term2
                 
                         
@@ -730,19 +761,24 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
+                # compute the relevant small-scale + linear velocities in Mpc/h
+                sigma_lin = self.sigma_v 
+                sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+                sigsq_eff = sigma_lin**2 + sigma_04**2
+                
                 # contribution from P02[mu^2]
-                term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_v)**2 * self.P02.no_velocity.mu2
+                term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
                 
                 # contribution here from P00_ss * vel^4
                 A = (1./12)*(self.f*self.D*self.k)**4 * self.P00_ss_no_stoch.total.mu0
                 vel_kurtosis = self.integrals.velocity_kurtosis / self.D**4
-                term2 = A*(3.*self.sigma_v**4 + vel_kurtosis)
+                term2 = A*(3.*sigsq_eff**2 + vel_kurtosis)
                 
                 self._P04_ss.total.mu4 = term1 + term2
             
                 # do mu^6 terms?
                 if self.max_mu >= 6:
-                    self._P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k*self.sigma_v)**2 * self.P02.no_velocity.mu4
+                    self._P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
                 
             return self._P04_ss
             

@@ -337,12 +337,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     def evaluate_fog(self, sigma, mu_obs):
         """
-        Compute the FOG damping
+        Compute the FOG damping, evaluating at `k_true` and `mu_true`
         """
         if np.isscalar(mu_obs):
-            return self.fog_model(sigma*mu_obs*self.k_true(self.k_obs, mu_obs))
+            return self.fog_model(sigma*self.k_obs*mu_obs/self.alpha_par)
         else:
-            return np.vstack([self.fog_model(sigma*imu*self.k_true(self.k_obs, imu)) for imu in mu_obs]).T
+            return np.vstack([self.fog_model(sigma*self.k_obs*imu/self.alpha_par) for imu in mu_obs]).T
     
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
@@ -515,7 +515,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # setup if we are integrating across a mu bin
         if dmu is not None:
             mu, dmu = np.array(mu, ndmin=1), np.array(dmu, ndmin=1)
-            N = 19
+            N = 11
             lower = mu - dmu/2
             upper = mu + dmu/2
             Nmu = len(mu)

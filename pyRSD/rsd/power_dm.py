@@ -339,8 +339,8 @@ class DMSpectrum(object):
         if hasattr(self, '_integrals'): self.integrals.z = val
         if hasattr(self, '_P00_model'): self.P00_model.z = val
         if hasattr(self, '_P01_model'): self.P01_model.z = val
-        if hasattr(self, '_P11_model'): self.P11_model.f = val
-        if hasattr(self, '_Pdv_model'): self.Pdv_model.f = val
+        if hasattr(self, '_P11_model'): self.P11_model.z = val
+        if hasattr(self, '_Pdv_model'): self.Pdv_model.z = val
         del self.D, self.conformalH
         self._delete_power()
 
@@ -362,8 +362,8 @@ class DMSpectrum(object):
         if hasattr(self, '_integrals'): self.integrals.sigma8 = val
         if hasattr(self, '_P00_model'): self.P00_model.sigma8 = val
         if hasattr(self, '_P01_model'): self.P01_model.sigma8 = val
-        if hasattr(self, '_P11_model'): self.P11_model.f = val
-        if hasattr(self, '_Pdv_model'): self.Pdv_model.f = val
+        if hasattr(self, '_P11_model'): self.P11_model.sigma8 = val
+        if hasattr(self, '_Pdv_model'): self.Pdv_model.sigma8 = val
         self._delete_power()
 
     #---------------------------------------------------------------------------

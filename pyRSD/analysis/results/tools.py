@@ -32,7 +32,7 @@ def plot_mcmc_trace(ax, trace1, trace2, scatter=True, **kwargs):
     xbins, ybins, sigma = compute_sigma_level(trace1, trace2)
     ax.contour(xbins, ybins, sigma.T, levels=[0.683, 0.955], **kwargs)
     if scatter:
-        ax.plot(trace1, trace2, ',k', alpha=0.8)
+        ax.plot(trace1, trace2, ',k')
     
     return ax
 #-------------------------------------------------------------------------------   

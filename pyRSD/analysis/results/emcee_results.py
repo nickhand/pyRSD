@@ -313,13 +313,33 @@ class EmceeResults(object):
             self._results[param].burnin = val
     
     #---------------------------------------------------------------------------
-    def _plot_timeline(self, names):
+    def plot_timeline(self, *names, **kwargs):
         """
-        Internal method to make plot timelines for a set of parameters
+        Plot the chain timeline for as many parameters as specified in the 
+        `names` tuple. This plots the value of each walker as a function
+        of iteration
+        
+        Note: any iterations during the "burnin" period are excluded
+        
+        Parameters
+        ----------
+        names : tuple
+            The string names of the parameters to plot
+        outfile : str, optional
+            If not `None`, save the resulting figure with the specified name
+            
+        Returns
+        -------
+        fig : matplotlib.Figure
+            The figure object
         """
-        fig, axes = pfy.subplots(len(names), 1, sharex=True, figsize=(8, 9))
-
-        # plot timeline for each free parameter
+        outfile = kwargs.get('outfile', None)
+        N = len(names)
+        if N < 1:
+            raise ValueError('Must specify at least one parameter name for timeline plot')
+            
+        fig, axes = pfy.subplots(N, 1, sharex=True, figsize=(8, 9))
+        if N == 1: axes = [axes]
         for i, name in enumerate(names):
             param = self[name]
             
@@ -332,52 +352,49 @@ class EmceeResults(object):
             axes[i].yaxis.set_major_locator(MaxNLocator(5))
             axes[i].axhline(param.mean, color="#888888", lw=2)
             axes[i].set_ylabel(name)
-            
-        return fig
-            
-    #---------------------------------------------------------------------------
-    def plot_free_timelines(self, outfile=None):
-        """
-        Plot the timeline chains of the free parameters, excluding any 
-        iterations in the burnin period
-        """
-        fig = self._plot_timeline(self.free_parameter_names)
+        
+        axes[-1].set_xlabel('iteration number', fontsize=16)
         if outfile is not None:
             fig.savefig(outfile)
             
         return fig
         
     #---------------------------------------------------------------------------
-    def plot_constrained_timelines(self, outfile=None):
+    def plot_triangle(self, *names, **kwargs):
         """
-        Plot the timeline chains of the constrained parameters, excluding any 
-        iterations in the burnin period
-        """
-        if len(self.constrained_parameter_names) > 0:
-            fig = self._plot_timeline(self.constrained_parameter_names)
-            if outfile is not None:
-                fig.savefig(outfile)
-            return fig
+        Make the triange plot for as many parameters as specified in the 
+        `names` tuple, optionally thinning the number of samples plotted.
         
-    #---------------------------------------------------------------------------
-    def plot_free_triangle(self, outfile=None):
-        """
-        Make the triange plot for the free parameters
-        """
-        samples = self.chain[:, self.burnin:, :].reshape((-1, self.ndim))
-        fig = triangle.corner(samples, labels=self.free_parameter_names)
-        if outfile is not None:
-            fig.savefig(outfile)
-        return fig
+        Note: any iterations during the "burnin" period are excluded
         
-    #---------------------------------------------------------------------------
-    def plot_constrained_triangle(self, outfile=None):
+        Parameters
+        ----------
+        names : tuple
+            The string names of the parameters to plot
+        thin : int, optional
+            The factor to thin the number of samples plotted by. Default is 
+            1 (plot all samples)
+        outfile : str, optional
+            If not `None`, save the resulting figure with the specified name
+            
+        Returns
+        -------
+        fig : matplotlib.Figure
+            The figure object 
         """
-        Make the triange plot for the constrained parameters
-        """
-        N = len(self.constrained_parameter_names)
-        samples = self.constrained_chain[:, self.burnin:, :].reshape((-1, N))
-        fig = triangle.corner(samples, labels=self.constrained_parameter_names)
+        thin = kwargs.get('thin', 1)
+        outfile = kwargs.get('outfile', None)
+        if len(names) < 2:
+            raise ValueError('Must specify at least two parameter names to make triangle plot')
+        
+        # make the sample array for the desired parameters
+        samples = []
+        for name in names:
+            param = self[name]
+            trace = param.trace()[:, self.burnin::thin].flatten()
+            samples.append(trace)
+            
+        fig = triangle.corner(np.vstack(samples).T, labels=names)
         if outfile is not None:
             fig.savefig(outfile)
         return fig
@@ -387,6 +404,23 @@ class EmceeResults(object):
         """
         Plot the 2D traces of the given parameters, showing the 1 and 2 sigma
         contours
+        
+        Note: any iterations during the "burnin" period are excluded
+        
+        Parameters
+        ----------
+        param1 : str
+            The name of the first parameter
+        param2 : str
+            The name of the second parameter
+        outfile : str, optional
+            If not `None`, save the resulting figure with the specified name
+            
+        Returns
+        -------
+        fig : matplotlib.Figure
+            The figure object
+        
         """
         fig = pfy.figure()
         ax = fig.gca()
@@ -426,13 +460,12 @@ class EmceeResults(object):
         # print the results to the logger
         logger.info("\n"+hdr+str(self))
         
-        # now make some plots
-        if make_plots:            
-            self.plot_free_triangle(outfile=label+".free_triangle.pdf")
-            self.plot_free_timelines(outfile=label+".free_timeline.pdf")
-        
-            self.plot_constrained_triangle(outfile=label+".constrained_triangle.pdf")
-            self.plot_constrained_timelines(outfile=label+".constrained_timeline.pdf")
+        # now make some plots, for fsigma8, alpha_par, alpha_perp, b1
+        if make_plots:        
+            params = ['fsigma8', 'alpha_par', 'alpha_perp', 'b1']    
+            self.plot_triangle(*params, thin=outfile=label+".triangle.pdf")
+            self.plot_timeline(*params, outfile=label+".timeline.pdf")
+
         
     #---------------------------------------------------------------------------
     def values(self):

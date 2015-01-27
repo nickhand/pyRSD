@@ -34,7 +34,8 @@ class GalaxyPowerParameters(ParameterSet):
                      'sigma_c': 'centrals FOG damping in Mpc/h',
                      'sigma_s': 'satellite FOG damping in Mpc/h',
                      'sigma_sA': 'satA FOG damping in Mpc/h', 
-                     'sigma_sB': 'satB FOG damping in Mpc/h'}
+                     'sigma_sB': 'satB FOG damping in Mpc/h',
+                     'small_scale_sigma': 'additional small scale velocity in km/s'}
                    
     _extra_params = {'b1_s': 'linear bias of satellites',
                      'b1': 'the total linear bias', 
@@ -44,7 +45,9 @@ class GalaxyPowerParameters(ParameterSet):
                      'nbar' : "the mean number density in (h/Mpc)^3", 
                      'f1h_cBs' : 'fraction multiplying 1-halo term, NcBs',
                      'f1h_sBsB' : 'fraction multiplying 1-halo term, NsBsB',
-                     'gamma' : 'fraction of halos that host a central galaxy'}
+                     'gamma' : 'fraction of halos that host a central galaxy',
+                     'log10_NsBsB' : 'log10 of the 1-halo amplitude, NsBsB',
+                     'log10_NcBs' : 'log10 of the 1-halo amplitude, NcBs'}
                      
     _valid_keys = _model_params.keys() + _extra_params.keys()
                    
@@ -117,7 +120,7 @@ class GalaxyPowerParameters(ParameterSet):
         `self._model_params`
         """
         keys = self._model_params.keys()
-        return dict((key, self[key].value) for key in keys)    
+        return dict((key, self[key].value) for key in keys if key in self)    
     #---------------------------------------------------------------------------   
 #endclass GalaxyPowerParameters
 

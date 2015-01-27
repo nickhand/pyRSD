@@ -172,25 +172,6 @@ class DMSpectrum(object):
     
     #---------------------------------------------------------------------------
     @property
-    def mu_obs(self):
-        """
-        The "observed" mu to compute the power spectrum at. This can be set, and
-        note that the "true" wavenumbers depend on this value
-        """
-        try:
-            return self._mu_obs           
-        except AttributeError:
-            raise AttributeError("need to set `mu_obs` first")
-        
-    @mu_obs.setter
-    def mu_obs(self, val):
-        self._mu_obs = val
-        
-        # delete dependencies
-        del self.mu
-        
-    #---------------------------------------------------------------------------
-    @property
     def cosmo(self):
         """
         The `pygcl.Cosmology` object holding the cosmology parameters. This is
@@ -533,7 +514,7 @@ class DMSpectrum(object):
         if hasattr(self, '_small_scale_sigma') and val == self._small_scale_sigma: return
         
         self._small_scale_sigma = val
-        self.sigma_bv2 = self.sigma_v2 = val
+        self.sigma_bv2 = self.sigma_v2 = self.sigma_bv4 = val
         
     #---------------------------------------------------------------------------
     @property
@@ -1264,6 +1245,7 @@ class DMSpectrum(object):
                         self.P04.total.mu6 = self.P04.with_velocity.mu6
                         
             return self._P04
+    
     #---------------------------------------------------------------------------
     def _power_one_mu(self, mu_obs):
         """

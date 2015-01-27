@@ -445,7 +445,7 @@ def hexadecapole(f):
     def wrapper(self, *args, **kwargs):
         mus = np.linspace(0., 1., 1001)
         Pkmus = f(self, mus, **kwargs)
-        kern = 9./8.*(35*mus**4 - 30.*mu**2 + 3.)
+        kern = 9./8.*(35*mus**4 - 30.*mus**2 + 3.)
         return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
     return wrapper
     

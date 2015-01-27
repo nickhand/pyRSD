@@ -57,6 +57,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         self.Pgal(0.5)
     #end initialize
+    
     #---------------------------------------------------------------------------
     @property
     def sigma_bias_relation(self):
@@ -208,7 +209,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
     #---------------------------------------------------------------------------
     # VELOCITY DISPERSIONS
-    #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------                
     @property
     def sigma_c(self):
         """

@@ -149,6 +149,24 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
         
     #---------------------------------------------------------------------------
+    def _delete_sigma_depends(self, kind):
+        """
+        Delete the dependencies of the sigma_v2, sigma_bv2, sigma_bv4
+        """
+        if kind == 'v2':
+            for a in ['_P01', '_P03']:
+                if hasattr(self, a): delattr(self, a)
+                if hasattr(self, a+"_ss"): delattr(self, a+"_ss")
+        elif kind == 'bv2':
+            for a in ['_P02', '_P12', '_P13', '_P22']:
+                if hasattr(self, a): delattr(self, a)
+                if hasattr(self, a+"_ss"): delattr(self, a+"_ss")
+        elif kind == 'bv4':
+            if hasattr(self, '_P04'): delattr(self, '_P04')
+            if hasattr(self, '_P04_ss'): delattr(self, '_P04_ss')
+        self._delete_splines()
+    
+    #---------------------------------------------------------------------------
     @property
     def sigmav_fitter(self):
         """
@@ -175,6 +193,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                 mean_bias = np.sqrt(self.b1*self.b1_bar)
                 sigma_v = self.sigmav_fitter(mean_bias, self.z)
                 sigma_v /= (self.f*self.D*100.) # this should be in Mpc/h now
+                
+                # need to normalize by the right sigma8
+                sigma_v *= (self.sigma8 / 0.807)
                 return sigma_v
             else:
                 return self.sigma_lin

@@ -509,14 +509,32 @@ class DMSpectrum(object):
     def sigma_lin(self):
         """
         The dark matter velocity dispersion at z = 0, as evaluated in 
-        linear theory [units: Mpc/h]
+        linear theory [units: Mpc/h]. Normalized to `self.sigma8`
         """
         try:
-            return self._sigma_lin
+            return self._power_norm**0.5 * self._sigma_lin
         except:
             self._sigma_lin = np.sqrt(self.power_lin.VelocityDispersion())
-            return self._sigma_lin
+            return self._power_norm**0.5 * self._sigma_lin
     
+    #---------------------------------------------------------------------------
+    @property
+    def small_scale_sigma(self):
+        """
+        Additional small scale sigma in km/s
+        """
+        try:
+            return self._small_scale_sigma
+        except AttributeError:
+            return 0.
+            
+    @small_scale_sigma.setter
+    def small_scale_sigma(self, val):
+        if hasattr(self, '_small_scale_sigma') and val == self._small_scale_sigma: return
+        
+        self._small_scale_sigma = val
+        self.sigma_bv2 = self.sigma_v2 = val
+        
     #---------------------------------------------------------------------------
     @property
     def sigma_v(self):
@@ -545,6 +563,21 @@ class DMSpectrum(object):
             pass
 
     #---------------------------------------------------------------------------
+    def _delete_sigma_depends(self, kind):
+        """
+        Delete the dependencies of the sigma_v2, sigma_bv2, sigma_bv4
+        """
+        if kind == 'v2':
+            for a in ['_P01', '_P03']:
+                if hasattr(self, a): delattr(self, a)
+        elif kind == 'bv2':
+            for a in ['_P02', '_P12', '_P13', '_P22']:
+                if hasattr(self, a): delattr(self, a)
+        elif kind == 'bv4':
+            if hasattr(self, '_P04'): delattr(self, '_P04')
+        self._delete_splines()
+            
+    #---------------------------------------------------------------------------
     @property
     def sigma_v2(self):
         """
@@ -563,9 +596,7 @@ class DMSpectrum(object):
     @sigma_v2.setter
     def sigma_v2(self, val):
         self._sigma_v2 = val
- 
-        for a in ['_P01', '_P03']:
-            if hasattr(self, a): delattr(self, a)
+        self._delete_sigma_depends('v2')
 
     @sigma_v2.deleter
     def sigma_v2(self):
@@ -594,9 +625,7 @@ class DMSpectrum(object):
     @sigma_bv2.setter
     def sigma_bv2(self, val):
         self._sigma_bv2 = val
-
-        for a in ['_P02', '_P12', '_P13', '_P22']:
-            if hasattr(self, a): delattr(self, a)
+        self._delete_sigma_depends('bv2')
 
     @sigma_bv2.deleter
     def sigma_bv2(self):
@@ -624,7 +653,7 @@ class DMSpectrum(object):
     @sigma_bv4.setter
     def sigma_bv4(self, val):
         self._sigma_bv4 = val
-        if hasattr(self, '_P04'): delattr(self, '_P04')
+        self._delete_sigma_depends('bv4')
 
     @sigma_bv4.deleter
     def sigma_bv4(self):

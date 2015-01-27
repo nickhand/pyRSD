@@ -516,7 +516,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # setup if we are integrating across a mu bin
         if dmu is not None:
             mu, dmu = np.array(mu, ndmin=1), np.array(dmu, ndmin=1)
-            N = 11
+            N = 21
             lower = mu - dmu/2
             upper = mu + dmu/2
             Nmu = len(mu)

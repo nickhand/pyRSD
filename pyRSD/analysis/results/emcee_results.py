@@ -463,7 +463,7 @@ class EmceeResults(object):
         # now make some plots, for fsigma8, alpha_par, alpha_perp, b1
         if make_plots:        
             params = ['fsigma8', 'alpha_par', 'alpha_perp', 'b1']    
-            self.plot_triangle(*params, thin=outfile=label+".triangle.pdf")
+            self.plot_triangle(*params, thin=1, outfile=label+".triangle.pdf")
             self.plot_timeline(*params, outfile=label+".timeline.pdf")
 
         

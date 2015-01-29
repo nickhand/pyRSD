@@ -12,6 +12,9 @@ from scipy.special import legendre
 import sys
 from scipy.integrate import simps
 
+#-------------------------------------------------------------------------------
+# FOG MODELS
+#-------------------------------------------------------------------------------
 def fog_modified_lorentzian(x):
     """
     Modified Lorentzian FOG model 
@@ -31,6 +34,7 @@ def fog_gaussian(x):
     return np.exp(-0.5*x**2)
     
 
+#-------------------------------------------------------------------------------
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     """
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
@@ -334,6 +338,22 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     def NsBsB(self, val):
         if hasattr(self, '_NsBsB') and val == self._NsBsB: return
         self._NsBsB = val
+    
+    #---------------------------------------------------------------------------
+    @property
+    def N(self):
+        """
+        Constant offset to model, returns 0 by default
+        """
+        try:
+            return self._N
+        except AttributeError:
+            return 0.
+            
+    @N.setter
+    def N(self, val):
+        if hasattr(self, '_N') and val == self._N: return
+        self._N = val
         
     #---------------------------------------------------------------------------
     def evaluate_fog(self, sigma, mu_obs):
@@ -527,7 +547,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         fss = self.fs**2
         fcs = 2.*self.fs*(1 - self.fs)
         fcc = (1. - self.fs)**2
-        toret = fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu)
+        toret = fcc * self.Pgal_cc(mu) + fcs * self.Pgal_cs(mu) + fss * self.Pgal_ss(mu) + self.N
         
         # integrate over each mu bin
         if dmu is not None:

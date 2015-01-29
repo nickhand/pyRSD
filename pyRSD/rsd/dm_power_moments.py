@@ -504,18 +504,21 @@ class InterpDarkMatterPowerMoment(object):
             if (ihi == 0): index = ihi
             elif (ihi == len(keys)): index = ihi-1
             
-            Plin = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+            normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+            factor = self.interpolation_variable * normed_power
             x = keys[index]
-            return self.interpolation_table[x](k)/x*this_x*Plin 
+            return self.interpolation_table[x](k)*factor
         
         x_lo = keys[ilo]
         x_hi = keys[ihi]
         w = (this_x - x_lo) / (x_hi - x_lo) 
         
-        Plin = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+        factor = self.interpolation_variable * normed_power
         y_lo = self.interpolation_table[x_lo](k)
         y_hi = self.interpolation_table[x_hi](k)
-        return Plin*((1 - w)*y_lo + w*y_hi)
+        return factor*((1 - w)*y_lo + w*y_hi)
+        
     #---------------------------------------------------------------------------
 #endclass InterpolatedDarkMatterPowerMoment
 
@@ -545,7 +548,7 @@ class DarkMatterP11(InterpDarkMatterPowerMoment):
         Load the simulation data and make the interpolation time
         """
         # cosmology and linear power spectrum for teppei's sims
-        cosmo = pygcl.Cosmology("teppei_sims.ini")
+        cosmo = pygcl.Cosmology("teppei_sims.ini", pygcl.Cosmology.EH_NoWiggle)
         Plin = pygcl.LinearPS(cosmo, 0.)
         
         # the interpolation data
@@ -557,7 +560,7 @@ class DarkMatterP11(InterpDarkMatterPowerMoment):
         self.interpolation_table = collections.OrderedDict()
         for i, (x, d) in enumerate(zip(interp_vars, data)):
             
-            y = d[:,1] / (cosmo.D_z(redshifts[i])**2 * Plin(d[:,0]) / cosmo.sigma8()**2)
+            y = d[:,1] / (cosmo.D_z(redshifts[i])**2 * Plin(d[:,0]) * cosmo.f_z(redshifts[i])**2)
             self.interpolation_table[x] = spline(d[:,0], y)
             
     #---------------------------------------------------------------------------
@@ -589,7 +592,7 @@ class DarkMatterPdv(InterpDarkMatterPowerMoment):
         Load the simulation data and make the interpolation time
         """
         # cosmology and linear power spectrum for teppei's sims
-        cosmo = pygcl.Cosmology("teppei_sims.ini")
+        cosmo = pygcl.Cosmology("teppei_sims.ini", pygcl.Cosmology.EH_NoWiggle)
         Plin = pygcl.LinearPS(cosmo, 0.)
         
         # the interpolation data
@@ -601,7 +604,7 @@ class DarkMatterPdv(InterpDarkMatterPowerMoment):
         self.interpolation_table = collections.OrderedDict()
         for i, (x, d) in enumerate(zip(interp_vars, data)):
             
-            y = d[:,1] / (cosmo.D_z(redshifts[i])**2 * Plin(d[:,0]) / cosmo.sigma8()**2)
+            y = d[:,1] / (cosmo.D_z(redshifts[i])**2 * Plin(d[:,0]) * cosmo.f_z(redshifts[i]))
             self.interpolation_table[x] = spline(d[:,0], y, k=2)
             
     #---------------------------------------------------------------------------

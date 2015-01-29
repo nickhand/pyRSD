@@ -13,12 +13,12 @@ from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 class BiasedSpectrum(power_dm.DMSpectrum):
     
-    allowable_kwargs = power_dm.DMSpectrum.allowable_kwargs + ['sigma_from_sims']
+    allowable_kwargs = power_dm.DMSpectrum.allowable_kwargs + ['sigma_from_sims', 'use_tidal_bias']
     _power_atts = ['_P00_ss', '_P00_ss_no_stoch', '_P01_ss', '_P11_ss', 
                    '_P02_ss', '_P12_ss', '_P22_ss', '_P03_ss', '_P13_ss', 
                    '_P04_ss']
                 
-    def __init__(self, sigma_from_sims=True, **kwargs):
+    def __init__(self, sigma_from_sims=True, use_tidal_bias=True, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -28,6 +28,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         
         # whether to use sigma_v from simulations
         self.sigma_from_sims = sigma_from_sims
+        
+        self.use_tidal_bias = use_tidal_bias
         
     #end __init__
     
@@ -231,7 +233,24 @@ class BiasedSpectrum(power_dm.DMSpectrum):
     def sigma_from_sims(self, val):
 
         self._sigma_from_sims = val
-        del self.sigma_v      
+        del self.sigma_v  
+    
+    #---------------------------------------------------------------------------
+    @property
+    def use_tidal_bias(self):
+        """
+        Whether to use the tidal bias term
+        """
+        try:
+            return self._use_tidal_bias
+        except AttributeError:
+            return True
+        
+    @use_tidal_bias.setter
+    def use_tidal_bias(self, val):
+
+        self._use_tidal_bias = val
+        self._delete_power()
               
     #---------------------------------------------------------------------------
     # FIRST BIAS TERMS 
@@ -284,7 +303,6 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._b2_00
         except:
             return self.nonlinear_bias_fitter(self.b1, self.z)[0]
-            #raise ValueError("Must specify quadratic, local bias 'b2_00' attribute.")
             
     @b2_00.setter
     def b2_00(self, val):
@@ -306,13 +324,13 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._b2_01
         except:
             return self.nonlinear_bias_fitter(self.b1, self.z)[1]
-            #raise ValueError("Must specify quadratic, local bias 'b2_01' attribute.")
-            
+                
     @b2_01.setter
     def b2_01(self, val):
         if hasattr(self, '_b2_01') and val == self._b2_01: 
             return
         
+        self._b2_01 = val
         # delete terms depending on the bias
         for a in BiasedSpectrum._power_atts:
             if hasattr(self, a): delattr(self, a)
@@ -324,21 +342,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         """
         The quadratic, nonlocal tidal bias factor
         """
-        try:
-            return self._bs
-        except:
+        if self.use_tidal_bias:
             return -2./7 * (self.b1 - 1.)
-            #raise ValueError("Must specify quadratic, nonlocal tidal bias 'bs' attribute.")
-            
-    @bs.setter
-    def bs(self, val):
-        if hasattr(self, '_bs') and val == self._bs: 
-            return
-            
-        # delete terms depending on the bias
-        for a in BiasedSpectrum._power_atts:
-            if hasattr(self, a): delattr(self, a)
-        self._delete_splines()
+        else:
+            return 0.
             
     #---------------------------------------------------------------------------
     # THE BIAS TERMS OF THE 2ND (BARRED) TRACER
@@ -378,7 +385,6 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._b2_00_bar
         except:
             return self.nonlinear_bias_fitter(self.b1_bar, self.z)[0]
-            #raise ValueError("Must specify quadratic, local bias 'b2_00' attribute.")
             
     @b2_00_bar.setter
     def b2_00_bar(self, val):
@@ -401,7 +407,6 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             return self._b2_01_bar
         except:
             return self.nonlinear_bias_fitter(self.b1_bar, self.z)[1]
-            #raise ValueError("Must specify quadratic, local bias 'b2_01' attribute.")
             
     @b2_01_bar.setter
     def b2_01_bar(self, val):
@@ -420,22 +425,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         """
         The quadratic, nonlocal tidal bias factor
         """
-        try:
-            return self._bs_bar
-        except:
+        if self.use_tidal_bias:
             return -2./7 * (self.b1_bar - 1.)
-            #raise ValueError("Must specify quadratic, nonlocal tidal bias 'bs' attribute.")
-            
-    @bs_bar.setter
-    def bs_bar(self, val):
-        if hasattr(self, '_bs_bar') and val == self._bs_bar: 
-            return
-        self._bs_bar = val
-            
-        # delete terms depending on the bias
-        for a in BiasedSpectrum._power_atts:
-            if hasattr(self, a): delattr(self, a)
-        self._delete_splines()
+        else:
+            return 0.
             
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES (READ-ONLY)

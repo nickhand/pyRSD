@@ -356,7 +356,7 @@ class NonlinearBiasFits(SimInterpolator):
                  '3.13' : (4.48, 2.60), 
                  '4.82' : (12.70, 9.50)}
                  
-    # the nonlinear bias values at z = 0.509
+    # the nonlinear bias values at z = 0.989
     params_z2 = {'2.32' : (1.75, 0.80), 
                  '3.17' : (4.77, 3.15), 
                  '4.64' : (12.80, 10.80)}

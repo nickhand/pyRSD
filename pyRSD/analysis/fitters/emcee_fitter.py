@@ -121,11 +121,11 @@ def run(params, theory, objective, pool=None, ml_values=None):
         
         # get the attributes
         chain = old_results.chain
-        lnprob0 = old_results.lnprobs
+        lnprob0 = old_results.lnprobs[:,-1]
         start_iter = chain.shape[1]
         p0 = np.array(chain[:, -1, :])
         
-        logger.warning("EMCEE: continuing previous run (starting at iteration {})".format(start))
+        logger.warning("EMCEE: continuing previous run (starting at iteration {})".format(start_iter))
     
     # 3) start from scratch
     else:

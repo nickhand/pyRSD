@@ -35,7 +35,8 @@ class GalaxyPowerParameters(ParameterSet):
                      'sigma_s': 'satellite FOG damping in Mpc/h',
                      'sigma_sA': 'satA FOG damping in Mpc/h', 
                      'sigma_sB': 'satB FOG damping in Mpc/h',
-                     'small_scale_sigma': 'additional small scale velocity in km/s'}
+                     'small_scale_sigma': 'additional small scale velocity in km/s',
+                     'N' : 'constant offset to model, in (Mpc/h)^3'}
                    
     _extra_params = {'b1_s': 'linear bias of satellites',
                      'b1': 'the total linear bias', 

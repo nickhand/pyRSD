@@ -76,7 +76,7 @@ public:
     // photon density parameter today
     inline double Omega0_g() const { return ba.Omega0_g; }
     // cosmological constant density fraction
-    inline double Omega0_lambda() const { return ba.Omega0_g; }
+    inline double Omega0_lambda() const { return ba.Omega0_lambda; }
     // curvature density fraction
     inline double Omega0_k() const { return ba.Omega0_k; }
     // current fluid equation of state parameter

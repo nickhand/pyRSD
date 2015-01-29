@@ -1,4 +1,4 @@
-from .. import numpy as np, plotify as pfy
+from .. import numpy as np, plotify as pfy, pygcl 
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData
@@ -468,7 +468,7 @@ class DataAnalysisDriver(object):
         f = self.theory.fit_params['f'].value
         b1 = self.theory.fit_params['b1'].value
         beta = f/b1
-        Pnw_kaiser = lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * self.theory.model.normed_power_lin(k)
+        Pnw_kaiser = lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * self.theory.model.normed_power_lin_nw(k)
 
         offset = -0.1
         for i, mu in enumerate(mus):

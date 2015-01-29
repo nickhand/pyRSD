@@ -65,7 +65,7 @@ class DMSpectrum(object):
                 self._cosmo = pygcl.Cosmology(cosmo, self.transfer_fit)
             else:
                 self._cosmo = pygcl.Cosmology(cosmo, self.transfer_fit, self.transfer_file)
-        
+                
         # store the input parameters
         self._max_mu        = max_mu
         self._include_2loop = include_2loop
@@ -459,10 +459,18 @@ class DMSpectrum(object):
     #---------------------------------------------------------------------------
     def normed_power_lin(self, k):
         """
-        The linear power evaluated at `self.k` and at `self.z`, normalized
-        to `self.sigma8`
+        The linear power evaluated at the specified `k` and at `self.z`, 
+        normalized to `self.sigma8`
         """
         return self._power_norm * self.D**2 * self.power_lin(k)
+    
+    #---------------------------------------------------------------------------
+    def normed_power_lin_nw(self, k):
+        """
+        The Eisenstein-Hu no-wiggle, linear power evaluated at the specified 
+        `k` and at `self.z`, normalized to `self.sigma8`
+        """
+        return self._power_norm * self.D**2 * self.power_lin_nw(k)
     
     #---------------------------------------------------------------------------
     @property
@@ -484,6 +492,20 @@ class DMSpectrum(object):
         except AttributeError:
             self._power_lin = pygcl.LinearPS(self.cosmo, 0.)
             return self._power_lin
+            
+    #---------------------------------------------------------------------------
+    @property
+    def power_lin_nw(self):
+        """
+        A 'pygcl.LinearPS' object holding the linear power spectrum at z = 0, 
+        using the Eisenstein-Hu no-wiggle transfer function
+        """
+        try:
+            return self._power_lin_nw
+        except AttributeError:
+            cosmo = pygcl.Cosmology(self.cosmo.GetParamFile(), pygcl.Cosmology.EH_NoWiggle)
+            self._power_lin_nw = pygcl.LinearPS(cosmo, 0.)
+            return self._power_lin_nw
     
     #---------------------------------------------------------------------------
     @property
@@ -685,7 +707,7 @@ class DMSpectrum(object):
         try:
             return self._P11_model
         except AttributeError:
-            self._P11_model = dm_power_moments.DarkMatterP11(self.power_lin, self.z, self.sigma8, self.f)
+            self._P11_model = dm_power_moments.DarkMatterP11(self.power_lin_nw, self.z, self.sigma8, self.f)
             return self._P11_model
     
     #---------------------------------------------------------------------------
@@ -697,7 +719,7 @@ class DMSpectrum(object):
         try:
             return self._Pdv_model
         except AttributeError:
-            self._Pdv_model = dm_power_moments.DarkMatterPdv(self.power_lin, self.z, self.sigma8, self.f)
+            self._Pdv_model = dm_power_moments.DarkMatterPdv(self.power_lin_nw, self.z, self.sigma8, self.f)
             return self._Pdv_model
             
     #---------------------------------------------------------------------------

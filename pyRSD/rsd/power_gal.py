@@ -40,9 +40,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
     for biased redshift space power spectra
     """
-    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['use_mean_bias', 'fog_model']
+    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + \
+                    ['use_mean_bias', 'fog_model', 'central_sigma_type']
     
-    def __init__(self, use_mean_bias=False, fog_model='modified_lorentzian', **kwargs):
+    def __init__(self, use_mean_bias=False, fog_model='modified_lorentzian', 
+                    central_sigma_type='fog', **kwargs):
         
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
@@ -52,6 +54,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         self.use_mean_bias = use_mean_bias
         self.fog_model = fog_model
+        self.central_sigma_type  = 'fog'
     #end __init__
     
     #---------------------------------------------------------------------------
@@ -306,6 +309,21 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self._fog_model = getattr(mod, 'fog_'+val)
         
     #---------------------------------------------------------------------------
+    @property
+    def central_sigma_type(self):
+        """
+        The type of central velocity dispersion. If `fog`, use `self.sigma_c`
+        in the FOG factor, else if `small_scale`, set `self.small_scale_sigma`
+        to `self.sigma_c` when 
+        """
+        return self._central_sigma_type
+    
+    @central_sigma_type.setter
+    def central_sigma_type(self, val):
+        assert val in ['fog', 'small_scale']
+        self._central_sigma_type = val
+        
+    #---------------------------------------------------------------------------
     # 1-HALO ATTRIBUTES
     #---------------------------------------------------------------------------
     @property
@@ -378,7 +396,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_c
         
         # FOG damping
-        G = self.evaluate_fog(self.sigma_c, mu)
+        if self.central_sigma_type == 'fog':
+            G = self.evaluate_fog(self.sigma_c, mu)
+        else:
+            G = 1.
+            self.small_scale_sigma = self.sigma_c
         
         # now return the power spectrum here
         return G**2*self.power(mu)
@@ -409,7 +431,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
         is a 2-halo term only.
-        """
+        """            
         # set the linear biases first
         self.b1     = self.b1_sA
         self.b1_bar = self.b1_sA
@@ -497,7 +519,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The 2-halo part of the total satellite auto spectrum.
         """
-        
+        if self.central_sigma_type == 'small_scale':
+            self.small_scale_sigma = 0.
+            
         return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
                     2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
                     self.fsB**2 * self.Pgal_sBsB(mu) 
@@ -507,7 +531,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The total central-satellite cross spectrum.
         """
-        
+        if self.central_sigma_type == 'small_scale':
+            self.small_scale_sigma = 0.
+            
         return (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu) 
         
     #---------------------------------------------------------------------------

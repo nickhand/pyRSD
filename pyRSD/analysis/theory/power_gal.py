@@ -144,7 +144,7 @@ class GalaxyPowerTheory(object):
         k : array_like, optional
             If not `None`, initalize the theoretical model at these `k` values
         """   
-        self._init_args = (param_file, k)
+        self._init_args = (open(param_file, 'r').readlines(), k)
          
         # read in the fit parameters; this should extra only the keys that
         # are valid for the GalaxyPowerParameters
@@ -166,7 +166,7 @@ class GalaxyPowerTheory(object):
                 
     #---------------------------------------------------------------------------
     def __getstate__(self):
-        lines = open(self._init_args[0], 'r').readlines()
+        lines = self._init_args[0]
         return {'lines' : lines, 'model' : self.model}
     
     def __setstate__(self, d):

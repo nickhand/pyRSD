@@ -420,7 +420,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             self.b1_bar = self.b1_s
         
         # the FOG damping
-        G_c = self.evaluate_fog(self.sigma_c, mu)
+        if self.central_sigma_type == 'fog':
+            G_c = self.evaluate_fog(self.sigma_c, mu)
+        else:
+            G_c = 1.
         G_s = self.evaluate_fog(self.sigma_s, mu)
         
         # now return the power spectrum here
@@ -470,7 +473,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         This has both a 1-halo and 2-halo term only.
         """
         # the FOG damping
-        G_c = self.evaluate_fog(self.sigma_c, mu)
+        if self.central_sigma_type == 'fog':
+            G_c = self.evaluate_fog(self.sigma_c, mu)
+        else:
+            G_c = 1.
         G_s = self.evaluate_fog(self.sigma_s, mu)
         
         return G_c*G_s * (self.Pgal_cBs_2h(mu) + self.NcBs)

@@ -359,12 +359,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     def evaluate_fog(self, sigma, mu_obs):
         """
-        Compute the FOG damping, evaluating at `k_true` and `mu_true`
+        Compute the FOG damping, evaluating at `k_true` and `mu_true`. The 
+        `alpha_par` dependence here is just absorbed into the `sigma` parameter
         """
         if np.isscalar(mu_obs):
-            return self.fog_model(sigma*self.k_obs*mu_obs/self.alpha_par)
+            return self.fog_model(sigma*self.k_obs*mu_obs)
         else:
-            return np.vstack([self.fog_model(sigma*self.k_obs*imu/self.alpha_par) for imu in mu_obs]).T
+            return np.vstack([self.fog_model(sigma*self.k_obs*imu) for imu in mu_obs]).T
     
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS

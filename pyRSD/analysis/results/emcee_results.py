@@ -5,6 +5,7 @@ from matplotlib.ticker import MaxNLocator
 import copy
 import logging
 import cPickle
+import scipy.stats
 
 logger = logging.getLogger('pyRSD.analysis.emcee_results')
 logger.addHandler(logging.NullHandler())
@@ -39,6 +40,19 @@ class EmceeParameter(object):
         
     #---------------------------------------------------------------------------
     @property
+    def burnin(self):
+        """
+        The number of iterations to exclude as part of the "burn-in" phase
+        """
+        return self._burnin
+    
+    @burnin.setter
+    def burnin(self, val):
+        self._burnin = val
+        del self.median, self.one_sigma, self.two_sigma
+        
+    #---------------------------------------------------------------------------
+    @property
     def flat_trace(self):
         """
         Returns the flattened chain, excluding steps that occured during the
@@ -50,17 +64,50 @@ class EmceeParameter(object):
     @property
     def median(self):
         """
-        Return the median of the trace, i.e., the 50th percentile
+        Return the median of the trace, i.e., the 50th percentile of the trace
         """
-        return np.percentile(self.flat_trace, 50.)
+        try:
+            return self._median
+        except AttributeError:
+            self._median = np.percentile(self.flat_trace, 50.)
+            return self._median
     
-    mean = median
+    @median.deleter
+    def median(self):
+        if hasattr(self, '_median'): delattr(self, '_median')
+        
+    #---------------------------------------------------------------------------
+    @property
+    def mean(self):
+        """
+        Return the "mean" as the the median, i.e., the 50th percentile of 
+        the trace
+        """
+        return self.median
+    
+    #---------------------------------------------------------------------------
+    @property
+    def peak(self):
+        """
+        Return the value of the parameter that gives the peak of the 
+        posterior PDF, as determined through Gaussian kernel density estimation
+        """
+        try:
+            return self._peak
+        except AttributeError:
+            kern = scipy.stats.gaussian_kde(self.flat_trace)
+            self._peak = scipy.optimize.fmin(lambda x: -kern(x), self.median, disp=False)[0]
+            return self._peak
+            
+    @peak.deleter
+    def peak(self):
+        if hasattr(self, '_peak'): delattr(self, '_peak')
     
     #---------------------------------------------------------------------------
     @property
     def one_sigma(self):
         """
-        Return the lower and upper one-sigma error intervals, as computed from
+        Return the upper and lower one-sigma error intervals, as computed from
         the percentiles, `50 - 15.86555` and `84.13445 - 50`
         
         Returns
@@ -68,15 +115,23 @@ class EmceeParameter(object):
         upper, lower
             The lower and upper 1-sigma error intervals 
         """
-        percentiles = [50., 15.86555, 84.13445]
-        vals = np.percentile(self.flat_trace, percentiles)
-        return vals[2] - vals[0], vals[0] - vals[1]
+        try: 
+            return self._one_sigma
+        except AttributeError:
+            percentiles = [50., 15.86555, 84.13445]
+            vals = np.percentile(self.flat_trace, percentiles)
+            self._one_sigma = [vals[2] - vals[0], vals[0] - vals[1]]
+            return self._one_sigma
 
+    @one_sigma.deleter
+    def one_sigma(self):
+        if hasattr(self, '_one_sigma'): delattr(self, '_one_sigma')
+    
     #---------------------------------------------------------------------------
     @property
     def two_sigma(self):
         """
-        Return the lower and upper one-sigma error intervals, as computed from
+        Return the upper and lower two-sigma error intervals, as computed from
         the percentiles, `50 - 2.2775` and `84.13445 - 50`
 
         Returns
@@ -84,10 +139,18 @@ class EmceeParameter(object):
         upper, lower
             The lower and upper 1-sigma error intervals 
         """
-        percentiles = [50, 2.2775, 97.7225]
-        vals = np.percentile(self.flat_trace, percentiles)
-        return vals[2] - vals[0], vals[0] - vals[1]
-    
+        try: 
+            return self._two_sigma
+        except AttributeError:
+            percentiles = [50, 2.2775, 97.7225]
+            vals = np.percentile(self.flat_trace, percentiles)
+            self._two_sigma = [vals[2] - vals[0], vals[0] - vals[1]]
+            return self._two_sigma
+        
+    @two_sigma.deleter
+    def two_sigma(self):
+        if hasattr(self, '_two_sigma'): delattr(self, '_two_sigma')
+        
     #--------------------------------------------------------------------------- 
     def trace(self, niter=None):
         """
@@ -99,7 +162,6 @@ class EmceeParameter(object):
             return self._trace
         else:
             return self._trace[:,niter]
-    
     #---------------------------------------------------------------------------
 #endclass EmceeParameter
 
@@ -127,11 +189,8 @@ class EmceeResults(object):
         
         # other sampler attributes
         self.acceptance_fraction = sampler.acceptance_fraction
-        try:
-            self.acor = sampler.acor
-        except:
-            self.acor = np.array([np.nan]*self.ndim)
-        
+        self.autocorr_times = sampler.acor
+
         # make the constrained chain
         self._make_constrained_chain(fit_params)
         
@@ -139,7 +198,10 @@ class EmceeResults(object):
         self._save_results()
         
         # set the burnin
-        if burnin is None: burnin = int(0.1*self.iterations)
+        if burnin is None: 
+            max_autocorr = 3*np.amax(self.autocorr_times)
+            burnin = int(max_autocorr) if not np.isnan(max_autocorr) else int(0.1*self.iterations) 
+            logger.info("setting the burnin period to {} iterations".format(burnin))
         self.burnin = int(burnin)
         
     #---------------------------------------------------------------------------
@@ -312,6 +374,24 @@ class EmceeResults(object):
         for param in self._results:
             self._results[param].burnin = val
     
+    #---------------------------------------------------------------------------
+    @property
+    def max_lnprob(self):
+        """
+        The value of the maximum log probability
+        """
+        return np.amax(self.lnprobs)
+        
+    #---------------------------------------------------------------------------
+    def max_lnprob_values(self, *names):
+        """
+        Return the value of the parameters at the iteration with the maximum
+        probability
+        """
+        nwalker, niter = (self.lnprobs == self.max_lnprob).nonzero()
+        nwalker, niter = nwalker[0], niter[0]
+        return np.array([self[name].trace()[nwalker, niter] for name in names])
+        
     #---------------------------------------------------------------------------
     def plot_timeline(self, *names, **kwargs):
         """

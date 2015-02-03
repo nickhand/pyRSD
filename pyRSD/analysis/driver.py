@@ -89,7 +89,15 @@ class DataAnalysisDriver(object):
         # if we are initializing from max-like, first call lmfit
         init_from = self.params.get('init_from', None)
         if init_from == 'max-like':
-            ml_values = self.do_maximum_likelihood()
+            init_values = self.do_maximum_likelihood()
+        elif init_from == 'fiducial':
+            free = self.theory.free_parameter_names
+            params = self.theory.fit_params
+            init_values = [params[key].fiducial_value for key in free]
+            if None in init_values:
+                raise ValueError("Cannot initialize from fiducial values")
+            else:
+                init_values = np.array(init_values)
             
         # get the solver function
         kwargs = {}
@@ -102,7 +110,8 @@ class DataAnalysisDriver(object):
             
             # add some kwargs to pass too
             kwargs['pool'] = self.pool
-            if init_from == 'max-like': kwargs['ml_values'] = ml_values
+            if init_from in ['max-like', 'fiducial']: 
+                kwargs['init_values'] = init_values
         # lmfit
         elif solver_name == 'lmfit':
             solver = lmfit_fitter.run

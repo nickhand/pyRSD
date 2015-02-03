@@ -18,7 +18,7 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     """
     k = sum(sampler.lnprobability[0] < 0)
     if not k:
-        logger.warning("No valid models available (chain shape = {})".format(sampler.chain.shape))
+        logger.warning("No iterations with valid parameters (chain shape = {})".format(sampler.chain.shape))
         return None
         
     chain = sampler.chain[:,:k,:]
@@ -32,17 +32,17 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
         acor = sampler.acor
     except:
         acc_frac = np.array([np.nan])        
-    text += ["      acceptance_fraction ({}->{} (median {}))".format(acc_frac.min(), acc_frac.max(), np.median(acc_frac))]
+    text += ["      acceptance_fraction ({}->{} (median {}))".format(acc_frac.min(), acc_frac.max(), np.median(acc_frac))]      
     for i, par in enumerate(theory.free_parameters):
         pos = chain[:,-last:,i].ravel()
-        text.append("  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g})".format(par.name,
-                                            np.median(pos), np.std(pos), chain[best_walker, best_iter, i]))
+        text.append("  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g}) (autocorr: {:.3g})".format(par.name,
+                                            np.median(pos), np.std(pos), chain[best_walker, best_iter, i], acor[i]))
     
     text = "\n".join(text) +'\n'
     logger.warning(text)
 
 #-------------------------------------------------------------------------------
-def run(params, theory, objective, pool=None, ml_values=None):
+def run(params, theory, objective, pool=None, init_values=None):
     """
     Perform MCMC sampling of the parameter space of a system using `emcee`.
         
@@ -57,8 +57,8 @@ def run(params, theory, objective, pool=None, ml_values=None):
         The function that results the log of the probability
     pool : emcee.MPIPool, optional
         Pool object if we are using MPI to run emcee
-    ml_values : array_like
-        Max-likelihood positions; if not `None`, initialize the emcee walkers
+    init_values : array_like
+        Initial positions; if not `None`, initialize the emcee walkers
         in a small, random ball around these positions
         
     Notes
@@ -79,6 +79,9 @@ def run(params, theory, objective, pool=None, ml_values=None):
     label     = params.get('label')
     ndim      = theory.ndim
     init_from = params.get('init_from', 'posterior')
+    minAF     = params.get('min_acceptance_fraction', 0.2)
+    minAF     = params.get('max_acceptance_fraction', 0.5)
+    nEff      = params.get('autocorr_convergence', 10)
     
     #---------------------------------------------------------------------------
     # let's check a few things so we dont mess up too badly
@@ -102,14 +105,15 @@ def run(params, theory, objective, pool=None, ml_values=None):
     start_iter = 0
     lnprob0 = None
     
-    # 1) initialixe from maximum likelihood values
-    if init_from == 'max-like':
-        if ml_values is None:
-            raise ValueError("EMCEE: cannot initialize from maximum likelihood values -- none provided")
+    # 1) initialixe from initial provided values
+    if init_from == 'max-like' or init_from == 'fiducial':
+        if init_values is None:
+            raise ValueError("EMCEE: cannot initialize around best guess -- none provided")
         
         # initialize in random ball
         # shape is (nwalkers, ndim)
-        p0 = np.array([ml_values + 1e-3*np.random.randn(ndim) for i in range(nwalkers)])
+        p0 = np.array([init_values + 1e-3*np.random.randn(ndim) for i in range(nwalkers)])
+        logger.warning("EMCEE: initializing walkers in random ball around best guess parameters")
             
     # 2) initialize from past run
     elif os.path.isfile(filename) and init_from == 'previous_run':
@@ -152,7 +156,9 @@ def run(params, theory, objective, pool=None, ml_values=None):
 
     # iterator interface allows us to trap ctrl+c and know where we are
     exception = False
+    converged = False
     niters -= start_iter
+    burnin = 0 if start_iter > 0 else params.get('burnin', 100)
     try:                               
         logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
         start = time.time()    
@@ -160,6 +166,18 @@ def run(params, theory, objective, pool=None, ml_values=None):
         
         # loop over all the steps
         for niter, result in enumerate(generator):                    
+            
+            # check convergence
+            if ( (niter > burnin) and (minAF < np.mean(sampler.acceptance_fraction) < maxAF) ):
+                acor = sampler.acor
+                if sum(niter-burnin > nEff*acor) == len(acor):
+                    converged = True
+                    logger.warning("EMCEE: convergence criteria satisfied; breaking chain at step {}.\
+                                                (AF={}, AC={})".format(niter,
+                                                np.mean(sampler.acceptance_fraction),
+                                                np.amax(acor)))
+                    raise KeyboardInterrupt()
+                
             if niter < 10:
                 update_progress(theory, sampler, niters, nwalkers)
             elif niter < 50 and niter % 2 == 0:
@@ -184,10 +202,11 @@ def run(params, theory, objective, pool=None, ml_values=None):
             pass
         
     except KeyboardInterrupt:
-        exception = True
-        logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
+        if not acor_finished:
+            exception = True
+            logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
+
     finally:
-        burnin = 0 if start_iter > 0 else params.get('burnin', None)
         new_results = EmceeResults(sampler, theory.fit_params, burnin)
         if old_results is not None:
             new_results = old_results + new_results

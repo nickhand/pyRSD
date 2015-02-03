@@ -1,4 +1,6 @@
 from ... import numpy as np
+import scipy.stats
+import scipy.signal
 
 #-------------------------------------------------------------------------------
 def compute_sigma_level(trace1, trace2, nbins=20):
@@ -25,14 +27,32 @@ def compute_sigma_level(trace1, trace2, nbins=20):
     return xbins, ybins, L_cumsum[i_unsort].reshape(shape)
 #-------------------------------------------------------------------------------
 
-def plot_mcmc_trace(ax, trace1, trace2, scatter=True, **kwargs):
+def plot_mcmc_trace(ax, trace1, trace2, smooth=0, percentiles=[0.683, 0.955, 0.997], 
+                    colors=["red","green","blue"], **kwargs):
     """
     Plot 2D traces with contours showing the 1-sigma and 2-sigma levels
     """
-    xbins, ybins, sigma = compute_sigma_level(trace1, trace2)
-    ax.contour(xbins, ybins, sigma.T, levels=[0.683, 0.955], **kwargs)
-    if scatter:
-        ax.plot(trace1, trace2, ',k')
+    # make the 2D histogram
+    n2dbins = 300
+    zz, xx, yy = np.histogram2d(trace1, trace2, bins=n2dbins)
+    xxbin = xx[1]-xx[0]
+    yybin = yy[1]-yy[0]
+    xx = xx[1:] + 0.5*xxbin
+    yy = yy[1:] + 0.5*yybin
+    
+    # optionally smooth
+    if (smooth > 0):
+        kern_size = int(10*smooth)
+        sx, sy = scipy.mgrid[-kern_size:kern_size+1, -kern_size:kern_size+1]
+        kern = np.exp(-(sx**2 + sy**2)/(2.*smooth**2))
+        zz = scipy.signal.convolve2d(zz, kern/np.sum(kern), mode='same')
+        
+    hist, bins = np.histogram(zz.flatten(), bins=1000)
+    sortzz = np.sort(zz.flatten())
+    cumhist = np.cumsum(sortzz)*1./np.sum(zz)
+    levels = np.array([sortzz[(cumhist>(1-pct)).nonzero()[0][0]] for pct in percentiles])
+
+    ax.contour(xx, yy, zz.T, levels=levels, colors=colors)
     
     return ax
 #-------------------------------------------------------------------------------   

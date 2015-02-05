@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+"""
+.. module:: runRSDFitter
+    :synopsis: main fitting module
+.. moduleauthor:: Nick Hand <nicholas.adam.hand@gmail.com>
+
+Runs the pipeline for fitting redshift space power spectrum observations with
+the `pyRSD` model
+"""
+from pyRSD import rsdfit, sys
+
+#-------------------------------------------------------------------------------
+# MAIN MODULE
+#-------------------------------------------------------------------------------
+if __name__ == '__main__':
+
+    # parse the command line arguments
+    args = rsdfit.util.parse_command_line()
+
+    # test for MPI, and if it fails, just do a serial run
+    try:        
+        # this should always work if `emcee` is installed
+        from emcee.utils import MPIPool
+        
+        # this call will suceed if mpi4py installed and mpi asked for more 
+        # than 1 process
+        pool = MPIPool()
+    except:
+        pool = None
+    
+    # if using MPI and not the master, wait for instructions
+    if pool is not None and not pool.is_master():
+        pool.wait()
+        sys.exit(0)
+    
+    # run
+    rsdfit.run(args, pool)
+    
+#-------------------------------------------------------------------------------

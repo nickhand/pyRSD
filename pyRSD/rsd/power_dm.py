@@ -9,6 +9,7 @@
 """
 from .. import pygcl, data_dir, os, numpy as np
 from . import integrals, dm_power_moments, tools
+from . import INTERP_KMIN, INTERP_KMAX
  
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from scipy.integrate import quad
@@ -174,7 +175,7 @@ class DMSpectrum(object):
     @k_obs.setter
     def k_obs(self, val):
         self._k_obs = val
-        self._delete_power()
+        del self.k
     
     #---------------------------------------------------------------------------
     @property
@@ -288,7 +289,7 @@ class DMSpectrum(object):
     def k(self):
         """
         Return the true k values, given the current AP rescaling factors and
-        the observed (k, mu) values, stored in `self.k_obs` and `self.mu_obs`
+        the observed (k, mu) values, stored in `self.k_obs`
         """
         try:
             return self._k
@@ -297,6 +298,20 @@ class DMSpectrum(object):
             k_mu1 = self.k_true(self.k_obs, 1.)
             kmin = min(np.amin(k_mu0), np.amin(k_mu1))
             kmax = max(np.amax(k_mu0), np.amax(k_mu1))
+            
+            if kmin < INTERP_KMIN:
+                msg = "Minimum possible k value with this `k_obs` and "
+                msg += "`alpha_par`, `alpha_perp` values is below the minimum "
+                msg += "value used for interpolation purposes; exiting before "
+                msg += "bad things happen."
+                raise ValueError(msg)
+            
+            if kmax > INTERP_KMAX:
+                msg = "Maximum possible k value with this `k_obs` and "
+                msg += "`alpha_par`, `alpha_perp` values is above the maximum "
+                msg += "value used for interpolation purposes; exiting before "
+                msg += "bad things happen."
+                raise ValueError(msg)
             
             self._k = np.logspace(np.log10(kmin), np.log10(kmax), 500)
             return self._k

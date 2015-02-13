@@ -10,10 +10,12 @@ from .. import pygcl, numpy as np, os
 from ..data import P11_mu4_z_0_000, P11_mu4_z_0_509, P11_mu4_z_0_989
 from ..data import Pdv_mu0_z_0_000, Pdv_mu0_z_0_509, Pdv_mu0_z_0_989
 from .tools import RSDSpline as spline
+from . import INTERP_KMIN, INTERP_KMAX
+
 import collections
 import bisect
 
-KSPLINE = np.logspace(-3, 0, 100)
+K_SPLINE = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
 SIGMA8_MIN = 0.1
 SIGMA8_MAX = 2.5
 INTERP_PTS = 50
@@ -202,7 +204,7 @@ class DarkMatterP00(DarkMatterPowerMoment):
         sigma8s = np.linspace(SIGMA8_MIN, SIGMA8_MAX, INTERP_PTS)
         for sigma8 in sigma8s:
             P00.SetSigma8(sigma8)
-            self.zeldovich_power_table[sigma8] = spline(KSPLINE, P00(KSPLINE))
+            self.zeldovich_power_table[sigma8] = spline(K_SPLINE, P00(K_SPLINE))
 
     #end _compute_zeldovich_power_table
     
@@ -300,7 +302,7 @@ class DarkMatterP01(DarkMatterPowerMoment):
         sigma8s = np.linspace(SIGMA8_MIN, SIGMA8_MAX, INTERP_PTS)
         for sigma8 in sigma8s:
             P01.SetSigma8(sigma8)
-            self.zeldovich_power_table[sigma8] = spline(KSPLINE, P01(KSPLINE))
+            self.zeldovich_power_table[sigma8] = spline(K_SPLINE, P01(K_SPLINE))
 
     #end _compute_zeldovich_power_table
     

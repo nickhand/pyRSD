@@ -9,8 +9,9 @@
 """
 from .. import pygcl, numpy as np
 from .tools import RSDSpline as spline
+from . import INTERP_KMIN, INTERP_KMAX
 
-K_SPLINE = np.logspace(-3, 0, 100)
+K_SPLINE = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
 
 #-------------------------------------------------------------------------------
 class Integrals(object):

@@ -9,8 +9,8 @@
 from . import power_biased, tools
 from .. import numpy as np
 from scipy.special import legendre
-import sys
 from scipy.integrate import simps
+import sys
 
 #-------------------------------------------------------------------------------
 # FOG MODELS

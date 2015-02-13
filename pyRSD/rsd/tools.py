@@ -1,13 +1,13 @@
-from .. import pygcl
+from .. import pygcl, numpy as np
 
-import numpy as np
 import bisect
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import simps
 from scipy.optimize import brentq
+import warnings
+
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
-import warnings
 
 warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
 

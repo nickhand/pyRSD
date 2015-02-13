@@ -34,4 +34,3 @@ except Exception as msg:
     
 # every module uses numpy
 import numpy
-import plotify

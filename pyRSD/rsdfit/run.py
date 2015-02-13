@@ -1,6 +1,6 @@
 from .util import rsd_io
 from . import FittingDriver
-from .. import os
+from .. import os, sys
 
 import logging
 import tempfile
@@ -114,11 +114,12 @@ def run(args, pool):
         output_name = rsd_io.create_output_file(args, solver, w, i)
         driver.finalize_fit(exception, output_name)
         
+        # now save the log to the logs dir
+        copy_log(temp_log_name, output_name)
+        
         # now let's save the new driver
         rsd_io.save_pickle(driver, os.path.join(args.folder, 'driver.pickle'))
         
-        # now save the log to the logs dir
-        copy_log(temp_log_name, output_name)
     
     # restart from previous chain
     elif args.subparser_name == 'restart':
@@ -128,7 +129,9 @@ def run(args, pool):
         
         # set driver values from command line
         driver.params.set('threads', args.threads)
-        
+        if args.burnin is not None:
+            driver.params.set('burnin', args.burnin)
+            
         # log to a temporary file (for now)
         temp_log = tempfile.NamedTemporaryFile(delete=False)
         temp_log_name = temp_log.name

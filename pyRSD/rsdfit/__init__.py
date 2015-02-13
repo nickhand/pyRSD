@@ -1,7 +1,6 @@
 # import the drivers and run functions
 from .fitting_driver import FittingDriver
 from .run import run
-#from .analysis_driver import AnalysisDriver
 
 # import the specific modules as well
 import data

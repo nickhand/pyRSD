@@ -1,4 +1,4 @@
-from .. import sys, numpy as np, plotify as pfy, pygcl 
+from .. import numpy as np, plotify as pfy, pygcl 
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData
@@ -173,10 +173,7 @@ class FittingDriver(object):
         logger.info('Saving the results to `%s`' %results_file)
         rsd_io.save_pickle(self.results, results_file)
         
-        if exception:
-            logger.error("Exception raised...exiting")
-            sys.exit()
-        else:
+        if not exception:
             self.results.summarize_fit()
             
     #---------------------------------------------------------------------------

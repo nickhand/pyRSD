@@ -163,8 +163,8 @@ class DMSpectrum(object):
     @property
     def k_obs(self):
         """
-        The "observed" wavenumbers to compute the power spectrum at. This should
-        be read-only.
+        The "observed" wavenumbers to compute the power spectrum at. This can
+        be set, but it then resets everything, basically.
         """
         if not self.hires:
             return self._k_obs

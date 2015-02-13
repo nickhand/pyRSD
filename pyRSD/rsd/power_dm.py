@@ -13,6 +13,7 @@ from . import integrals, dm_power_moments, tools
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 from scipy.integrate import quad
 
+#-------------------------------------------------------------------------------
 class DMSpectrum(object):
     
     allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', 'max_mu', 'DM_model']
@@ -169,6 +170,11 @@ class DMSpectrum(object):
             return self._k_obs
         else:
             return np.linspace(np.amin(self._k_obs), np.amax(self._k_obs), 20*len(self._k_obs))
+            
+    @k_obs.setter
+    def k_obs(self, val):
+        self._k_obs = val
+        self._delete_power()
     
     #---------------------------------------------------------------------------
     @property

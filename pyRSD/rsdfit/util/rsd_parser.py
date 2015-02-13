@@ -133,6 +133,10 @@ def initialize_parser():
     restart_parser.add_argument('-i', help=h, required=True, type=positive_int, 
                                 default=0, dest='iterations')
                                 
+    # number of iterations (REQUIRED)
+    h = 'the number of steps to consider burnin'
+    restart_parser.add_argument('-b', help=h, type=positive_int, dest='burnin')
+                                
     # number of threads (OPTIONAL)
     h = 'number of python multiprocessing threads to spawn (default: 1)'
     restart_parser.add_argument('-N', help=h, type=int, default=1, dest='threads')

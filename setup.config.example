@@ -1,0 +1,40 @@
+#-------------------------------------------------------------------------------
+# Platform-based configuration to be passed to the General Cosmology Library 
+# (GCL) Makefile in ./pyRSD/gcl
+#
+# NOTE: This should be copied over to "setup.config" with the appropriate 
+#       configuration edits made
+#-------------------------------------------------------------------------------
+
+# verbosity: 0 for false, 1 for true
+VERBOSE = 0
+
+# debug mode: 0 for false, 1 for true
+DEBUG = 0
+
+# your C++ compiler:
+MCK_CXX = g++
+
+# C++ compiler flags
+MCK_CXXFLAGS = -std=c++11
+MCK_OPT_WARN = -Wextra -Wall -Woverloaded-virtual -g
+MCK_OPT_HIGH = -O2
+
+# your openmp flag (comment for compiling without openmp)
+OMP_FLAG = -fopenmp
+
+# fortran compiler
+MCK_FC = gfortran
+MCK_FFLAGS = -m64
+
+# the CLASS variables
+CLASS_PATH = /your/path/to/class
+CLASS_LIB = $(CLASS_PATH)/build
+CLASS_INC = $(CLASS_PATH)/include
+
+# your tool for creating static libraries:
+AR_EXEC = ar 
+AR_FLAGS = rv
+
+# your python interpreter
+PYTHON = python

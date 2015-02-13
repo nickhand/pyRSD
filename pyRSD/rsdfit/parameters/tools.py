@@ -1,6 +1,5 @@
-from ... import os, data_dir
+from ... import os, sys, data_dir
 import ast 
-import sys
 
 #-------------------------------------------------------------------------------
 def find_file(filename):

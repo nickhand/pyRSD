@@ -7,10 +7,9 @@
  creation date: 05/09/2014
 """
 from . import power_biased, tools
-from .. import numpy as np
+from .. import numpy as np, sys
 from scipy.special import legendre
 from scipy.integrate import simps
-import sys
 
 #-------------------------------------------------------------------------------
 # FOG MODELS

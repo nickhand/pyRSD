@@ -1,4 +1,9 @@
-from ... import numpy as np, plotify as pfy
+try:
+    import plotify as pfy
+except:
+    raise ImportError("`Plotify` plotting package required for `rsdfit`")
+    
+from ... import numpy as np
 from . import triangle, tools
 
 from matplotlib.ticker import MaxNLocator

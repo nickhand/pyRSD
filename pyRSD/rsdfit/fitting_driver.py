@@ -1,4 +1,9 @@
-from .. import numpy as np, plotify as pfy, pygcl 
+try:
+    import plotify as pfy
+except:
+    raise ImportError("`Plotify` plotting package required for `rsdfit`")
+    
+from .. import numpy as np, pygcl 
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData

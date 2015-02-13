@@ -636,8 +636,11 @@ class Trace(DistributionBase):
         """
         Plot the trace distribution to the current axes.
         """
-        import plotify as pfy
-        
+        try:
+            import plotify as pfy
+        except:
+            raise ImportError("`Plotify` plotting package required for `rsdfit`")
+            
         ax = kwargs.pop('ax', pfy.gca())
         domain, pdf = self.pdf()
         ax.plot(domain, pdf, **kwargs)

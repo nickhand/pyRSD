@@ -57,7 +57,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._stoch_model
         except:
-            return lambda k, *args: args[0] + args[1]*np.log(k)
+            return None
             
     @stoch_model.setter
     def stoch_model(self, val):
@@ -67,9 +67,19 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         
         # delete dependencies
         if hasattr(self, '_P00_ss'): del self._P00_ss
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
         if hasattr(self, '_stochasticity'): del self._stochasticity
         if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
         
+    @stoch_model.deleter
+    def stoch_model(self):
+        
+        if hasattr(self, '_stoch_model'): del self._stoch_model
+        if hasattr(self, '_P00_ss'): del self._P00_ss
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
+        if hasattr(self, '_stochasticity'): del self._stochasticity
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
+            
     #---------------------------------------------------------------------------
     @property
     def stoch_args(self):
@@ -95,7 +105,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
     @property
     def default_stoch_args(self):
         """
-        The default stochasticity parameters (constant and sloe), which are
+        The default stochasticity parameters (constant and slope), which are
         computed using simulation results to interpolate lambda as a 
         function of bias and redshift
         """
@@ -118,7 +128,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if callable(self.stoch_model):
                 return self.stoch_model(self.k, *self.stoch_args)
             else:
-                raise ValueError("Stochasticity value must be set, or input function provided.")
+                return self.default_stochasticity
     
     @stochasticity.setter
     def stochasticity(self, val):
@@ -146,10 +156,29 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         
     @stochasticity.deleter
     def stochasticity(self):
+        
         if hasattr(self, '_stochasticity'): del self._stochasticity
         if hasattr(self, '_P00_ss'): del self._P00_ss
         if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
         
+    #--------------------------------------------------------------------------
+    @property
+    def default_stochasticity(self):
+        """
+        The default stochasticity for b1, b1_bar at redshift z
+        """
+        model = lambda k, *args: args[0] + args[1]*np.log(k)
+        
+        # lambda at b1, z
+        args_b1 = self.default_stoch_args(self.b1, self.z)
+        lambda_b1 = model(self.k, *args_b1)
+        
+        # lambda at b1_bar, z
+        args_b1bar = self.default_stoch_args(self.b1_bar, self.z)
+        lambda_b1bar = model(self.k, *args_b1bar)
+        
+        return 0.5*(self.b1/self.b1_bar*lambda_b1bar + self.b1_bar/self.b1*lambda_b1)
+    
     #---------------------------------------------------------------------------
     def _delete_sigma_depends(self, kind):
         """

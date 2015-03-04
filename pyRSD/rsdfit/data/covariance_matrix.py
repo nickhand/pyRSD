@@ -1111,10 +1111,13 @@ class PkmuCovarianceMatrix(PowerCovarianceMatrix):
         # add the legend and axis labels    
         ax.legend(loc=0, ncol=2)
         if self.units == 'relative':
-            ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
+            k_units = r"($h$/Mpc)"
+            P_units = r"$(\mathrm{Mpc}/h)^3$"
         else:
-            ax.xlabel.update(r'$k$ (1/Mpc)', fontsize=16)
-        
+            k_units = "(1/Mpc)"
+            P_units = r"$(\mathrm{Mpc})^3$"
+            
+        ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
         if options['norm_by_power']:
             ax.ylabel.update(r"$\sigma_P / P(k, \mu)$", fontsize=16)
 
@@ -1122,7 +1125,7 @@ class PkmuCovarianceMatrix(PowerCovarianceMatrix):
             ax.ylabel.update(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
         else:
             if not options['subtract_gaussian']:
-                ax.ylabel.update(r"$\sigma_P$ $(\mathrm{Mpc}/h)^3$", fontsize=16)
+                ax.ylabel.update(r"$\sigma_P$ %s" %P_units, fontsize=16)
             else:
                 ax.ylabel.update(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
 
@@ -1244,10 +1247,7 @@ class PkmuCovarianceMatrix(PowerCovarianceMatrix):
 
         # add the legend and axis labels    
         ax.legend(loc=0, ncol=2)
-        if self.units == 'relative':
-            ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
-        else:
-            ax.xlabel.update(r'$k$ (1/Mpc)', fontsize=16)
+        ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
         ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \mu) P(\bar{k}, \bar{\mu}))$", fontsize=16)
         
         return ax
@@ -1260,7 +1260,7 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
     """
     Class to hold a covariance matrix for multipole power moments
     """
-    _allowed_extra_info = ['mus', 'modes', 'mean_power']
+    _allowed_extra_info = ['mus', 'modes', 'pkmu_power', 'pkmu_variance']
     
     def __init__(self, data, ks, ells, units, h, **extra_info):
         """
@@ -1289,6 +1289,29 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
             raise ValueError("All `k` arrays must be the same for `PoleCovarianceMatrix`")
 
     #---------------------------------------------------------------------------
+    def _fill_missing_data(self, frame):
+        """
+        Fill missing data by interpolating a spline
+        """
+        from scipy.interpolate import UnivariateSpline as spline
+
+        # loop over each k bin
+        ks = frame.index.get_level_values('k').unique()
+        for i, k in enumerate(ks):
+
+            x = frame.xs(k, level='k', drop_level=False)
+            inds = x.mean_power.isnull()
+            y = x.dropna()
+
+            # now fill with spline values
+            if inds.sum() > 0:
+                s = spline(y.index.get_level_values('mu'), y.mean_power, w=1./y.variance**0.5)
+                mus = x.index.get_level_values('mu')[inds]
+                frame.loc[x.index[inds], 'mean_power'] = s(mus)
+
+        return frame
+        
+    #---------------------------------------------------------------------------
     def _store_extra_info(self, **kwargs):
         """
         Store the extra information needed to compute analytic variances
@@ -1297,7 +1320,7 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
         from scipy.special import legendre
         import itertools
         
-        if not all(k in kwargs for k in ['mus', 'mean_power', 'modes']):
+        if not all(k in kwargs for k in ['mus', 'pkmu_power', 'modes', 'pkmu_variance']):
             self.extra_info = None
             return
             
@@ -1309,8 +1332,11 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
         
         # make the pkmu index and dataframe
         pkmu_index = MultiIndex.from_tuples(list(itertools.product(mus, ks)), names=['mu', 'k'])
-        d = {'mean_power' : kwargs['mean_power'], 'modes' : kwargs['modes']}
+        d = {'mean_power':kwargs['pkmu_power'], 'variance':kwargs['pkmu_variance'], 'modes':kwargs['modes']}
         frame = DataFrame(data=d, index=pkmu_index)
+        
+        # fill missing data with spline
+        frame = self._fill_missing_data(frame)
         
         index = []
         total_covariance = []
@@ -1326,7 +1352,7 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
                 if ell_prime > ell: 
                     continue
                 
-                covariance, norm = ks*0., ks*0.
+                covariance = ks*0.
                 for i, mu in enumerate(mus):   
     
                     # the integral over the legendre polynomial at this mu
@@ -1334,16 +1360,11 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
                     
                     # slice at this mu
                     this_mu = frame.xs(mu, level='mu')
-                    
-                    # do a weighted sum, accounting for differences in mus
-                    w = this_mu.modes if hasattr(this_mu, 'modes') else np.ones(len(this_mu))
                     power = np.nan_to_num(this_mu.mean_power)**2
-
                     covariance += mu_integral * power
-                    norm += w
-
+                    
                 # normalize properly
-                covariance *= (2*ell + 1)*(2*ell_prime + 1) / norm * Nmu
+                covariance *= (2*ell + 1)*(2*ell_prime + 1)
                 
                 # store the total
                 total_covariance += list(covariance)
@@ -1386,11 +1407,11 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
         return self._xs
         
     #---------------------------------------------------------------------------
-    def ell_slice(self, ell):
+    def ell_slice(self, ell, ell2=None):
         """
         Return the sub matrix associated with the specified `ell` value
         """
-        return self._x_slice(ell)
+        return self._x_slice(ell, ell2)
     
     #---------------------------------------------------------------------------
     def trim_ell(self, lower=None, upper=None):
@@ -1415,13 +1436,19 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
                     raise ValueError('Please specify `ell` value to get number of modes at given k')                    
                 if isinstance(ell, int): 
                     ell = self._convert_x_integer(ell)
-                modes = self.extra_info.modes.xs(ell, level='ell')
-            
+                
                 # slice at ell_bar
                 if ell_bar is None:
                     ell_bar = ell 
                 if isinstance(ell_bar, int): 
                     ell_bar = self._convert_x_integer(ell_bar)
+                
+                # reverse the order if ell_bar > ell
+                if ell_bar > ell:
+                    ell, ell_bar = ell_bar, ell
+                        
+                # do the slicing
+                modes = self.extra_info.modes.xs(ell, level='ell')
                 modes = modes.xs(ell_bar, level='ell_bar')
 
                 # slice at specific k
@@ -1452,13 +1479,19 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
                     raise ValueError('Please specify `ell` value to get `mean_power_sq` at given k')                    
                 if isinstance(ell, int): 
                     ell = self._convert_x_integer(ell)
-                Psq = self.extra_info.mean_power_sq.xs(ell, level='ell')
             
                 # slice at ell_bar
                 if ell_bar is None:
                     ell_bar = ell 
                 if isinstance(ell_bar, int): 
                     ell_bar = self._convert_x_integer(ell_bar)
+        
+                # reverse the order if ell_bar > ell
+                if ell_bar > ell:
+                    ell, ell_bar = ell_bar, ell
+        
+                # do the slicing
+                Psq = self.extra_info.mean_power_sq.xs(ell, level='ell')
                 Psq = Psq.xs(ell_bar, level='ell_bar')
 
                 # slice at specific k
@@ -1487,12 +1520,236 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
         if modes is None:
             raise ValueError("Cannot compute Gaussian covariance without `modes`")
 
-        mean_power_sq = self.mean_power(k=k, ell=ell, ell_bar=ell_bar)
+        mean_power_sq = self.mean_power_sq(k=k, ell=ell, ell_bar=ell_bar)
         if mean_power_sq is None:
             raise ValueError("Cannot compute Gaussian covariance without `mean_power_sq`")
  
         return 2./modes * mean_power_sq
     
+    #---------------------------------------------------------------------------
+    # plotting
+    #---------------------------------------------------------------------------
+    def plot_diagonals(self, ell, ell_bar=None, ax=None, **options):
+        """
+        Plot the square-root of the diagonal elements for a specfic ell value
+        
+        Parameters
+        ---------------
+        ell : int 
+            If not `None`, only plot the diagonals for a single `ell` value, 
+            else plot for all `ell` values
+        ell_bar : int, optional
+            If not `None`, plot the diagonal elements of the `ell` x `ell_bar`
+            sub matrix, else plot those for the `ell` x `ell` sub matrix
+        ax : plotify.Axes, optional
+            Axes instance to plot to. If `None`, plot to the current axes
+        options : dict
+            Dictionary of options with the following keywords:            
+                show_gaussian : bool
+                    Overplot the Gaussian prediction, i.e., 
+                    :math: 2/N_{modes} * [P(k) + Pshot(k)]**2
+                norm_by_gaussian : bool
+                    Normalize the diagonal elements by the Gaussian prediction
+                norm_by_power : bool
+                    Normalize the diagonal elements by the mean power, 
+                    P(k) + Pshot(k)
+                subtract_gaussian : bool
+                    Subtract out the Gaussian prediction
+                absmag : bool
+                    Plot the absolute magnitude, relevant for cross multipoles
+        """     
+        # get the current axes
+        if ax is None: ax = pfy.gca()
+        
+        # setup the default options
+        options.setdefault('show_gaussian', False)
+        options.setdefault('norm_by_gaussian', False)
+        options.setdefault('norm_by_power', False)
+        options.setdefault('subtract_gaussian', False)
+        options.setdefault('absmag', False)
+        
+        # determine the ells to plot
+        if isinstance(ell, int): 
+            ell = self._convert_x_integer(ell)
+        if ell_bar is not None:
+            ell_bar = self._convert_x_integer(ell_bar)
+        else:
+            ell_bar = ell    
+        
+        if options['show_gaussian']:
+            ax.color_cycle = "Paired"
+ 
+        # get sigma for this ell sub matrix
+        this_slice = self.ell_slice(ell, ell_bar)
+        sigma_sq = np.diag(this_slice)
+        
+        norm = 1.
+        if options['subtract_gaussian']:
+            norm = sigma.copy()
+            sigma_sq -= self.gaussian_covariance(ell=ell, ell_bar=ell_bar)
+        elif options['norm_by_gaussian']:
+            norm = self.gaussian_covariance(ell=ell, ell_bar=ell_bar)
+        elif options['norm_by_power']:
+            norm = self.mean_power_sq(ell=ell, ell_bar=ell_bar)
+            
+        # do the plotting
+        if ell == ell_bar:
+            label = r"$\ell = \bar{{\ell}} = {}$".format(ell)
+        else:
+            label = r"$\ell = {}, \ \bar{{\ell}} = {}$".format(ell, ell_bar)
+        
+        toplot = sigma_sq/norm
+        if options['absmag']: toplot = abs(toplot)
+        pfy.plot(self.ks(ell=ell), toplot, label=label)
+        if options['show_gaussian']:
+            
+            g = self.gaussian_covariance(ell=ell, ell_bar=ell_bar)/norm
+            if options['absmag']: g = abs(g)
+            pfy.plot(self.ks(ell=ell), g, ls='--')
+            
+        if np.isscalar(norm):
+            ax.x_log_scale()
+            ax.y_log_scale()
+            
+        # add the legend and axis labels    
+        ax.legend(loc=0, ncol=2)
+        if self.units == 'relative':
+            k_units = r"($h$/Mpc)"
+            P_units = r"$(\mathrm{Mpc}/h)^6$"
+        else:
+            k_units = "(1/Mpc)"
+            P_units = r"$(\mathrm{Mpc})^6$"
+            
+        ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
+        if options['norm_by_power']:
+            ax.ylabel.update(r"$\sigma_P^2 / (P_\ell(k) P_\bar{\ell}(k))$", fontsize=16)
+
+        elif options['norm_by_gaussian']:
+            ax.ylabel.update(r"$\sigma_P^2 / \sigma_{P, \mathrm{Gaussian}}^2$", fontsize=16)
+        else:
+            if not options['subtract_gaussian']:
+                if options['absmag']:
+                    ax.ylabel.update(r"$|\sigma_P^2|$ %s" %P_units, fontsize=16)
+            else:
+                ax.ylabel.update(r"$(\sigma^2_P - \sigma^2_{P, \mathrm{Gaussian}}) / \sigma_P^2$", fontsize=16)
+
+        return ax
+        
+    #---------------------------------------------------------------------------
+    def plot_off_diagonals(self, kbar, ell, ell_bar=None, ax=None, **options):
+        """
+        Plot the off diagonal elements, specifically:
+        
+        :math: \sqrt(Cov(k, kbar) / P(k, mu) / P(kbar, mu))
+        
+        Parameters
+        ---------------
+        kbar : {float, int}
+            The specific value of k to plot the covariances at
+        ell : int 
+            If not `None`, only plot the diagonals for a single `ell` value, 
+            else plot for all `ell` values
+        ell_bar : int, optional
+            If not `None`, plot the diagonal elements of the `ell` x `ell_bar`
+            sub matrix, else plot those for the `ell` x `ell` sub matrix
+        ax : plotify.Axes, optional
+            Axes instance to plot to. If `None`, plot to the current axes
+        options : dict
+            Dictionary of options with the following keywords:            
+                show_diagonal : bool
+                    If `True`, plot the diagonal value as a stem plot
+                show_binned : bool
+                    If `True`, plot a smoothed spline interpolation
+                show_zero_line : bool
+                    If `True`, plot a y=0 horizontal line
+        """
+        import scipy.stats
+                
+        # get the current axes
+        if ax is None: ax = pfy.gca()
+        
+        # setup the default options
+        options.setdefault('show_diagonal', True)
+        options.setdefault('show_binned', False)
+        options.setdefault('show_zero_line', False)
+        
+        # determine the ells to plot
+        if isinstance(ell, int): 
+            ell = self._convert_x_integer(ell)
+        if ell_bar is not None:
+            ell_bar = self._convert_x_integer(ell_bar)
+        else:
+            ell_bar = ell
+        
+        # get the k units
+        if self.units == 'relative':
+            k_units = r"$h$/Mpc"
+        else:
+            k_units = "1/Mpc"
+                
+        # ks for this ell
+        ks = self.ks(ell=ell)
+        kbars = self.ks(ell=ell_bar)
+        
+        # get the right kbar
+        if isinstance(kbar, int):
+            kbar = self._convert_k_integer(kbar, ell_bar)
+        
+        # get the closest value in the matrix
+        if kbar not in kbars:
+            kbar = kbars[abs(kbars - kbar).argmin()]
+                
+        # get sigma for this mu sub matrix
+        this_slice = self.ell_slice(ell, ell_bar)
+        cov = this_slice.xs(kbar, axis=1)
+        
+        # the normalization
+        P_k = self.mean_power_sq(ell=ell, ell_bar=ell_bar)**0.5
+        P_kbar = self.mean_power_sq(ell=ell, ell_bar=ell_bar, k=kbar)**0.5
+        norm = P_k*P_kbar
+        
+        # remove the diagonal element
+        toplot = cov/norm
+        diag_element = toplot[kbar]
+        toplot = toplot.drop(kbar)
+        ks = ks[ks != kbar]
+        
+        # plot the fractional covariance
+        if ell == ell_bar:
+            args = (ell, kbar, k_units)
+            label = r"$\ell = \bar{{\ell}} = {0}, \ \bar{{k}} = {1:.3f}$ {2}".format(*args)
+        else:
+            args = (ell, ell_bar, kbar, k_units)
+            label = r"$\ell = {0}, \ \bar{{\ell}} = {1}, \ \bar{{k}} = {2:.3f}$ {3}".format(*args)
+        pfy.plot(ks, toplot, label=label)
+        
+        # get the color to use
+        this_color = ax.last_color
+        
+        # plot the diagonal element
+        if options['show_diagonal']:
+            markerline, stemlines, baseline = ax.stem([kbar], [diag_element], linefmt=this_color)
+            pfy.plt.setp(markerline, 'markerfacecolor', this_color)
+            pfy.plt.setp(markerline, 'markeredgecolor', this_color)
+        
+        # plot a smoothed spline
+        if options['show_binned']:
+            nbins = tools.histogram_bins(toplot)
+            y, binedges, w = scipy.stats.binned_statistic(ks, toplot, bins=nbins)
+            pfy.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
+
+        if options['show_zero_line']:
+            ax.axhline(y=0, c='k', ls='--', alpha=0.6)
+
+        # add the legend and axis labels    
+        ax.legend(loc=0, ncol=2)
+        if self.units == 'relative':
+            ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
+        else:
+            ax.xlabel.update(r'$k$ (1/Mpc)', fontsize=16)
+        ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P_\ell(k) P_\bar{\ell}(\bar{k}))$", fontsize=16)
+        
+        return ax
     #---------------------------------------------------------------------------
 #endclass PoleCovarianceMatrix
 

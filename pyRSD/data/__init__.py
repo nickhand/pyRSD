@@ -3,11 +3,7 @@ Simulation data for dark matter power spectra at 3 redshifts, z = 0, 0.509, 0.98
 
 For more, see the detailed description of these simulations in Okumura et al. 2012.
 """
-
-import os as _os
-
-import numpy as np
-from pyRSD import data_dir
+from .. import data_dir, numpy as np, os as _os
 
 
 __all__ = ['load',

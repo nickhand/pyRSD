@@ -51,19 +51,13 @@ void Engine::WriteCls(std::ostream &of){
 /*----------------------------------------------------------------------------*/
 
 // write out Pk in units of h/Mpc, (Mpc/h)^3
-void Engine::WriteMatterSpectrum(std::ostream &of, double z, pktype t) {
+void Engine::WriteTransferFunction(std::ostream &of, double z) {
 
     int status(0); 
     parray k, output;
 
     // get the computed spectrum
-    if (t == Pklin) {
-        status = GetPklin(z, k, output);
-    } else if (t == Pknl) {
-        status = GetPknl(z, k, output);
-    } else if (t == Tk) {
-        status = GetTk(z, k, output);
-    }
+    status = GetTk(z, k, output);
     if (status > 0) throw runtime_error("Failed to compute spectrum");
 
     // write it out
@@ -75,21 +69,10 @@ void Engine::WriteMatterSpectrum(std::ostream &of, double z, pktype t) {
 }
 /*----------------------------------------------------------------------------*/
 
-void Engine::WritePklin(std::ostream &of, double z) {
-    WriteMatterSpectrum(of, z, Pklin);
-}
-
-/*----------------------------------------------------------------------------*/
-
-void Engine::WritePknl(std::ostream &of, double z) {
-    WriteMatterSpectrum(of, z, Pknl);
-}
-
-/*----------------------------------------------------------------------------*/
-
 void Engine::WriteTk(std::ostream &of, double z) {
-    WriteMatterSpectrum(of, z, Tk);
+    WriteTransferFunction(of, z);
 }
+
 /*----------------------------------------------------------------------------*/
 
 // return the computed Cls at the desired ell values
@@ -107,14 +90,14 @@ int Engine::GetLensing(const vector<unsigned>&, parray&, parray&, parray&) {
 /*----------------------------------------------------------------------------*/
 
 // compute the k, linear Pk in units of h/Mpc, (Mpc/h)^3
-int Engine::GetPklin(double, const parray&, parray&) {
+double Engine::GetPklin(double, double) {
     return 1;
 }
 
 /*----------------------------------------------------------------------------*/
 
 // compute the k, nonlinear Pk in units of h/Mpc, (Mpc/h)^3
-int Engine::GetPknl(double, const parray&, parray&) {
+double Engine::GetPknl(double, double) {
     return 1;
 }
 

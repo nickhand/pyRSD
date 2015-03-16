@@ -403,7 +403,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         for a in ['_b2_00_bar', '_b2_01_bar', '_bs_bar']:
             if hasattr(self, a): delattr(self, a)
         self._delete_splines()
-    
+        
     #---------------------------------------------------------------------------
     @property
     def b2_00_bar(self):

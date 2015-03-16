@@ -23,6 +23,14 @@ class PickalableSWIG:
         return {'args': self.args}
 #-------------------------------------------------------------------------------
 
+# NonlinearPS
+class NonlinearPS(gcl.NonlinearPS, PickalableSWIG):
+ 
+    def __init__(self, *args):
+        self.args = args
+        gcl.NonlinearPS.__init__(self, *args)
+        
+#-------------------------------------------------------------------------------
 # LinearPS
 class LinearPS(gcl.LinearPS, PickalableSWIG):
  

@@ -24,7 +24,6 @@ Cosmology::Cosmology(const std::string& param_file,  TransferFit tf, const std::
     InitializeTransferFunction(tf, tkfile);
 }
 
-
 void Cosmology::LoadTransferFunction(const std::string& tkfile, int kcol, int tcol) {
     
     /* First check the current directory for a file named 'tkfile' */

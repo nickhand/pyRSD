@@ -10,6 +10,12 @@ DATADIR := $(shell cd ../data/params; pwd )
 	touch build/.base
 
 vpath %.cpp src test
+vpath %.c src
+ifdef COMPILE_EMU
+    ifeq ($(COMPILE_EMU), 1) 
+	    vpath %.c src
+    endif
+endif
 vpath %.f src 
 vpath %.o build
 vpath .base build
@@ -55,9 +61,29 @@ INCLUDES = -I../include	 -I$(CLASS_INC)
 LIBS = -L$(CLASS_LIB) 
     
 # make the libraries and includes to pass to python bindings
-PY_INCLUDES = "$(CLASS_INC):$(MDIR)/src:$(MDIR)/include"
+PY_INCLUDES = "$(CLASS_INC):$(MDIR)/src:$(MDIR)/include:$(GSL_INC)"
 PY_LIBS = -lgfortran -lgcl -lgomp
+
+# add emulator libraries
+ifdef COMPILE_EMU
+    ifeq ($(COMPILE_EMU), 1)
+        # c flags
+        INCLUDES += $(GSL_INC)
+        LIBS += -L$(GSL_LIBDIR)
+        MCK_CXXFLAGS += $(GSL_LIBS)
+        
+        # python flags
+        PY_LIBS += $(GSL_LIBS)
+        PY_LIBDIRS = $(GSL_LIBDIR)
+    endif
+endif
+
+# python library names
 PY_LIBNAMES = $(subst -l,, "$(PY_LIBS)")
+PY_LIBFLAG = 
+ifdef PY_LIBDIRS
+    PY_LIBFLAG = -L$(PY_LIBDIRS)
+endif
 
 #-------------------------------------------------------------------------------
 # CLASS sources
@@ -70,6 +96,16 @@ CLASS_SOURCES = arrays.o background.o common.o dei_rkck.o evolver_ndf15.o \
 CLASS_COBJS = $(addprefix $(CLASS_PATH)/build/, $(CLASS_SOURCES))
 
 #-------------------------------------------------------------------------------
+# FrankenEmu sources
+#-------------------------------------------------------------------------------
+EMU_SOURCES = 
+ifdef COMPILE_EMU
+    ifeq ($(COMPILE_EMU), 1)
+        EMU_COBJS = emu.o emu_noh.o hubble.o
+    endif
+endif
+
+#-------------------------------------------------------------------------------
 # GCL sources
 #-------------------------------------------------------------------------------
 GCLTOOLS_COBJS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o \
@@ -77,12 +113,13 @@ GCLTOOLS_COBJS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o \
 
 GCLSOURCE_COBJS = Engine.o ClassParams.o ClassCosmology.o Cosmology.o \
 				  PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o \
-				  ImnOneLoop.o	CorrelationFunction.o Kaiser.o ZeldovichPS.o
+				  ImnOneLoop.o	CorrelationFunction.o Kaiser.o ZeldovichPS.o \
+				  NonlinearPS.o
 
 GCLTEST_COBJS = test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o \
 				test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o
 
-COBJS = $(GCLTOOLS_COBJS) $(GCLSOURCE_COBJS)
+COBJS = $(EMU_COBJS) $(GCLTOOLS_COBJS) $(GCLSOURCE_COBJS)
 
 #-------------------------------------------------------------------------------
 # FFTLog sources
@@ -100,8 +137,12 @@ PY_LIBRARY = gcl
 #-------------------------------------------------------------------------------
 .PHONY: all test $(PY_LIBRARY)
 
-.SUFFIXES: .o .cpp .f
+.SUFFIXES: .o .c .cpp .f 
     
+.c.o:   %.c .base
+	@echo Compiling $<
+	cd $(WRKDIR); $(MCK_CC) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
+    	
 .cpp.o:	 %.cpp .base
 	@echo Compiling $<
 	cd $(WRKDIR); $(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
@@ -139,7 +180,7 @@ test_zeldovichPS : test_zeldovichPS.o $(COBJS) $(FOBJS)
 	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
 
 $(PY_LIBRARY): .base $(LIBRARY) python/*.i
-	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES)
+	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES) $(PY_LIBFLAG)
 
 clean: .base
 	rm -rf $(WRKDIR)

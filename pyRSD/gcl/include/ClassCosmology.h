@@ -42,8 +42,8 @@ public:
     int GetLensing(const std::vector<unsigned>& lVec, parray& clphiphi, parray& cltphi, parray& clephi);
 
     // linear/nonlinear matter power spectra
-    int GetPklin(double z, const parray& k, parray& Pk);
-    int GetPknl(double z, const parray& k, parray& Pk);
+    double GetPklin(double z, double k);
+    double GetPknl(double z, double k);
 
     // get the total density transfer function
     int GetTk(double z, const parray& k, parray& Tk);
@@ -173,7 +173,7 @@ protected:
     
     // nonlinear vs linear P(k)
     enum Pktype {Pk_linear=0, Pk_nonlinear};
-    int GetPk(double z, const parray& k, parray& Pk, Pktype method = Pk_linear);
+    double GetPk(double z, double k, Pktype method = Pk_linear);
     double GetCl(Engine::cltype t, const long &l); 
         
     // functions for returning cosmological quantities

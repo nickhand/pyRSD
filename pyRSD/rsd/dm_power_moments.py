@@ -25,9 +25,10 @@ class DarkMatterPowerMoment(object):
     """
     A class to compute a generic dark matter power moment
     """
-    def __init__(self, power_lin, z, sigma8, model_type='A'):
+    def __init__(self, power_lin, z, sigma8, model_type='A', interpolate_zeldovich=True):
       
         # store the input arguments
+        self.interpolate_zeldovich = interpolate_zeldovich
         self._power_lin = power_lin
         self._cosmo     = self._power_lin.GetCosmology()
         self.model_type = model_type
@@ -39,46 +40,92 @@ class DarkMatterPowerMoment(object):
         # set the initial redshift, sigma8 
         self.z = z
         self.sigma8 = sigma8
-        
-        # initialize splines
-        self._initialize_Rparam_splines()
-        
+                
         # set up the zeldovich power interpolation table
-        self._compute_zeldovich_power_table()
-    #end __init__
+        if self.interpolate_zeldovich:
+            self._compute_zeldovich_power_table()
     
     #---------------------------------------------------------------------------
-    # initialization functions
+    # HZPT model parameters (model A)
     #---------------------------------------------------------------------------
-    def _initialize_Rparam_splines(self):
+    @property
+    def R1_hzpt(self):
         """
-        Initialize the splines needed for the broadband correction
+        Returns the R1 radius parameter (see eqn 5 of arXiv:1501.07512)
+        
+        Note: the units are length [Mpc/h]
         """
-        # these are the values from Zvonimir
-        Ri_zs = np.array([0., 0.5, 1., 2.])
-        Ri = np.empty((4, 3))
-        Ri[0,:] = [2.8260, 2.30098, 1.3614]
-        Ri[1,:] = [2.3670, 1.5930, 0.7370]
-        Ri[2,:] = [2.2953, 1.3272, 0.00034365]
-        Ri[3,:] = [2.0858, 0.7878, 0.00017]
-        
-        # now make the splines
-        self.R1_spline = spline(Ri_zs, Ri[:,0])
-        self.R2_spline = spline(Ri_zs, Ri[:,1])
-        self.R3_spline = spline(Ri_zs, Ri[:,2])
-        
-        # compute R1, R2, R3 over 
-        z_spline = np.linspace(0., 2., 1000)
-        z_center = 0.5*(z_spline[1:] + z_spline[:-1])
-        R1 = self.R1_spline(z_spline)
-        R2 = self.R2_spline(z_spline)
-        R3 = self.R3_spline(z_spline)
+        return 3.33 * (self.sigma8_z/0.8)**0.88
 
-        self.dR1_dlna = spline(z_center, np.diff(R1) / np.diff(np.log(1./(1+z_spline))))
-        self.dR2_dlna = spline(z_center, np.diff(R2) / np.diff(np.log(1./(1+z_spline))))
-        self.dR3_dlna = spline(z_center, np.diff(R3) / np.diff(np.log(1./(1+z_spline)))) 
-    #end _initialize_Rparam_splines
+    #---------------------------------------------------------------------------
+    @property
+    def R1h_hzpt(self):
+        """
+        Returns the R1h radius parameter (see eqn 5 of arXiv:1501.07512)
 
+        Note: the units are length [Mpc/h]
+        """
+        return 3.87 * (self.sigma8_z/0.8)**0.29
+        
+    #---------------------------------------------------------------------------
+    @property
+    def R2h_hzpt(self):
+        """
+        Returns the R2h radius parameter (see eqn 5 of arXiv:1501.07512)
+
+        Note: the units are length [Mpc/h]
+        """
+        return 1.69 * (self.sigma8_z/0.8)**0.43
+           
+    #---------------------------------------------------------------------------
+    @property
+    def R_hzpt(self):
+        """
+        Returns the R radius parameter (see eqn 4 of arXiv:1501.07512)
+
+        Note: the units are length [Mpc/h]
+        """
+        return 26. * (self.sigma8_z/0.8)**0.15
+       
+    #---------------------------------------------------------------------------
+    @property
+    def A0_hzpt(self):
+        """
+        Returns the A0 radius parameter (see eqn 4 of arXiv:1501.07512)
+
+        Note: the units are power [(h/Mpc)^3]
+        """
+        return 750. * (self.sigma8_z/0.8)**3.75
+    
+    #---------------------------------------------------------------------------
+    # Irshad's model parameters
+    #---------------------------------------------------------------------------
+    @property
+    def A0_irshad(self):
+        """
+        Returns the A0 parameter for the model presented in Eq. 27 
+        of arXiv:1407.0060
+        """
+        return 1529.87 * self.sigma8_z**3.9
+        
+    #---------------------------------------------------------------------------
+    @property
+    def A2_irshad(self):
+        """
+        Returns the A2 parameter for the model presented in Eq. 28
+        of arXiv:1407.0060
+        """
+        return 1299.75 * self.sigma8_z**3.0
+        
+    #---------------------------------------------------------------------------
+    @property
+    def A4_irshad(self):
+        """
+        Returns the A4 parameter for the model presented in Eq. 29 
+        of arXiv:1407.0060
+        """
+        return 758.31 * self.sigma8_z**2.2
+        
     #---------------------------------------------------------------------------
     @property
     def power_lin(self):
@@ -109,7 +156,9 @@ class DarkMatterPowerMoment(object):
         
         # compute new redshift power table
         self.zeldovich_base.SetRedshift(val)
-        self._compute_zeldovich_power_table()
+        
+        if self.interpolate_zeldovich:
+            self._compute_zeldovich_power_table()
     
     #---------------------------------------------------------------------------        
     @property
@@ -166,19 +215,48 @@ class DarkMatterPowerMoment(object):
         """
         Return the power from the Zel'dovich term
         """
-        # return NaNs if we are out of bounds
-        if self.sigma8 < SIGMA8_MIN or self.sigma8 > SIGMA8_MAX: return np.nan*k
+        if self.interpolate_zeldovich:
+            # return NaNs if we are out of bounds
+            if self.sigma8 < SIGMA8_MIN or self.sigma8 > SIGMA8_MAX: return np.nan*k
         
-        keys = self.zeldovich_power_table.keys()
-        ihi = bisect.bisect(keys, self.sigma8)
-        ilo = ihi - 1
+            keys = self.zeldovich_power_table.keys()
+            ihi = bisect.bisect(keys, self.sigma8)
+            ilo = ihi - 1
         
-        s8_lo = keys[ilo]
-        s8_hi = keys[ihi]
-        w = (self.sigma8 - s8_lo) / (s8_hi - s8_lo) 
-        return (1 - w)*self.zeldovich_power_table[s8_lo](k) + w*self.zeldovich_power_table[s8_hi](k)
+            s8_lo = keys[ilo]
+            s8_hi = keys[ihi]
+            w = (self.sigma8 - s8_lo) / (s8_hi - s8_lo) 
+            return (1 - w)*self.zeldovich_power_table[s8_lo](k) + w*self.zeldovich_power_table[s8_hi](k)
+        else:
+            raise NotImplementedError("whoops")
         
     #---------------------------------------------------------------------------  
+    def F(self, k):
+        """
+        The compensation function F(k) that causes the broadband power to go
+        to zero at low k, in order to conserver mass/momentum
+        
+        Notes
+        -----
+        For `model A`, the functional form is given by 1 - 1 / (1 + k^2 R^2), 
+        where R(z) is given by Eq. 4 in arXiv:1501.07512.
+        
+        For `model B`, the functional form is a 10th-order polynomial with 
+        coefficients given by Table 1 in arXiv:1407.0060
+        
+        """
+        if self.model_type == 'A':
+            return 1. - 1./(1. + (k*self.R_hzpt)**2)
+            
+        elif self.model_type == 'B':
+            ans = [0., 21.814, -174.134, 747.369, -2006.792, 3588.808, -4316.241, 
+                    3415.525, -1692.839, 474.377, -57.228]
+            
+            toret = 0.
+            for i, an in enumerate(ans):
+                toret += an*k**i
+            return toret
+    #---------------------------------------------------------------------------
 #endclass DarkMatterPowerMoment
 
 #-------------------------------------------------------------------------------
@@ -205,50 +283,46 @@ class DarkMatterP00(DarkMatterPowerMoment):
         for sigma8 in sigma8s:
             P00.SetSigma8(sigma8)
             self.zeldovich_power_table[sigma8] = spline(K_SPLINE, P00(K_SPLINE))
-
-    #end _compute_zeldovich_power_table
     
     #---------------------------------------------------------------------------
-    @property
-    def model_params(self):
+    def zeldovich_power(self, k):
         """
-        Return the model parameters for P00, needed to evaulate the broadband 
-        power correction for the model type specified by `self.model_type`
+        Return the power from the Zel'dovich term
         """
-        # sigma 8 at this redshift, needed by both models
-        sigma8 = self.sigma8_z
-        
-        if self.model_type == 'A':
-
-            # base model params for model A
-            A0 = 743.854 * (sigma8/0.81)**3.902
-            R1 = self.R1_spline(self.z)
-            R2 = self.R2_spline(self.z)
-            R3 = self.R3_spline(self.z)
-            return A0, R1, R2, R3
+        if self.interpolate_zeldovich:
+            return DarkMatterPowerMoment.zeldovich_power(self, k)
         else:
-            
-            # simple power laws in sigma8 for model B
-            A0 = 1529.87 * sigma8**3.9 
-            A2 = 1299.75 * sigma8**3.0
-            A4 = 758.31 * sigma8**2.2 
-            return A0, A2, A4
-            
+            P00 = pygcl.ZeldovichP00(self.zeldovich_base)
+            P00.SetSigma8(self.sigma8)
+            return P00(k)
+    
     #---------------------------------------------------------------------------
     def broadband_power(self, k):
         """
         The broadband power correction in units of (Mpc/h)^3
-        """ 
-        # define the redshift dependent functions, Fk
-        if self.model_type == 'A':
-            Fk = lambda k, A0, R1, R2, R3: A0*(1. + (R2*k)**2) / (1. + (R1*k)**2 + (R3*k)**4)
-        else:
-            Fk = lambda k, A0, A2, A4: A0 - A2*k**2 + A4*k**4
-
-        # the redshift independent piece, C(k)
-        Ck = lambda k, R0: 1. - 1./(1. + (R0*k)**2)
         
-        return Ck(k, 31.)*Fk(k, *self.model_params)
+        Notes
+        -----
+        For `model A`, the functional form is given by: 
+        :math:  P_BB = A0 * F(k) * [ (1 + (k*R1)^2) / (1 + (k*R1h)^2 + (k*R2h)^4) ], 
+        as given by Eq. 1 in arXiv:1501.07512.
+        
+        For `model B`, the functional form is given by:
+        :math: (A0 - A2*k^2 + A4^k^4) * F(k),
+        as given by Eq 32 in arXiv:1407.0060
+        """ 
+        if self.model_type == 'A':
+            A0  = self.A0_hzpt
+            R1  = self.R1_hzpt
+            R1h = self.R1h_hzpt
+            R2h = self.R2h_hzpt
+            return A0*self.F(k)*(1. + (k*R1)**2) / (1 + (k*R1h)**2 + (k*R2h)**4)
+            
+        else:
+            A0 = self.A0_irshad
+            A2 = self.A2_irshad
+            A4 = self.A4_irshad
+            return self.F(k) * (A0 - A2*k**2 + A4*k**4)
         
     #---------------------------------------------------------------------------
     def power(self, k):
@@ -303,40 +377,86 @@ class DarkMatterP01(DarkMatterPowerMoment):
         for sigma8 in sigma8s:
             P01.SetSigma8(sigma8)
             self.zeldovich_power_table[sigma8] = spline(K_SPLINE, P01(K_SPLINE))
+    
+    #---------------------------------------------------------------------------
+    def zeldovich_power(self, k):
+        """
+        Return the power from the Zel'dovich term
+        """
+        if self.interpolate_zeldovich:
+            return DarkMatterPowerMoment.zeldovich_power(self, k)
+        else:
+            P01 = pygcl.ZeldovichP01(self.zeldovich_base)
+            P01.SetSigma8(self.sigma8)
+            return P01(k)
+            
+    #---------------------------------------------------------------------------
+    # derivs of HZPT model parameters (model A)
+    #---------------------------------------------------------------------------
+    @property
+    def dR1_hzpt_dlna(self):
+        """
+        Returns the derivative of `self.R1_hzpt` with respect to the `lna`
+        """
+        return self.f * 0.88 * self.R1_hzpt
+      
+    #---------------------------------------------------------------------------
+    @property
+    def dR1h_hzpt_dlna(self):
+        """
+        Returns the derivative of `self.R1h_hzpt` with respect to the `lna`
+        """
+        return self.f * 0.29 * self.R1h_hzpt
 
-    #end _compute_zeldovich_power_table
+    #---------------------------------------------------------------------------
+    @property
+    def dR2h_hzpt_dlna(self):
+        """
+        Returns the derivative of `self.R2h_hzpt` with respect to the `lna`
+        """
+        return self.f * 0.43 * self.R2h_hzpt
+
+    #---------------------------------------------------------------------------
+    @property
+    def dR_hzpt_dlna(self):
+        """
+        Returns the derivative of `self.R_hzpt` with respect to the `lna`
+        """
+        return self.f * 0.15 * self.R_hzpt
     
     #---------------------------------------------------------------------------
     @property
-    def model_params(self):
+    def dA0_hzpt_dlna(self):
         """
-        Return the model parameters for P01, needed to evaulate the broadband 
-        power correction for the model type specified by `self.model_type`
+        Returns the derivative of `self.A0_hzpt` with respect to the `lna`
         """
-        # sigma 8 at this redshift, needed by both models
-        sigma8 = self.sigma8_z
+        return self.f * 3.75 * self.A0_hzpt
         
-        if self.model_type == 'A':
+    #---------------------------------------------------------------------------
+    # Irshad's model parameters
+    #---------------------------------------------------------------------------
+    @property
+    def dA0_irshad_dlna(self):
+        """
+        Returns the derivative of `self.A0_irshad` with respect to the `lna`
+        """
+        return self.f * 3.9 * self.A0_irshad
 
-            # base model params for model A
-            A0 = 743.854 * (sigma8/0.81)**3.902
-            R1 = self.R1_spline(self.z)
-            R2 = self.R2_spline(self.z)
-            R3 = self.R3_spline(self.z)
-            dR1_dlna = self.dR1_dlna(self.z)
-            dR2_dlna = self.dR2_dlna(self.z)
-            dR3_dlna = self.dR3_dlna(self.z)
-            
-            params = (A0, R1, R2, R3)
-            derivs = (3.9*self.f*A0, dR1_dlna, dR2_dlna, dR3_dlna)
-            return params, derivs
-        else:
-            
-            # simple power laws in sigma8 for model B
-            A0 = 1529.87 * sigma8**3.9 
-            A2 = 1299.75 * sigma8**3.0
-            A4 = 758.31 * sigma8**2.2 
-            return 3.9*self.f*A0, 3.*self.f*A2, 2.2*self.f*A4
+    #---------------------------------------------------------------------------
+    @property
+    def dA2_irshad_dlna(self):
+        """
+        Returns the derivative of `self.A2_irshad` with respect to the `lna`
+        """
+        return self.f * 3.0 * self.A2_irshad
+    
+    #---------------------------------------------------------------------------
+    @property
+    def dA4_irshad_dlna(self):
+        """
+        Returns the derivative of `self.A4_irshad` with respect to the `lna`
+        """
+        return self.f * 2.2 * self.A2_irshad
     
     #---------------------------------------------------------------------------
     def broadband_power(self, k):
@@ -345,26 +465,44 @@ class DarkMatterP01(DarkMatterPowerMoment):
         """ 
         # define the redshift dependent functions, Fk
         if self.model_type == 'A':
-            
-            def Fk(k, params, derivs):
-                
-                A0, R1, R2, R3 = params
-                dA0, dR1, dR2, dR3 = derivs
-                norm = (1. + (R1*k)**2 + (R3*k)**4)
-                
-                # each term of the derivative
-                term1 = dA0 * (1. + (R2*k)**2) / norm
-                term2 = dR2 * A0 * 2. * k**2 * R2 /  norm
-                term3 = -dR3 * A0 * (1. + (R2*k)**2) / norm**2 * (4*k**4*R3**3)
-                term4 = -dR1 * A0 * (1. + (R2*k)**2) / norm**2 * (2*k**2*R1)
-                return term1 + term2 + term3 + term4
-        else:
-            Fk = lambda k, A0, A2, A4: A0 - A2*k**2 + A4*k**4
 
-        # the redshift independent piece, C(k)
-        Ck = lambda k, R0: 1. - 1./(1. + (R0*k)**2)
-        
-        return Ck(k, 31.)*Fk(k, *self.model_params)
+            # the P00_BB parameters
+            A0  = self.A0_hzpt
+            R1  = self.R1_hzpt
+            R1h = self.R1h_hzpt
+            R2h = self.R2h_hzpt
+            R   = self.R_hzpt
+            
+            # derivs wrt to lna
+            dA0  = self.dA0_hzpt_dlna
+            dR1  = self.dR1_hzpt_dlna
+            dR1h = self.dR1h_hzpt_dlna
+            dR2h = self.dR2h_hzpt_dlna
+            dR   = self.dR_hzpt_dlna
+            
+            # store these for convenience
+            norm = (1 + (k*R1h)**2 + (k*R2h)**4)
+            Ck = (1. + (k*R1)**2) / norm
+            Fk = self.F(k)
+            
+            # first term of tot deriv
+            term1 = dA0 * (Fk*Ck)
+            
+            # 2nd term
+            term2 = (A0*Ck) * (2*k**2*R*dR) / (1 + (k*R)**2)**2
+            
+            # 3rd term
+            term3_a = (2*k**2*R1*dR1) / norm
+            term3_b = -(1 + (k*R1)**2) / norm**2 * (2*k**2*R1h*dR1h + 4*k**4*R2h**3*dR2h)
+            term3 = (A0*Fk) * (term3_a + term3_b)
+            
+            return term1 + term2 + term3
+                
+        elif self.model_type == 'B':
+            dA0 = self.dA0_irshad_dlna
+            dA2 = self.dA2_irshad_dlna
+            dA4 = self.dA4_irshad_dlna
+            return self.F(k) * (dA0 - dA2*k**2 + dA4*k**4)
         
     #---------------------------------------------------------------------------
     def power(self, k):

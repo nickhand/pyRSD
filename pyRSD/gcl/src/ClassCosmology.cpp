@@ -10,34 +10,27 @@ using namespace Common;
 
 
 // Constructors
-ClassCosmology::ClassCosmology() {}
+ClassCosmology::ClassCosmology() : cl(0), dofree(false) {}
 
 ClassCosmology::ClassCosmology(const ClassParams& pars, const string & precision_file)
 : cl(0), dofree(true)
 {
-    _lmax = 0;
-    
+    // initialize
     Initialize(pars, precision_file);
     
-    // store Omega0_m and Omegar_0 at z = 0 so we don't keep computing it
-    Omega0_m_ = BackgroundValue(0., ba.index_bg_Omega_m);
-    Omega0_r_ = BackgroundValue(0., ba.index_bg_Omega_r);
 }
 /*----------------------------------------------------------------------------*/
 ClassCosmology::ClassCosmology(const string & param_file, const string & precision_file)
 : cl(0), dofree(true)
 {
-    _lmax = 0;
     
     string fname(FindFilename(param_file));
     ClassParams parameters(fname);
     verbose("Reading CLASS parameters from %s\n", fname.c_str());
-    
+
+    // and initialize
     Initialize(parameters, precision_file);
-    
-    // store Omega0_m and Omegar_0 at z = 0 so we don't keep computing it
-    Omega0_m_ = BackgroundValue(0., ba.index_bg_Omega_m);
-    Omega0_r_ = BackgroundValue(0., ba.index_bg_Omega_r);
+
 }
 /*----------------------------------------------------------------------------*/
 const string ClassCosmology::FindFilename(const string& file_name) {
@@ -60,6 +53,9 @@ const string ClassCosmology::FindFilename(const string& file_name) {
 /*----------------------------------------------------------------------------*/
 void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file)
 {
+    // set lmax value
+    _lmax = 0;
+    
     string precision_file;
     if (pre_file != "") {
         precision_file = FindFilename(pre_file);
@@ -126,13 +122,22 @@ void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file
         throw invalid_argument(_errmsg);
         
     // compute the Cls
-    Run();
+    int status = Run();
+    if (status)
+        error("Error running CLASS init\n");
     
     // initialize the cl parray with the right size
     cl = new double[sp.ct_size];
     
     // free the temporary fc input
     parser_free(&fc_input);
+    
+    // store Omega0_m and Omegar_0 at z = 0 so we don't keep computing it
+    Omega0_m_ = BackgroundValue(0., ba.index_bg_Omega_m);
+    Omega0_r_ = BackgroundValue(0., ba.index_bg_Omega_r);
+    
+    dofree = true;
+    
 
 }
 /*----------------------------------------------------------------------------*/
@@ -140,10 +145,8 @@ void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file
 // destructor
 ClassCosmology::~ClassCosmology()
 {
-
-  dofree && FreeStructs();
-  delete [] cl;
-
+    dofree && FreeStructs();
+    delete [] cl;
 }
 /*----------------------------------------------------------------------------*/
 
@@ -172,26 +175,26 @@ int ClassCosmology::class_main(struct file_content *pfc,
     
 
     if (input_init(pfc,ppr,pba,pth,ppt,ptr,ppm,psp,pnl,ple,pop,errmsg) == _FAILURE_) {
-        printf("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
+        info("\n\nError running input_init_from_arguments \n=>%s\n",errmsg);
         dofree = false;
         return _FAILURE_;
     }
 
     if (background_init(ppr,pba) == _FAILURE_) {
-        printf("\n\nError running background_init \n=>%s\n",pba->error_message);
+        info("\n\nError running background_init \n=>%s\n",pba->error_message);
         dofree = false;
         return _FAILURE_;
     }
 
     if (thermodynamics_init(ppr,pba,pth) == _FAILURE_) {
-        printf("\n\nError in thermodynamics_init \n=>%s\n",pth->error_message);
+        info("\n\nError in thermodynamics_init \n=>%s\n",pth->error_message);
         background_free(&ba);
-        dofree=false;
+        dofree = false;
         return _FAILURE_;
     }
 
     if (perturb_init(ppr,pba,pth,ppt) == _FAILURE_) {
-        printf("\n\nError in perturb_init \n=>%s\n",ppt->error_message);
+        info("\n\nError in perturb_init \n=>%s\n",ppt->error_message);
         thermodynamics_free(&th);
         background_free(&ba);
         dofree = false;
@@ -199,7 +202,7 @@ int ClassCosmology::class_main(struct file_content *pfc,
     }
 
     if (primordial_init(ppr,ppt,ppm) == _FAILURE_) {
-        printf("\n\nError in primordial_init \n=>%s\n",ppm->error_message);
+        info("\n\nError in primordial_init \n=>%s\n",ppm->error_message);
         perturb_free(&pt);
         thermodynamics_free(&th);
         background_free(&ba);
@@ -208,7 +211,7 @@ int ClassCosmology::class_main(struct file_content *pfc,
     }
 
     if (nonlinear_init(ppr,pba,pth,ppt,ppm,pnl) == _FAILURE_)  {
-        printf("\n\nError in nonlinear_init \n=>%s\n",pnl->error_message);
+        info("\n\nError in nonlinear_init \n=>%s\n",pnl->error_message);
         primordial_free(&pm);
         perturb_free(&pt);
         thermodynamics_free(&th);
@@ -218,7 +221,7 @@ int ClassCosmology::class_main(struct file_content *pfc,
     }
 
     if (transfer_init(ppr,pba,pth,ppt,pnl,ptr) == _FAILURE_) {
-        printf("\n\nError in transfer_init \n=>%s\n",ptr->error_message);
+        info("\n\nError in transfer_init \n=>%s\n",ptr->error_message);
         nonlinear_free(&nl);
         primordial_free(&pm);
         perturb_free(&pt);
@@ -229,7 +232,7 @@ int ClassCosmology::class_main(struct file_content *pfc,
     }
 
     if (spectra_init(ppr,pba,ppt,ppm,pnl,ptr,psp) == _FAILURE_) {
-        printf("\n\nError in spectra_init \n=>%s\n",psp->error_message);
+        info("\n\nError in spectra_init \n=>%s\n",psp->error_message);
         transfer_free(&tr);
         nonlinear_free(&nl);
         primordial_free(&pm);
@@ -241,7 +244,8 @@ int ClassCosmology::class_main(struct file_content *pfc,
     }
 
     if (lensing_init(ppr,ppt,psp,pnl,ple) == _FAILURE_) {
-        printf("\n\nError in lensing_init \n=>%s\n",ple->error_message);
+        info("\n\nError in lensing_init \n=>%s\n",ple->error_message);
+        info("Calling spectra free #1\n");
         spectra_free(&sp);
         transfer_free(&tr);
         nonlinear_free(&nl);
@@ -271,7 +275,7 @@ int ClassCosmology::FreeStructs() {
   
   
     if (lensing_free(&le) == _FAILURE_) {
-        printf("\n\nError in spectra_free \n=>%s\n",le.error_message);
+        printf("\n\nError in lensing_free \n=>%s\n",le.error_message);
         return _FAILURE_;
     }
   
@@ -416,57 +420,53 @@ int ClassCosmology::GetLensing(const vector<unsigned>& lvec, // input
 /*----------------------------------------------------------------------------*/
 
 // generic private class for computing either P_lin(k) or P_nl(k)
-int ClassCosmology::GetPk(double z, const parray& k, parray& Pk, Pktype method) {
-    
+double ClassCosmology::GetPk(double z, double k, Pktype method) {
     
     int index_md = sp.index_md_scalars;
-    if (sp.ic_size[index_md] > 1) 
+    if ((sp.ic_size[index_md] > 1) && (method == Pk_linear)) 
         throw out_of_range("Cannot currently deal with mutiple initial conditions spectra, try only specifying one.");
         
-    Pk = parray::zeros(k.size());
     double pk_ic = 0;
-    for (size_t i = 0; i < k.size(); i++) {
-        int status;
-        double thisPk;
-        double thisk = k[i]*h();
+    int status;
+    double thisPk;
+    double thisk = k*h();
+
+    // check for k > kmax
+    if (thisk > k_max())
+        warning("Computing P(k) for k > kmax; 0 will be returned\n");
     
-        // check for k > kmax
-        if (thisk > k_max())
-            warning("Computing P(k) for k > kmax; 0 will be returned\n");
+    // make sure to put k from h/Mpc to 1/Mpc
+    if (method == Pk_linear)
+        status = spectra_pk_at_k_and_z(&ba, &pm, &sp, thisk, z, &thisPk, &pk_ic);
+    else
+        status = spectra_pk_nl_at_k_and_z(&ba, &pm, &sp, thisk, z, &thisPk);
+    
+    if ((status == _FAILURE_) && (method == Pk_linear))
+        error("`spectra_pk_at_k_and_z error: %s\n", sp.error_message);
+    if ((status == _FAILURE_) && (method == Pk_nonlinear))
+        error("`spectra_pk_nl_at_k_and_z error: %s\n", sp.error_message);
         
-        // make sure to put k from h/Mpc to 1/Mpc
-        if (method == Pk_linear)
-            status = spectra_pk_at_k_and_z(&ba, &pm, &sp, thisk, z, &thisPk, &pk_ic);
-        else
-            status = spectra_pk_nl_at_k_and_z(&ba, &pm, &sp, thisk, z, &thisPk);
-        
-        if (status == _FAILURE_)
-            return _FAILURE_;
-            
-        Pk[i] = thisPk*pow3(h()); // put into units of (Mpc/h^3)
-    }
-    return _SUCCESS_;
+    return thisPk*pow3(h()); // put into units of (Mpc/h^3)
 }
 
 /*----------------------------------------------------------------------------*/
 
 // compute the k, linear Pk in units of h/Mpc, (Mpc/h)^3
-int ClassCosmology::GetPklin(double z, const parray& k, parray& Pk) {
+double ClassCosmology::GetPklin(double z, double k) {
     
     if (pt.has_pk_matter == _FALSE_)
-        return _FAILURE_;
-    return GetPk(z, k, Pk, Pk_linear);
+        error("Cannot compute linear power if matter P(k) not requested\n");
+    return GetPk(z, k, Pk_linear);
 }
 
 /*----------------------------------------------------------------------------*/
 
 // compute the k, nonlinear Pk in units of h/Mpc, (Mpc/h)^3
-int ClassCosmology::GetPknl(double z, const parray& k, parray& Pk) {
-    
-    if (nl.method == nl_none)
-       return _FAILURE_;
+double ClassCosmology::GetPknl(double z, double k) {
         
-    return GetPk(z, k, Pk, Pk_nonlinear);
+    if (nl.method == nl_none)
+        error("Cannot compute nonlinear P(k) if `non linear` parameter is not set to `halofit`\n");
+    return GetPk(z, k, Pk_nonlinear);
 }
 
 /*----------------------------------------------------------------------------*/
@@ -481,12 +481,13 @@ int ClassCosmology::GetTk(double z, const parray& k, parray& Tk) {
         
     // resize the output array
     Tk.resize(k.size());
-
-    // compute the linear Power spectrum
-    GetPklin(z, k, Tk);
     
     for (size_t i = 0; i < k.size(); i++) {
+
+        // compute the linear power spectrum
+        Tk[i] = GetPklin(z, k[i]);
     
+        // scale by the primodial power spectrum
         double pk_primordial_k;
         double thisk = k[i]*h();
         primordial_spectrum_at_k(&pm, index_md, linear, thisk, &pk_primordial_k);

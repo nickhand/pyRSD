@@ -32,6 +32,16 @@ CLASS_PATH = /your/path/to/class
 CLASS_LIB = $(CLASS_PATH)/build
 CLASS_INC = $(CLASS_PATH)/include
 
+# whether to compile the FrankenEmu
+# if True, need to have GSL installed
+COMPILE_FRANKENEMU = 0
+
+# GSL variables
+GSL_PATH = /opt/local/
+GSL_INC = $(GSL_PATH)/include
+FFTW_LIBDIR = $(GSL_PATH)/lib/
+FFTW_LIBS = -lgsl -lgslcblas
+
 # your tool for creating static libraries:
 AR_EXEC = ar 
 AR_FLAGS = rv

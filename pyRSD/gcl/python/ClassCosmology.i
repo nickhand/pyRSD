@@ -12,15 +12,13 @@ public:
     ClassCosmology(const std::string& param_file, const std::string& precision_file = "");
     ~ClassCosmology();
 
-
     void Initialize(const ClassParams& pars, const std::string& precision_file);
     int GetCls(const vector<unsigned>& lVec, parray& cltt, parray& clte, parray& clee, parray& clbb);
     int GetLensing(const vector<unsigned>& lVec, parray& clphiphi, parray& cltphi, parray& clephi);
-    int GetPklin(double z, const parray& k, parray& Pk);
-    int GetPknl(double z, const parray& k, parray& Pk);
+    double GetPklin(double z, double k);
+    double GetPknl(double z, double k);
     int GetTk(double z, const parray& k, parray& Tk);
     int l_max_scalars() const;
-    
     
     double H0() const;
     double h() const;

@@ -8,7 +8,7 @@
  creation date: 02/17/2014
 """
 from .. import pygcl, data_dir, os, numpy as np
-from . import integrals, dm_power_moments, tools
+from . import integrals, models, tools
 from . import INTERP_KMIN, INTERP_KMAX
  
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
@@ -704,7 +704,7 @@ class DMSpectrum(object):
         try:
             return self._P00_model
         except AttributeError:
-            self._P00_model = dm_power_moments.DarkMatterP00(self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
+            self._P00_model = models.DarkMatterP00(self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
             return self._P00_model
     
     #---------------------------------------------------------------------------
@@ -716,7 +716,7 @@ class DMSpectrum(object):
         try:
             return self._P01_model
         except AttributeError:
-            self._P01_model = dm_power_moments.DarkMatterP01(self.f, self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
+            self._P01_model = models.DarkMatterP01(self.f, self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
             return self._P01_model
     
     #---------------------------------------------------------------------------
@@ -728,7 +728,7 @@ class DMSpectrum(object):
         try:
             return self._P11_model
         except AttributeError:
-            self._P11_model = dm_power_moments.DarkMatterP11(self.power_lin_nw, self.z, self.sigma8, self.f)
+            self._P11_model = models.DarkMatterP11(self.power_lin_nw, self.z, self.sigma8, self.f)
             return self._P11_model
     
     #---------------------------------------------------------------------------
@@ -740,7 +740,7 @@ class DMSpectrum(object):
         try:
             return self._Pdv_model
         except AttributeError:
-            self._Pdv_model = dm_power_moments.DarkMatterPdv(self.power_lin_nw, self.z, self.sigma8, self.f)
+            self._Pdv_model = models.DarkMatterPdv(self.power_lin_nw, self.z, self.sigma8, self.f)
             return self._Pdv_model
             
     #---------------------------------------------------------------------------

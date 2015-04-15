@@ -49,6 +49,10 @@ public:
     double Da_z(double z) const;
     double D_z(double z) const;
     double Sigma8_z(double z) const;
+    
+    double Omega_m_z(double z) const;
+    double rho_bar_z(double z, bool cgs = false) const;
+    double rho_crit_z(double z, bool cgs = false) const;
 
     void PrintFC();
 

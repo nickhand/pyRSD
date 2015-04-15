@@ -106,6 +106,10 @@ public:
     // reionization redshift
     inline double z_reio() const { return th.z_reio; }
     
+    // critical density at z = 0 in units of h^2 M_sun / Mpc^3 if cgs = False, 
+    // or in units of h^2 g / cm^3
+    double rho_crit(bool cgs = false) const; 
+    
     /*------------------------------------------------------------------------*/
     /* background quantities as a function of z */
     /*------------------------------------------------------------------------*/
@@ -125,6 +129,20 @@ public:
     // may not be equal to the desired sigma8
     double Sigma8_z(double z) const;
 
+    // Omega0_m as a function of z
+    double Omega_m_z(double z) const;
+    
+    // mean matter density in units of h^2 M_sun / Mpc^3 if cgs = False, or
+    // in units of g / cm^3
+    double rho_bar_z(double z, bool cgs = false) const;
+    
+    // critical matter density in units of h^2 M_sun / Mpc^3 if cgs = False, or
+    // in units of g / cm^3
+    double rho_crit_z(double z, bool cgs = false) const;
+
+        
+    
+    /*------------------------------------------------------------------------*/
     // print content of file_content
     void PrintFC() const;
     

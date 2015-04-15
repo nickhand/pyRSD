@@ -532,4 +532,37 @@ double ClassCosmology::Sigma8_z(double z) const {
 }
 
 /*----------------------------------------------------------------------------*/
+double ClassCosmology::rho_crit(bool cgs) const {
+    
+    double H = 100. * (Constants::km / Constants::second / Constants::Mpc);
+    double rho_crit_cgs = 3*pow(H, 2)/(8*M_PI*Constants::G);
+    
+    if (cgs)
+        return rho_crit_cgs;
+    else
+        return rho_crit_cgs / (Constants::M_sun / pow(Constants::Mpc, 3));
+}
+
+/*----------------------------------------------------------------------------*/
+double ClassCosmology::rho_crit_z(double z, bool cgs) const {
+    
+    double Ez = H_z(z) / H0();
+    return rho_crit(cgs) * pow(Ez, 2);
+}
+
+
+/*----------------------------------------------------------------------------*/
+double ClassCosmology::Omega_m_z(double z) const {
+    
+    double Ez = H_z(z) / H0();
+    return Omega0_m() * pow(1.+z, 3) / pow(Ez, 2);
+}
+
+/*----------------------------------------------------------------------------*/
+double ClassCosmology::rho_bar_z(double z, bool cgs) const {
+    
+    return Omega_m_z(z) * rho_crit_z(z, cgs);
+}
+
+/*----------------------------------------------------------------------------*/
 

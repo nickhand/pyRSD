@@ -61,7 +61,13 @@ INCLUDES = -I../include	 -I$(CLASS_INC)
 LIBS = -L$(CLASS_LIB) 
     
 # make the libraries and includes to pass to python bindings
-PY_INCLUDES = "$(CLASS_INC):$(MDIR)/src:$(MDIR)/include:$(GSL_INC)"
+PY_INCLUDES0 = $(CLASS_INC) $(MDIR)/src $(MDIR)/include 
+ifdef GSL_INC
+    PY_INCLUDES0 += $(GSL_INC)
+endif
+SPACE :=
+SPACE+=
+PY_INCLUDES = $(subst $(SPACE),:,$(PY_INCLUDES0))
 PY_LIBS = -lgfortran -lgcl -lgomp
 
 # add emulator libraries
@@ -135,7 +141,7 @@ PY_LIBRARY = gcl
 #-------------------------------------------------------------------------------
 # Rules
 #-------------------------------------------------------------------------------
-.PHONY: all test $(PY_LIBRARY)
+.PHONY: check_env all test $(PY_LIBRARY)
 
 .SUFFIXES: .o .c .cpp .f 
     
@@ -151,7 +157,16 @@ PY_LIBRARY = gcl
 	@echo Compiling $<
 	cd $(WRKDIR); $(MCK_FC) $(MCK_FFLAGS) -c ../$< -o $*.o
 
-all: .base $(LIBRARY)
+all: .base check_env $(LIBRARY)
+    
+check_env:    
+    ifdef COMPILE_EMU
+        ifeq ($(COMPILE_EMU), 1) 
+            ifndef GSL_PATH
+                $(error GSL path must be specified to compile FrankenEmu)
+            endif
+        endif
+    endif
 
 $(LIBRARY): $(COBJS) $(FOBJS)
 	$(AR_EXEC) $(AR_FLAGS) $@  $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)

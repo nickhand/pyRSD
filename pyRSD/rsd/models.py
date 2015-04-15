@@ -1,6 +1,6 @@
 """
- dm_power_moments.py
- pyRSD: functions for computing dark matter power moments: P00, P01, P11
+ analytic.py
+ pyRSD: functions for computing analytic power moments
  
  author: Nick Hand
  contact: nhand@berkeley.edu
@@ -9,6 +9,7 @@
 from .. import pygcl, numpy as np, os
 from ..data import P11_mu4_z_0_000, P11_mu4_z_0_509, P11_mu4_z_0_989
 from ..data import Pdv_mu0_z_0_000, Pdv_mu0_z_0_509, Pdv_mu0_z_0_989
+from ..data import Phh_gp_fits
 from .tools import RSDSpline as spline
 from . import INTERP_KMIN, INTERP_KMAX
 
@@ -748,4 +749,104 @@ class DarkMatterPdv(InterpDarkMatterPowerMoment):
             self.interpolation_table[x] = spline(d[:,0], y, k=2)
             
     #---------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+class HaloP00(object):
+    """
+    Class to compute P00 for halos as a function of linear bias `b1` and 
+    redshift `z`
+    """
+    def __init__(self, P00_model):
+        """
+        Initialize with a `DarkMatterP00` object
+        """
+        # doesnt make a copy -- just a reference so that the redshift will 
+        # be updated
+        self.P00_model = P00_model
+        
+        # load the data
+        gps = Phh_gp_fits()
+        self.gp_stoch = gps['stoch']
+        self.gp_Phm = gps['Phm']
+        
+    #---------------------------------------------------------------------------
+    @property
+    def z(self):
+        """
+        The redshift, taken from the `P00_model`; 
+        """
+        return self.P00_model.z
+        
+    @z.setter
+    def z(self, val):
+        self.P00_model.z = z
+        
+    #---------------------------------------------------------------------------
+    def Pmm(self, k):
+        """
+        The dark matter density auto correlation as computed from 
+        `self.P00_model`
+        """
+        return self.P00_model.power(k)
+        
+    #---------------------------------------------------------------------------
+    def Phm(self, b1, k, return_error=False):
+        """
+        The halo-matter cross correlation at the bias specified by `self.b1`, 
+        as computed from the Gaussian Process fit
+        """
+        x = np.vstack((np.ones(len(k))*self.z, np.ones(len(k))*b1, k)).T
+        if return_error:
+            res, sig_sq = self.gp_Phm.predict(x, eval_MSE=True)
+        else:
+            res = self.gp_Phm.predict(x)
+        toret = b1*self.P00_model.zeldovich_power(k) + res
+        
+        if return_error:
+            return toret, sig_sq**0.5
+        else:
+            return toret
+        
+    #---------------------------------------------------------------------------
+    def stochasticity(self, b1, k, return_error=False):
+        """
+        The stochasticity as computed from simulations using a Gaussian Process
+        fit
+        """
+        x = np.vstack((np.ones(len(k))*self.z, np.ones(len(k))*b1, k)).T
+        if return_error:
+            lam, sig_sq = self.gp_stoch.predict(x, eval_MSE=True)
+        else:
+            lam = self.gp_stoch.predict(x)
+
+        if return_error:
+            return lam, sig_sq**0.5
+        else:
+            return lam
+    
+    #---------------------------------------------------------------------------
+    def power(self, b1, k, return_error=False):
+        """
+        Return the halo P00 power, optionally returning the error as computed
+        from the Gaussian Process fit
+        """        
+        Pmm = self.Pmm(k)
+        if return_error:
+            Phm, Phm_err = self.Phm(b1, k, return_error)
+            lam, lam_err = self.stochasticity(b1, k, return_error)
+            err = np.sqrt((2*b1*Phm_err)**2 + lam_err**2)
+        else:
+            Phm = self.Phm(b1, k, return_error)
+            lam = self.stochasticity(b1, k, return_error)
+        
+        toret = 2*b1*Phm - b1**2*Pmm + lam
+        if return_error:
+            return toret, err
+        else:
+            return toret
+        
+    #---------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+        
+        
     

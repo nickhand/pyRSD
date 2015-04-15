@@ -7,7 +7,7 @@
  contact: nhand@berkeley.edu
  creation date: 03/10/2014
 """
-from . import power_dm, tools
+from . import power_dm, tools, models
 from .. import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
@@ -18,7 +18,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
                    '_P02_ss', '_P12_ss', '_P22_ss', '_P03_ss', '_P13_ss', 
                    '_P04_ss']
                 
-    def __init__(self, sigma_from_sims=True, use_tidal_bias=True, **kwargs):
+    def __init__(self, sigma_from_sims=True, use_tidal_bias=True, 
+                    use_Phh_model=False, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -30,6 +31,9 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         self.sigma_from_sims = sigma_from_sims
         
         self.use_tidal_bias = use_tidal_bias
+        
+        # Phh from sim fits
+        self.use_Phh_model = use_Phh_model
         
     #end __init__
     
@@ -178,6 +182,34 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         lambda_b1bar = model(self.k, *args_b1bar)
         
         return 0.5*(self.b1/self.b1_bar*lambda_b1bar + self.b1_bar/self.b1*lambda_b1)
+    
+    #---------------------------------------------------------------------------
+    @property
+    def P00_ss_model(self):
+        """
+        The class holding the model for the P00 halo term
+        """
+        try:
+            return self._P00_ss_model
+        except AttributeError:
+            self._P00_ss_model = models.HaloP00(self.P00_model)
+            return self._P00_ss_model
+    
+    #---------------------------------------------------------------------------
+    @property
+    def use_Phh_model(self):
+        """
+        Whether to use simulation fits for P00_hh
+        """
+        return self._use_Phh_model
+
+    @use_Phh_model.setter
+    def use_Phh_model(self, val):
+
+        self._use_Phh_model = val
+        if hasattr(self, '_P00_ss'): del self._P00_ss
+        if hasattr(self, '_P00_ss_no_stoch'): del self._P00_ss_no_stoch
+            
     
     #---------------------------------------------------------------------------
     def _delete_sigma_depends(self, kind):
@@ -471,10 +503,19 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._P00_ss
         except:
-            # make sure stoch exists first
-            stoch = self.stochasticity
-            self._P00_ss = power_dm.PowerTerm()
-            self._P00_ss.total.mu0 = self.P00_ss_no_stoch.total.mu0 + stoch
+            
+            if self.use_Phh_model:
+                b1 = (self.b1*self.b1_bar)**0.5
+                Phh = self.P00_ss_model.power(b1, self.k)
+                
+                self._P00_ss = power_dm.PowerTerm()
+                self._P00_ss.total.mu0 = Phh
+            else:
+                
+                # make sure stoch exists first
+                stoch = self.stochasticity
+                self._P00_ss = power_dm.PowerTerm()
+                self._P00_ss.total.mu0 = self.P00_ss_no_stoch.total.mu0 + stoch
             return self._P00_ss
             
     #---------------------------------------------------------------------------
@@ -486,20 +527,30 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._P00_ss_no_stoch
         except:
-            # first make sure biases are available
-            b1, b1_bar = self.b1, self.b1_bar
-            b2_00, b2_00_bar = self.b2_00, self.b2_00_bar
-            bs, bs_bar = self.bs, self.bs_bar
             
-            # get the integral attributes
-            K00 = self.integrals.K00(self.k)
-            K00s = self.integrals.K00s(self.k)
+            if self.use_Phh_model:
+                b1 = (self.b1*self.b1_bar)**0.5
+                Phh = self.P00_ss_model.power(b1, self.k)
+                stoch = self.P00_ss_model.stochasticity(b1, self.k)
+                
+                self._P00_ss_no_stoch = power_dm.PowerTerm()
+                self._P00_ss_no_stoch.total.mu0 = Phh - stoch
+                
+            else:
+                # first make sure biases are available
+                b1, b1_bar = self.b1, self.b1_bar
+                b2_00, b2_00_bar = self.b2_00, self.b2_00_bar
+                bs, bs_bar = self.bs, self.bs_bar
             
-            self._P00_ss_no_stoch = power_dm.PowerTerm()
-            term1 = (b1*b1_bar) * self.P00.total.mu0
-            term2 = (b1*b2_00_bar + b1_bar*b2_00)*K00
-            term3 = (b1*bs_bar + b1_bar*bs)*K00s
-            self._P00_ss_no_stoch.total.mu0 = term1 + term2 + term3
+                # get the integral attributes
+                K00 = self.integrals.K00(self.k)
+                K00s = self.integrals.K00s(self.k)
+            
+                self._P00_ss_no_stoch = power_dm.PowerTerm()
+                term1 = (b1*b1_bar) * self.P00.total.mu0
+                term2 = (b1*b2_00_bar + b1_bar*b2_00)*K00
+                term3 = (b1*bs_bar + b1_bar*bs)*K00s
+                self._P00_ss_no_stoch.total.mu0 = term1 + term2 + term3
             
             return self._P00_ss_no_stoch
             

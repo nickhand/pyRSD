@@ -5,7 +5,6 @@ For more, see the detailed description of these simulations in Okumura et al. 20
 """
 from .. import data_dir, numpy as np, os as _os
 
-
 __all__ = ['load',
            'P00_mu0_z_0_000',
            'P00_mu0_z_0_509',
@@ -28,7 +27,8 @@ __all__ = ['load',
            'PsAsB_no_fog_z_0_509',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
-           'Pgg_quad_z_0_509']
+           'Pgg_quad_z_0_509', 
+           'Phh_gp_fits']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -294,3 +294,17 @@ def P11_mu4_z_0_989():
     return load("dark_matter/pkmu_P11_mu4_z_0.989.dat")
 
 #-------------------------------------------------------------------------------
+# SIMULATIONS
+#-------------------------------------------------------------------------------
+def Phh_gp_fits():
+    """
+    Return a dictionary with a sklearn.GaussianProcess object fit
+    to the resdiual of Phm and the stochasticity lambda as a function of 
+    bias and redshift
+    """
+    import cPickle    
+    fname = _os.path.join(data_dir, 'simulation_fits/Phh_gp_sim_fits.pickle')
+    return cPickle.load(open(fname, 'r'))
+    
+#-------------------------------------------------------------------------------
+    

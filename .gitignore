@@ -3,3 +3,4 @@ build/
 setup.config
 pyRSD/data/halo-matter
 pyRSD/data/halo
+pyRSD/data/simulation_fits/

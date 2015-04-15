@@ -1,10 +1,5 @@
-from ... import numpy as np
+import numpy as np
 import copy
-
-try:
-    import lmfit
-except:
-    raise ImportError("`lmfit` must be installed to use as a fitter")
 import logging
 
 logger = logging.getLogger('pyRSD.analysis.lmfit_results')

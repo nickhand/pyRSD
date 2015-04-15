@@ -223,16 +223,22 @@ class FittingDriver(object):
         """
         # get the mu/ell mappings
         mus, dmus, ells = [], [], []
+        self._pkmu_diff = False
         for i, meas in enumerate(self.data.measurements):
-            if meas.type == 'pkmu':
+            if meas.type == 'pkmu' or meas.type == 'pkmu_diff':
                 mus.append(meas.mu) 
-                if meas.dmu is not None: dmus.append(meas.dmu)      
+                if meas.dmu is not None: dmus.append(meas.dmu)   
+                if meas.type == 'pkmu_diff': self._pkmu_diff = True   
             elif meas.type == 'pole':
                 ells.append(meas.ell)
         inds = np.argsort(mus)
-        self._mus = [mus[i] for i in inds]
-        if len(dmus) == len(mus):
-            self._dmus = [dmus[i] for i in inds]
+        
+        if not self._pkmu_diff:
+            self._mus = [mus[i] for i in inds]
+            if len(dmus) == len(mus):
+                self._dmus = [dmus[i] for i in inds]
+        else:
+            self._mus = sorted(mus)
         self._ells = sorted(ells)
         
         # initialize
@@ -243,8 +249,13 @@ class FittingDriver(object):
         if len(self._mus) > 0:
             kwargs = {}
             if hasattr(self, '_dmus'): kwargs['dmu'] = self._dmus
-            self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus, **kwargs)
-            self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True, **kwargs)
+            
+            if not self._pkmu_diff:
+                self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus, **kwargs)
+                self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True, **kwargs)
+            else:
+                self._model_callables['pkmu_diff'] = self.theory.model_callable('pkmu_diff', self._mus, **kwargs)
+                self._model_callables_hires['pkmu_diff'] = self.theory.model_callable('pkmu_diff', self._mus, hires=True, **kwargs)
         
         # multipoles
         if len(self._ells) > 0:
@@ -269,8 +280,11 @@ class FittingDriver(object):
         `self.data.measurements`
         """
         # split the pkmu/pole results
-        if 'pkmu' in self._model_callables:
-            pkmu_results = np.split(self._model_callables['pkmu'](), len(self._mus))
+        if 'pkmu' in self._model_callables or 'pkmu_diff' in self._model_callables:
+            if not self._pkmu_diff:
+                pkmu_results = np.split(self._model_callables['pkmu'](), len(self._mus))
+            else:
+                pkmu_results = np.split(self._model_callables['pkmu_diff'](), len(self._mus))
         if 'pole' in self._model_callables:
             pole_results = np.split(self._model_callables['pole'](), len(self._ells))
             
@@ -417,20 +431,23 @@ class FittingDriver(object):
             callables = self._model_callables_hires
             
         # get the pkmu/pole values
-        if 'pkmu' in callables:
-            pkmu_results = np.split(callables['pkmu'](), len(self._mus))
+        if 'pkmu' in callables or 'pkmu_diff' in callables:
+            if not self._pkmu_diff:
+                pkmu_results = np.split(callables['pkmu'](), len(self._mus))
+            else:
+                pkmu_results = np.split(callables['pkmu_diff'](), len(self._mus))
         if 'pole' in callables:
             pole_results = np.split(callables['pole'](), len(self._ells))
 
         # get the model and data measurements
         toret = []
         for m in self.data.measurements:
-            if m.type == 'pkmu':
-                index = self._mus.index(m.mu)
-                model = pkmu_results[index]
-            else:
+            if m.type == 'pole':
                 index = self._ells.index(m.ell)
                 model = pole_results[index]
+            else:
+                index = self._mus.index(m.mu)
+                model = pkmu_results[index]
             
             toret.append((self.theory.model.k_obs, model, m.k, m.power, m.error))
             
@@ -485,7 +502,7 @@ class FittingDriver(object):
             
             m = self.data.measurements[i]
             kind = m.type
-            if kind == 'pkmu':
+            if kind == 'pkmu' or kind == 'pkmu_diff':
                 mus.append(m.mu)
                 pkmu_results.append(result)
             else:
@@ -517,7 +534,15 @@ class FittingDriver(object):
         Pnw_kaiser = lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * self.theory.model.normed_power_lin_nw(k)
 
         offset = -0.1
-        for i, mu in enumerate(mus):
+        for i in range(len(mus)):
+            
+            if self._pkmu_diff:
+                label = r"$\mu = %s \ - \ \mu = %s$" %(mus[0], mus[1])
+                mu = 0.5*(mus[0] + mus[1])
+            else:
+                mu = mus[i]
+                label=r"$\mu = %s$" %mu
+            
             # unpack the result
             k_model, model, k_data, data, errs = results[i]
             
@@ -527,7 +552,7 @@ class FittingDriver(object):
             
             # plot the measurement
             norm = Pnw_kaiser(k_data, mu)
-            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=r"$\mu = %s$" %mu)
+            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=label)
 
         ncol = 1 if len(mus) < 4 else 2
         ax.legend(loc=0, ncol=ncol)

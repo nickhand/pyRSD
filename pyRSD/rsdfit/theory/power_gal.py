@@ -331,6 +331,8 @@ class GalaxyPowerTheory(object):
             return functools.partial(self.model.Pgal, np.array(identifier, ndmin=1), flatten=True, **kwargs)
         elif power_type == 'pole':
             return functools.partial(self.model.Pgal_poles, np.array(identifier, ndmin=1), flatten=True, **kwargs)
+        elif power_type == 'pkmu_diff':
+            return functools.partial(self.model.Pgal_diff, identifier, flatten=True, **kwargs)
                 
         # if we get here, we messed up
         msg = "No power spectrum model for measurement of type".format(power_type, identifier)

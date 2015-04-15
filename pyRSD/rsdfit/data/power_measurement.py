@@ -1,6 +1,7 @@
 from ... import numpy as np
 from ..parameters import ParameterSet, tools
 from . import CovarianceMatrix, load_covariance
+from . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 
 import pickle
 import logging
@@ -66,9 +67,9 @@ class PowerMeasurement(object):
         else:
             self._error_input = None
             
-        if power_type not in ['pkmu', 'pole']:
-            logger.error("PowerMeasurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
-            raise ValueError("PowerMeasurement type must be either `pkmu` or `pole`")
+        if power_type not in ['pkmu', 'pkmu_diff', 'pole']:
+            logger.error("PowerMeasurement must be of type 'pkmu', 'pkmu_diff', or 'pole', not '{0}'".format(power_type))
+            raise ValueError("PowerMeasurement type must be either `pkmu`, `pkmu_diff`, or `pole`")
             
         self.type = power_type
         self._identifier = identifier
@@ -86,6 +87,8 @@ class PowerMeasurement(object):
         """
         if self.type == 'pkmu':
             return self.type + '_' + str(self.mu)
+        elif self.type == 'pkmu_diff':
+            return self.type + '_{}_{}'.format(*self.mu)
         else:
             if self.type == 'pole':
                 if self.ell == 0:
@@ -286,11 +289,16 @@ class PowerData(object):
         for stat_name in stats:
             
             # parse the name
-            power_type, value = stat_name.lower().split('_')
-            value = float(value)
-            if power_type not in ['pkmu', 'pole']:
-                logger.error("Measurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
-                raise ValueError("Measurement type must be either `pkmu` or `pole`")
+            if not 'pkmu_diff' in stat_name:
+                power_type, value = stat_name.lower().split('_')
+                value = float(value)
+            else:
+                power_type, mu_hi, mu_lo = stat_name.lower().rsplit('_', 2)
+                value = (float(mu_hi), float(mu_lo))
+            
+            if power_type not in ['pkmu', 'pole', 'pkmu_diff']:
+                logger.error("Measurement must be of type 'pkmu', 'pole', or 'pkmu_diff' not '{0}'".format(power_type))
+                raise ValueError("Measurement type must be either `pkmu`, `pkmu_diff`, or `pole`")
             
             # now make the PowerMeasurement object
             if stat_name not in self.params:
@@ -317,7 +325,14 @@ class PowerData(object):
         Note: at this point, no k bounds have been applied
         """
         loaded = False
-        index =  np.concatenate([d.k for d in self.measurements])
+        index_ks = []
+        index_mus = []
+        for d in self.measurements:
+            if d.type == 'pkmu_diff':
+                index_mus.append(0.5*(d.mu[0] + d.mu[1]))
+            elif d.type == 'pkmu':
+                index_mus.append(d.mu)
+            index_ks += list(d.k)
         
         # load the covariance from a pickle
         if self.params['covariance'].value is not None:
@@ -345,7 +360,7 @@ class PowerData(object):
                 
             errors = np.concatenate([d.error for d in self.measurements])
             variances = errors**2
-            self.covariance = CovarianceMatrix(variances, index=index)
+            self.covariance = PkmuCovarianceMatrix(variances, index_ks, index_mus, 'relative', 1.)
             logger.info('Initialized diagonal covariance matrix from error columns')
         
         # rescale the covariance matrix
@@ -360,7 +375,7 @@ class PowerData(object):
             
         # trim the covariance
         if self.k_max is not None or self.k_min is not None:
-            self.covariance = self.covariance.trim(lower=self.k_min, upper=self.k_max)
+            self.covariance = self.covariance.trim_k(lower=self.k_min, upper=self.k_max)
             logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.k_min, self.k_max))
 
         # trim the measurements

@@ -561,6 +561,27 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
+    def Pgal_diff(self, mu_pairs, flatten=False, hires=False):
+        """
+        The difference in P(k, mu)
+        
+        Parameters
+        ----------
+        mu_pairs : tuple, list of tuples
+            A tuple or list of tuples in the format (mu_hi - mu_lo), where
+            P(k, mu=mu_hi) - P(k, mu=mu_lo) will be returned
+        flatten : bool, optional    
+            If `True`, flatten the return array, which will have a length of 
+            `len(self.k_obs) * len(mu)`, or `len(self.k) * len(mu)` (the 
+            latter if `hires=True`). Default is `False`
+        hires : bool, optional
+            If `True`, return the values corresponding to `self.k`, otherwise
+            return those corresponding to `self.k`
+        """
+        mu_hi, mu_lo = map(list, zip(*list(mu_pairs)))
+        return self.Pgal(mu_hi, flatten=flatten, hires=hires) - self.Pgal(mu_lo, flatten=flatten, hires=hires)
+    
+    #---------------------------------------------------------------------------
     def Pgal_poles(self, poles, flatten=False, hires=False):
         """
         Return the multipole moments specified by `poles`, where `poles` is a

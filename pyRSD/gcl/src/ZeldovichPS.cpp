@@ -1,4 +1,5 @@
 #include "ZeldovichPS.h"
+#include "LinearPS.h"
 
 using namespace Common;
 
@@ -7,23 +8,33 @@ static const double RMIN = 1e-2;
 static const double RMAX = 1e5;
 static const int NMAX = 15;
 
-
-ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_) 
-    : P_L(P_L_), z(P_L.GetRedshift()), sigma8(P_L.GetCosmology().sigma8())
+/*----------------------------------------------------------------------------*/
+ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_) 
+    : C(C_), z(z_), sigma8(C_.sigma8())
 {    
+    // initialize the R array
     InitializeR();
 
+    // compute integrals at z = 0 first
+    LinearPS P_L(C_, 0.);
     sigma_sq = P_L.VelocityDispersion();    
     XX = P_L.X_Zel(r) + 2.*sigma_sq;
     YY = P_L.Y_Zel(r); 
+    
+    // then set z appropriately
+    if (z_ != 0.)
+        SetRedshift(z_);
 }
 
-ZeldovichPS::ZeldovichPS(const PowerSpectrum& P_L_, double z_, double sigma8_, double sigmasq,
-                         const parray& X, const parray& Y) 
-: P_L(P_L_), z(z_), sigma8(sigma8_), sigma_sq(sigmasq), XX(X), YY(Y)
+/*----------------------------------------------------------------------------*/
+ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_, double sigma8_, 
+                         double sigmasq, const parray& X, const parray& Y) 
+: C(C_), z(z_), sigma8(sigma8_), sigma_sq(sigmasq), XX(X), YY(Y)
 {
     InitializeR();     
 }
+
+/*----------------------------------------------------------------------------*/
 void ZeldovichPS::InitializeR() {
     
     r = parray(NUM_PTS);     
@@ -37,9 +48,10 @@ void ZeldovichPS::InitializeR() {
         r[i-1] = pow(10., (logrc+(i-nc)*dlogr));
 }
 
+/*----------------------------------------------------------------------------*/
 ZeldovichPS::~ZeldovichPS() {}
 
-
+/*----------------------------------------------------------------------------*/
 static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi, double *yi) {
     double d, d2;
     int i, j, k, l;
@@ -65,11 +77,11 @@ static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi
     }
 }
 
+/*----------------------------------------------------------------------------*/
 void ZeldovichPS::SetRedshift(double new_z) {
     
-    const Cosmology& cosmo = P_L.GetCosmology();
-    double old_Dz = cosmo.D_z(z);
-    double new_Dz = cosmo.D_z(new_z);
+    double old_Dz = C.D_z(z);
+    double new_Dz = C.D_z(new_z);
     double ratio = pow2(new_Dz / old_Dz);
     
     // integrals are proportional to the square of the ratio of growth factors
@@ -81,6 +93,7 @@ void ZeldovichPS::SetRedshift(double new_z) {
     z = new_z;
 }
 
+/*----------------------------------------------------------------------------*/
 parray ZeldovichPS::EvaluateMany(const parray& k) const {
     
     int n = (int)k.size();
@@ -91,6 +104,7 @@ parray ZeldovichPS::EvaluateMany(const parray& k) const {
     return pk;
 }
 
+/*----------------------------------------------------------------------------*/
 void ZeldovichPS::SetSigma8(double new_sigma8) {
      
     double ratio = pow2(new_sigma8 / sigma8);
@@ -103,6 +117,7 @@ void ZeldovichPS::SetSigma8(double new_sigma8) {
     sigma8 = new_sigma8;
 }
 
+/*----------------------------------------------------------------------------*/
 double ZeldovichPS::fftlog_compute(double k, double factor) const {
     
     double q = 0; // unbiased
@@ -148,6 +163,7 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
     return this_Pk;
 }
 
+/*----------------------------------------------------------------------------*/
 void ZeldovichPS::Fprim(parray&, const parray&, double) const {
     error("In ZeldovichPS::Fprim; something has gone horribly wrong\n");
 }
@@ -161,9 +177,10 @@ double ZeldovichPS::Evaluate(double k) const {
 }
 
 /*----------------------------------------------------------------------------*/
-ZeldovichP00::ZeldovichP00(const PowerSpectrum& P_L) : ZeldovichPS(P_L) {}
+ZeldovichP00::ZeldovichP00(const Cosmology& C, double z) : ZeldovichPS(C, z) {}
 
 ZeldovichP00::ZeldovichP00(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) {}
+
 
 double ZeldovichP00::Evaluate(double k) const {
     return fftlog_compute(k, 4*M_PI);
@@ -186,7 +203,7 @@ void ZeldovichP00::Fsec(parray& a, const parray& r, double k, double n) const {
 
 /*----------------------------------------------------------------------------*/
 
-ZeldovichP01::ZeldovichP01(const PowerSpectrum& P_L) : ZeldovichPS(P_L) {}
+ZeldovichP01::ZeldovichP01(const Cosmology& C, double z) : ZeldovichPS(C, z) {}
 
 ZeldovichP01::ZeldovichP01(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) {}
 

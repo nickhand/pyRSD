@@ -7,27 +7,117 @@ from scipy.optimize import brentq
 import warnings
 import functools
 
-import pandas as pd
-from sklearn.gaussian_process import GaussianProcess
-
 warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
 
 #-------------------------------------------------------------------------------
-class InterpolatedClass(object):
+class InterpolationTable(object):
     """
-    Class to handle interpolation lookup tables for a class
+    A class for handling interpolation tables
     """
-    def __init__(self, index):
+    def __init__(self, index_1, index_2, interpolated):
+        """
+        Parameters
+        ----------
+        index_1 : array_like
+            An array of values to be treated as the main index of the 
+            interpolation table, i.e., we'll interpolate over these values
+        index_2 : array_like
+            An array of values to be treated as the 2nd interpolation
+            dimension, i.e., this is usually the `k` (wavenumber) values
+        interpolated : bool
+            If `True`, make the interpolation value and return the value
+            when __call__() is called
+        """
+        self.index_1 = index_1
+        self.index_2 = index_2
+        self.interpolated = interpolated
         
-        self.index = index
-        
-    def make_table(self):
-        
-        self.table = np.empty(len(self.index), dtype=object)
-        for i in self.index:
-            self.update_index(i)
-            self.zeldovich_power_table[sigma8] = spline(K_SPLINE, P00(K_SPLINE))
-        
+    #---------------------------------------------------------------------------
+    @property
+    def last_index(self):
+        """
+        The value of the last index value computed
+        """
+        try:
+            return self._last_index
+        except:
+            return None
+            
+    @last_index.setter
+    def last_index(self, val):
+        self._last_index = val
+        del self.bisect_index
+    
+    #---------------------------------------------------------------------------
+    @property
+    def bisect_index(self):
+        """
+        The index returned by bisect for the last index value
+        """
+        try:
+            return self._bisect_index
+        except:
+            return None
+            
+    @bisect_index.setter
+    def bisect_index(self, val):
+        self._bisect_index = val
+    
+    @bisect_index.deleter
+    def bisect_index(self):
+        if hasattr(self, '_bisect_index'): del self._bisect_index
+               
+    #---------------------------------------------------------------------------
+    def make_interpolation_table(self):
+        """
+        Make the interpolation table
+        """
+        # make the table
+        self.table = np.empty(len(self.index_1), dtype=object)
+        for i, val in enumerate(self.index_1):
+            self.table[i] = RSDSpline(self.index_2, self.evaluate_table(self.index_2, val), k=2)
+
+    #---------------------------------------------------------------------------
+    @property
+    def interpolated(self):
+        """
+        If `True`, return results from the interpolation table
+        """
+        return self._interpolated
+
+    @interpolated.setter
+    def interpolated(self, val):
+        # don't do anything if we are setting the same value
+        if hasattr(self, '_interpolated') and self._interpolated == val:
+            return
+
+        self._interpolated = val
+        if self._interpolated:
+            self.make_interpolation_table()
+    
+    #---------------------------------------------------------------------------
+    def __call__(self, x, index_val):
+        """
+        Evaluate the function using the interpolation table and linear
+        interpolation between index values
+        """
+        if index_val == self.last_index:
+            ihi = self.bisect_index
+        else:
+            # throw an exception if out of bounds
+            if index_val < self.index_1[0] or index_val > self.index_1[-1]:
+                raise ValueError("Cannot use interpolation table -- value out of range")
+       
+            ihi = bisect.bisect(self.index_1, index_val)
+            self.last_index = index_val
+            self.bisect_index = ihi
+        ilo = ihi - 1
+   
+        val_lo = self.index_1[ilo]
+        val_hi = self.last_index
+        w = (index_val - val_lo) / (val_hi - val_lo) 
+        return (1-w)*self.table[ilo](x) + w*self.table[ihi](x)
+    #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 class RSDSpline(InterpolatedUnivariateSpline):
@@ -264,9 +354,11 @@ def sigma_from_bias(bias, z, linearPS):
 #-------------------------------------------------------------------------------  
 def unpacked(method):
     @functools.wraps(method)
-    def _decorator(*args):
-        result = method(*args)
+    def _decorator(*args, **kwargs):
+        result = method(*args, **kwargs)
         return result if len(result) != 1 else result[0]
     return _decorator
+
+#-------------------------------------------------------------------------------
     
     

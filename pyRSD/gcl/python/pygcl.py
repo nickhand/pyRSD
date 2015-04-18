@@ -160,46 +160,4 @@ class ZeldovichP01(gcl.ZeldovichP01, PickalableSWIG):
         gcl.ZeldovichP01.__init__(self, *args)
 
 #-------------------------------------------------------------------------------
-
-# HaloZeldovichP00
-class HaloZeldovichP00(gcl.HaloZeldovichP00, PickalableSWIG):
- 
-    def __init__(self, *args):
-        self.args = args
-        gcl.HaloZeldovichP00.__init__(self, *args)
-    
-    def __getstate__(self):
-        
-        # reconstruct a pygcl.ZeldovichP01 object
-        Pzel = self.GetZeldovichPower()
-        args = (Pzel.GetCosmology(),)
-        args += (Pzel.GetRedshift(), Pzel.GetSigma8(), Pzel.GetSigmaSq(), Pzel.GetXZel(), Pzel.GetYZel())
-        
-        # now collect the arguments
-        args = tuple([ZeldovichP00(ZeldovichPS(*args))] + list(self.args)[1:])
-        args += (self.GetInterpolated(),)
-        return {'args': args}
-        
-#-------------------------------------------------------------------------------
-
-# HaloZeldovichP01
-class HaloZeldovichP01(gcl.HaloZeldovichP01, PickalableSWIG):
- 
-    def __init__(self, *args):
-        self.args = args
-        gcl.HaloZeldovichP01.__init__(self, *args)
-    
-    def __getstate__(self):
-        
-        # reconstruct a pygcl.ZeldovichP01 object
-        Pzel = self.GetZeldovichPower()
-        args = (Pzel.GetCosmology(),)
-        args += (Pzel.GetRedshift(), Pzel.GetSigma8(), Pzel.GetSigmaSq(), Pzel.GetXZel(), Pzel.GetYZel())
-        
-        # now collect the arguments
-        args = tuple([ZeldovichP01(ZeldovichPS(*args))] + list(self.args)[1:])
-        args += (self.GetInterpolated(),)
-        return {'args': args}
-
-#-------------------------------------------------------------------------------
         

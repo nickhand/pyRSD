@@ -28,7 +28,8 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'Phh_gp_fits']
+           'stochasticity_gp_model',
+           'Phm_residual_gp_model']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -296,15 +297,24 @@ def P11_mu4_z_0_989():
 #-------------------------------------------------------------------------------
 # SIMULATIONS
 #-------------------------------------------------------------------------------
-def Phh_gp_fits():
+def stochasticity_gp_model():
     """
-    Return a dictionary with a sklearn.GaussianProcess object fit
-    to the resdiual of Phm and the stochasticity lambda as a function of 
-    bias and redshift
+    Return a `sklearn.GaussianProcess` object fit to the stochasticity, Lambda, 
+    as a function of bias, redshift, and wavenumber
     """
     import cPickle    
-    fname = _os.path.join(data_dir, 'simulation_fits/Phh_gp_sim_fits.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_sim_fits.pickle')
     return cPickle.load(open(fname, 'r'))
     
+#-------------------------------------------------------------------------------
+def Phm_residual_gp_model():
+    """
+    Return a `sklearn.GaussianProcess` object fit to the residual of Phm,
+    as a function of bias, redshift, and wavenumber
+    """
+    import cPickle    
+    fname = _os.path.join(data_dir, 'simulation_fits/Phm_resdiual_gp_sim_fits.pickle')
+    return cPickle.load(open(fname, 'r'))
+
 #-------------------------------------------------------------------------------
     

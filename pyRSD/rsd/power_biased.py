@@ -7,20 +7,22 @@
  contact: nhand@berkeley.edu
  creation date: 03/10/2014
 """
-from . import power_dm, tools, models
+from . import power_dm, tools, simulation
 from .. import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 class BiasedSpectrum(power_dm.DMSpectrum):
     
+    allowable_models = power_dm.DMSpectrum.allowable_models + ['Phh']
     allowable_kwargs = power_dm.DMSpectrum.allowable_kwargs + \
-                       ['sigma_from_sims', 'use_tidal_bias', 'use_Phh_model']
+                       ['sigma_from_sims', 'use_tidal_bias']
+    allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
+    
     _power_atts = ['_P00_ss', '_P00_ss_no_stoch', '_P01_ss', '_P11_ss', 
                    '_P02_ss', '_P12_ss', '_P22_ss', '_P03_ss', '_P13_ss', 
                    '_P04_ss']
                 
-    def __init__(self, sigma_from_sims=True, use_tidal_bias=True, 
-                    use_Phh_model=False, **kwargs):
+    def __init__(self, sigma_from_sims=True, use_tidal_bias=True, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -28,16 +30,10 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         # don't violate galilean invariance.
         self._include_2loop = False
         
-        # whether to use sigma_v from simulations
+        # whether to use sigma_v from simulations and tidal bias
         self.sigma_from_sims = sigma_from_sims
-        
         self.use_tidal_bias = use_tidal_bias
         
-        # Phh from sim fits
-        self.use_Phh_model = use_Phh_model
-        
-    #end __init__
-    
     #---------------------------------------------------------------------------
     def _delete_power(self):
         """
@@ -48,9 +44,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             if hasattr(self, a): delattr(self, a)
             
         self._delete_splines()
-        
-    #end _delete_power    
-    
+          
     #---------------------------------------------------------------------------
     # SET ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -105,21 +99,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         if hasattr(self, '_P00_ss'): del self._P00_ss
         if hasattr(self, '_stochasticity'): del self._stochasticity
         if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
-    
-    #---------------------------------------------------------------------------
-    @property
-    def default_stoch_args(self):
-        """
-        The default stochasticity parameters (constant and slope), which are
-        computed using simulation results to interpolate lambda as a 
-        function of bias and redshift
-        """
-        try:
-            return self._default_stoch_args
-        except:
-            self._default_stoch_args = tools.LambdaStochasticityFits()
-            return self._default_stoch_args
-        
+            
     #---------------------------------------------------------------------------
     @property
     def stochasticity(self):
@@ -172,29 +152,27 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         """
         The default stochasticity for b1, b1_bar at redshift z
         """
-        model = lambda k, *args: args[0] + args[1]*np.log(k)
-        
-        # lambda at b1, z
-        args_b1 = self.default_stoch_args(self.b1, self.z)
-        lambda_b1 = model(self.k, *args_b1)
-        
-        # lambda at b1_bar, z
-        args_b1bar = self.default_stoch_args(self.b1_bar, self.z)
-        lambda_b1bar = model(self.k, *args_b1bar)
-        
-        return 0.5*(self.b1/self.b1_bar*lambda_b1bar + self.b1_bar/self.b1*lambda_b1)
+        try:
+            b1 = (self.b1*self.b1_bar)**0.5
+            if self.z != self._default_stochasticity.z:
+                self._default_stochasticity.z = self.z
+            return self._default_stochasticity(self.k, b1)
+        except AttributeError:
+            self._default_stochasticity = simulation.StochasticityGPModel(self.z, self.interpolate)
+            b1 = (self.b1*self.b1_bar)**0.5
+            return self._default_stochasticity(self.k, b1)
     
     #---------------------------------------------------------------------------
     @property
-    def P00_ss_model(self):
+    def Phh_model(self):
         """
-        The class holding the model for the P00 halo term
+        The class holding the model for the P00 halo-halo term
         """
         try:
-            return self._P00_ss_model
+            return self._Phh_model
         except AttributeError:
-            self._P00_ss_model = models.HaloP00(self.P00_model)
-            return self._P00_ss_model
+            self._Phh_model = simulation.HaloP00(self.P00_model, self.interpolate)
+            return self._Phh_model
     
     #---------------------------------------------------------------------------
     @property
@@ -210,6 +188,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         self._use_Phh_model = val
         if hasattr(self, '_P00_ss'): del self._P00_ss
         if hasattr(self, '_P00_ss_no_stoch'): del self._P00_ss_no_stoch
+        if hasattr(self, '_P_mu0_spline'): del self._P_mu0_spline
             
     
     #---------------------------------------------------------------------------
@@ -239,7 +218,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._sigmav_fitter
         except:
-            self._sigmav_fitter = tools.SigmavFits()
+            self._sigmav_fitter = simulation.SigmavFits()
             return self._sigmav_fitter
             
     #---------------------------------------------------------------------------
@@ -352,7 +331,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._nonlinear_bias_fitter
         except:
-            self._nonlinear_bias_fitter = tools.NonlinearBiasFits()
+            self._nonlinear_bias_fitter = simulation.NonlinearBiasFits()
             return self._nonlinear_bias_fitter
     
     #---------------------------------------------------------------------------
@@ -364,7 +343,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_00
         except:
-            return self.nonlinear_bias_fitter(self.b1, self.z)[0]
+            return self.nonlinear_bias_fitter(self.b1, self.z, col='b2_00')
             
     @b2_00.setter
     def b2_00(self, val):
@@ -385,7 +364,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_01
         except:
-            return self.nonlinear_bias_fitter(self.b1, self.z)[1]
+            return self.nonlinear_bias_fitter(self.b1, self.z, col='b2_01')
                 
     @b2_01.setter
     def b2_01(self, val):
@@ -446,7 +425,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_00_bar
         except:
-            return self.nonlinear_bias_fitter(self.b1_bar, self.z)[0]
+            return self.nonlinear_bias_fitter(self.b1_bar, self.z, col='b2_00')
             
     @b2_00_bar.setter
     def b2_00_bar(self, val):
@@ -468,7 +447,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
         try:
             return self._b2_01_bar
         except:
-            return self.nonlinear_bias_fitter(self.b1_bar, self.z)[1]
+            return self.nonlinear_bias_fitter(self.b1_bar, self.z, col='b2_01')
             
     @b2_01_bar.setter
     def b2_01_bar(self, val):
@@ -507,7 +486,7 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
             if self.use_Phh_model:
                 b1 = (self.b1*self.b1_bar)**0.5
-                Phh = self.P00_ss_model.power(b1, self.k)
+                Phh = self.Phh_model(self.k, b1)
                 
                 self._P00_ss = power_dm.PowerTerm()
                 self._P00_ss.total.mu0 = Phh
@@ -531,8 +510,8 @@ class BiasedSpectrum(power_dm.DMSpectrum):
             
             if self.use_Phh_model:
                 b1 = (self.b1*self.b1_bar)**0.5
-                Phh = self.P00_ss_model.power(b1, self.k)
-                stoch = self.P00_ss_model.stochasticity(b1, self.k)
+                Phh = self.Phh_model(self.k, b1)
+                stoch = self.Phh_model.stochasticity(self.k, b1)
                 
                 self._P00_ss_no_stoch = power_dm.PowerTerm()
                 self._P00_ss_no_stoch.total.mu0 = Phh - stoch

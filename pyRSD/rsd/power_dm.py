@@ -8,7 +8,7 @@
  creation date: 02/17/2014
 """
 from .. import pygcl, data_dir, os, numpy as np
-from . import integrals, models, tools
+from . import integrals, simulation, tools
 from . import INTERP_KMIN, INTERP_KMAX
  
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
@@ -17,7 +17,10 @@ from scipy.integrate import quad
 #-------------------------------------------------------------------------------
 class DMSpectrum(object):
     
-    allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', 'max_mu', 'DM_model']
+    allowable_models = ['P00', 'P01', 'P11', 'Pdv']
+    allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', \
+                        'max_mu', 'interpolate']
+    allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     _power_atts = ['_P00', '_P01', '_P11', '_P02', '_P12', '_P22', '_P03', '_P13', '_P04']
     
     def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),
@@ -25,8 +28,9 @@ class DMSpectrum(object):
                        cosmo="planck1_WP.ini",
                        include_2loop=False,
                        transfer_fit="CLASS",
-                       max_mu=4, 
-                       DM_model='A'):
+                       max_mu=4,
+                       interpolate=True,
+                       **kwargs):
         """
         Parameters
         ----------
@@ -53,9 +57,12 @@ class DMSpectrum(object):
         max_mu : {0, 2, 4, 6, 8}, optional
             Only compute angular terms up to mu**(``max_mu``). Default is 4.
         
-        DM_model : {`A`, `B`, None}, optional
-            Use the specified dark matter model for P00, P01 terms
+        interpolate: bool, optional
+            Whether to return interpolated results for underlying power moments
         """
+        # whether to interpolate the results
+        self.interpolate = interpolate
+        
         # determine the type of transfer fit
         self.transfer_fit = transfer_fit
         
@@ -78,10 +85,12 @@ class DMSpectrum(object):
         # set sigma8 to its initial value for this cosmology
         self.sigma8 = self.cosmo.sigma8()
 
-        # set the DM model term
-        self.DM_model = DM_model
-        
-    #end __init__
+        # set the models we want to use
+        # default is to use all models
+        for model in self.allowable_models:
+            name = 'use_%s_model' %model
+            val = kwargs.get(name, True)
+            setattr(self, name, val)
     
     #---------------------------------------------------------------------------
     # UTILITY FUNCTIONS
@@ -95,16 +104,14 @@ class DMSpectrum(object):
             return (k_obs/self.alpha_perp)*(1 + mu_obs**2*(1./F**2 - 1))**(0.5)
         else:
             return k_obs/self.alpha_perp
-    #end k_true
-    
+                
     #---------------------------------------------------------------------------
     def mu_true(self, mu_obs):
         """
         Return the `true` mu values, given an observed mu
         """
         F = self.alpha_par / self.alpha_perp
-        return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)        
-    #end mu_true
+        return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)
     
     #-------------------------------------------------------------------------------
     def update(self, **kwargs):
@@ -119,7 +126,6 @@ class DMSpectrum(object):
                 setattr(self, k, v)
             except:
                 pass
-    #end update
         
     #---------------------------------------------------------------------------
     def _delete_power(self):
@@ -131,7 +137,6 @@ class DMSpectrum(object):
             if hasattr(self, a): delattr(self, a)
             
         self._delete_splines()
-    #end _delete_power
     
     #---------------------------------------------------------------------------
     def _delete_splines(self):
@@ -141,7 +146,7 @@ class DMSpectrum(object):
         # also delete the P_mu* splines
         for a in ['_P_mu0_spline', '_P_mu2_spline', '_P_mu4_spline', '_P_mu6_spline']:
             if hasattr(self, a): delattr(self, a)
-            
+                    
     #---------------------------------------------------------------------------
     # INPUT ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -214,29 +219,6 @@ class DMSpectrum(object):
         
     #---------------------------------------------------------------------------
     @property
-    def DM_model(self):
-        """
-        The type of dark matter model to use for P00/P01
-        """
-        return self._DM_model
-        
-    @DM_model.setter
-    def DM_model(self, val):
-                
-        # check input value
-        if val is not None and val not in ['A', 'B']:
-            raise ValueError("`DM_model` must be `None` or one of ['A', 'B']")
-        
-        self._DM_model = val
-        if hasattr(self, '_P00_model'): self.P00_model.model_type = val
-        if hasattr(self, '_P01_model'): self.P01_model.model_type = val
-        
-        # delete old power attributes
-        if hasattr(self, '_P00'): delattr(self, '_P00')
-        if hasattr(self, '_P01'): delattr(self, '_P01')
-        
-    #---------------------------------------------------------------------------
-    @property
     def transfer_fit(self):
         """
         The transfer function fitting method
@@ -255,7 +237,8 @@ class DMSpectrum(object):
         else:
             self._transfer_fit = 'FromFile'
             self.transfer_file = val
-        
+    
+    #---------------------------------------------------------------------------
     @property
     def transfer_file(self):
         """
@@ -696,6 +679,72 @@ class DMSpectrum(object):
             return self._integrals
     
     #---------------------------------------------------------------------------
+    # MODELS TO USE
+    #---------------------------------------------------------------------------
+    @property
+    def use_P00_model(self):
+        """
+        Whether to use Halo Zeldovich model for P00
+        """
+        return self._use_P00_model
+
+    @use_P00_model.setter
+    def use_P00_model(self, val):
+        if hasattr(self, '_use_P00_model') and self._use_P00_model == val:
+            return
+            
+        self._use_P00_model = val
+        self._delete_power() # just to be safe
+        
+    #---------------------------------------------------------------------------
+    @property
+    def use_P01_model(self):
+        """
+        Whether to use Halo Zeldovich model for P01
+        """
+        return self._use_P01_model
+
+    @use_P01_model.setter
+    def use_P01_model(self, val):
+        if hasattr(self, '_use_P01_model') and self._use_P01_model == val:
+            return
+            
+        self._use_P01_model = val
+        self._delete_power() # just to be safe
+        
+    #---------------------------------------------------------------------------
+    @property
+    def use_Pdv_model(self):
+        """
+        Whether to use interpolated sim results for Pdv
+        """
+        return self._use_P01_model
+
+    @use_Pdv_model.setter
+    def use_Pdv_model(self, val):
+        if hasattr(self, '_use_Pdv_model') and self._use_Pdv_model == val:
+            return
+            
+        self._use_Pdv_model = val
+        self._delete_power() # just to be safe
+        
+    #---------------------------------------------------------------------------
+    @property
+    def use_P11_model(self):
+        """
+        Whether to use interpolated sim results for P11
+        """
+        return self._use_P11_model
+
+    @use_P11_model.setter
+    def use_P11_model(self, val):
+        if hasattr(self, '_use_P11_model') and self._use_P11_model == val:
+            return
+            
+        self._use_P11_model = val
+        self._delete_power() # just to be safe
+        
+    #---------------------------------------------------------------------------
     @property
     def P00_model(self):
         """
@@ -704,7 +753,7 @@ class DMSpectrum(object):
         try:
             return self._P00_model
         except AttributeError:
-            self._P00_model = models.DarkMatterP00(self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
+            self._P00_model = simulation.HaloZeldovichP00(self.cosmo, self.z, self.sigma8, self.interpolate)
             return self._P00_model
     
     #---------------------------------------------------------------------------
@@ -716,7 +765,7 @@ class DMSpectrum(object):
         try:
             return self._P01_model
         except AttributeError:
-            self._P01_model = models.DarkMatterP01(self.f, self.power_lin, self.z, self.sigma8, model_type=self.DM_model)
+            self._P01_model = simulation.HaloZeldovichP01(self.cosmo, self.z, self.sigma8, self.f, self.interpolate)
             return self._P01_model
     
     #---------------------------------------------------------------------------
@@ -728,7 +777,7 @@ class DMSpectrum(object):
         try:
             return self._P11_model
         except AttributeError:
-            self._P11_model = models.DarkMatterP11(self.power_lin_nw, self.z, self.sigma8, self.f)
+            self._P11_model = simulation.DarkMatterP11(self.power_lin_nw, self.z, self.sigma8, self.f)
             return self._P11_model
     
     #---------------------------------------------------------------------------
@@ -740,7 +789,7 @@ class DMSpectrum(object):
         try:
             return self._Pdv_model
         except AttributeError:
-            self._Pdv_model = models.DarkMatterPdv(self.power_lin_nw, self.z, self.sigma8, self.f)
+            self._Pdv_model = simulation.DarkMatterPdv(self.power_lin_nw, self.z, self.sigma8, self.f)
             return self._Pdv_model
             
     #---------------------------------------------------------------------------
@@ -824,8 +873,8 @@ class DMSpectrum(object):
             return self._Pdv_loaded(self.k)
         else:
             # use the DM model
-            if self.DM_model is not None:
-                return self.Pdv_model.power(self.k)
+            if self.use_Pdv_model:
+                return self.Pdv_model(self.k)
             else:
                 norm = self._power_norm*self.D**2
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self.integrals.Pdv(self.k))
@@ -857,8 +906,8 @@ class DMSpectrum(object):
             else:
                 
                 # use the DM model
-                if self.DM_model is not None:
-                    self._P00.total.mu0 = self.P00_model.power(self.k)
+                if self.use_P00_model:
+                    self._P00.total.mu0 = self.P00_model(self.k)
                 # use pure PT
                 else:
                     # the necessary integrals 
@@ -890,8 +939,8 @@ class DMSpectrum(object):
             else:
                 
                 # use the DM model
-                if self.DM_model is not None:
-                    self._P01.total.mu2 = self.P01_model.power(self.k)
+                if self.use_P01_model:
+                    self._P01.total.mu2 = self.P01_model(self.k)
                 # use pure PT
                 else:                
                     # the necessary integrals 
@@ -947,8 +996,8 @@ class DMSpectrum(object):
                     else:
                         
                         # use the DM model
-                        if self.DM_model is not None:
-                            self._P11.total.mu4 = self.P11_model.power(self.k)
+                        if self.use_P11_model:
+                            self._P11.total.mu4 = self.P11_model(self.k)
                         else:
                             # compute the scalar mu^4 contribution
                             if self.include_2loop:

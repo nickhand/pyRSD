@@ -17,13 +17,12 @@ ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_)
 
     // compute integrals at z = 0 first
     LinearPS P_L(C_, 0.);
-    sigma_sq = P_L.VelocityDispersion();    
-    XX = P_L.X_Zel(r) + 2.*sigma_sq;
-    YY = P_L.Y_Zel(r); 
+    double Dsq(pow2(C.D_z(z_)));
     
-    // then set z appropriately
-    if (z_ != 0.)
-        SetRedshift(z_);
+    // the integrals we need
+    sigma_sq = Dsq*P_L.VelocityDispersion();    
+    XX = Dsq*P_L.X_Zel(r) + 2.*sigma_sq;
+    YY = Dsq*P_L.Y_Zel(r); 
 }
 
 /*----------------------------------------------------------------------------*/

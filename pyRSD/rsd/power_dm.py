@@ -765,8 +765,7 @@ class DMSpectrum(object):
         try:
             return self._P01_model
         except AttributeError:
-            self._P01_model = simulation.DarkMatterP01(self.power_lin_nw, self.z, self.sigma8, self.f)
-            #simulation.HaloZeldovichP01(self.cosmo, self.z, self.sigma8, self.f, self.interpolate)
+            self._P01_model = simulation.HaloZeldovichP01(self.cosmo, self.z, self.sigma8, self.f, self.interpolate)
             return self._P01_model
     
     #---------------------------------------------------------------------------
@@ -1361,8 +1360,6 @@ class DMSpectrum(object):
             raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
             
         return np.nan_to_num(vol_scaling*P_out)
-        
-    #end _power_one_mu
     
     #---------------------------------------------------------------------------
     def power(self, mu, flatten=False):

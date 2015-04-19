@@ -114,7 +114,7 @@ class InterpolationTable(object):
         ilo = ihi - 1
    
         val_lo = self.index_1[ilo]
-        val_hi = self.last_index
+        val_hi = self.index_1[ihi]
         w = (index_val - val_lo) / (val_hi - val_lo) 
         return (1-w)*self.table[ilo](x) + w*self.table[ihi](x)
     #---------------------------------------------------------------------------

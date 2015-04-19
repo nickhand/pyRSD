@@ -14,7 +14,7 @@ class InterpolationTable(object):
     """
     A class for handling interpolation tables
     """
-    def __init__(self, index_1, index_2, interpolated):
+    def __init__(self, index_1, index_2, interpolated, extrap=False, **spline_kwargs):
         """
         Parameters
         ----------
@@ -28,6 +28,7 @@ class InterpolationTable(object):
             If `True`, make the interpolation value and return the value
             when __call__() is called
         """
+        # table attributes
         self.index_1 = index_1
         self.index_2 = index_2
         self.interpolated = interpolated
@@ -122,9 +123,27 @@ class InterpolationTable(object):
 #-------------------------------------------------------------------------------
 class RSDSpline(InterpolatedUnivariateSpline):
     """
-    Class to implement a spline that remembers the x-domain
+    Class to implement an `InterpolatedUnivariateSpline` that remembers 
+    the x-domain
     """
     def __init__(self, *args, **kwargs):
+        """
+        Parameters
+        ----------
+        x : (N,) array_like
+            Input dimension of domain points -- must be increasing
+        y : (N,) array_like
+            input dimension of data points
+        bounds_error : bool, optional
+            If `True`, raise an exception if the desired input domain value
+            is out of the input range. Default is `False`
+        fill_value : float, optional
+            The fill value to use for any values that are out of bounds 
+            on the input domain. Default is `0`
+        extrap : bool, optional
+            If desired domain value is out of bounds, do a linear extrapolation.
+            Default is `False`
+        """
         
         # default kwargs
         self.bounds_error = kwargs.pop('bounds_error', False)
@@ -158,10 +177,10 @@ class RSDSpline(InterpolatedUnivariateSpline):
         # !! Could provide more information about which values are out of bounds
         if self.bounds_error and below_bounds.any():
             raise ValueError("A value in x_new is below the interpolation "
-                "range.")
+                                "range.")
         if self.bounds_error and above_bounds.any():
             raise ValueError("A value in x_new is above the interpolation "
-                "range.")
+                                "range.")
 
         out_of_bounds = np.logical_or(below_bounds, above_bounds)
         return out_of_bounds

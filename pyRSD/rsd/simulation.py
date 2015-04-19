@@ -7,279 +7,6 @@ import itertools
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
 
-class SimInterpolator(object):
-    """
-    Class to interpolate simulation data as a function of bias and redshift
-    """
-    
-    def __init__(self, return_nan=False, corr_model="linear", spline_kwargs={}, 
-                columns=(), use_ratio=False):
-        
-        # store the sim specific variables
-        self.columns = columns
-        self.use_ratio = use_ratio
-        
-        # whether to return NaNs outside bounds, rather than raising exception
-        self.return_nan = return_nan
-        
-        # GP correlation model, if None, use RSDSplines
-        self.corr_model = corr_model
-        self.spline_kwargs = spline_kwargs
-        
-        # setup sim data
-        self._setup_sim_results()
-        
-        # setup the interpolator
-        self._setup_interpolator()
-         
-    #--------------------------------------------------------------------------- 
-    def _check_z_bounds(self, z):   
-        """
-        Check the redshift bounds
-        """
-        assert np.isscalar(z), 'Redshift input must be scalar'
-        
-        # check redshift value
-        if z > self.zmax: 
-            if self.return_nan: 
-                return (np.nan,)*len(self.columns)
-            else:
-                raise ValueError("Cannot perform interpolation for z > %s" %self.zmax)
-
-        if z < self.zmin: 
-            if self.return_nan: 
-                return (np.nan,)*len(self.columns)
-            else:
-                raise ValueError("Cannot perform interpolation for z < %s" %self.zmin)
-                
-    #---------------------------------------------------------------------------
-    def _setup_sim_results(self):
-        """
-        Construct the pandas DataFrame holding the data from sims
-        """
-        keys = []
-        data = []
-        for z, params in self.sim_results:
-            for bias in sorted(params.keys()):
-                keys.append((z, float(bias)))
-                data.append(params[bias])
-
-        index = pd.MultiIndex.from_tuples(keys, names=['z', 'b1'])
-        self.data = pd.DataFrame(data, index=index, columns=self.columns)
-        
-        # save the redshift info too
-        self.redshifts = np.array(self.data.index.levels[0])
-        self.zmax = np.amax(self.redshifts)
-        self.zmin = np.amin(self.redshifts)
-        
-    #---------------------------------------------------------------------------
-    def _setup_interpolator(self):
-        """
-        Setup the backend interpolator, either a Gaussian Process or RSDSpline
-        """
-        if self.corr_model is not None:
-            self._setup_gps()
-        else:
-            self._setup_splines()
-        
-    #---------------------------------------------------------------------------
-    def _setup_gps(self):
-        """
-        Setup the Gaussian Processes as a function of bias at each redshift
-        """
-        self.gps = {}
-        gp_kwargs = {'corr':self.corr_model, 'theta0':1e-2, 'thetaL':1e-4, 
-                     'thetaU':0.1, 'random_start':100}
-
-        # loop over each redshift
-        for z in self.redshifts:
-
-            self.gps[z] = {}
-            frame = self.data.xs(z)
-            biases = np.array(frame.index)
-            x = np.atleast_2d(biases).T
-            
-            # initialize a Gaussian Process for each fitting column
-            for col in self.columns:
-                gp = GaussianProcess(**gp_kwargs)
-                sim_data = frame[col]
-                if self.use_ratio:
-                    sim_data /= biases
-                y = np.atleast_2d(sim_data).T
-                gp.fit(x, y)
-                self.gps[z][col] = gp
-
-    #---------------------------------------------------------------------------
-    def _setup_splines(self):
-        """
-        Setup the RSDSplines as a function of bias at each redshift
-        """
-        self.splines = {}
-        
-        # loop over each redshift
-        for z in self.redshifts:
-
-            self.splines[z] = {}
-            frame = self.data.xs(z)
-            biases = np.array(frame.index)
-            
-            # setup the spline
-            for col in self.columns:
-                sim_data = frame[col]
-                if self.use_ratio:
-                    sim_data /= biases
-                self.splines[z][col] = tools.RSDSpline(biases, np.array(sim_data), **self.spline_kwargs)
-        
-    #---------------------------------------------------------------------------
-    def _check_scalar(self, val):
-        """
-        Check if the value is a scalar and return it if True
-        """
-        try:
-            if len(val) == 1:
-                return val[0]
-            else:
-                return val
-        except:
-            return val
-    
-    #---------------------------------------------------------------------------
-    def _check_tuple_length(self, val):
-        """
-        Check for a return tuple length of one
-        """
-        try:
-            if len(val) == 1:
-                return val[0]
-            else:
-                return val
-        except:
-            return val
-    #---------------------------------------------------------------------------
-    def __call__(self, bias, z, col=None):
-        """
-        Evaluate at specified bias and redshift
-        """
-        if col is None:
-            columns = self.columns
-        else:
-            columns = [col]
-            
-        self._check_z_bounds(z)
-        
-        # determine the z indices
-        redshifts = []
-        if z in self.redshifts:
-            redshifts.append(z)
-        else:
-
-            index_zhi = bisect.bisect(self.redshifts, z)
-            index_zlo = index_zhi - 1
-            zhi = self.redshifts[index_zhi]
-            zlo = self.redshifts[index_zlo]
-            redshifts.append(zlo)
-            redshifts.append(zhi)
-        
-        params = []
-        for zi in redshifts:
-            values = ()
-            for col in columns:
-                
-                if self.corr_model is not None:
-                    f = getattr(self.gps[zi][col], 'predict')
-                    value = f(np.atleast_2d(bias).T)
-                else:
-                    value = self.splines[zi][col](bias)
-                if self.use_ratio: value *= bias
-                values += (value,)
-            params.append(values)
-            
-        # now return
-        if len(params) == 1:
-            return self._check_tuple_length(tuple(map(self._check_scalar, params[0])))
-        else:
-            
-            zlo, zhi = redshifts[0], redshifts[1]
-            w = (z - zlo) / (zhi - zlo) 
-            toret = ()
-            for i, col in enumerate(columns):
-                value = (1 - w)*params[0][i] + w*params[1][i]
-                toret += (self._check_scalar(value),)
-
-            return self._check_tuple_length(toret)
-    #---------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-class NonlinearBiasFits(SimInterpolator):
-    """
-    Class implementing nonlinear bias fits from Vlah et al. 2013
-    """
-    # the nonlinear bias values at z = 0
-    params_z0 = {'1.18' : (-0.39, -0.45), 
-                 '1.47' : (-0.08, -0.35), 
-                 '2.04' : (0.91, 0.14), 
-                 '3.05' : (3.88, 2.00)}
-    
-    # the nonlinear bias values at z = 0.509
-    params_z1 = {'1.64' : (0.18, -0.20), 
-                 '2.18' : (1.29, 0.48), 
-                 '3.13' : (4.48, 2.60), 
-                 '4.82' : (12.70, 9.50)}
-                 
-    # the nonlinear bias values at z = 0.989
-    params_z2 = {'2.32' : (1.75, 0.80), 
-                 '3.17' : (4.77, 3.15), 
-                 '4.64' : (12.80, 10.80)}
-    sim_results = [(0., params_z0), (0.509, params_z1), (0.989, params_z2)]
-    
-    #---------------------------------------------------------------------------
-    def __init__(self, *args, **kwargs):
-
-        kwargs['columns'] = ['b2_00', 'b2_01']
-        kwargs['use_ratio'] = True
-        kwargs['corr_model'] = None
-        kwargs['spline_kwargs'] = {'extrap' : True, 'k' : 1}
-        super(NonlinearBiasFits, self).__init__(*args, **kwargs)
-    
-    #---------------------------------------------------------------------------
-   
-
-#-------------------------------------------------------------------------------
-class SigmavFits(SimInterpolator):
-    """
-    The halo velocity dispersion as measured from simulations, as computed
-    from Figure 7 of Vlah et al. 2013. These are computed in km/s as
-    :math: \sigma_v(z=0) * D(z) * f(z) * H(z) / h where 
-    :math: \sigma_v(z=0) ~ 6 Mpc/h.
-    """
-    # the values at z = 0
-    params_z0 = {'1.18' : (306.), 
-                 '1.47' : (302.), 
-                 '2.04' : (296.), 
-                 '3.05' : (288.)}
-    
-    # the values at z = 0.509
-    params_z1 = {'1.64' : (357.), 
-                 '2.18' : (352.), 
-                 '3.13' : (346.), 
-                 '4.82' : (339.)}
-                 
-    # the values at z = 0.509
-    params_z2 = {'2.32' : (340.), 
-                 '3.17' : (337.), 
-                 '4.64' : (330.)}
-    sim_results = [(0., params_z0), (0.509, params_z1), (0.989, params_z2)]
-    
-    #---------------------------------------------------------------------------
-    def __init__(self, *args, **kwargs):
-
-        kwargs['columns'] = ['sigmav']
-        kwargs['use_ratio'] = False
-        super(SigmavFits, self).__init__(*args, **kwargs)
-
-    #---------------------------------------------------------------------------
-
-
 #-------------------------------------------------------------------------------
 class SimInterpolatorofBiasRedshift(object):
     """
@@ -376,73 +103,73 @@ class SimInterpolatorofBiasRedshift(object):
     #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
-# class NonlinearBiasFits(SimInterpolatorofBiasRedshift):
-#     """
-#     Class implementing nonlinear bias fits from Vlah et al. 2013
-#     """
-#     # the nonlinear bias values at z = 0
-#     params_z0 = {'1.18' : (-0.39, -0.45), 
-#                  '1.47' : (-0.08, -0.35), 
-#                  '2.04' : (0.91, 0.14), 
-#                  '3.05' : (3.88, 2.00)}
-#     
-#     # the nonlinear bias values at z = 0.509
-#     params_z1 = {'1.64' : (0.18, -0.20), 
-#                  '2.18' : (1.29, 0.48), 
-#                  '3.13' : (4.48, 2.60), 
-#                  '4.82' : (12.70, 9.50)}
-#                  
-#     # the nonlinear bias values at z = 0.989
-#     params_z2 = {'2.32' : (1.75, 0.80), 
-#                  '3.17' : (4.77, 3.15), 
-#                  '4.64' : (12.80, 10.80)}
-#     sim_results = {'0':params_z0, '0.509':params_z1, '0.989':params_z2}
-#     
-#     #---------------------------------------------------------------------------
-#     def __init__(self):
-# 
-#         cols = ['b2_00', 'b2_01']
-#         super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
-#     
-#     #---------------------------------------------------------------------------
-#   
-# 
-# #-------------------------------------------------------------------------------
-# class SigmavFits(SimInterpolatorofBiasRedshift):
-#     """
-#     The halo velocity dispersion as measured from simulations, as computed
-#     from Figure 7 of Vlah et al. 2013. 
-#     
-#     These are computed in km/s as:
-#     
-#     :math: \sigma_v(z=0) * D(z) * f(z) * H(z) / h where 
-#     :math: \sigma_v(z=0) ~ 6 Mpc/h.
-#     """
-#     # the values at z = 0
-#     params_z0 = {'1.18' : (306.), 
-#                  '1.47' : (302.), 
-#                  '2.04' : (296.), 
-#                  '3.05' : (288.)}
-#     
-#     # the values at z = 0.509
-#     params_z1 = {'1.64' : (357.), 
-#                  '2.18' : (352.), 
-#                  '3.13' : (346.), 
-#                  '4.82' : (339.)}
-#                  
-#     # the values at z = 0.509
-#     params_z2 = {'2.32' : (340.), 
-#                  '3.17' : (337.), 
-#                  '4.64' : (330.)}
-#     sim_results = {'0':params_z0, '0.509':params_z1, '0.989':params_z2}
-#     
-#     #---------------------------------------------------------------------------
-#     def __init__(self):
-# 
-#         cols = ['sigmav']
-#         super(SigmavFits, self).__init__(cols, use_bias_ratio=False)
-#         
-#     #---------------------------------------------------------------------------
+class NonlinearBiasFits(SimInterpolatorofBiasRedshift):
+    """
+    Class implementing nonlinear bias fits from Vlah et al. 2013
+    """
+    # the nonlinear bias values at z = 0
+    params_z0 = {'1.18' : (-0.39, -0.45), 
+                 '1.47' : (-0.08, -0.35), 
+                 '2.04' : (0.91, 0.14), 
+                 '3.05' : (3.88, 2.00)}
+    
+    # the nonlinear bias values at z = 0.509
+    params_z1 = {'1.64' : (0.18, -0.20), 
+                 '2.18' : (1.29, 0.48), 
+                 '3.13' : (4.48, 2.60), 
+                 '4.82' : (12.70, 9.50)}
+                 
+    # the nonlinear bias values at z = 0.989
+    params_z2 = {'2.32' : (1.75, 0.80), 
+                 '3.17' : (4.77, 3.15), 
+                 '4.64' : (12.80, 10.80)}
+    sim_results = {'0':params_z0, '0.509':params_z1, '0.989':params_z2}
+    
+    #---------------------------------------------------------------------------
+    def __init__(self):
+
+        cols = ['b2_00', 'b2_01']
+        super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
+    
+    #---------------------------------------------------------------------------
+  
+
+#-------------------------------------------------------------------------------
+class SigmavFits(SimInterpolatorofBiasRedshift):
+    """
+    The halo velocity dispersion as measured from simulations, as computed
+    from Figure 7 of Vlah et al. 2013. 
+    
+    These are computed in km/s as:
+    
+    :math: \sigma_v(z=0) * D(z) * f(z) * H(z) / h where 
+    :math: \sigma_v(z=0) ~ 6 Mpc/h.
+    """
+    # the values at z = 0
+    params_z0 = {'1.18' : (306.), 
+                 '1.47' : (302.), 
+                 '2.04' : (296.), 
+                 '3.05' : (288.)}
+    
+    # the values at z = 0.509
+    params_z1 = {'1.64' : (357.), 
+                 '2.18' : (352.), 
+                 '3.13' : (346.), 
+                 '4.82' : (339.)}
+                 
+    # the values at z = 0.509
+    params_z2 = {'2.32' : (340.), 
+                 '3.17' : (337.), 
+                 '4.64' : (330.)}
+    sim_results = {'0':params_z0, '0.509':params_z1, '0.989':params_z2}
+    
+    #---------------------------------------------------------------------------
+    def __init__(self):
+
+        cols = ['sigmav']
+        super(SigmavFits, self).__init__(cols, use_bias_ratio=False)
+        
+    #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 class StochasticityLogModel(SimInterpolatorofBiasRedshift):

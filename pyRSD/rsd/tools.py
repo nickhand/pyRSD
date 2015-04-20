@@ -1,6 +1,5 @@
 from .. import pygcl, numpy as np
 
-from scipy.lib._version import NumpyVersion
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.interpolate.interpnd import _ndim_coords_from_arrays
 from scipy.integrate import simps
@@ -10,7 +9,6 @@ import warnings
 import functools
 import itertools
 
-NUMPY_LT_160 = NumpyVersion(np.__version__) < '1.6.0'
 warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
 
 #-------------------------------------------------------------------------------
@@ -543,13 +541,8 @@ class RegularGridInterpolator(object):
         self.fill_value = fill_value
         if fill_value is not None:
             fill_value_dtype = np.asarray(fill_value).dtype
-            if not NUMPY_LT_160:
-                if (hasattr(values,
-                            'dtype') and not np.can_cast(fill_value_dtype,
-                                                         values.dtype,
-                                                         casting='same_kind')):
-                    raise ValueError("fill_value must be either 'None' or "
-                                     "of a type compatible with values")
+            if (hasattr(values,'dtype') and not np.can_cast(fill_value_dtype,values.dtype,casting='same_kind')):
+                raise ValueError("fill_value must be either 'None' or of a type compatible with values")
 
         for i, p in enumerate(points):
             if not np.all(np.diff(p) > 0.):

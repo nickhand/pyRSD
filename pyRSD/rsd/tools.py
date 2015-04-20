@@ -1,7 +1,7 @@
 from .. import pygcl, numpy as np
 
-import bisect
-from scipy.interpolate import InterpolatedUnivariateSpline
+import itertools
+from scipy.interpolate import InterpolatedUnivariateSpline, RegularGridInterpolator
 from scipy.integrate import simps
 from scipy.optimize import brentq
 import warnings
@@ -10,73 +10,114 @@ import functools
 warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
 
 #-------------------------------------------------------------------------------
+# DECORATORS
+#-------------------------------------------------------------------------------  
+def unpacked(method):
+    """
+    Decorator to avoid return lists/tuples of length 1
+    """
+    @functools.wraps(method)
+    def _decorator(*args, **kwargs):
+        result = method(*args, **kwargs)
+        return result if len(result) != 1 else result[0]
+    return _decorator
+
+#-------------------------------------------------------------------------------
+def monopole(f):
+    """
+    Decorator to compute the monopole from a `self.power` function
+    """     
+    def wrapper(self, *args, **kwargs):
+        mus = np.linspace(0., 1., 101)
+        Pkmus = f(self, mus, **kwargs)
+        return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+    return wrapper
+
+#-------------------------------------------------------------------------------
+def quadrupole(f):
+    """
+    Decorator to compute the quadrupole from a `self.power` function
+    """     
+    def wrapper(self, *args, **kwargs):
+        mus = np.linspace(0., 1., 101)
+        Pkmus = f(self, mus, **kwargs)
+        kern = 2.5*(3*mus**2 - 1.)
+        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+    return wrapper
+
+#-------------------------------------------------------------------------------
+def hexadecapole(f):
+    """
+    Decorator to compute the hexadecapole from a `self.power` function
+    """  
+    def wrapper(self, *args, **kwargs):
+        mus = np.linspace(0., 1., 1001)
+        Pkmus = f(self, mus, **kwargs)
+        kern = 9./8.*(35*mus**4 - 30.*mus**2 + 3.)
+        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+    return wrapper
+    
+#-------------------------------------------------------------------------------
 class InterpolationTable(object):
     """
-    A class for handling interpolation tables
+    A helper class for doing linear interpolation on a regular grid using
+    scipy.interpolate.RegularGridInterpolator
     """
-    def __init__(self, index_1, index_2, interpolated, extrap=False, **spline_kwargs):
+    def __init__(self, names, *args, **kwargs):
         """
         Parameters
         ----------
-        index_1 : array_like
-            An array of values to be treated as the main index of the 
-            interpolation table, i.e., we'll interpolate over these values
-        index_2 : array_like
-            An array of values to be treated as the 2nd interpolation
-            dimension, i.e., this is usually the `k` (wavenumber) values
-        interpolated : bool
-            If `True`, make the interpolation value and return the value
-            when __call__() is called
+        names : list
+            A list of strings giving the names of the dimensions
+        args: 
+            A series of arrays holding the interpolation domain in each
+            dimension matching `names`
+            
+        kwargs:
+            interpolated : bool, optional
+                If `True`, make the interpolation value and return the value
+                when __call__() is called
+                
+            bounds_error : bool, optional
+                If `True`, when interpolated values are requested outside of the
+                domain of the input data, a ValueError is raised.
+                If `False`, then `fill_value` is used.
+                
+            fill_value : number, optional
+                If provided, the value to use for points outside of the
+                interpolation domain. If None, values outside
+                the domain are extrapolated.
         """
-        # table attributes
-        self.index_1 = index_1
-        self.index_2 = index_2
-        self.interpolated = interpolated
+        if len(names) != len(args):
+            raise ValueError("Mismatch between names of interpolation dimensions "
+                                "and provided values")
+        # interpolation domain
+        self._names = names
+        self._pts = {}
+        for index, name in zip(args, names):
+            self._pts[name] = index
         
-    #---------------------------------------------------------------------------
-    @property
-    def last_index(self):
-        """
-        The value of the last index value computed
-        """
-        try:
-            return self._last_index
-        except:
-            return None
+        # kwargs defaults
+        self._bounds_error = kwargs.get('bounds_error', True)
+        self._fill_value   = kwargs.get('fill_value', np.nan)
+        self.interpolated  = kwargs.get('interpolated', True)
             
-    @last_index.setter
-    def last_index(self, val):
-        self._last_index = val
-        del self.bisect_index
-    
-    #---------------------------------------------------------------------------
-    @property
-    def bisect_index(self):
-        """
-        The index returned by bisect for the last index value
-        """
-        try:
-            return self._bisect_index
-        except:
-            return None
-            
-    @bisect_index.setter
-    def bisect_index(self, val):
-        self._bisect_index = val
-    
-    @bisect_index.deleter
-    def bisect_index(self):
-        if hasattr(self, '_bisect_index'): del self._bisect_index
-               
     #---------------------------------------------------------------------------
     def make_interpolation_table(self):
         """
         Make the interpolation table
         """
-        # make the table
-        self.table = np.empty(len(self.index_1), dtype=object)
-        for i, val in enumerate(self.index_1):
-            self.table[i] = RSDSpline(self.index_2, self.evaluate_table(self.index_2, val), k=2)
+        # make the pts array
+        pts_tuple = tuple(self._pts[k] for k in self._names)
+        pts = np.asarray(list(itertools.product(*pts_tuple)))
+        
+        # compute the grid values
+        shapes = tuple(len(self._pts[k]) for k in self._names)
+        grid_vals = self.evaluate_table(pts).reshape(shapes)
+        
+        # now save the table
+        kwargs = {k:getattr(self, '_'+k) for k in ['bounds_error', 'fill_value']}
+        self.table = RegularGridInterpolator(pts_tuple, grid_vals, **kwargs)
 
     #---------------------------------------------------------------------------
     @property
@@ -97,27 +138,32 @@ class InterpolationTable(object):
             self.make_interpolation_table()
     
     #---------------------------------------------------------------------------
-    def __call__(self, x, index_val):
+    def _stack_pts_arrays(self, **kwargs):
         """
-        Evaluate the function using the interpolation table and linear
-        interpolation between index values
+        Stack the points arrays
         """
-        if index_val == self.last_index:
-            ihi = self.bisect_index
-        else:
-            # throw an exception if out of bounds
-            if index_val < self.index_1[0] or index_val > self.index_1[-1]:
-                raise ValueError("Cannot use interpolation table -- value out of range")
-       
-            ihi = bisect.bisect(self.index_1, index_val)
-            self.last_index = index_val
-            self.bisect_index = ihi
-        ilo = ihi - 1
-   
-        val_lo = self.index_1[ilo]
-        val_hi = self.index_1[ihi]
-        w = (index_val - val_lo) / (val_hi - val_lo) 
-        return (1-w)*self.table[ilo](x) + w*self.table[ihi](x)
+        max_shape = max(len(np.array(kwargs[k], ndmin=1)) for k in self._names)
+        pts = []        
+        for k in self._names:
+            x = np.array(kwargs[k], ndmin=1)
+            if len(x) == max_shape:
+                pts.append(x)
+            else:
+                pts.append(np.repeat(x, max_shape))
+        return np.vstack(pts).T
+        
+    #---------------------------------------------------------------------------
+    def __call__(self, **kwargs):
+        """
+        Interpolation at coordinates
+
+        Parameters
+        ----------
+        kwargs : 
+            Keyword arguments passed should be the names of each interpolation
+            dimension and associated value
+        """
+        return self.table(self._stack_pts_arrays(**kwargs))
     #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
@@ -223,40 +269,75 @@ class RSDSpline(InterpolatedUnivariateSpline):
     #---------------------------------------------------------------------------
     
 #-------------------------------------------------------------------------------
-def monopole(f):
-    """
-    Decorator to compute the monopole from a `self.power` function
-    """     
-    def wrapper(self, *args, **kwargs):
-        mus = np.linspace(0., 1., 101)
-        Pkmus = f(self, mus, **kwargs)
-        return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
-    return wrapper
-
+# mass to bias relation
 #-------------------------------------------------------------------------------
-def quadrupole(f):
+class BiasToMassRelation(InterpolationTable):
     """
-    Decorator to compute the quadrupole from a `self.power` function
-    """     
-    def wrapper(self, *args, **kwargs):
-        mus = np.linspace(0., 1., 101)
-        Pkmus = f(self, mus, **kwargs)
-        kern = 2.5*(3*mus**2 - 1.)
-        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
-    return wrapper
-
-#-------------------------------------------------------------------------------
-def hexadecapole(f):
+    Class to handle conversions between mass and bias quickly using an 
+    interpolation table
     """
-    Decorator to compute the hexadecapole from a `self.power` function
-    """  
-    def wrapper(self, *args, **kwargs):
-        mus = np.linspace(0., 1., 1001)
-        Pkmus = f(self, mus, **kwargs)
-        kern = 9./8.*(35*mus**4 - 30.*mus**2 + 3.)
-        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
-    return wrapper
+    z_interp  = np.linspace(0, 1., 30) 
+    s8_interp = np.linspace(0.5, 1.5, 30)
+    b1_interp = np.linspace(1.1, 6., 50)
     
+    def __init__(self, cosmo, interpolated=False):
+        
+        # save the cosmo
+        self.cosmo = cosmo
+        self.Plin = pygcl.LinearPS(cosmo, 0.)
+        
+        # setup the interpolation table
+        names = ['z', 'sigma8', 'b1']
+        args = [self.z_interp, self.s8_interp, self.b1_interp]
+        super(BiasToMassRelation, self).__init__(names, *args, interpolated=interpolated)
+
+    #---------------------------------------------------------------------------
+    def evaluate_table(self, pts):
+        """
+        Evaluate the desired function at the input grid points
+        """
+        # setup a few functions we need
+        mean_dens = self.cosmo.rho_bar_z(0.)
+        mass_norm = 1e13
+        mass_to_radius = lambda M: (3.*M*mass_norm/(4.*np.pi*mean_dens))**(1./3.)
+        s8_0 = self.cosmo.sigma8()
+        
+        # setup the sigma spline
+        R_interp = np.logspace(-3, 4, 1000)
+        sigmas = self.Plin.Sigma(R_interp)
+        sigma_spline = RSDSpline(R_interp, sigmas, bounds_error=True)
+        
+        # the objective function to minimize
+        def objective(mass, bias, rescaling):
+            sigma = rescaling*sigma_spline(mass_to_radius(mass))
+            return bias_Tinker(sigma) - bias
+
+        ans = []
+        for (z, s8, b1) in pts:
+            # get appropriate rescalings
+            Dz_ratio = self.cosmo.D_z(z) / 1.0 # since Plin is at z = 0 already
+            s8_ratio = s8 / s8_0
+            rescaling = Dz_ratio*s8_ratio
+            
+            # find the zero
+            M = brentq(objective, 1e-8, 1e3, args=(b1, rescaling))*mass_norm
+            ans.append(M)
+        
+        return np.array(ans)
+    #---------------------------------------------------------------------------
+    @unpacked
+    def __call__(self, **kwargs):
+        """
+        Return the mass associated with the input sigma8, b1, and z
+        """        
+        if self.interpolated:
+            return InterpolationTable.__call__(self, **kwargs)
+        else:
+            pts = self._stack_pts_arrays(**kwargs)
+            return self.evaluate_table(pts)
+    #---------------------------------------------------------------------------
+        
+            
 #-------------------------------------------------------------------------------
 # Sigma-Bias relation
 #-------------------------------------------------------------------------------
@@ -298,7 +379,6 @@ class SigmaBiasRelation(object):
         return self.bias_to_sigma_spline(bias)
     
     #-------------------------------------------------------------------------------
-#endclass SigmaBiasRelation
 
 #-------------------------------------------------------------------------------        
 def mass_from_bias(bias, z, linearPS):
@@ -333,7 +413,6 @@ def mass_from_bias(bias, z, linearPS):
         return bias_Tinker(sigma) - bias
         
     return brentq(objective, 1e-5, 1e5)*mass_norm
-#end mass_from_bias
 
 #-------------------------------------------------------------------------------
 def bias_Tinker(sigmas, delta_c=1.686, delta_halo=200):
@@ -343,7 +422,6 @@ def bias_Tinker(sigmas, delta_c=1.686, delta_halo=200):
     Tinker, J., et al., 2010. ApJ 724, 878-886.
     http://iopscience.iop.org/0004-637X/724/2/878
     """
-
     y = np.log10(delta_halo)
     
     # get the parameters as a function of halo overdensity
@@ -356,7 +434,6 @@ def bias_Tinker(sigmas, delta_c=1.686, delta_halo=200):
     
     nu = delta_c / sigmas
     return 1. - A * (nu**a)/(nu**a + delta_c**a) + B*nu**b + C*nu**c
-#end bias_Tinker
 
 #-------------------------------------------------------------------------------
 def sigma_from_bias(bias, z, linearPS):
@@ -368,16 +445,6 @@ def sigma_from_bias(bias, z, linearPS):
     M0 = 5.4903e13 # in M_sun / h
     return sigma0 * (mass_from_bias(bias, z, linearPS) / M0)**(1./3)
  
-#end sigma_from_bias
-
-#-------------------------------------------------------------------------------  
-def unpacked(method):
-    @functools.wraps(method)
-    def _decorator(*args, **kwargs):
-        result = method(*args, **kwargs)
-        return result if len(result) != 1 else result[0]
-    return _decorator
-
 #-------------------------------------------------------------------------------
     
     

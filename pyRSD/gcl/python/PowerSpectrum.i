@@ -18,6 +18,7 @@ public:
     
     // mass variance sigma(R)
     double Sigma(double R) const;
+    parray Sigma(const parray& R) const;
     
     // 1D velocity dispersion
     double VelocityDispersion() const;

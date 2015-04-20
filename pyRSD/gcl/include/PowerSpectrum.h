@@ -38,6 +38,7 @@ public:
 
     /* Calculate the variance with top-hat smoothing radius R Mpc/h */
     virtual double Sigma(double R) const;
+    virtual parray Sigma(const parray& R) const;
 
     /* Calculate the 1-D velocity dispersion $\sigma_v^2 = \frac{1}{3} \int_0^\infty P(q) ~dq$ */
     virtual double VelocityDispersion() const;

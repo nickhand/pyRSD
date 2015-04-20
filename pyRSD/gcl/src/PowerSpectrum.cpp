@@ -41,6 +41,15 @@ double PowerSpectrum::Sigma(double R) const {
     return sqrt(sigma2);
 }
 
+parray PowerSpectrum::Sigma(const parray& R) const {
+    int n = (int)R.size();
+    parray sig(n);
+    #pragma omp parallel for
+    for(int i = 0; i < n; i++)
+        sig[i] = Sigma(R[i]);
+    return sig;
+}
+
 static double g(const PowerSpectrum& P, double k) {
     return P(k);
 }

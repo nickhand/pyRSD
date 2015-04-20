@@ -313,7 +313,7 @@ def Phm_residual_gp_model():
     as a function of bias, redshift, and wavenumber
     """
     import cPickle    
-    fname = _os.path.join(data_dir, 'simulation_fits/Phm_resdiual_gp_sim_fits.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_sim_fits.pickle')
     return cPickle.load(open(fname, 'r'))
 
 #-------------------------------------------------------------------------------

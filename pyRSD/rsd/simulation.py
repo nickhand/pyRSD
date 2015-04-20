@@ -220,69 +220,60 @@ class StochasticityGPModel(tools.InterpolationTable):
     """
     Class implementing the fits to the scale-dependent stochasticity, Lambda,
     using a Gaussian Process model based on simulation data
-    """
-    
+    """    
+    s8z_interp = np.linspace(0.5, 0.9, 500)
+    M_interp = np.logspace(-2, np.log10(5e2), 500)    
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
-    b1_interp = np.linspace(1.1, 5.5, 100)
     
-    def __init__(self, z, interpolated=False):
+    def __init__(self, interpolated=False):
         """
         Parameters
         ----------
-        z : float
-            The redshift to measure the stochasticity at. The interpolation
-            table must be recomputed whenever `z` changes
         interpolated : bool, optional
-            If `True`, return results as a function of bias from an 
-            interpolation table
-        """        
-        # store the redshift
-        self._z = z
-        
+            If `True`, return results from an interpolation table, otherwise,
+            evaluate the Gaussian Process for each value
+        """                
         # load the sim GP
         self.gp = sim_data.stochasticity_gp_model()
-        
-        # initialize the base class
-        super(StochasticityGPModel, self).__init__(self.b1_interp, self.k_interp, interpolated)
-                    
+                
+        # setup the interpolation table
+        names = ['s8_z', 'M', 'k']
+        args = [self.s8z_interp, self.M_interp, self.k_interp]
+        super(StochasticityGPModel, self).__init__(names, *args, interpolated=interpolated)
+                 
     #---------------------------------------------------------------------------
-    @property
-    def z(self):
-        """
-        The redshift
-        """
-        return self._z
-        
-    @z.setter
-    def z(self, val):
-        self._z = val
-        if self.interpolated:
-            self.make_interpolation_table()
-        
-    #---------------------------------------------------------------------------
-    def evaluate_table(self, k, b1, return_error=False):
+    def evaluate_table(self, pts, return_error=False):
         """
         The stochasticity as computed from simulations using a Gaussian Process
         fit
         """
-        x = np.vstack((np.ones(len(k))*self.z, np.ones(len(k))*b1, k)).T
         if return_error:
-            lam, sig_sq = self.gp.predict(x, eval_MSE=True)
-        else:
-            lam = self.gp.predict(x)
-
-        if return_error:
+            lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=1000)
             return lam, sig_sq**0.5
         else:
-            return lam
+            return self.gp.predict(pts, batch_size=1000)
     
     #---------------------------------------------------------------------------
-    def __call__(self, k, b1, return_error=False):
+    def __call__(self, **kwargs):
+        """
+        Evaluate the stochasticity at the specified `s8_z`, `M`, and `k`
         
+        Parameters
+        ----------
+        s8_z : float
+            The value of sigma8(z)
+        M : float
+            The value of the mass in units of `1e13 M_sun/h`
+        k : float, array_like
+            The wavenumbers in units of `h/Mpc`
+        """
+        return_error = kwargs.pop('return_error', False)
         if return_error or not self.interpolated:
-            return self.evaluate_table(k, b1, return_error)
+            pts = self._stack_pts_arrays(**kwargs)
+            return self.evaluate_table(pts, return_error=True)
         else:
-            return tools.InterpolationTable.__call__(self, k, b1)
+            toret = tools.InterpolationTable.__call__(self, **kwargs)
+            return toret if len(toret) != 1 else toret[0]
     #---------------------------------------------------------------------------
         
 #-------------------------------------------------------------------------------
@@ -291,70 +282,61 @@ class PhmResidualGPModel(tools.InterpolationTable):
     Class implementing the fits to the residual of Phm, modeled with a Pade
     expansion, using a Gaussian Process model based on simulation data
     """
-    
+    s8z_interp = np.linspace(0.5, 0.9, 500)
+    M_interp = np.logspace(-2, np.log10(5e2), 500)    
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
-    b1_interp = np.linspace(1.1, 5.5, 100)
     
-    def __init__(self, z, interpolated=False):
+    def __init__(self, interpolated=False):
         """
         Parameters
         ----------
-        z : float
-            The redshift to measure the stochasticity at. The interpolation
-            table must be recomputed whenever `z` changes
         interpolated : bool, optional
-            If `True`, return results as a function of bias from an 
-            interpolation table
-        """        
-        # store the redshift
-        self._z = z
-        
+            If `True`, return results from an interpolation table, otherwise,
+            evaluate the Gaussian Process for each value
+        """                
         # load the sim GP
         self.gp = sim_data.Phm_residual_gp_model()
-        
-        # initialize the base class
-        super(PhmResidualGPModel, self).__init__(self.b1_interp, self.k_interp, interpolated)
-                    
+                
+        # setup the interpolation table
+        names = ['s8_z', 'M', 'k']
+        args = [self.s8z_interp, self.M_interp, self.k_interp]
+        super(PhmResidualGPModel, self).__init__(names, *args, interpolated=interpolated)
+                 
     #---------------------------------------------------------------------------
-    @property
-    def z(self):
-        """
-        The redshift
-        """
-        return self._z
-        
-    @z.setter
-    def z(self, val):
-        self._z = val
-        if self.interpolated:
-            self.make_interpolation_table()
-        
-    #---------------------------------------------------------------------------
-    def evaluate_table(self, k, b1, return_error=False):
+    def evaluate_table(self, pts, return_error=False):
         """
         The stochasticity as computed from simulations using a Gaussian Process
         fit
         """
-        x = np.vstack((np.ones(len(k))*self.z, np.ones(len(k))*b1, k)).T
         if return_error:
-            Phm, sig_sq = self.gp.predict(x, eval_MSE=True)
+            lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=1000)
+            return lam, sig_sq**0.5
         else:
-            Phm = self.gp.predict(x)
-
-        if return_error:
-            return Phm, sig_sq**0.5
-        else:
-            return Phm
+            return self.gp.predict(pts, batch_size=1000)
     
     #---------------------------------------------------------------------------
-    def __call__(self, k, b1, return_error=False):
+    def __call__(self, **kwargs):
+        """
+        Evaluate the stochasticity at the specified `s8_z`, `M`, and `k`
         
+        Parameters
+        ----------
+        s8_z : float
+            The value of sigma8(z)
+        M : float
+            The value of the mass in units of `1e13 M_sun/h`
+        k : float, array_like
+            The wavenumbers in units of `h/Mpc`
+        """
+        return_error = kwargs.pop('return_error', False)
         if return_error or not self.interpolated:
-            return self.evaluate_table(k, b1, return_error)
+            pts = self._stack_pts_arrays(**kwargs)
+            return self.evaluate_table(pts, return_error=True)
         else:
-            return tools.InterpolationTable.__call__(self, k, b1)
+            toret = tools.InterpolationTable.__call__(self, **kwargs)
+            return toret if len(toret) != 1 else toret[0]
     #---------------------------------------------------------------------------
-        
+    
 #-------------------------------------------------------------------------------
 class HaloP00(object):
     """

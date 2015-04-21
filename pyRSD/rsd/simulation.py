@@ -212,240 +212,6 @@ class StochasticityLogModel(SimInterpolatorofBiasRedshift):
         return A0 + A1*np.log(k)
         
     #---------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-# Gaussian Process Fits
-#-------------------------------------------------------------------------------
-class StochasticityGPModel(tools.InterpolationTable):
-    """
-    Class implementing the fits to the scale-dependent stochasticity, Lambda,
-    using a Gaussian Process model based on simulation data
-    """    
-    s8z_interp = np.linspace(0.5, 0.9, 500)
-    M_interp = np.logspace(-2, np.log10(5e2), 500)    
-    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
-    
-    def __init__(self, interpolated=False):
-        """
-        Parameters
-        ----------
-        interpolated : bool, optional
-            If `True`, return results from an interpolation table, otherwise,
-            evaluate the Gaussian Process for each value
-        """                
-        # load the sim GP
-        self.gp = sim_data.stochasticity_gp_model()
-                
-        # setup the interpolation table
-        names = ['s8_z', 'M', 'k']
-        args = [self.s8z_interp, self.M_interp, self.k_interp]
-        super(StochasticityGPModel, self).__init__(names, *args, interpolated=interpolated)
-                 
-    #---------------------------------------------------------------------------
-    def evaluate_table(self, pts, return_error=False):
-        """
-        The stochasticity as computed from simulations using a Gaussian Process
-        fit
-        """
-        if return_error:
-            lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=1000)
-            return lam, sig_sq**0.5
-        else:
-            return self.gp.predict(pts, batch_size=1000)
-    
-    #---------------------------------------------------------------------------
-    def __call__(self, **kwargs):
-        """
-        Evaluate the stochasticity at the specified `s8_z`, `M`, and `k`
-        
-        Parameters
-        ----------
-        s8_z : float
-            The value of sigma8(z)
-        M : float
-            The value of the mass in units of `1e13 M_sun/h`
-        k : float, array_like
-            The wavenumbers in units of `h/Mpc`
-        """
-        return_error = kwargs.pop('return_error', False)
-        if return_error or not self.interpolated:
-            pts = self._stack_pts_arrays(**kwargs)
-            return self.evaluate_table(pts, return_error=True)
-        else:
-            toret = tools.InterpolationTable.__call__(self, **kwargs)
-            return toret if len(toret) != 1 else toret[0]
-    #---------------------------------------------------------------------------
-        
-#-------------------------------------------------------------------------------
-class PhmResidualGPModel(tools.InterpolationTable):
-    """
-    Class implementing the fits to the residual of Phm, modeled with a Pade
-    expansion, using a Gaussian Process model based on simulation data
-    """
-    s8z_interp = np.linspace(0.5, 0.9, 500)
-    M_interp = np.logspace(-2, np.log10(5e2), 500)    
-    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
-    
-    def __init__(self, interpolated=False):
-        """
-        Parameters
-        ----------
-        interpolated : bool, optional
-            If `True`, return results from an interpolation table, otherwise,
-            evaluate the Gaussian Process for each value
-        """                
-        # load the sim GP
-        self.gp = sim_data.Phm_residual_gp_model()
-                
-        # setup the interpolation table
-        names = ['s8_z', 'M', 'k']
-        args = [self.s8z_interp, self.M_interp, self.k_interp]
-        super(PhmResidualGPModel, self).__init__(names, *args, interpolated=interpolated)
-                 
-    #---------------------------------------------------------------------------
-    def evaluate_table(self, pts, return_error=False):
-        """
-        The stochasticity as computed from simulations using a Gaussian Process
-        fit
-        """
-        if return_error:
-            lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=1000)
-            return lam, sig_sq**0.5
-        else:
-            return self.gp.predict(pts, batch_size=1000)
-    
-    #---------------------------------------------------------------------------
-    def __call__(self, **kwargs):
-        """
-        Evaluate the stochasticity at the specified `s8_z`, `M`, and `k`
-        
-        Parameters
-        ----------
-        s8_z : float
-            The value of sigma8(z)
-        M : float
-            The value of the mass in units of `1e13 M_sun/h`
-        k : float, array_like
-            The wavenumbers in units of `h/Mpc`
-        """
-        return_error = kwargs.pop('return_error', False)
-        if return_error or not self.interpolated:
-            pts = self._stack_pts_arrays(**kwargs)
-            return self.evaluate_table(pts, return_error=True)
-        else:
-            toret = tools.InterpolationTable.__call__(self, **kwargs)
-            return toret if len(toret) != 1 else toret[0]
-    #---------------------------------------------------------------------------
-    
-#-------------------------------------------------------------------------------
-class HaloP00(object):
-    """
-    Class to compute P00 for halos as a function of linear bias `b1` and 
-    redshift `z`
-    """
-    def __init__(self, HaloZelP00, interpolated=False):
-        """
-        Initialize with a `pygcl.HaloZeldovichP00` object
-        """
-        # doesnt make a copy -- just a reference so that the redshift will 
-        # be updated
-        self.HaloZelP00 = HaloZelP00
-        self.HaloZelP00.interpolated = interpolated
-        
-        # initialize the GP classes
-        self.gp_Phm   = PhmResidualGPModel(self.z, interpolated)
-        self.gp_stoch = StochasticityGPModel(self.z, interpolated)
-        
-        # store the interpolation variable
-        self._interpolated = interpolated
-        
-    #---------------------------------------------------------------------------
-    @property
-    def interpolated(self):
-        """
-        If `True`, return results using the interpolation table
-        """
-        return self._interpolated
-
-    @interpolated.setter
-    def interpolated(self, val):
-        if hasattr(self, '_interpolated') and self._interpolated == val:
-            return
-            
-        self._interpolated           = val
-        self.gp_Phm.interpolated     = val
-        self.gp_stoch.interpolated   = val
-        self.HaloZelP00.interpolated = val
-            
-    #---------------------------------------------------------------------------
-    @property
-    def z(self):
-        """
-        The redshift, taken from the `P00_model`; 
-        """
-        return self.HaloZelP00.z
-        
-    @z.setter
-    def z(self, val):
-        if hasattr(self, '_z') and self._z == val:
-            return
-            
-        self.HaloZelP00.z = val
-        self.gp_Phm.z     = val
-        self.gp_stoch.z   = val
-        
-    #---------------------------------------------------------------------------
-    def Pmm(self, k):
-        """
-        The dark matter density auto correlation as computed from 
-        the Halo Zeldovich power spectrum 
-        """
-        return self.HaloZelP00(k)
-        
-    #---------------------------------------------------------------------------
-    def Phm(self, k, b1, return_error=False):
-        """
-        The halo-matter cross correlation at the bias specified by `b1`, 
-        as computed from the Gaussian Process fit
-        """
-        toret = self.gp_Phm(k, b1, return_error)
-        Pzel = b1*self.HaloZelP00.zeldovich_power(k)
-        
-        if return_error:
-            return toret[0] + Pzel, toret[1]**0.5
-        else:
-            return toret + Pzel
-        
-    #---------------------------------------------------------------------------
-    def stochasticity(self, k, b1, return_error=False):
-        """
-        The stochasticity as computed from simulations using a Gaussian Process
-        fit
-        """
-        toret = self.gp_stoch(k, b1, return_error)
-        if return_error:
-            return toret[0], toret[1]**0.5
-        else:
-            return toret
-    
-    #---------------------------------------------------------------------------
-    def __call__(self, k, b1, return_error=False):
-        """
-        Return the halo P00 power, optionally returning the error as computed
-        from the Gaussian Process fit
-        """        
-        # the three parts we need
-        Pmm = self.Pmm(k)
-        Phm = self.Phm(k, b1, return_error)
-        lam = self.stochasticity(k, b1, return_error)
-        
-        if return_error:
-            toret =  2*b1*Phm[0] - b1**2*Pmm + lam[0]
-            err = np.sqrt((2*b1*Phm[1])**2 + lam[1]**2)
-            return toret, err
-        else:
-            return 2*b1*Phm - b1**2*Pmm + lam
-    #---------------------------------------------------------------------------
     
 #-------------------------------------------------------------------------------
 class InterpDarkMatterPowerMoment(object):
@@ -578,10 +344,11 @@ class DarkMatterP11(InterpDarkMatterPowerMoment, tools.InterpolationTable):
         # load the data
         self._load_data()
       
-        # initialize the base class
+        # initialize the InterpolationTable
+        names = ['fs8_sq', 'k']
         index_1 = self.data.index.get_level_values('fs8_sq').unique()
         index_2 = self.data.index.get_level_values('k').unique()
-        tools.InterpolationTable.__init__(self, index_1, index_2, True)
+        tools.InterpolationTable.__init__(self, names, index_1, index_2, interpolated=True)
     
     #---------------------------------------------------------------------------
     def _load_data(self):
@@ -608,13 +375,21 @@ class DarkMatterP11(InterpDarkMatterPowerMoment, tools.InterpolationTable):
       
       
     #---------------------------------------------------------------------------
-    def evaluate_table(self, k, fs8_sq):
+    def evaluate_table(self, pts):
         """
         Return the normalized P11 at this value of (f*sigma8)^2
         """
-        if fs8_sq not in self.data.index.get_level_values('fs8_sq').unique():
-            raise ValueError("Cannot evaluate P11 at this value of (f*sigma8)^2")
-        return self.data.xs(fs8_sq).P11
+        fs8_sqs = np.unique(pts[:,0])
+        ks = np.unique(pts[:,1])
+        
+        toret = []
+        data_index = self.data.index.get_level_values('fs8_sq').unique()
+        for i, fs8_sq in enumerate(fs8_sqs):
+            if fs8_sq not in data_index:
+                raise ValueError("Cannot evaluate P11 at this value of (f*sigma8)^2")
+            toret += list(self.data.xs(fs8_sq).P11)
+
+        return np.array(toret)
 
     #---------------------------------------------------------------------------
     def _extrapolate(self, x, k):
@@ -622,16 +397,17 @@ class DarkMatterP11(InterpDarkMatterPowerMoment, tools.InterpolationTable):
         Extrapolate out of the range of (f*sigma8)^2 by assuming the shape of
         the normalized power spectrum is the sames
         """
-        if x < self.index_1[0]:
-            index = -1
+        if x < np.amin(self._pts['fs8_sq']):
+            val = np.amin(self._pts['fs8_sq'])
         else:
-            index = 0
+            val = np.amax(self._pts['fs8_sq'])
         
         normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
         factor = x*normed_power
-        return self.table[index](k)*factor
+        return self.table(self._stack_pts_arrays(fs8_sq=val, k=k))*factor
             
     #---------------------------------------------------------------------------
+    @tools.unpacked
     def __call__(self, k):
         """
         Evaluate P11 at the redshift `self.z` and the specified `k`
@@ -639,11 +415,11 @@ class DarkMatterP11(InterpDarkMatterPowerMoment, tools.InterpolationTable):
         fs8_sq = (self.f*self.sigma8)**2
         
         # extrapolate?
-        if fs8_sq < self.index_1[0] or fs8_sq > self.index_1[-1]:
+        if fs8_sq < np.amin(self._pts['fs8_sq']) or fs8_sq > np.amax(self._pts['fs8_sq']):
             return self._extrapolate(fs8_sq, k)
             
         # evaluate the interpolation table at this (f*sigma8)^2
-        toret = tools.InterpolationTable.__call__(self, k, fs8_sq)
+        toret = tools.InterpolationTable.__call__(self, k=k, fs8_sq=fs8_sq)
         
         normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
         factor = fs8_sq*normed_power
@@ -681,10 +457,11 @@ class DarkMatterPdv(InterpDarkMatterPowerMoment, tools.InterpolationTable):
         # load the data
         self._load_data()
       
-        # initialize the base class
+        # initialize the InterpolationTable
+        names = ['fs8_sq', 'k']
         index_1 = self.data.index.get_level_values('fs8_sq').unique()
         index_2 = self.data.index.get_level_values('k').unique()
-        tools.InterpolationTable.__init__(self, index_1, index_2, True)
+        tools.InterpolationTable.__init__(self, names, index_1, index_2, interpolated=True)
 
     #---------------------------------------------------------------------------
     def _load_data(self):
@@ -710,13 +487,21 @@ class DarkMatterPdv(InterpDarkMatterPowerMoment, tools.InterpolationTable):
         self.data = pd.DataFrame(data=d, index=index, columns=['Pdv'])
 
     #---------------------------------------------------------------------------
-    def evaluate_table(self, k, fs8_sq):
+    def evaluate_table(self, pts):
         """
         Return the normalized P11 at this value of (f*sigma8)^2
         """
-        if fs8_sq not in self.data.index.get_level_values('fs8_sq').unique():
-            raise ValueError("Cannot evaluate Pdv at this value of f*sigma8^2")
-        return self.data.xs(fs8_sq).Pdv
+        fs8_sqs = np.unique(pts[:,0])
+        ks = np.unique(pts[:,1])
+        
+        toret = []
+        data_index = self.data.index.get_level_values('fs8_sq').unique()
+        for i, fs8_sq in enumerate(fs8_sqs):
+            if fs8_sq not in data_index:
+                raise ValueError("Cannot evaluate Pdv at this value of f*sigma8^2")
+            toret += list(self.data.xs(fs8_sq).Pdv)
+
+        return np.array(toret)
 
     #---------------------------------------------------------------------------
     def _extrapolate(self, x, k):
@@ -724,29 +509,30 @@ class DarkMatterPdv(InterpDarkMatterPowerMoment, tools.InterpolationTable):
         Extrapolate out of the range of (f*sigma8)^2 by assuming the shape of
         the normalized power spectrum is the sames
         """
-        if x < self.index_1[0]:
-            index = -1
+        if x < np.amin(self._pts['fs8_sq']):
+            val = np.amin(self._pts['fs8_sq'])
         else:
-            index = 0
-
+            val = np.amax(self._pts['fs8_sq'])
+        
         normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
         factor = x*normed_power
-        return self.table[index](k)*factor
+        return self.table(self._stack_pts_arrays(fs8_sq=val, k=k))*factor
 
     #---------------------------------------------------------------------------
+    @tools.unpacked
     def __call__(self, k):
         """
-        Evaluate P11 at the redshift `self.z` and the specified `k`
+        Evaluate Pdv at the redshift `self.z` and the specified `k`
         """
         fs8_sq = self.f*self.sigma8**2
-
+        
         # extrapolate?
-        if fs8_sq < self.index_1[0] or fs8_sq > self.index_1[-1]:
+        if fs8_sq < np.amin(self._pts['fs8_sq']) or fs8_sq > np.amax(self._pts['fs8_sq']):
             return self._extrapolate(fs8_sq, k)
-
+            
         # evaluate the interpolation table at this (f*sigma8)^2
-        toret = tools.InterpolationTable.__call__(self, k, fs8_sq)
-
+        toret = tools.InterpolationTable.__call__(self, k=k, fs8_sq=fs8_sq)
+        
         normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
         factor = fs8_sq*normed_power
 
@@ -760,8 +546,8 @@ class HaloZeldovichPS(tools.InterpolationTable):
     """
     Base class to represent a Halo Zeldovich power spectrum
     """
-    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
-    s8_interp = np.linspace(0.1, 2.5, 100)
+    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
+    s8_interp = np.linspace(0.5, 1.5, 100)
     
     def __init__(self, z, sigma8, interpolated=False):
         """
@@ -779,15 +565,23 @@ class HaloZeldovichPS(tools.InterpolationTable):
         self._sigma8 = sigma8
         
         # initialize the InterpolationTable
-        super(HaloZeldovichPS, self).__init__(self.s8_interp, self.k_interp, interpolated)
+        names = ['sigma8', 'k']
+        args = [self.s8_interp, self.k_interp]
+        super(HaloZeldovichPS, self).__init__(names, *args, interpolated=interpolated)
         
     #---------------------------------------------------------------------------
-    def evaluate_table(self, k, s8):
+    def evaluate_table(self, pts):
         """
         Evaluate the Zeldovich power for storing in the interpolation table
-        """
-        self.Pzel.SetSigma8(s8)
-        return self.zeldovich_power(k, ignore_interpolated=True)
+        """ 
+        sigma8s = np.unique(pts[:,0])
+        ks = np.unique(pts[:,1])
+        
+        toret = []
+        for i, s8 in enumerate(sigma8s):
+            self.Pzel.SetSigma8(s8)
+            toret += list(self.zeldovich_power(ks, ignore_interpolated=True))
+        return np.array(toret)
         
     #---------------------------------------------------------------------------
     @property
@@ -812,7 +606,7 @@ class HaloZeldovichPS(tools.InterpolationTable):
              
         self._z = val
         self.Pzel.SetRedshift(val)
-        del self.sigma8_z
+        del self._normalized_sigma8_z
         
         if self.interpolated:
             self.make_interpolation_table()
@@ -833,7 +627,6 @@ class HaloZeldovichPS(tools.InterpolationTable):
             
         self._sigma8 = val
         self.Pzel.SetSigma8(val)
-        del self.sigma8_z
         
     #---------------------------------------------------------------------------
     @property
@@ -898,19 +691,27 @@ class HaloZeldovichPS(tools.InterpolationTable):
     
     #---------------------------------------------------------------------------
     @property
+    def _normalized_sigma8_z(self):
+        """
+        Return the normalized sigma8(z) from the input cosmology
+        """
+        try:
+            return self.__normalized_sigma8_z
+        except AttributeError:
+            self.__normalized_sigma8_z = self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8()
+            return self.__normalized_sigma8_z
+    
+    @_normalized_sigma8_z.deleter
+    def _normalized_sigma8_z(self):
+        if hasattr(self, '__normalized_sigma8_z'): del self.__normalized_sigma8_z
+
+    #---------------------------------------------------------------------------
+    @property
     def sigma8_z(self):
         """
         Return sigma8(z), normalized to the desired sigma8 at z = 0
         """
-        try:
-            return self._sigma8_z
-        except AttributeError:
-            self._sigma8_z = self.sigma8 * (self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8())
-            return self._sigma8_z
-    
-    @sigma8_z.deleter
-    def sigma8_z(self):
-        if hasattr(self, '_sigma8_z'): del self._sigma8_z
+        return self.sigma8 * self._normalized_sigma8_z
 
     #---------------------------------------------------------------------------
     def __call__(self, k):
@@ -934,12 +735,13 @@ class HaloZeldovichPS(tools.InterpolationTable):
         return F*self.A0*(1 + (k*self.R1)**2) / (1 + (k*self.R1h)**2 + (k*self.R2h)**4)
     
     #---------------------------------------------------------------------------
+    @tools.unpacked
     def zeldovich_power(self, k, ignore_interpolated=False):
         """
         Return the Zel'dovich power at the specified `k`
         """
         if self.interpolated and not ignore_interpolated:
-            return tools.InterpolationTable.__call__(self, k, self.sigma8)
+            return tools.InterpolationTable.__call__(self, k=k, sigma8=self.sigma8)
         else:
             return self.Pzel(k)
     #---------------------------------------------------------------------------
@@ -973,6 +775,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
         super(HaloZeldovichP00, self).__init__(z, sigma8, interpolated)
             
     #---------------------------------------------------------------------------
+    @tools.unpacked
     def __call__(self, k):
         """
         Return the full Halo Zeldovich P00, optionally using the interpolation
@@ -986,7 +789,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
             return self.broadband_power(k) + self.zeldovich_power(k)
         else:
             
-            Pzel = tools.InterpolationTable.__call__(self, k, self.sigma8)
+            Pzel = tools.InterpolationTable.__call__(self, k=k, sigma8=self.sigma8)
             return self.broadband_power(k) + Pzel
     #---------------------------------------------------------------------------
     
@@ -1090,6 +893,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
         return self.f * 0.43 * self.R2h
             
     #---------------------------------------------------------------------------
+    @tools.unpacked
     def __call__(self, k):
         """
         Return the full Halo Zeldovich P01, optionally using the interpolation
@@ -1108,10 +912,251 @@ class HaloZeldovichP01(HaloZeldovichPS):
             return self.broadband_power(k) + 2*self.f*self.zeldovich_power(k)
         else:
             
-            Pzel = tools.InterpolationTable.__call__(self, k, self.sigma8)
+            Pzel = tools.InterpolationTable.__call__(self, k=k, sigma8=self.sigma8)
             return self.broadband_power(k) + 2*self.f*Pzel
     #---------------------------------------------------------------------------
     
 #-------------------------------------------------------------------------------
+# Halo-Halo Power Spectrum model
+#-------------------------------------------------------------------------------
+class HaloP00(object):
+    """
+    Class to compute P00 for halos as a function of linear bias `b1` and 
+    redshift `z`
+    """
+    def __init__(self, HaloZelP00, interpolated=False):
+        """
+        Initialize with a `pygcl.HaloZeldovichP00` object
+        """
+        # doesnt make a copy -- just a reference so that the redshift will 
+        # be updated
+        self.HaloZelP00 = HaloZelP00
+        self.HaloZelP00.interpolated = interpolated
+
+        # initialize the GP classes, trying to load the interpolated versions first
+        self.gp_Phm = sim_data.interpolated_Phm_residual_gp_model() 
+        if self.gp_Phm is None:
+            self.gp_Phm   = PhmResidualGPModel(self.z, interpolated)
+            
+        self.gp_stoch = sim_data.interpolated_stochasticity_gp_model()
+        if self.gp_stoch is None:   
+            self.gp_stoch = StochasticityGPModel(self.z, interpolated)
+
+        # store the interpolation variable
+        self._interpolated = interpolated
+
+    #---------------------------------------------------------------------------
+    @property
+    def interpolated(self):
+        """
+        If `True`, return results using the interpolation table
+        """
+        return self._interpolated
+
+    @interpolated.setter
+    def interpolated(self, val):
+        if hasattr(self, '_interpolated') and self._interpolated == val:
+            return
+
+        self._interpolated           = val
+        self.gp_Phm.interpolated     = val
+        self.gp_stoch.interpolated   = val
+        self.HaloZelP00.interpolated = val
+
+    #---------------------------------------------------------------------------
+    @property
+    def z(self):
+        """
+        The redshift, taken from the `P00_model`; 
+        """
+        return self.HaloZelP00.z
+
+    @z.setter
+    def z(self, val):
+        if hasattr(self, '_z') and self._z == val:
+            return
+
+        self.HaloZelP00.z = val
+        self.gp_Phm.z     = val
+        self.gp_stoch.z   = val
+
+    #---------------------------------------------------------------------------
+    def Pmm(self, k):
+        """
+        The dark matter density auto correlation as computed from 
+        the Halo Zeldovich power spectrum 
+        """
+        return self.HaloZelP00(k)
+
+    #---------------------------------------------------------------------------
+    def Phm(self, k, b1, return_error=False):
+        """
+        The halo-matter cross correlation at the bias specified by `b1`, 
+        as computed from the Gaussian Process fit
+        """
+        toret = self.gp_Phm(k, b1, return_error)
+        Pzel = b1*self.HaloZelP00.zeldovich_power(k)
+
+        if return_error:
+            return toret[0] + Pzel, toret[1]**0.5
+        else:
+            return toret + Pzel
+
+    #---------------------------------------------------------------------------
+    def stochasticity(self, k, b1, return_error=False):
+        """
+        The stochasticity as computed from simulations using a Gaussian Process
+        fit
+        """
+        toret = self.gp_stoch(k, b1, return_error)
+        if return_error:
+            return toret[0], toret[1]**0.5
+        else:
+            return toret
+
+    #---------------------------------------------------------------------------
+    def __call__(self, k, b1, return_error=False):
+        """
+        Return the halo P00 power, optionally returning the error as computed
+        from the Gaussian Process fit
+        """        
+        # the three parts we need
+        Pmm = self.Pmm(k)
+        Phm = self.Phm(k, b1, return_error)
+        lam = self.stochasticity(k, b1, return_error)
+
+        if return_error:
+            toret =  2*b1*Phm[0] - b1**2*Pmm + lam[0]
+            err = np.sqrt((2*b1*Phm[1])**2 + lam[1]**2)
+            return toret, err
+        else:
+            return 2*b1*Phm - b1**2*Pmm + lam
+    #---------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# Gaussian Process Fits
+#-------------------------------------------------------------------------------
+class StochasticityGPModel(tools.InterpolationTable):
+    """
+    Class implementing the fits to the scale-dependent stochasticity, Lambda,
+    using a Gaussian Process model based on simulation data
+    """    
+    s8z_interp = np.linspace(0.5, 0.9, 100)
+    M_interp = np.logspace(-2, np.log10(5e2), 100)    
+    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
+
+    def __init__(self, interpolated=False):
+        """
+        Parameters
+        ----------
+        interpolated : bool, optional
+            If `True`, return results from an interpolation table, otherwise,
+            evaluate the Gaussian Process for each value
+        """                
+        # load the sim GP
+        self.gp = sim_data.stochasticity_gp_model()
+
+        # setup the interpolation table
+        names = ['s8_z', 'M', 'k']
+        args = [self.s8z_interp, self.M_interp, self.k_interp]
+        super(StochasticityGPModel, self).__init__(names, *args, interpolated=interpolated)
+
+    #---------------------------------------------------------------------------
+    def evaluate_table(self, pts, return_error=False):
+        """
+        The stochasticity as computed from simulations using a Gaussian Process
+        fit
+        """
+        if return_error:
+            lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=10000)
+            return lam, sig_sq**0.5
+        else:
+            return self.gp.predict(pts, batch_size=10000)
+
+    #---------------------------------------------------------------------------
+    def __call__(self, **kwargs):
+        """
+        Evaluate the stochasticity at the specified `s8_z`, `M`, and `k`
+
+        Parameters
+        ----------
+        s8_z : float
+            The value of sigma8(z)
+        M : float
+            The value of the mass in units of `1e13 M_sun/h`
+        k : float, array_like
+            The wavenumbers in units of `h/Mpc`
+        """
+        return_error = kwargs.pop('return_error', False)
+        if return_error or not self.interpolated:
+            pts = self._stack_pts_arrays(**kwargs)
+            return self.evaluate_table(pts, return_error=True)
+        else:
+            toret = tools.InterpolationTable.__call__(self, **kwargs)
+            return toret if len(toret) != 1 else toret[0]
+    #---------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+class PhmResidualGPModel(tools.InterpolationTable):
+    """
+    Class implementing the fits to the residual of Phm, modeled with a Pade
+    expansion, using a Gaussian Process model based on simulation data
+    """
+    s8z_interp = np.linspace(0.5, 0.9, 100)
+    M_interp = np.logspace(-2, np.log10(5e2), 100)    
+    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
+
+    def __init__(self, interpolated=False):
+        """
+        Parameters
+        ----------
+        interpolated : bool, optional
+            If `True`, return results from an interpolation table, otherwise,
+            evaluate the Gaussian Process for each value
+        """                
+        # load the sim GP
+        self.gp = sim_data.Phm_residual_gp_model()
+
+        # setup the interpolation table
+        names = ['s8_z', 'M', 'k']
+        args = [self.s8z_interp, self.M_interp, self.k_interp]
+        super(PhmResidualGPModel, self).__init__(names, *args, interpolated=interpolated)
+
+    #---------------------------------------------------------------------------
+    def evaluate_table(self, pts, return_error=False):
+        """
+        The stochasticity as computed from simulations using a Gaussian Process
+        fit
+        """
+        if return_error:
+            lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=10000)
+            return lam, sig_sq**0.5
+        else:
+            return self.gp.predict(pts, batch_size=10000)
+
+    #---------------------------------------------------------------------------
+    def __call__(self, **kwargs):
+        """
+        Evaluate the stochasticity at the specified `s8_z`, `M`, and `k`
+
+        Parameters
+        ----------
+        s8_z : float
+            The value of sigma8(z)
+        M : float
+            The value of the mass in units of `1e13 M_sun/h`
+        k : float, array_like
+            The wavenumbers in units of `h/Mpc`
+        """
+        return_error = kwargs.pop('return_error', False)
+        if return_error or not self.interpolated:
+            pts = self._stack_pts_arrays(**kwargs)
+            return self.evaluate_table(pts, return_error=True)
+        else:
+            toret = tools.InterpolationTable.__call__(self, **kwargs)
+            return toret if len(toret) != 1 else toret[0]
+    #---------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
+
         
     

@@ -316,28 +316,28 @@ def Phm_residual_gp_model():
     return cPickle.load(open(fname, 'r'))
 
 #-------------------------------------------------------------------------------
-def interpolated_stochasticity_gp_model():
-    """
-    Return a `simulation.StochasticityGPModel` object which has already been
-    interpolated
-    """   
-    fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_interpolated.pickle')
-    if _os.path.exists(fname):
-        return cPickle.load(open(fname, 'r'))
-    else:
-        return None
-    
-#-------------------------------------------------------------------------------
-def interpolated_Phm_residual_gp_model():
-    """
-    Return a `simulation.PhmResidualGPModel` object which has already been
-    interpolated
-    """ 
-    fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_interpolated.pickle')
-    if _os.path.exists(fname):
-        return cPickle.load(open(fname, 'r'))
-    else:
-        return None
-
-#-------------------------------------------------------------------------------
+# def interpolated_stochasticity_gp_model():
+#     """
+#     Return a `simulation.StochasticityGPModel` object which has already been
+#     interpolated
+#     """   
+#     fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_interpolated.pickle')
+#     if _os.path.exists(fname):
+#         return cPickle.load(open(fname, 'r'))
+#     else:
+#         return None
+#     
+# #-------------------------------------------------------------------------------
+# def interpolated_Phm_residual_gp_model():
+#     """
+#     Return a `simulation.PhmResidualGPModel` object which has already been
+#     interpolated
+#     """ 
+#     fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_interpolated.pickle')
+#     if _os.path.exists(fname):
+#         return cPickle.load(open(fname, 'r'))
+#     else:
+#         return None
+# 
+# #-------------------------------------------------------------------------------
     

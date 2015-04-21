@@ -322,7 +322,7 @@ def interpolated_stochasticity_gp_model():
     interpolated
     """   
     fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_interpolated.pickle')
-    if os.path.exists(fname):
+    if _os.path.exists(fname):
         return cPickle.load(open(fname, 'r'))
     else:
         return None
@@ -334,7 +334,7 @@ def interpolated_Phm_residual_gp_model():
     interpolated
     """ 
     fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_interpolated.pickle')
-    if os.path.exists(fname):
+    if _os.path.exists(fname):
         return cPickle.load(open(fname, 'r'))
     else:
         return None

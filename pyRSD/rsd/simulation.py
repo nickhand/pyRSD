@@ -1114,8 +1114,7 @@ class StochasticityGPModel(tools.InterpolationTable):
         return_error = kwargs.pop('return_error', False)
         if return_error or not self.interpolated:
             pts = self._stack_pts_arrays(**kwargs)
-            pts = np.concatenate((np.repeat(self.z, len(pts))[:,None], pts), axis=1)
-            return self.evaluate_table(pts, return_error=True)
+            return self.evaluate_table(pts, return_error=return_error)
         else:
             toret = tools.InterpolationTable.__call__(self, **kwargs)
             return toret if len(toret) != 1 else toret[0]
@@ -1200,8 +1199,7 @@ class PhmResidualGPModel(tools.InterpolationTable):
         return_error = kwargs.pop('return_error', False)
         if return_error or not self.interpolated:
             pts = self._stack_pts_arrays(**kwargs)
-            pts = np.concatenate((np.repeat(self.z, len(pts))[:,None], pts), axis=1)
-            return self.evaluate_table(pts, return_error=True)
+            return self.evaluate_table(pts, return_error=return_error)
         else:
             toret = tools.InterpolationTable.__call__(self, **kwargs)
             return toret if len(toret) != 1 else toret[0]

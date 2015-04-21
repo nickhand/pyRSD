@@ -4,6 +4,7 @@ Simulation data for dark matter power spectra at 3 redshifts, z = 0, 0.509, 0.98
 For more, see the detailed description of these simulations in Okumura et al. 2012.
 """
 from .. import data_dir, numpy as np, os as _os
+import cPickle    
 
 __all__ = ['load',
            'P00_mu0_z_0_000',
@@ -301,8 +302,7 @@ def stochasticity_gp_model():
     """
     Return a `sklearn.GaussianProcess` object fit to the stochasticity, Lambda, 
     as a function of bias, redshift, and wavenumber
-    """
-    import cPickle    
+    """    
     fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_sim_fits.pickle')
     return cPickle.load(open(fname, 'r'))
     
@@ -312,9 +312,32 @@ def Phm_residual_gp_model():
     Return a `sklearn.GaussianProcess` object fit to the residual of Phm,
     as a function of bias, redshift, and wavenumber
     """
-    import cPickle    
     fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_sim_fits.pickle')
     return cPickle.load(open(fname, 'r'))
+
+#-------------------------------------------------------------------------------
+def interpolated_stochasticity_gp_model():
+    """
+    Return a `simulation.StochasticityGPModel` object which has already been
+    interpolated
+    """   
+    fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_interpolated.pickle')
+    if os.path.exists(fname):
+        return cPickle.load(open(fname, 'r'))
+    else:
+        return None
+    
+#-------------------------------------------------------------------------------
+def interpolated_Phm_residual_gp_model():
+    """
+    Return a `simulation.PhmResidualGPModel` object which has already been
+    interpolated
+    """ 
+    fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_interpolated.pickle')
+    if os.path.exists(fname):
+        return cPickle.load(open(fname, 'r'))
+    else:
+        return None
 
 #-------------------------------------------------------------------------------
     

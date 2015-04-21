@@ -941,6 +941,9 @@ class HaloP00(object):
         self.gp_stoch = sim_data.interpolated_stochasticity_gp_model()
         if self.gp_stoch is None:   
             self.gp_stoch = StochasticityGPModel(self.z, interpolated)
+            
+        # also need to load the bias to mass converter
+        self.bias_to_mass = tools.BiasToMassRelation(self.HaloZelP00.cosmo, interpolated)
 
         # store the interpolation variable
         self._interpolated = interpolated
@@ -967,7 +970,7 @@ class HaloP00(object):
     @property
     def z(self):
         """
-        The redshift, taken from the `P00_model`; 
+        The redshift, taken from the `HaloZelP00`; 
         """
         return self.HaloZelP00.z
 
@@ -975,10 +978,7 @@ class HaloP00(object):
     def z(self, val):
         if hasattr(self, '_z') and self._z == val:
             return
-
         self.HaloZelP00.z = val
-        self.gp_Phm.z     = val
-        self.gp_stoch.z   = val
 
     #---------------------------------------------------------------------------
     def Pmm(self, k):
@@ -994,7 +994,11 @@ class HaloP00(object):
         The halo-matter cross correlation at the bias specified by `b1`, 
         as computed from the Gaussian Process fit
         """
-        toret = self.gp_Phm(k, b1, return_error)
+        # compute the Phm residual
+        M = self.bias_to_mass(sigma8=self.HaloZelP00.sigma8, b1=b1, z=self.z)/1e13
+        toret = self.gp_Phm(s8_z=self.HaloZelP00.sigma8_z, k=k, M=M, return_error=return_error)
+        
+        # get the zeldovich power
         Pzel = b1*self.HaloZelP00.zeldovich_power(k)
 
         if return_error:
@@ -1008,7 +1012,10 @@ class HaloP00(object):
         The stochasticity as computed from simulations using a Gaussian Process
         fit
         """
-        toret = self.gp_stoch(k, b1, return_error)
+        # compute the stochasticity from the GP
+        M = self.bias_to_mass(sigma8=self.HaloZelP00.sigma8, b1=b1, z=self.z)/1e13
+        toret = self.gp_stoch(s8_z=self.HaloZelP00.sigma8_z, k=k, M=M, return_error=return_error)
+        
         if return_error:
             return toret[0], toret[1]**0.5
         else:
@@ -1040,6 +1047,11 @@ class StochasticityGPModel(tools.InterpolationTable):
     """
     Class implementing the fits to the scale-dependent stochasticity, Lambda,
     using a Gaussian Process model based on simulation data
+    
+    Notes
+    -----
+    This will be treated as a function of sigma8 at z, halo mass,
+    and wavenumber
     """    
     s8z_interp = np.linspace(0.5, 0.9, 100)
     M_interp = np.logspace(-2, np.log10(5e2), 100)    
@@ -1101,6 +1113,11 @@ class PhmResidualGPModel(tools.InterpolationTable):
     """
     Class implementing the fits to the residual of Phm, modeled with a Pade
     expansion, using a Gaussian Process model based on simulation data
+    
+    Notes
+    -----
+    This will be treated as a function of sigma8 at redshift z, halo mass, 
+    and wavenumber
     """
     s8z_interp = np.linspace(0.5, 0.9, 100)
     M_interp = np.logspace(-2, np.log10(5e2), 100)    

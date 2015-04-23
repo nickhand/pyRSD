@@ -13,7 +13,6 @@ class SimInterpolatorofBiasRedshift(object):
     Class to interpolate simulation data as a function of bias and redshift, 
     using `GaussianProcess` class from `sklearn`
     """
-    
     def __init__(self, columns, use_bias_ratio=False):
         """
         Parameters
@@ -934,9 +933,17 @@ class HaloP00(object):
         self.HaloZelP00.interpolated = interpolated
 
         # initialize the GP classes, trying to load the interpolated versions first
+<<<<<<< HEAD
         self.gp_Phm   = PhmResidualGPModel(self.z, interpolated)
         self.gp_stoch = StochasticityGPModel(self.z, interpolated)
     
+=======
+        self.gp_Phm = sim_data.interpolated_Phm_residual_gp_model() 
+        if self.gp_Phm is None:
+            self.gp_Phm   = PhmResidualGPModel(self.z, interpolated)
+        self.gp_stoch = StochasticityGPModel(self.z, interpolated)
+            
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
         # store the interpolation variable
         self._interpolated = interpolated
 
@@ -989,7 +996,11 @@ class HaloP00(object):
         as computed from the Gaussian Process fit
         """
         # compute the Phm residual
+<<<<<<< HEAD
         toret = self.gp_Phm(k=k, b1=b1, return_error=return_error)
+=======
+        toret = self.gp_Phm(s8_z=self.HaloZelP00.sigma8_z, k=k, b1=b1, return_error=return_error)
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
         
         # get the zeldovich power
         Pzel = b1*self.HaloZelP00.zeldovich_power(k)
@@ -1042,17 +1053,22 @@ class StochasticityGPModel(tools.InterpolationTable):
     
     Notes
     -----
-    This will be treated as a function of sigma8 at z, halo mass,
-    and wavenumber
+    This will be treated as a function of sigma8 at z, b1, and wavenumber
     """    
+<<<<<<< HEAD
     b1_interp = np.linspace(1., 6., 200)
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
+=======
+    b1_interp = np.linspace(1., 5.5, 100)
+    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
 
     def __init__(self, z, interpolated=False):
         """
         Parameters
         ----------
         z : float
+<<<<<<< HEAD
             The redshift
         interpolated : bool, optional
             If `True`, return results from an interpolation table, otherwise,
@@ -1061,6 +1077,16 @@ class StochasticityGPModel(tools.InterpolationTable):
         # store the redshift
         self._z = z
            
+=======
+            The redshift to evaluate at
+        interpolated : bool, optional
+            If `True`, return results from an interpolation table, otherwise,
+            evaluate the Gaussian Process for each value
+        """  
+        # set the redshift
+        self._z = z
+                      
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
         # load the sim GP
         self.gp = sim_data.stochasticity_gp_model()
 
@@ -1073,7 +1099,11 @@ class StochasticityGPModel(tools.InterpolationTable):
     @property
     def z(self):
         """
+<<<<<<< HEAD
         Redshift to compute the power at
+=======
+        Redshift to compute the integrals at
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
         """
         return self._z
 
@@ -1092,7 +1122,11 @@ class StochasticityGPModel(tools.InterpolationTable):
         The stochasticity as computed from simulations using a Gaussian Process
         fit
         """
+<<<<<<< HEAD
         pts = np.concatenate((np.repeat(self.z, len(pts))[:,None], pts), axis=1)
+=======
+        pts =  np.conctenate((np.repeat(self.z, len(pts))[:,None], pts), axis=1)
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
         if return_error:
             lam, sig_sq = self.gp.predict(pts, eval_MSE=True, batch_size=10000)
             return lam, sig_sq**0.5
@@ -1106,6 +1140,11 @@ class StochasticityGPModel(tools.InterpolationTable):
 
         Parameters
         ----------
+<<<<<<< HEAD
+=======
+        s8_z : float
+            The value of sigma8(z)
+>>>>>>> 32c5d5ec4e5e13ecca7c595460d656e861e6dc65
         b1 : float
             The value of the halo bias
         k : float, array_like

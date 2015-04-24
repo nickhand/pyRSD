@@ -267,7 +267,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P01_ss
         
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch"
+    @cached_property("b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch",
                      "sigma_v", "sigma_bv2")
     def P02_ss(self):
         """

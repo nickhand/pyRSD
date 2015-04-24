@@ -306,7 +306,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 
                 term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
                 term2_mu4 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
-                sP02_ss.total.mu4 = term1_mu4 + term2_mu4
+                P02_ss.total.mu4 = term1_mu4 + term2_mu4
         
         return P02_ss
             

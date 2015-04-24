@@ -539,7 +539,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         The 1-loop auto-correlation of density.
         """
         norm = self._power_norm*self.D**2
-        return norm*(self.power_lin(self.k) + norm*self._Pdd_z0(self.k))
+        return norm*(self.power_lin(self.k) + norm*self._Pdd_0(self.k))
         
     #---------------------------------------------------------------------------
     @cached_property("k", "f", "z", "sigma8", "use_Pdv_model", "Pdv_loaded")
@@ -556,7 +556,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 return self.Pdv_model(self.k)
             else:
                 norm = self._power_norm*self.D**2
-                return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_z0(self.k))
+                return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_0(self.k))
           
     #---------------------------------------------------------------------------
     @cached_property("k", "f", "z", "sigma8")
@@ -565,7 +565,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         The 1-loop auto-correlation of velocity divergence.
         """
         norm = self._power_norm*self.D**2
-        return self.f**2 * norm*(self.power_lin(self.k) + norm*self._Pvv_z0(self.k))
+        return self.f**2 * norm*(self.power_lin(self.k) + norm*self._Pvv_0(self.k))
     
     #---------------------------------------------------------------------------
     @cached_property("k", "z", "sigma8", "use_P00_model", "power_lin", 

@@ -6,9 +6,10 @@
  contact: nhand@berkeley.edu
  creation date: 05/09/2014
 """
-from . import power_biased
+from ._cache import cached_property
+from .power_biased import BiasedSpectrum
 
-class HaloSpectrum(power_biased.BiasedSpectrum):
+class HaloSpectrum(BiasedSpectrum):
     
                 
     def __init__(self, **kwargs):
@@ -16,10 +17,8 @@ class HaloSpectrum(power_biased.BiasedSpectrum):
         # initalize the dark matter power spectrum
         super(HaloSpectrum, self).__init__(**kwargs)
 
-    #end __init__
-    
     #---------------------------------------------------------------------------
-    @property
+    @cached_property("b1")
     def b1_bar(self):
         """
         The linear bias factor.
@@ -27,7 +26,7 @@ class HaloSpectrum(power_biased.BiasedSpectrum):
         return self.b1
 
     #---------------------------------------------------------------------------
-    @property
+    @cached_property("b2_00")
     def b2_00_bar(self):
         """
         The quadratic, local bias used for the P00_ss term.
@@ -35,7 +34,7 @@ class HaloSpectrum(power_biased.BiasedSpectrum):
         return self.b2_00
         
     #---------------------------------------------------------------------------
-    @property
+    @cached_property("b2_01")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term.
@@ -43,7 +42,7 @@ class HaloSpectrum(power_biased.BiasedSpectrum):
         return self.b2_01
             
     #---------------------------------------------------------------------------
-    @property
+    @cached_property("bs")
     def bs_bar(self):
         """
         The quadratic, nonlocal tidal bias factor

@@ -52,7 +52,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         self.use_mean_bias = use_mean_bias
         self.fog_model = fog_model
-    #end __init__
     
     #---------------------------------------------------------------------------
     def initialize(self):
@@ -60,7 +59,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Initialize the underlying splines, etc
         """
         self.Pgal(0.5)
-    #end initialize
     
     #---------------------------------------------------------------------------
     @property

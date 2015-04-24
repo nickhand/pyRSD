@@ -1,14 +1,7 @@
-"""
- power_halo.py
- pyRSD: subclass of power_biased.BiasedSpectrum for halos
- 
- author: Nick Hand
- contact: nhand@berkeley.edu
- creation date: 05/09/2014
-"""
 from ._cache import cached_property
 from .power_biased import BiasedSpectrum
 
+#-------------------------------------------------------------------------------
 class HaloSpectrum(BiasedSpectrum):
     
                 
@@ -49,3 +42,4 @@ class HaloSpectrum(BiasedSpectrum):
         """
         return self.bs
     #---------------------------------------------------------------------------
+#-------------------------------------------------------------------------------

@@ -1,11 +1,4 @@
-"""
- power_gal.py
- pyRSD: subclass of power_biased for a galaxy population
- 
- author: Nick Hand
- contact: nhand@berkeley.edu
- creation date: 05/09/2014
-"""
+from ._cache import parameter, cached_property
 from . import power_biased, tools
 from .. import numpy as np, sys
 from scipy.special import legendre
@@ -40,319 +33,176 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     for biased redshift space power spectra
     """
     allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + \
-                    ['use_mean_bias', 'fog_model']
+                        ['use_mean_bias', 'fog_model']
     
-    def __init__(self, use_mean_bias=False, fog_model='modified_lorentzian', **kwargs):
+    def __init__(self, use_mean_bias=True, fog_model='modified_lorentzian', **kwargs):
         
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
         
-        # don't violate galilean invariance.
-        self._include_2loop = False
-        
+        # set the parameters
         self.use_mean_bias = use_mean_bias
-        self.fog_model = fog_model
-    
-    #---------------------------------------------------------------------------
-    def initialize(self):
-        """
-        Initialize the underlying splines, etc
-        """
-        self.Pgal(0.5)
-    
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_bias_relation(self):
-        """
-        The sigma-bias relation
-        """
-        try:
-            if hasattr(self, '_sigma_bias_relation'):
-                if self._sigma_bias_relation.z != self.z:
-                    raise AttributeError()
-            return self._sigma_bias_relation
-        except AttributeError:
-            self._sigma_bias_relation = tools.SigmaBiasRelation(self.z, self.power_lin)
-            return self._sigma_bias_relation
+        self.fog_model     = fog_model
+        
+        # set the defaults
+        self.include_2loop = False
+        self.fs            = 0.10
+        self.fcB           = 0.08
+        self.fsB           = 0.40
+        self.b1_cA         = 1.85
+        self.b1_cB         = 2.8
+        self.b1_sA         = 2.6
+        self.b1_sB         = 3.6
+        self.sigma_c       = 1.
+        self.sigma_s       = 5.
+        self.sigma_sA      = 4.2
+        self.sigma_sB      = 6.
+        self.NcBs          = 3e4
+        self.NsBsB         = 9e4
+        self.N             = 0.
         
     #---------------------------------------------------------------------------
-    # THE GALAXY FRACTIONS
+    # PARAMETERS
     #---------------------------------------------------------------------------
-    @property
-    def fs(self):
+    @parameter
+    def fog_model(self, val):
+        """
+        Function to return the FOG suppression factor, which reads in a 
+        single variable `x = k \mu \sigma`
+        """
+        allowable = ['modified_lorentzian', 'lorentzian', 'gaussian']
+        if val not in alloweable:
+            raise ValueError("`fog_model` must be one of %s" %allowable)
+            
+        mod = sys.modules[__name__]
+        return getattr(mod, 'fog_'+val)
+        
+    @parameter
+    def fs(self, val):
         """
         The satellite fraction, fs = N_sat / N_gal 
         """
-        try:
-            return self._fs
-        except AttributeError:
-            raise ValueError("Must specify satellite fraction 'fs' attribute.")
-    
-    @fs.setter
-    def fs(self, val):
-        if hasattr(self, '_fs') and val == self._fs: return
-        self._fs = val
-        
-    #---------------------------------------------------------------------------
-    @property
-    def fcB(self):
+        return val
+
+    @parameter
+    def fcB(self, val):
         """
         The centrals with sats (cB) fraction, fcB = N_cB / N_cen 
         """
-        try:
-            return self._fcB
-        except AttributeError:
-            raise ValueError("Must specify central with sats fraction 'fcB' attribute.")
+        return val
     
-    @fcB.setter
-    def fcB(self, val):
-        if hasattr(self, '_fcB') and val == self._fcB: return
-        self._fcB = val
-        
-    #---------------------------------------------------------------------------
-    @property
-    def fsB(self):
+    @parameter
+    def fsB(self, val):
         """
         The satellite with sats fraction, fsB = N_sB / N_sat
         """
-        try:
-            return self._fsB
-        except AttributeError:
-            raise ValueError("Must specify satellite with sats fraction 'fsB' attribute.")
-    
-    @fsB.setter
-    def fsB(self, val):
-        if hasattr(self, '_fsB') and val == self._fsB: return
-        self._fsB = val
+        return val
         
-    #---------------------------------------------------------------------------
-    # THE GALAXY SAMPLE BIASES
-    #---------------------------------------------------------------------------
-    @property
-    def b1_cA(self):
+    @parameter
+    def b1_cA(self, val):
         """
         The linear bias factor for the centrals with no sats in same halo.
         """
-        try:
-            return self._b1_cA
-        except AttributeError:
-            raise ValueError("Must specify cA linear bias 'b1_cA' attribute.")
-            
-    @b1_cA.setter
-    def b1_cA(self, val):
-        if hasattr(self, '_b1_cA') and val == self._b1_cA: return
-        self._b1_cA = val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def b1_cB(self):
+        return val
+        
+    @parameter
+    def b1_cB(self, val):
         """
         The linear bias factor for the centrals with sats in same halo.
         """
-        try:
-            return self._b1_cB
-        except AttributeError:
-            raise ValueError("Must specify cB linear bias 'b1_cB' attribute.")
-            
-    @b1_cB.setter
-    def b1_cB(self, val):
-        if hasattr(self, '_b1_cB') and val == self._b1_cB: return
-        self._b1_cB = val
+        return val
+        
+    @parameter
+    def b1_sA(self, val):
+        """
+        The linear bias factor for satellites with no other sats in same halo.
+        """
+        return val
+        
+    @parameter
+    def b1_sB(self, val):
+        """
+        The linear bias factor for satellites with other sats in same halo.
+        """
+        return val
     
+    @parameter
+    def sigma_c(self, val):
+        """
+        The FOG velocity dispersion for centrals in Mpc/h
+        """
+        return val
+                
+    @parameter
+    def sigma_s(self, val):
+        """
+        The FOG velocity dispersion for satellites in Mpc/h
+        """
+        return val
+        
+    @parameter
+    def sigma_sA(self, val):
+        """
+        The FOG velocity dispersion for "type A" satellites in Mpc/h
+        """
+        return val
+        
+    @parameter
+    def sigma_sB(self, val):
+        """
+        The FOG velocity dispersion for "type B" satellites in Mpc/h
+        """
+        return val
+    
+    @parameter
+    def NcBs(self, val):
+        """
+        Constant for the P_cBs 1-halo term
+        """
+        return val
+    
+    @parameter
+    def NsBsB(self, val):
+        """
+        Constant for the P_sBsB 1-halo term
+        """
+        return val
+        
+    @parameter
+    def N(self, val):
+        """
+        Constant offset to model, returns 0 by default
+        """
+        return val
+                                        
     #---------------------------------------------------------------------------
-    @property
+    # CACHED PROPERTIES
+    #---------------------------------------------------------------------------
+    @cached_property('fcB', 'b1_cB', 'b1_cA')
     def b1_c(self):
         """
         The linear bias factor for all centrals. This is not a free parameter, 
         but is computed as weighted mean of b1_cA and b1_cB.
         """
-        return self.fcB * self.b1_cB + (1. - self.fcB) * self.b1_cA
-    
-    #---------------------------------------------------------------------------
-    @property
-    def b1_sA(self):
-        """
-        The linear bias factor for satellites with no other sats in same halo.
-        """
-        try:
-            return self._b1_sA
-        except AttributeError:
-            raise ValueError("Must specify sA linear bias 'b1_sA' attribute.")
-            
-    @b1_sA.setter
-    def b1_sA(self, val):
-        if hasattr(self, '_b1_sA') and val == self._b1_sA: return
-        self._b1_sA = val
-        
-    #---------------------------------------------------------------------------
-    @property
-    def b1_sB(self):
-        """
-        The linear bias factor for satellites with other sats in same halo.
-        """
-        try:
-            return self._b1_sB
-        except AttributeError:
-            raise ValueError("Must specify sB linear bias 'b1_sB' attribute.")
-            
-    @b1_sB.setter
-    def b1_sB(self, val):
-        if hasattr(self, '_b1_sB') and val == self._b1_sB: return
-        self._b1_sB = val
-        
-    #---------------------------------------------------------------------------
-    @property
+        return self.fcB*self.b1_cB + (1.-self.fcB)*self.b1_cA
+
+    @cached_property('fsB', 'b1_sB', 'b1_sA')
     def b1_s(self):
         """
         The linear bias factor for all satellites. This is not a free parameter, 
         but is computed as weighted mean of b1_sA and b1_sB.
         """
-        return self.fsB * self.b1_sB + (1. - self.fsB) * self.b1_sA
-        
-    #---------------------------------------------------------------------------
-    # VELOCITY DISPERSIONS
-    #---------------------------------------------------------------------------                
-    @property
-    def sigma_c(self):
-        """
-        The FOG velocity dispersion for centrals
-        """
-        try:
-            return self._sigma_c
-        except AttributeError:
-            raise ValueError("Must specify velocity dispersion 'sigma_c' attribute.")
-           
-            
-    @sigma_c.setter
-    def sigma_c(self, val):
-        if hasattr(self, '_sigma_c') and val == self._sigma_c: return
-        self._sigma_c = val
+        return self.fsB*self.b1_sB + (1.-self.fsB)*self.b1_sA
     
     #---------------------------------------------------------------------------
-    @property
-    def sigma_s(self):
+    # UTILITY FUNCTIONS
+    #---------------------------------------------------------------------------
+    def initialize(self):
         """
-        The FOG velocity dispersion for satellites
+        Initialize the underlying splines, etc
         """
-        try:
-            return self._sigma_s
-        except AttributeError:
-            return self.sigma_bias_relation.sigma(self.b1_s)
+        return self.Pgal(0.5)
             
-    @sigma_s.setter
-    def sigma_s(self, val):
-        if hasattr(self, '_sigma_s') and val == self._sigma_s: return
-        self._sigma_s = val
-        
-    @sigma_s.deleter
-    def sigma_s(self, val):
-        if hasattr(self, '_sigma_s'): delattr(self, '_sigma_s')
-        
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_sA(self):
-        """
-        The FOG velocity dispersion for "type A" satellites
-        """
-        try:
-            return self._sigma_sA
-        except AttributeError:
-            return self.sigma_bias_relation.sigma(self.b1_sA)
-            
-    @sigma_sA.setter
-    def sigma_sA(self, val):
-        if hasattr(self, '_sigma_sA') and val == self._sigma_sA: return
-        self._sigma_sA = val
-        
-    @sigma_sA.deleter
-    def sigma_sA(self, val):
-        if hasattr(self, '_sigma_sA'): delattr(self, '_sigma_sA')   
-        
-    #---------------------------------------------------------------------------
-    @property
-    def sigma_sB(self):
-        """
-        The FOG velocity dispersion for "type B" satellites
-        """
-        try:
-            return self._sigma_sB
-        except AttributeError:
-            return self.sigma_bias_relation.sigma(self.b1_sB)
-            
-    @sigma_sB.setter
-    def sigma_sB(self, val):
-        if hasattr(self, '_sigma_sB') and val == self._sigma_sB: return
-        self._sigma_sB = val
-    
-    @sigma_sB.deleter
-    def sigma_sB(self, val):
-        if hasattr(self, '_sigma_sB'): delattr(self, '_sigma_sB')
-    
-    #---------------------------------------------------------------------------
-    @property
-    def fog_model(self):
-        """
-        Function to return the FOG suppression factor, which reads in a 
-        single variable `x = k \mu \sigma`
-        """
-        return self._fog_model
-    
-    @fog_model.setter
-    def fog_model(self, val):
-        assert val in ['modified_lorentzian', 'lorentzian', 'gaussian']
-        mod = sys.modules[__name__]
-        self._fog_model = getattr(mod, 'fog_'+val)
-        
-    #---------------------------------------------------------------------------
-    # 1-HALO ATTRIBUTES
-    #---------------------------------------------------------------------------
-    @property
-    def NcBs(self):
-        """
-        Constant for the P_cBs 1-halo term
-        """
-        try:
-            return self._NcBs
-        except AttributeError:
-            raise ValueError("Must specify 1-halo 'NcBs' attribute.")
-            
-    @NcBs.setter
-    def NcBs(self, val):
-        if hasattr(self, '_NcBs') and val == self._NcBs: return
-        self._NcBs = val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def NsBsB(self):
-        """
-        Constant for the P_sBsB 1-halo term
-        """
-        try:
-            return self._NsBsB
-        except AttributeError:
-            raise ValueError("Must specify 1-halo 'NsBsB' attribute.")
-            
-    @NsBsB.setter
-    def NsBsB(self, val):
-        if hasattr(self, '_NsBsB') and val == self._NsBsB: return
-        self._NsBsB = val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def N(self):
-        """
-        Constant offset to model, returns 0 by default
-        """
-        try:
-            return self._N
-        except AttributeError:
-            return 0.
-            
-    @N.setter
-    def N(self, val):
-        if hasattr(self, '_N') and val == self._N: return
-        self._N = val
-        
     #---------------------------------------------------------------------------
     def evaluate_fog(self, sigma, mu_obs):
         """
@@ -640,4 +490,5 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.Pgal(mu, hires=hires)
         
     #---------------------------------------------------------------------------
+#-------------------------------------------------------------------------------
     

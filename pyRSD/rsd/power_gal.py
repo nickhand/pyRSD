@@ -71,7 +71,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         single variable `x = k \mu \sigma`
         """
         allowable = ['modified_lorentzian', 'lorentzian', 'gaussian']
-        if val not in alloweable:
+        if val not in allowable:
             raise ValueError("`fog_model` must be one of %s" %allowable)
             
         mod = sys.modules[__name__]

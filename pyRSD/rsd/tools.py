@@ -273,7 +273,7 @@ class BiasToMassRelation(Cache):
             # find the zero
             M = brentq(objective, 1e-8, 1e3, args=(b1, rescaling))*mass_norm
             grid_vals.append(M)
-        grid_vals = np.array(grid_vals)
+        grid_vals = np.array(grid_vals).reshape((len(sigma8s), len(b1s)))
         
         # return the interpolator
         return RegularGridInterpolator((sigma8s, b1s), grid_vals)

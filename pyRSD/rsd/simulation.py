@@ -381,7 +381,7 @@ class SimulationP11(InterpolatedSimulationData):
         grid_vals = []
         for i, fs8_sq in enumerate(fs8_sqs):
             grid_vals += list(self.data.xs(fs8_sq).P11)
-        grid_vals = np.array(grid_vals)
+        grid_vals = np.array(grid_vals).reshape((len(fs8_sqs), len(ks)))
         
         # return the interpolator
         return RegularGridInterpolator((fs8_sqs, ks), grid_vals)
@@ -508,7 +508,7 @@ class SimulationPdv(InterpolatedSimulationData):
         grid_vals = []
         for i, fs8_sq in enumerate(fs8_sqs):
             grid_vals += list(self.data.xs(fs8_sq).Pdv)
-        grid_vals = np.array(grid_vals)
+        grid_vals = np.array(grid_vals).reshape((len(fs8_sqs), len(ks)))
         
         # return the interpolator
         return RegularGridInterpolator((fs8_sqs, ks), grid_vals)

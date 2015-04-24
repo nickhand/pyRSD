@@ -399,7 +399,7 @@ class Integrals(object):
             
     #---------------------------------------------------------------------------
     @normalize_Jmn
-    @interpolated_property("poower_lin")
+    @interpolated_property("power_lin")
     def sigmasq_k(self, k):
         """
         The dark matter velocity dispersion at z, as a function of k, 

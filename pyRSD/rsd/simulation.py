@@ -178,7 +178,7 @@ class SigmavFits(GaussianProcessSimulationData):
         # convert the values to Mpc/h
         cosmo = pygcl.Cosmology("teppei_sims.ini")
         new_sim_results = {}
-        for z_str, values in sim_results.iteritems():
+        for z_str, values in self.sim_results.iteritems():
             z = float(z_str)
             params = {}
             for b1, sigma in values.iteritems():

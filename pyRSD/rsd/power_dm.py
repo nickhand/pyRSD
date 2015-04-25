@@ -289,8 +289,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         k_mu0 = self.k_true(self.k_obs, 0.)
         k_mu1 = self.k_true(self.k_obs, 1.)
-        kmin = min(np.amin(k_mu0), np.amin(k_mu1))
-        kmax = max(np.amax(k_mu0), np.amax(k_mu1))
+        kmin = 0.95*min(np.amin(k_mu0), np.amin(k_mu1))
+        kmax = 1.05*max(np.amax(k_mu0), np.amax(k_mu1))
 
         if kmin < INTERP_KMIN:
             msg = "Minimum possible k value with this `k_obs` and "
@@ -667,7 +667,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                   
                 # check and return any user-loaded values
                 if self.P11_mu4_loaded:
-                    P11.total.mu4 = self.self.get_loaded_data('P11_mu4', self.k)
+                    P11.total.mu4 = self.get_loaded_data('P11_mu4', self.k)
                 else:
                     
                     # use the DM model

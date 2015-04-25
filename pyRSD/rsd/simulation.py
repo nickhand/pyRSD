@@ -657,7 +657,7 @@ class StochasticityGPModel(Cache):
                 pts = [self.z, b1, k]
             else:
                 pts = np.asarray(list(itertools.product([self.z], [b1], k)))
-            return self.gp.predict(pts, batch_size=10000, return_error=return_error)
+            return self.gp.predict(pts, batch_size=10000, eval_MSE=return_error)
         else:
             if np.isscalar(k):
                 pts = [b1, k]

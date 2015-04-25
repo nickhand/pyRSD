@@ -203,8 +203,6 @@ def interpolated_property(*parents, **kwargs):
             def spline_func(self):
                 interp_domain = getattr(self, kwargs.get("interp", "k_interp"))
                 val = f(self, interp_domain)
-                print "name = ", "_%s_spline" %(f.__name__)
-                print "interp domain = ", interp_domain
                 spline_kwargs = getattr(self, 'spline_kwargs', {})
                 if isinstance(val, tuple):
                     return tuple(self.spline(interp_domain, x, **spline_kwargs) for x in val)

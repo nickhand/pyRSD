@@ -23,7 +23,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.include_2loop    = False # don't violate galilean invariance, fool
         self.stoch_model      = "gaussian_process"
         self.b1               = 2.
-        self.b1_bar           = 2.     
+        try:
+            self.b1_bar           = 2.     
+        except:
+            pass
         
     #---------------------------------------------------------------------------
     # ATTRIBUTES

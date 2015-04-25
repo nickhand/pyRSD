@@ -36,6 +36,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     # ATTRIBUTES
     #---------------------------------------------------------------------------
     @parameter
+    def use_Phm_model(self, val):
+        """
+        Whether to use a GP model for the Phm residual
+        """
+        return val
+        
+    @parameter
     def interpolate(self, val):
         """
         Whether we want to interpolate any underlying models

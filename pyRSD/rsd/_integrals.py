@@ -388,14 +388,21 @@ class Integrals(object):
         return I_lin, I_cross, I_1loop
         
     #---------------------------------------------------------------------------
-    @normalize_Imn
-    @cached_property("_P22bar")
+    @cached_property("_P22bar_0")
+    def _unnormalized_velocity_kurtosis(self):
+        """
+        The unnormalized velocity kurtosis
+        """
+        return self._P22bar_0.VelocityKurtosis()
+        
+    #---------------------------------------------------------------------------
+    @property
     def velocity_kurtosis(self):
         """
         The velocity kurtosis <v_parallel^4>, computed using the 1-loop divergence
         auto spectra Pvv, aka P22bar
         """
-        return self._P22bar_0.VelocityKurtosis()
+        return (self._power_norm*self.D**2)**2 * self._unnormalized_velocity_kurtosis
             
     #---------------------------------------------------------------------------
     @normalize_Jmn

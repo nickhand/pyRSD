@@ -570,7 +570,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The full halo power spectrum term with mu^6 angular dependence. Contributions
         from P12_ss, P13_ss, P22_ss.
         """
-        return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.integrals.I32(self.k)
+        return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k)
 
     #---------------------------------------------------------------------------    
 #-------------------------------------------------------------------------------  

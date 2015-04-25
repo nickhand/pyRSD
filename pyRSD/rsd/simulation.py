@@ -221,14 +221,14 @@ class StochasticityLogModel(GaussianProcessSimulationData):
     def __init__(self):
 
         cols = ['constant', 'slope']
-        super(LambdaStochasticityLogFits, self).__init__(cols, use_bias_ratio=False)
+        super(StochasticityLogModel, self).__init__(cols, use_bias_ratio=False)
 
     #---------------------------------------------------------------------------
     def __call__(self, k, b1, z):
         """
         Return the stochasticity
         """
-        A0, A1 = SimInterpolatorofBiasRedshift.__call__(self, b1, z)
+        A0, A1 = GaussianProcessSimulationData.__call__(self, b1, z)
         return A0 + A1*np.log(k)
         
     #---------------------------------------------------------------------------

@@ -291,49 +291,21 @@ class HaloZeldovichP01(HaloZeldovichPS):
         This is basically the derivative of the broadband band term for P00, taken
         with respect to lna
         """
-        F = self.compensation(k)
-
-        # store these for convenience
-        norm = 1 + (k*self.R1h)**2 + (k*self.R2h)**4
-        C = (1. + (k*self.R1)**2) / norm
-
-        # 1st term of tot deriv
-        term1 = self.dA0_dlna*F*C;
-
-        # 2nd term
-        term2 = self.A0*C * (2*k**2*self.R*self.dR_dlna) / (1 + (k*self.R)**2)**2
-
-        # 3rd term
-        term3_a = (2*k**2*self.R1*self.dR1_dlna) / norm
-        term3_b = -(1 + (k*self.R1**2)) / norm**2 * (2*k**2*self.R1h*self.dR1h_dlna + 4*k**4*self.R2h**3*self.dR2h_dlna)
-        term3 = self.A0*F * (term3_a + term3_b)
-        return term1 + term2 + term3
-    
-    #---------------------------------------------------------------------------
-    @cached_property('f', 'A0')
-    def dA0_dlna(self):
-        return self.f * 3.75 * self.A0
-
-    #---------------------------------------------------------------------------
-    @cached_property('f', 'R')
-    def dR_dlna(self):
-        return self.f * 0.15 * self.R
-
-    #---------------------------------------------------------------------------
-    @cached_property('f', 'R1')
-    def dR1_dlna(self):
-        return self.f * 0.88 * self.R1
-
-    #---------------------------------------------------------------------------
-    @cached_property('f', 'R1h')
-    def dR1h_dlna(self):
-        return self.f * 0.29 * self.R1h
-
-    #---------------------------------------------------------------------------
-    @cached_property('f', 'R2h')
-    def dR2h_dlna(self):
-        return self.f * 0.43 * self.R2h
-            
+        f   = self.f
+        A0  = self.A0
+        R   = self.R
+        R1  = self.R1
+        R1h = self.R1h
+        R2h = self.R2h
+        
+        numer = f*k**2*A0*R**2 * (4.05 + k**2 * (3.47*R1h**2 + 2.33*k**2*R2h**4 +  \
+                 R1**2 * (5.81 + 5.23*(k*R1h)**2 + 4.09*(k*R2h[a])**4) + \
+                 R**2 * (3.75 + k**2 * (3.17*R1h**2 + 2.03*k**2*R2h**4 + \
+                 R1**2 * (5.51 + 4.93*(k*R1h)**2 + 3.79*(k**4*R2h)**4)))))
+                     
+        denom = (1. + (k*R)**2)**2 * (1. + (k*R1h)**2 + (k*R2h)**4)**2
+        return numer / denom
+        
     #---------------------------------------------------------------------------
     @tools.unpacked
     def __call__(self, k):

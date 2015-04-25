@@ -666,4 +666,100 @@ class StochasticityGPModel(Cache):
             toret = self.interpolation_table(pts)
             return toret if len(toret) != 1 else toret[0]
     #---------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+class PhmResidualGPModel(Cache):
+    """
+    Class implementing the fits to the Phm residual, Phm - b1*Pzel
+    """    
+    # define the interpolation grid
+    interpolation_grid = {}
+    interpolation_grid['b1'] = np.linspace(1., 6., 200)
+    interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
+    
+    #---------------------------------------------------------------------------
+    def __init__(self, z, interpolated=False):
+        """
+        Parameters
+        ----------
+        z : float
+            The redshift
+        interpolated : bool, optional
+            If `True`, return results from an interpolation table, otherwise,
+            evaluate the Gaussian Process for each value
+        """             
+        # initialize the Cache base class
+        Cache.__init__(self)
+        
+        # set the parameters
+        self.z            = z
+        self.interpolated = interpolated
+        
+        # load the sim GP
+        self.gp = sim_data.Phm_residual_gp_model()
+
+    #---------------------------------------------------------------------------
+    @parameter
+    def interpolated(self, val):
+        """
+        If `True`, return the stochasticity from the interpolation table
+        """
+        return val
+        
+    @parameter
+    def z(self, val):
+        """
+        Redshift to compute the power at
+        """
+        return val
+            
+    #---------------------------------------------------------------------------
+    @cached_property("z")
+    def interpolation_table(self):
+        """
+        Evaluate the Zeldovich power for storing in the interpolation table.
+        
+        Notes
+        -----
+        This dependes on the redshift stored in the `z` attribute and must be 
+        recomputed whenever that quantity changes.
+        """ 
+        # the interpolation grid points
+        b1s = self.interpolation_grid['b1']
+        ks = self.interpolation_grid['k']
+        pts = np.asarray(list(itertools.product([self.z], b1s, ks)))
+        
+        # get the grid values
+        grid_vals = self.gp.predict(pts, batch_size=10000)
+        grid_vals = grid_vals.reshape((len(b1s), len(ks)))
+        
+        # return the interpolator
+        return RegularGridInterpolator((b1s, ks), grid_vals)
+        
+    #---------------------------------------------------------------------------
+    def __call__(self, b1, k, return_error=False):
+        """
+        Evaluate the Phm residual at the specified `b1`, and `k`
+
+        Parameters
+        ----------
+        b1 : float
+            The value of the halo bias
+        k : float, array_like
+            The wavenumbers in units of `h/Mpc`
+        """
+        if return_error or not self.interpolated:
+            if np.isscalar(k):
+                pts = [self.z, b1, k]
+            else:
+                pts = np.asarray(list(itertools.product([self.z], [b1], k)))
+            return self.gp.predict(pts, batch_size=10000, eval_MSE=return_error)
+        else:
+            if np.isscalar(k):
+                pts = [b1, k]
+            else:
+                pts = np.asarray(list(itertools.product([b1], k)))
+            toret = self.interpolation_table(pts)
+            return toret if len(toret) != 1 else toret[0]
+    #---------------------------------------------------------------------------
 #-------------------------------------------------------------------------------

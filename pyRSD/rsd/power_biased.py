@@ -2,17 +2,18 @@ from .. import numpy as np
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits, \
-                        StochasticityLogModel, StochasticityGPModel
+                        StochasticityLogModel, StochasticityGPModel, PhmResidualGPModel
 
 
 #-------------------------------------------------------------------------------
 class BiasedSpectrum(DarkMatterSpectrum):
     
+    allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                       ['sigmav_from_sims', 'use_tidal_bias']    
+                        ['sigmav_from_sims', 'use_tidal_bias', 'use_Phm_model']    
 
     #---------------------------------------------------------------------------
-    def __init__(self, sigmav_from_sims=True, use_tidal_bias=True, **kwargs):
+    def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -22,11 +23,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.use_tidal_bias   = use_tidal_bias
         self.include_2loop    = False # don't violate galilean invariance, fool
         self.stoch_model      = "gaussian_process"
+        self.use_Phm_model    = False
         self.b1               = 2.
-        try:
-            self.b1_bar           = 2.     
-        except:
-            pass
+        if (self.__class__.__name__ != "HaloSpectrum"):
+            self.b1_bar           = 2.
+        
         
     #---------------------------------------------------------------------------
     # ATTRIBUTES
@@ -37,7 +38,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model', 'stochasticity_gp_model']
+        models = ['P00_model', 'P01_model', 'stochasticity_gp_model', \
+                  'Phm_residual_gp_model']
         self._update_models('interpolate', models, val)
         
         return val
@@ -48,7 +50,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Redshift to evaluate power spectrum at
         """
         # update the dependencies
-        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', 'stochasticity_gp_model']
+        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
+                  'stochasticity_gp_model', 'Phm_residual_gp_model']
         self._update_models('z', models, val)
 
         return val
@@ -173,7 +176,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The GP model for stochasticity, as measured from simulations
         """
-        return StochasticityGPModel(self.z, self.interpolate)        
+        return StochasticityGPModel(self.z, self.interpolate)  
+        
+    @cached_property()
+    def Phm_residual_gp_model(self):
+        """
+        The GP model for the Phm residual, as measured from simulations
+        """
+        return PhmResidualGPModel(self.z, self.interpolate)      
 
     @cached_property("b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_v")
     def biased_sigma_v(self):
@@ -198,6 +208,46 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
     #---------------------------------------------------------------------------
+    @cached_property("b1", "P00", "use_Phm_model")
+    def Phm(self):
+        """
+        The halo - matter cross correlation for the 1st tracer
+        """
+        Phm = PowerTerm()
+        
+        if not self.use_Phm_model:
+            term1 = self.b1*self.P00.total.mu0
+            term2 = self.b2_00*self.K00(self.k)
+            term3 = self.bs*self.K00s(self.k)
+            Phm.total.mu0 = term1 + term2 + term3
+        else:
+            Phm_residual = self.Phm_residual_gp_model(self.b1, self.k)
+            Pzel = self.P00_model.zeldovich_power(self.k)
+            
+            Phm.total.mu0 = self.b1*Pzel + Phm_residual
+            
+        return Phm
+        
+    @cached_property("b1_bar", "P00", "use_Phm_model")
+    def Phm_bar(self):
+        """
+        The halo - matter cross correlation for the 2nd tracer
+        """
+        Phm = PowerTerm()
+        
+        if not self.use_Phm_model:
+            term1 = self.b1_bar*self.P00.total.mu0
+            term2 = self.b2_00_bar*self.K00(self.k)
+            term3 = self.bs_bar*self.K00s(self.k)
+            Phm.total.mu0 = term1 + term2 + term3
+        else:
+            Phm_residual = self.Phm_residual_gp_model(self.b1_bar, self.k)
+            Pzel = self.P00_model.zeldovich_power(self.k)
+
+            Phm.total.mu0 = self.b1_bar*Pzel + Phm_residual
+
+        return Phm
+        
     @cached_property("stoch_model", "k", "b1", "b1_bar", "z")
     def stochasticity(self):
         """
@@ -225,21 +275,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P00_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "P00")
+    @cached_property("P00", "Phm", "Phm_bar")
     def P00_ss_no_stoch(self):
         """
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
-        # get the integral attributes
-        K00 = self.K00(self.k)
-        K00s = self.K00s(self.k)
-    
         P00_ss_no_stoch = PowerTerm()
-        term1 = (self.b1*self.b1_bar) * self.P00.total.mu0
-        term2 = (self.b1*self.b2_00_bar + self.b1_bar*self.b2_00)*K00
-        term3 = (self.b1*self.bs_bar + self.b1_bar*self.bs)*K00s
-        P00_ss_no_stoch.total.mu0 = term1 + term2 + term3
-            
+        term1 = self.b1*self.Phm.total.mu0 + self.b1_bar*self.Phm_bar.total.mu0
+        term2 = (self.b1*self.b1_bar)*self.P00.total.mu0
+        P00_ss_no_stoch = term1 - term2
+        
         return P00_ss_no_stoch
             
     #---------------------------------------------------------------------------

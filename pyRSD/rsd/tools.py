@@ -143,9 +143,6 @@ class RSDSpline(InterpolatedUnivariateSpline):
         """
         Evaluate the spline
         """
-        print "x_old = ", self.x
-        print "x_new = ", x_new
-        
         out_of_bounds = self._check_bounds(x_new)
         y_new = InterpolatedUnivariateSpline.__call__(self, x_new)
         if np.isscalar(y_new) or y_new.ndim == 0:

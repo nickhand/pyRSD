@@ -23,10 +23,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.use_tidal_bias   = use_tidal_bias
         self.include_2loop    = False # don't violate galilean invariance, fool
         self.stoch_model      = "gaussian_process"
-        self.use_Phm_model    = False
         self.b1               = 2.
         if (self.__class__.__name__ != "HaloSpectrum"):
             self.b1_bar           = 2.
+            
+        # turn off the Phm model by default
+        val = kwargs.get('use_Phm_model', False)
+        self.use_Phm_model = val
         
         
     #---------------------------------------------------------------------------

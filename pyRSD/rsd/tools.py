@@ -117,7 +117,7 @@ class RSDSpline(InterpolatedUnivariateSpline):
         below_bounds = x_new < self.x[0]
         above_bounds = x_new > self.x[-1]
         
-        print "below bounds = ", x_new[below_bounds]
+        print "below bounds = ", x_new[below_bounds], self.x[0]
 
         # !! Could provide more information about which values are out of bounds
         if self.bounds_error and below_bounds.any():

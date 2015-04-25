@@ -286,7 +286,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         P00_ss_no_stoch = PowerTerm()
         term1 = self.b1*self.Phm.total.mu0 + self.b1_bar*self.Phm_bar.total.mu0
         term2 = (self.b1*self.b1_bar)*self.P00.total.mu0
-        P00_ss_no_stoch = term1 - term2
+        P00_ss_no_stoch.total.mu0 = term1 - term2
         
         return P00_ss_no_stoch
             

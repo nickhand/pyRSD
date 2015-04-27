@@ -10,10 +10,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
     
     allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                        ['sigmav_from_sims', 'use_tidal_bias', 'use_Phm_model']    
+                        ['sigmav_from_sims', 'use_tidal_bias', 'use_Phm_model', \
+                         'stoch_model']    
 
     #---------------------------------------------------------------------------
-    def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, **kwargs):
+    def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
+                    stoch_model='gaussian_process', **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -22,7 +24,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.sigmav_from_sims = sigmav_from_sims
         self.use_tidal_bias   = use_tidal_bias
         self.include_2loop    = False # don't violate galilean invariance, fool
-        self.stoch_model      = "gaussian_process"
+        self.stoch_model      = stoch_model
         self.b1               = 2.
         if (self.__class__.__name__ != "HaloSpectrum"):
             self.b1_bar           = 2.
@@ -30,6 +32,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         # turn off the Phm model by default
         val = kwargs.get('use_Phm_model', False)
         self.use_Phm_model = val
+        
+        # set A0/A1 of log model
+        self.A0 = 0.
+        self.A1 = 0.
         
         
     #---------------------------------------------------------------------------
@@ -86,7 +92,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         Attribute determining the stochasticity model to use.
         """
-        allowable = ['gaussian_process', 'log']
+        allowable = ['gaussian_process', 'log', 'fit_log']
         if isinstance(val, basestring):
             if val not in allowable:
                 raise ValueError("`stoch_model` must be one of %s or a scalar float" %allowable)
@@ -109,6 +115,20 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return val
                 
+    @parameter
+    def A0(self, val):
+        """
+        The constant amplitude of the stochasticity log model
+        """
+        return val
+
+    @parameter
+    def A1(self, val):
+        """
+        The slope of the stochasticity log model
+        """
+        return val
+    
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
@@ -258,7 +278,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("stoch_model", "k", "b1", "b1_bar", "z")
+    @cached_property("stoch_model", "k", "b1", "b1_bar", "z", "A0", "A1")
     def stochasticity(self):
         """
         The isotropic stochasticity term due to the discreteness of the halos, 
@@ -270,8 +290,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
             mean_bias = (self.b1*self.b1_bar)**0.5
             if self.stoch_model == 'gaussian_process':
                 return self.stochasticity_gp_model(mean_bias, self.k)
-            else:
+            elif self.stoch_model == 'log':
                 return self.stochasticity_log_model(self.k, mean_bias, self.z)
+            elif self.stoch_model == 'fit_log':
+                return self.A0 + self.A1*np.log(self.k)
+                
                 
     @cached_property("P00_ss_no_stoch", "stochasticity")
     def P00_ss(self):
@@ -291,7 +314,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
         P00_ss_no_stoch = PowerTerm()
-        term1 = self.b1*self.Phm.total.mu0 + self.b1_bar*self.Phm_bar.total.mu0
+        term1 = self.b1_bar*self.Phm.total.mu0 + self.b1*self.Phm_bar.total.mu0
         term2 = (self.b1*self.b1_bar)*self.P00.total.mu0
         P00_ss_no_stoch.total.mu0 = term1 - term2
         

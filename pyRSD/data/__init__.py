@@ -303,7 +303,7 @@ def stochasticity_gp_model():
     Return a `sklearn.GaussianProcess` object fit to the stochasticity, Lambda, 
     as a function of bias, redshift, and wavenumber
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_log_fits_linear.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_from_data_reindex_linear.pickle')
     return cPickle.load(open(fname, 'r'))
     
 #-------------------------------------------------------------------------------

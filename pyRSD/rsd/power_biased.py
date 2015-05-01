@@ -61,6 +61,20 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
         
     @parameter
+    def sigma8(self, val):
+        """
+        The value of Sigma8 (mass variances within 8 Mpc/h at z = 0) to compute 
+        the power spectrum at, which gives the normalization of the 
+        linear power spectrum
+        """
+        # update the dependencies
+        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
+                  'stochasticity_gp_model']
+        self._update_models('sigma8', models, val)
+
+        return val
+    
+    @parameter
     def z(self, val):
         """
         Redshift to evaluate power spectrum at
@@ -206,7 +220,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The GP model for stochasticity, as measured from simulations
         """
-        return StochasticityGPModel(self.z, self.interpolate)  
+        return StochasticityGPModel(self.z, self.sigma8, self.cosmo, self.interpolate)  
         
     @cached_property()
     def Phm_residual_gp_model(self):
@@ -288,7 +302,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return self.k*0. + self.stoch_model
         else:
             mean_bias = (self.b1*self.b1_bar)**0.5
-            if self.stoch_model == 'gaussian_process':
+            if self.stoch_model == 'gaussian_process':                
                 return self.stochasticity_gp_model(mean_bias, self.k)
             elif self.stoch_model == 'log':
                 return self.stochasticity_log_model(self.k, mean_bias, self.z)
@@ -314,9 +328,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
         P00_ss_no_stoch = PowerTerm()
-        term1 = self.b1_bar*self.Phm.total.mu0 + self.b1*self.Phm_bar.total.mu0
-        term2 = (self.b1*self.b1_bar)*self.P00.total.mu0
-        P00_ss_no_stoch.total.mu0 = term1 - term2
+        b1_k = self.Phm.total.mu0  / self.P00.total.mu0 
+        b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
+        P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
         
         return P00_ss_no_stoch
             

@@ -582,12 +582,14 @@ class StochasticityGPModel(Cache):
     interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
     
     #---------------------------------------------------------------------------
-    def __init__(self, z, interpolated=False):
+    def __init__(self, z, sigma8, cosmo, interpolated=False):
         """
         Parameters
         ----------
         z : float
             The redshift
+        sigma8: float
+            The value of sigma8
         interpolated : bool, optional
             If `True`, return results from an interpolation table, otherwise,
             evaluate the Gaussian Process for each value
@@ -597,7 +599,9 @@ class StochasticityGPModel(Cache):
         
         # set the parameters
         self.z            = z
+        self.sigma8       = sigma8
         self.interpolated = interpolated
+        self.cosmo        = cosmo
         
         # load the sim GP
         self.gp = sim_data.stochasticity_gp_model()
@@ -616,22 +620,51 @@ class StochasticityGPModel(Cache):
         Redshift to compute the power at
         """
         return val
+        
+    @parameter
+    def sigma8(self, val):
+        """
+        The sigma8 value to compute the power at
+        """
+        return val
+        
+    @parameter
+    def cosmo(self, val):
+        """
+        The cosmology of the input linear power spectrum
+        """
+        return val
+        
+    #---------------------------------------------------------------------------
+    @cached_property("sigma8", "_normalized_sigma8_z")
+    def sigma8_z(self):
+        """
+        Return sigma8(z), normalized to the desired sigma8 at z = 0
+        """
+        return self.sigma8 * self._normalized_sigma8_z
+
+    @cached_property('z', 'cosmo')
+    def _normalized_sigma8_z(self):
+        """
+        Return the normalized sigma8(z) from the input cosmology
+        """
+        return self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8()
             
     #---------------------------------------------------------------------------
-    @cached_property("z")
+    @cached_property("sigma8_z")
     def interpolation_table(self):
         """
         Evaluate the Zeldovich power for storing in the interpolation table.
         
         Notes
         -----
-        This dependes on the redshift stored in the `z` attribute and must be 
+        This dependes on the redshift stored in the `sigma8_z` attribute and must be 
         recomputed whenever that quantity changes.
         """ 
         # the interpolation grid points
         b1s = self.interpolation_grid['b1']
         ks = self.interpolation_grid['k']
-        pts = np.asarray(list(itertools.product([self.z], b1s, ks)))
+        pts = np.asarray(list(itertools.product([self.sigma8_z], b1s, ks)))
         
         # get the grid values
         grid_vals = self.gp.predict(pts, batch_size=10000)
@@ -656,7 +689,7 @@ class StochasticityGPModel(Cache):
             if np.isscalar(k):
                 pts = [self.z, b1, k]
             else:
-                pts = np.asarray(list(itertools.product([self.z], [b1], k)))
+                pts = np.asarray(list(itertools.product([self.sigma8_z], [b1], k)))
             return self.gp.predict(pts, batch_size=10000, eval_MSE=return_error)
         else:
             if np.isscalar(k):

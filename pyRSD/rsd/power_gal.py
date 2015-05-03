@@ -217,20 +217,61 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # POWER SPECTRA TERMS
     #---------------------------------------------------------------------------
-    def Pgal_cc(self, mu):
+    def Pgal_cAcA(self, mu):
         """
-        The central galaxy auto spectrum, assuming no FOG here. This is a 2-halo
-        term only.
+        The central type `A` galaxy auto spectrum, which is a 2-halo term only.
         """
         # set the linear biases first
-        self.b1     = self.b1_c
-        self.b1_bar = self.b1_c
+        self.b1 = self.b1_bar = self.b1_cA
         
         # FOG damping
         G = self.evaluate_fog(self.sigma_c, mu)
 
         # now return the power spectrum here
         return G**2*self.power(mu)
+    
+    #---------------------------------------------------------------------------
+    def Pgal_cAcB(self, mu):
+         """
+         The centrals galaxy cross spectrum, which is a 2-halo term only.
+         """
+         # set the linear biases first
+         if self.use_mean_bias:
+             mean_bias = np.sqrt(self.b1_cA*self.b1_cB)
+             self.b1 = self.b1_bar = mean_bias
+         else:
+             self.b1     = self.b1_cA
+             self.b1_bar = self.b1_cB
+
+         # FOG damping
+         G = self.evaluate_fog(self.sigma_c, mu)
+
+         # now return the power spectrum here
+         return G**2*self.power(mu)
+         
+    #---------------------------------------------------------------------------
+    def Pgal_cBcB(self, mu):
+        """
+        The central type `B` galaxy auto spectrum, which is a 2-halo term only.
+        """
+        # set the linear biases first
+        self.b1 = self.b1_bar = self.b1_cB
+
+        # FOG damping
+        G = self.evaluate_fog(self.sigma_c, mu)
+
+        # now return the power spectrum here
+        return G**2*self.power(mu)
+        
+    #---------------------------------------------------------------------------
+    def Pgal_cc(self, mu):
+        """
+        The totals centrals galaxy spectrum, which is a 2-halo term only.
+        """
+
+        return (1.-self.fcB)**2 * self.Pgal_cAcA(mu) + \
+                2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(mu) + \
+                self.fcB**2 * self.Pgal_cBcB(mu)
         
     #---------------------------------------------------------------------------
     def Pgal_cAs(self, mu):
@@ -348,8 +389,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
             
         return (1. - self.fsB)**2 * self.Pgal_sAsA(mu) + \
-                    2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
-                    self.fsB**2 * self.Pgal_sBsB(mu) 
+                2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu) + \
+                self.fsB**2 * self.Pgal_sBsB(mu) 
                     
     #---------------------------------------------------------------------------
     def Pgal_cs(self, mu):

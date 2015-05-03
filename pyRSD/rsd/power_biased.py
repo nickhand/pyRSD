@@ -179,10 +179,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         Interpolator from simulation data for nonlinear biases
         """
-        if self.use_Phm_model:
-            return NonlinearBiasFits()
-        else:
-            return NonlinearBiasFitsVlah()
+        # if self.use_Phm_model:
+        #     return NonlinearBiasFits()
+        # else:
+        return NonlinearBiasFitsVlah()
           
     @cached_property()
     def sigmav_fitter(self):

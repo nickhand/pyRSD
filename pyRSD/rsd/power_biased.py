@@ -1,8 +1,8 @@
 from .. import numpy as np
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
-from .simulation import SigmavFits, NonlinearBiasFits, \
-                        StochasticityLogModel, StochasticityGPModel, PhmResidualGPModel
+from .simulation import SigmavFits, NonlinearBiasFits, NonlinearBiasFitsVlah, \
+                        StochasticityLogModel, StochasticityGPModel
 
 
 #-------------------------------------------------------------------------------
@@ -30,13 +30,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
             self.b1_bar           = 2.
             
         # turn off the Phm model by default
-        val = kwargs.get('use_Phm_model', False)
+        val = kwargs.get('use_Phm_model', True)
         self.use_Phm_model = val
-        
-        # set A0/A1 of log model
-        self.A0 = 0.
-        self.A1 = 0.
-        
         
     #---------------------------------------------------------------------------
     # ATTRIBUTES
@@ -54,8 +49,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model', 'stochasticity_gp_model', \
-                  'Phm_residual_gp_model']
+        models = ['P00_model', 'P01_model', 'stochasticity_gp_model']
         self._update_models('interpolate', models, val)
         
         return val
@@ -81,7 +75,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'stochasticity_gp_model', 'Phm_residual_gp_model']
+                  'stochasticity_gp_model']
         self._update_models('z', models, val)
 
         return val
@@ -128,46 +122,32 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The linear bias factor of the 2nd tracer.
         """
         return val
-                
-    @parameter
-    def A0(self, val):
-        """
-        The constant amplitude of the stochasticity log model
-        """
-        return val
-
-    @parameter
-    def A1(self, val):
-        """
-        The slope of the stochasticity log model
-        """
-        return val
     
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
-    @cached_property("b1", "z")
+    @cached_property("b1", "z", "nonlinear_bias_fitter")
     def b2_00(self):
         """
         The quadratic, local bias used for the P00_ss term for the 1st tracer.
         """
         return self.nonlinear_bias_fitter(self.b1, self.z, col='b2_00')
         
-    @cached_property("b1_bar", "z")
+    @cached_property("b1_bar", "z", "nonlinear_bias_fitter")
     def b2_00_bar(self):
         """
         The quadratic, local bias used for the P00_ss term for the 2nd tracer.
         """
         return self.nonlinear_bias_fitter(self.b1_bar, self.z, col='b2_00')
     
-    @cached_property("b1", "z")
+    @cached_property("b1", "z", "nonlinear_bias_fitter")
     def b2_01(self):
         """
         The quadratic, local bias used for the P01_ss term for the 1st tracer.
         """
         return self.nonlinear_bias_fitter(self.b1, self.z, col='b2_01')        
     
-    @cached_property("b1_bar", "z")
+    @cached_property("b1_bar", "z", "nonlinear_bias_fitter")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term for the 2nd tracer.
@@ -194,12 +174,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return 0.
     
-    @cached_property()
+    @cached_property("use_Phm_model")
     def nonlinear_bias_fitter(self):
         """
         Interpolator from simulation data for nonlinear biases
         """
-        return NonlinearBiasFits()
+        if self.use_Phm_model:
+            return NonlinearBiasFits()
+        else:
+            return NonlinearBiasFitsVlah()
           
     @cached_property()
     def sigmav_fitter(self):
@@ -221,14 +204,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The GP model for stochasticity, as measured from simulations
         """
         return StochasticityGPModel(self.z, self.sigma8, self.cosmo, self.interpolate)  
-        
-    @cached_property()
-    def Phm_residual_gp_model(self):
-        """
-        The GP model for the Phm residual, as measured from simulations
-        """
-        return PhmResidualGPModel(self.z, self.interpolate)      
-
+             
     @cached_property("b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_v")
     def biased_sigma_v(self):
         """
@@ -265,10 +241,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            Phm_residual = self.Phm_residual_gp_model(self.b1, self.k)
-            Pzel = self.P00_model.zeldovich_power(self.k)
-            
-            Phm.total.mu0 = self.b1*Pzel + Phm_residual
+            # the R for the k^2 R^2 correction (assumed constant)
+            R = 1.28
+            term1 = self.b1*self.P00.total.mu0
+            term2 = self.b2_00*self.K00(self.k)*(1 + (self.k*R)**2)
+            Phm.total.mu0 = term1 + term2
             
         return Phm
         
@@ -285,14 +262,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            Phm_residual = self.Phm_residual_gp_model(self.b1_bar, self.k)
-            Pzel = self.P00_model.zeldovich_power(self.k)
-
-            Phm.total.mu0 = self.b1_bar*Pzel + Phm_residual
+            # the R for the k^2 R^2 correction (assumed constant)
+            R = 1.28
+            term1 = self.b1_bar*self.P00.total.mu0
+            term2 = self.b2_00_bar*self.K00(self.k)*(1 + (self.k*R)**2)
+            Phm.total.mu0 = term1 + term2
 
         return Phm
         
-    @cached_property("stoch_model", "k", "b1", "b1_bar", "z", "A0", "A1")
+    @cached_property("stoch_model", "k", "b1", "b1_bar", "z")
     def stochasticity(self):
         """
         The isotropic stochasticity term due to the discreteness of the halos, 
@@ -306,8 +284,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 return self.stochasticity_gp_model(mean_bias, self.k)
             elif self.stoch_model == 'log':
                 return self.stochasticity_log_model(self.k, mean_bias, self.z)
-            elif self.stoch_model == 'fit_log':
-                return self.A0 + self.A1*np.log(self.k)
+            else:
+                raise NotImplementedError("Do not understand stochasticity of "
+                                          "type `%s`" %self.stoch_model)
                 
                 
     @cached_property("P00_ss_no_stoch", "stochasticity")

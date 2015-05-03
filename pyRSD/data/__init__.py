@@ -29,8 +29,7 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'stochasticity_gp_model',
-           'Phm_residual_gp_model']
+           'stochasticity_gp_model']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -306,15 +305,6 @@ def stochasticity_gp_model():
     fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_from_fits_reindex_linear.pickle')
     return cPickle.load(open(fname, 'r'))
     
-#-------------------------------------------------------------------------------
-def Phm_residual_gp_model():
-    """
-    Return a `sklearn.GaussianProcess` object fit to the residual of Phm,
-    as a function of bias, redshift, and wavenumber
-    """
-    fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_pade_fits_linear.pickle')
-    return cPickle.load(open(fname, 'r'))
-
 #-------------------------------------------------------------------------------
 # def interpolated_stochasticity_gp_model():
 #     """

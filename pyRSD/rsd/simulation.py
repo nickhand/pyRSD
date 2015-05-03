@@ -72,14 +72,16 @@ class GaussianProcessSimulationData(object):
                   'thetaL' : [1e-4, 1e-4], 'thetaU' : [1., 1.], 
                   'random_start' : 100, 'regr' : 'linear'}
         
-        X = np.asarray(list(self.data.index.get_values()))
         for col in self.columns:
             self.gps[col] = GaussianProcess(**kwargs)
             
+            # get the data to be interpolated, making sure to remove nulls
+            y = self.data[col]
+            y = y[y.notnull()]            
             if self.use_bias_ratio:
-                y = self.data[col] / self.data.index.get_level_values('b1')
-            else:
-                 y = self.data[col]
+                y /= y.index.get_level_values('b1')
+
+            X = np.asarray(list(y.index.get_values()))
             self.gps[col].fit(X, y)            
         
     #---------------------------------------------------------------------------
@@ -106,6 +108,49 @@ class GaussianProcessSimulationData(object):
 #-------------------------------------------------------------------------------
 class NonlinearBiasFits(GaussianProcessSimulationData):
     """
+    Class implementing nonlinear bias, using Vlah et al 2014 fits for `b2_01`
+    and new `b2_00` fits designed to be use the the corrected Phm model, which
+    has the `(1 + k^2 R^2)` correction
+    """
+    # the nonlinear bias values at z = 0
+    params_z0 = {'1.18' : (-0.383, -0.45), 
+                 '1.47' : (-0.126, -0.35), 
+                 '2.04' : (0.821, 0.14), 
+                 '3.05' : (3.684, 2.00)}
+    
+    # the nonlinear bias values at z = 0.509
+    params_z1 = {'1.64' : (0.057, -0.20), 
+                 '2.18' : (1.046, 0.48), 
+                 '3.13' : (4.052, 2.60), 
+                 '4.82' : (11.984, 9.50)}
+                 
+    # the nonlinear bias values at z = 0.55
+    params_z2 = {'1.09' : (-0.322,), 
+                 '1.19' : (-0.383,), 
+                 '1.47' : (-0.138,), 
+                 '1.98' : (0.645,),
+                 '2.84' : (2.974,),
+                 '4.34' : (9.209,)}
+                 
+    # the nonlinear bias values at z = 0.989
+    params_z3 = {'2.32' : (1.325, 0.80), 
+                 '3.17' : (4.120, 3.15), 
+                 '4.64' : (11.382, 10.80)}
+                 
+
+    sim_results = {'0':params_z0, '0.509':params_z1, '0.55':params_z2, '0.989':params_z3}
+    
+    #---------------------------------------------------------------------------
+    def __init__(self):
+
+        cols = ['b2_00', 'b2_01']
+        super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
+    
+    #---------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+class NonlinearBiasFitsVlah(GaussianProcessSimulationData):
+    """
     Class implementing nonlinear bias fits from Vlah et al. 2013
     """
     # the nonlinear bias values at z = 0
@@ -130,7 +175,7 @@ class NonlinearBiasFits(GaussianProcessSimulationData):
     def __init__(self):
 
         cols = ['b2_00', 'b2_01']
-        super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
+        super(NonlinearBiasFitsVlah, self).__init__(cols, use_bias_ratio=True)
     
     #---------------------------------------------------------------------------
   
@@ -690,102 +735,6 @@ class StochasticityGPModel(Cache):
                 pts = [self.z, b1, k]
             else:
                 pts = np.asarray(list(itertools.product([self.sigma8_z], [b1], k)))
-            return self.gp.predict(pts, batch_size=10000, eval_MSE=return_error)
-        else:
-            if np.isscalar(k):
-                pts = [b1, k]
-            else:
-                pts = np.asarray(list(itertools.product([b1], k)))
-            toret = self.interpolation_table(pts)
-            return toret if len(toret) != 1 else toret[0]
-    #---------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-class PhmResidualGPModel(Cache):
-    """
-    Class implementing the fits to the Phm residual, Phm - b1*Pzel
-    """    
-    # define the interpolation grid
-    interpolation_grid = {}
-    interpolation_grid['b1'] = np.linspace(1., 6., 200)
-    interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
-    
-    #---------------------------------------------------------------------------
-    def __init__(self, z, interpolated=False):
-        """
-        Parameters
-        ----------
-        z : float
-            The redshift
-        interpolated : bool, optional
-            If `True`, return results from an interpolation table, otherwise,
-            evaluate the Gaussian Process for each value
-        """             
-        # initialize the Cache base class
-        Cache.__init__(self)
-        
-        # set the parameters
-        self.z            = z
-        self.interpolated = interpolated
-        
-        # load the sim GP
-        self.gp = sim_data.Phm_residual_gp_model()
-
-    #---------------------------------------------------------------------------
-    @parameter
-    def interpolated(self, val):
-        """
-        If `True`, return the stochasticity from the interpolation table
-        """
-        return val
-        
-    @parameter
-    def z(self, val):
-        """
-        Redshift to compute the power at
-        """
-        return val
-            
-    #---------------------------------------------------------------------------
-    @cached_property("z")
-    def interpolation_table(self):
-        """
-        Evaluate the Zeldovich power for storing in the interpolation table.
-        
-        Notes
-        -----
-        This dependes on the redshift stored in the `z` attribute and must be 
-        recomputed whenever that quantity changes.
-        """ 
-        # the interpolation grid points
-        b1s = self.interpolation_grid['b1']
-        ks = self.interpolation_grid['k']
-        pts = np.asarray(list(itertools.product([self.z], b1s, ks)))
-        
-        # get the grid values
-        grid_vals = self.gp.predict(pts, batch_size=10000)
-        grid_vals = grid_vals.reshape((len(b1s), len(ks)))
-        
-        # return the interpolator
-        return RegularGridInterpolator((b1s, ks), grid_vals)
-        
-    #---------------------------------------------------------------------------
-    def __call__(self, b1, k, return_error=False):
-        """
-        Evaluate the Phm residual at the specified `b1`, and `k`
-
-        Parameters
-        ----------
-        b1 : float
-            The value of the halo bias
-        k : float, array_like
-            The wavenumbers in units of `h/Mpc`
-        """
-        if return_error or not self.interpolated:
-            if np.isscalar(k):
-                pts = [self.z, b1, k]
-            else:
-                pts = np.asarray(list(itertools.product([self.z], [b1], k)))
             return self.gp.predict(pts, batch_size=10000, eval_MSE=return_error)
         else:
             if np.isscalar(k):

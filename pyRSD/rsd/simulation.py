@@ -108,49 +108,6 @@ class GaussianProcessSimulationData(object):
 #-------------------------------------------------------------------------------
 class NonlinearBiasFits(GaussianProcessSimulationData):
     """
-    Class implementing nonlinear bias, using Vlah et al 2014 fits for `b2_01`
-    and new `b2_00` fits designed to be use the the corrected Phm model, which
-    has the `(1 + k^2 R^2)` correction
-    """
-    # the nonlinear bias values at z = 0
-    params_z0 = {'1.18' : (-0.383, -0.45), 
-                 '1.47' : (-0.126, -0.35), 
-                 '2.04' : (0.821, 0.14), 
-                 '3.05' : (3.684, 2.00)}
-    
-    # the nonlinear bias values at z = 0.509
-    params_z1 = {'1.64' : (0.057, -0.20), 
-                 '2.18' : (1.046, 0.48), 
-                 '3.13' : (4.052, 2.60), 
-                 '4.82' : (11.984, 9.50)}
-                 
-    # the nonlinear bias values at z = 0.55
-    params_z2 = {'1.09' : (-0.322,), 
-                 '1.19' : (-0.383,), 
-                 '1.47' : (-0.138,), 
-                 '1.98' : (0.645,),
-                 '2.84' : (2.974,),
-                 '4.34' : (9.209,)}
-                 
-    # the nonlinear bias values at z = 0.989
-    params_z3 = {'2.32' : (1.325, 0.80), 
-                 '3.17' : (4.120, 3.15), 
-                 '4.64' : (11.382, 10.80)}
-                 
-
-    sim_results = {'0':params_z0, '0.509':params_z1, '0.55':params_z2, '0.989':params_z3}
-    
-    #---------------------------------------------------------------------------
-    def __init__(self):
-
-        cols = ['b2_00', 'b2_01']
-        super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
-    
-    #---------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------
-class NonlinearBiasFitsVlah(GaussianProcessSimulationData):
-    """
     Class implementing nonlinear bias fits from Vlah et al. 2013
     """
     # the nonlinear bias values at z = 0
@@ -175,7 +132,7 @@ class NonlinearBiasFitsVlah(GaussianProcessSimulationData):
     def __init__(self):
 
         cols = ['b2_00', 'b2_01']
-        super(NonlinearBiasFitsVlah, self).__init__(cols, use_bias_ratio=True)
+        super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
     
     #---------------------------------------------------------------------------
   
@@ -277,8 +234,78 @@ class StochasticityLogModel(GaussianProcessSimulationData):
         return A0 + A1*np.log(k)
         
     #---------------------------------------------------------------------------
-    
+
 #-------------------------------------------------------------------------------
+class PhmBiasingCorrection(object):
+    """
+    Class implementing the correction to the nonlinear biasing term K00
+    in the Phm model. The correction is assumed to be a linear function
+    of `k` past `k_transition = 0.15 h/Mpc`:
+    
+    :math: Phm_corr = A0*k + A1
+    """    
+    #---------------------------------------------------------------------------   
+    def __init__(self):
+
+        # load the data frame
+        self.columns = ['A0', 'A1']
+        self.data = sim_data.Phm_biasing_correction()
+
+        # setup the GPs
+        self._setup_GPS()
+
+    #---------------------------------------------------------------------------
+    def _setup_GPS(self):
+        """
+        Setup the backend Gaussian processes needed to do the interpolation
+        """
+        self.gps = {}
+        kwargs = {'corr' : 'squared_exponential', 'theta0' : [0.1, 0.1],     
+                  'thetaL' : [1e-4, 1e-4], 'thetaU' : [1., 1.], 
+                  'random_start' : 100, 'regr' : 'linear'}
+        
+        # do it for each column
+        for col in self.columns:
+            
+            # initialize the GP
+            y = self.data[col]
+            y = y[y.notnull()]
+            dy = self.data[col+'_err'][y.notnull()]
+            kwargs['nugget'] = (dy/y)**2
+            self.gps[col] = GaussianProcess(**kwargs)
+            
+            # fit the data
+            X = np.asarray(list(y.index.get_values()))
+            self.gps[col].fit(X, y)            
+        
+    #---------------------------------------------------------------------------
+    def transition(self, k, k_transition=0.15, b=0.05):
+        """
+        The transition function between the low-k and high-k values
+        """
+        return 0.5 + 0.5*np.tanh((k-k_transition)/b)
+        
+    #---------------------------------------------------------------------------
+    @tools.unpacked
+    def __call__(self, k, b1, z):
+        """
+        Evaluate the Gaussian processes at specified bias and redshift
+        
+        Parameters
+        ----------
+        k : array_like
+            The wavenumbers to evaluate the model at
+            
+        b1 : float
+            The linear bias parameter
+        z : float
+            The redshift to evaluate at
+        """
+        A0, A1 = [(self.gps[col].predict([z, b1]))[0] for col in self.columns]
+        return A0*k + A1        
+    #---------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------  
 # SIMULATION DATA INTERPOLATION ON A GRID
 #-------------------------------------------------------------------------------
 class InterpolatedSimulationData(Cache):

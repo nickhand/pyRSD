@@ -1,8 +1,8 @@
 from .. import numpy as np
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
-from .simulation import SigmavFits, NonlinearBiasFits, NonlinearBiasFitsVlah, \
-                        StochasticityLogModel, StochasticityGPModel
+from .simulation import SigmavFits, NonlinearBiasFits, StochasticityLogModel, \
+                        StochasticityGPModel, PhmBiasingCorrection
 
 
 #-------------------------------------------------------------------------------
@@ -174,15 +174,20 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return 0.
     
-    @cached_property("use_Phm_model")
+    @cached_property()
     def nonlinear_bias_fitter(self):
         """
         Interpolator from simulation data for nonlinear biases
         """
-        # if self.use_Phm_model:
-        #     return NonlinearBiasFits()
-        # else:
-        return NonlinearBiasFitsVlah()
+        return NonlinearBiasFits()
+        
+    @cached_property()
+    def Phm_biasing_correction(self):
+        """
+        Interpolator from simulation data for the Phm nonlinear biasing 
+        correction model
+        """
+        return PhmBiasingCorrection()
           
     @cached_property()
     def sigmav_fitter(self):
@@ -241,10 +246,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            # the R for the k^2 R^2 correction (assumed constant)
-            R = 1.28
-            term1 = self.b1*self.P00.total.mu0
-            term2 = self.b2_00*self.K00(self.k)*(1 + (self.k*R)**2)
+            
+            switch = self.Phm_biasing_correction.transition(self.k)
+            linear_corr = self.Phm_biasing_correction(self.k, self.b1, self.z)
+            
+            term1 = self.b1*self.P00.total.mu0*(1. + switch*linear_corr) 
+            term2 = (1. - switch)*self.b2_00*self.K00(self.k)
+
             Phm.total.mu0 = term1 + term2
             
         return Phm
@@ -262,10 +270,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            # the R for the k^2 R^2 correction (assumed constant)
-            R = 1.28
-            term1 = self.b1_bar*self.P00.total.mu0
-            term2 = self.b2_00_bar*self.K00(self.k)*(1 + (self.k*R)**2)
+            switch = self.Phm_biasing_correction.transition(self.k)
+            linear_corr = self.Phm_biasing_correction(self.k, self.b1_bar, self.z)
+            
+            term1 = self.b1_bar*self.P00.total.mu0*(1. + switch*linear_corr) 
+            term2 = (1. - switch)*self.b2_00_bar*self.K00(self.k)
+
             Phm.total.mu0 = term1 + term2
 
         return Phm
@@ -307,9 +317,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
         P00_ss_no_stoch = PowerTerm()
-        b1_k = self.Phm.total.mu0  / self.P00.total.mu0 
-        b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
-        P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
+        term1 = self.b1_bar*self.Phm.total.mu0 + self.b1*self.Phm_bar.total.mu0
+        term2 = (self.b1*self.b1_bar)*self.P00.total.mu0
+        P00_ss_no_stoch.total.mu0 = term1 - term2
         
         return P00_ss_no_stoch
             

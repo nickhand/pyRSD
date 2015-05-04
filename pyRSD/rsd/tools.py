@@ -231,7 +231,7 @@ class BiasToMassRelation(Cache):
         return self.cosmo.D_z(self.z)
             
     @cached_property("cosmo")
-    def power_lin(self, val):
+    def power_lin(self):
         """
         The `pygcl.LinearPS` object defining the linear power spectrum at `z=0`
         """
@@ -279,7 +279,6 @@ class BiasToMassRelation(Cache):
         return RegularGridInterpolator((sigma8s, b1s), grid_vals)
         
     #---------------------------------------------------------------------------
-    @unpacked
     def __call__(self, sigma8, b1):
         """
         Return the mass associated with desired `b1` and `sigma8`

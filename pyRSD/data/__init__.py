@@ -30,7 +30,8 @@ __all__ = ['load',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
            'stochasticity_gp_model',
-           'Phm_biasing_correction']
+           'Phm_biasing_correction',
+           'Phh_model_parameters']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -303,10 +304,19 @@ def stochasticity_gp_model():
     Return a `sklearn.GaussianProcess` object fit to the stochasticity, Lambda, 
     as a function of bias, redshift, and wavenumber
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochA_gp_from_fits_reindex_linear.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_from_fits_reindex_linear.pickle')
     return cPickle.load(open(fname, 'r'))
     
 def Phm_biasing_correction():
+    """
+    Return a pandas DataFrame holding the parameters that give the corrections
+    to the Phm nonlinear biasing model 
+    """   
+    import pandas as pd 
+    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_Phm_biasing_corr.dat')
+    return pd.read_csv(fname, sep=' ', index_col=['z', 'b1']).sort_index()
+    
+def Phh_model_parameters():
     """
     Return a pandas DataFrame holding the parameters that give the corrections
     to the Phm nonlinear biasing model 

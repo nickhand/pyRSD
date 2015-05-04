@@ -317,10 +317,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
         P00_ss_no_stoch = PowerTerm()
-        term1 = self.b1_bar*self.Phm.total.mu0 + self.b1*self.Phm_bar.total.mu0
-        term2 = (self.b1*self.b1_bar)*self.P00.total.mu0
-        P00_ss_no_stoch.total.mu0 = term1 - term2
-        
+        b1_k = self.Phm.total.mu0  / self.P00.total.mu0
+        b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
+        P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
+        	       
         return P00_ss_no_stoch
             
     #---------------------------------------------------------------------------

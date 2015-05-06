@@ -5,7 +5,8 @@ For more, see the detailed description of these simulations in Okumura et al. 20
 """
 from .. import data_dir, numpy as np, os as _os
 import cPickle    
-
+import pandas as pd 
+    
 __all__ = ['load',
            'P00_mu0_z_0_000',
            'P00_mu0_z_0_509',
@@ -29,9 +30,11 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'stochasticity_gp_model',
-           'Phm_biasing_correction',
-           'Phh_model_parameters']
+           'stochA_gp_model',
+           'stochB_gp_model',
+           'stochA_pade_model_params',
+           'stochB_pade_model_params',
+           'Phm_biasing_correction']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -299,55 +302,49 @@ def P11_mu4_z_0_989():
 #-------------------------------------------------------------------------------
 # SIMULATIONS
 #-------------------------------------------------------------------------------
-def stochasticity_gp_model():
+def stochA_gp_model():
     """
-    Return a `sklearn.GaussianProcess` object fit to the stochasticity, Lambda, 
+    Return a `sklearn.GaussianProcess` object fit to the `type A` stochasticity,
+    as a function of bias, redshift, and wavenumber
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/stochA_gp_from_fits_reindex_linear.pickle')
+    return cPickle.load(open(fname, 'r'))
+    
+#-------------------------------------------------------------------------------
+def stochB_gp_model():
+    """
+    Return a `sklearn.GaussianProcess` object fit to the `type B` stochasticity,
     as a function of bias, redshift, and wavenumber
     """    
     fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_from_fits_reindex_linear.pickle')
     return cPickle.load(open(fname, 'r'))
     
+#-------------------------------------------------------------------------------
+def stochA_pade_model_params():
+    """
+    Return a pandas DataFrame holding the best-fit parameters for the Pade 
+    model used to model the type A stochasticity
+    """   
+    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_stochA_pade_model_reindex.dat')
+    return pd.read_csv(fname, sep=' ', index_col=['s8_z', 'b1']).sort_index()
+    
+#-------------------------------------------------------------------------------
+def stochB_pade_model_params():
+    """
+    Return a pandas DataFrame holding the best-fit parameters for the Pade 
+    model used to model the type B stochasticity
+    """   
+    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_stochB_pade_model_reindex.dat')
+    return pd.read_csv(fname, sep=' ', index_col=['s8_z', 'b1']).sort_index()
+    
+#-------------------------------------------------------------------------------
 def Phm_biasing_correction():
     """
     Return a pandas DataFrame holding the parameters that give the corrections
     to the Phm nonlinear biasing model 
     """   
-    import pandas as pd 
-    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_Phm_biasing_corr.dat')
-    return pd.read_csv(fname, sep=' ', index_col=['z', 'b1']).sort_index()
-    
-def Phh_model_parameters():
-    """
-    Return a pandas DataFrame holding the parameters that give the corrections
-    to the Phm nonlinear biasing model 
-    """   
-    import pandas as pd 
-    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_Phm_biasing_corr.dat')
+
+    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_Phm_biasing_corr_formatted.dat')
     return pd.read_csv(fname, sep=' ', index_col=['z', 'b1']).sort_index()
     
 #-------------------------------------------------------------------------------
-# def interpolated_stochasticity_gp_model():
-#     """
-#     Return a `simulation.StochasticityGPModel` object which has already been
-#     interpolated
-#     """   
-#     fname = _os.path.join(data_dir, 'simulation_fits/stochasticity_gp_interpolated.pickle')
-#     if _os.path.exists(fname):
-#         return cPickle.load(open(fname, 'r'))
-#     else:
-#         return None
-#     
-# #-------------------------------------------------------------------------------
-# def interpolated_Phm_residual_gp_model():
-#     """
-#     Return a `simulation.PhmResidualGPModel` object which has already been
-#     interpolated
-#     """ 
-#     fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_interpolated.pickle')
-#     if _os.path.exists(fname):
-#         return cPickle.load(open(fname, 'r'))
-#     else:
-#         return None
-# 
-# #-------------------------------------------------------------------------------
-    

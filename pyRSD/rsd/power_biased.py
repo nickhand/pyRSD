@@ -1,4 +1,5 @@
 from .. import numpy as np
+from .tools import RSDSpline
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits
@@ -12,7 +13,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
     allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
                         ['sigmav_from_sims', 'use_tidal_bias', 'use_Phm_model', \
-                         'stoch_model']    
+                         'stoch_model', 'use_mu_corrections']    
 
     #---------------------------------------------------------------------------
     def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
@@ -22,11 +23,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
         super(BiasedSpectrum, self).__init__(**kwargs)
         
         # set the default parameters
-        self.sigmav_from_sims = sigmav_from_sims
-        self.use_tidal_bias   = use_tidal_bias
-        self.include_2loop    = False # don't violate galilean invariance, fool
-        self.stoch_model      = stoch_model
-        self.b1               = 2.
+        self.sigmav_from_sims   = sigmav_from_sims
+        self.use_tidal_bias     = use_tidal_bias
+        self.include_2loop      = False # don't violate galilean invariance, fool
+        self.stoch_model        = stoch_model
+        self.use_mu_corrections = use_mu_corrections
+        self.b1                 = 2.
         if (self.__class__.__name__ != "HaloSpectrum"):
             self.b1_bar           = 2.
             
@@ -37,6 +39,20 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # ATTRIBUTES
     #---------------------------------------------------------------------------
+    @parameter
+    def use_mu_corrections(self, val):
+        """
+        Whether to use a correction for the mu^6 terms
+        """
+        if not isinstance(val, bool):
+            raise ValueError("`use_mu_corrections` must be a boolean value")
+            
+        # set the max mu
+        if val and self.max_mu < 6:
+            self.max_mu = 6            
+            
+        return val
+        
     @parameter
     def use_Phm_model(self, val):
         """
@@ -175,6 +191,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return 0.
     
+    @cached_property()
+    def mu6_correction(self):
+        """
+        Spline function giving the mu^6 amplitude correction as a function
+        of linear bias
+        """
+        b1s = np.array([2.016, 2.49, 2.68, 3.27])
+        corrs = np.array([0.3, 1., 1.4, 2.9])
+        
+        return RSDSpline(b1s, corrs, extrap=True, k=2)
+                
     @cached_property()
     def nonlinear_bias_fitter(self):
         """
@@ -667,13 +694,18 @@ class BiasedSpectrum(DarkMatterSpectrum):
     
             
     #---------------------------------------------------------------------------
-    @interpolated_property("P12_ss", interp="k")
+    @interpolated_property("P12_ss", "use_mu_corrections", interp="k")
     def P_mu6(self, k):
         """
         The full halo power spectrum term with mu^6 angular dependence. Contributions
         from P12_ss, P13_ss, P22_ss.
         """
-        return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k)
+        A = 1.
+        if self.use_mu_corrections:
+            mean_bias = (self.b1*self.b1_bar)**0.5
+            A = max(self.mu6_correction(mean_bias), 0.)        
+            
+        return A*(self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k))
 
     #---------------------------------------------------------------------------    
 #-------------------------------------------------------------------------------  

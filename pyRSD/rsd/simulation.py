@@ -128,7 +128,7 @@ class GaussianProcessSimulationData(Cache):
     
     #---------------------------------------------------------------------------
     @cached_property("use_errors", "use_bias_ratio", 'corr', 'theta0', 'thetaU',
-                     'thetaL', 'random_start', 'regr')
+                     'thetaL', 'random_start', 'regr', 'data')
     def interpolation_table(self):
         """
         Setup the backend Gaussian processes needed to do the interpolation

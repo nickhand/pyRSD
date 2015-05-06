@@ -261,6 +261,20 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
+    @cached_property('z', 'cosmo')
+    def _normalized_sigma8_z(self):
+        """
+        Return the normalized sigma8(z) from the input cosmology
+        """
+        return self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8()
+        
+    @cached_property("sigma8", "_normalized_sigma8_z")
+    def sigma8_z(self):
+        """
+        Return sigma8(z), normalized to the desired sigma8 at z = 0
+        """
+        return self.sigma8 * self._normalized_sigma8_z
+            
     @cached_property("cosmo_filename", "transfer_fit")
     def cosmo(self):
         """

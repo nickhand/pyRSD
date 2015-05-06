@@ -1,8 +1,9 @@
 from .. import numpy as np
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
-from .simulation import SigmavFits, NonlinearBiasFits, StochasticityLogModel, \
-                        StochasticityGPModel, PhmBiasingCorrection
+from .simulation import SigmavFits, NonlinearBiasFits
+from .mu0_modeling import StochasticityGPModel, StochasticityLogModel, \
+                          StochasticityPadeModel, PhmBiasingCorrection
 
 
 #-------------------------------------------------------------------------------
@@ -100,7 +101,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         Attribute determining the stochasticity model to use.
         """
-        allowable = ['gaussian_process', 'log', 'fit_log']
+        allowable = ['gaussian_process', 'log', 'pade']
         if isinstance(val, basestring):
             if val not in allowable:
                 raise ValueError("`stoch_model` must be one of %s or a scalar float" %allowable)
@@ -208,7 +209,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The GP model for stochasticity, as measured from simulations
         """
-        return StochasticityGPModel(self.z, self.sigma8, self.cosmo, self.interpolate)  
+        return StochasticityGPModel(self.z, self.sigma8, self.cosmo, self.interpolate) 
+        
+    @cached_property()
+    def stochasticity_pade_model(self):
+        """
+        The Pade model for stochasticity, as measured from simulations
+        """
+        return StochasticityPadeModel() 
              
     @cached_property("b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_v")
     def biased_sigma_v(self):
@@ -247,12 +255,18 @@ class BiasedSpectrum(DarkMatterSpectrum):
             Phm.total.mu0 = term1 + term2 + term3
         else:
             
+            # get the parameters of the correction
             switch = self.Phm_biasing_correction.transition(self.k)
-            linear_corr = self.Phm_biasing_correction(self.k, self.b1, self.z)
+            A0, A1_scaled = self.Phm_biasing_correction(self.b1, self.z)
+            
+            # rescale A1 by the cosmology dependence
+            A1 = A1_scaled * (self.sigma8_z / 0.8)**(1.5)
+            
+            # now compute the linear correction
+            linear_corr = A0 + A1*self.k
             
             term1 = self.b1*self.P00.total.mu0*(1. + switch*linear_corr) 
             term2 = (1. - switch)*self.b2_00*self.K00(self.k)
-
             Phm.total.mu0 = term1 + term2
             
         return Phm
@@ -270,12 +284,18 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
+            # get the parameters of the correction
             switch = self.Phm_biasing_correction.transition(self.k)
-            linear_corr = self.Phm_biasing_correction(self.k, self.b1_bar, self.z)
+            A0, A1_scaled = self.Phm_biasing_correction(self.b1_bar, self.z)
+            
+            # rescale A1 by the cosmology dependence
+            A1 = A1_scaled * (self.sigma8_z / 0.8)**(1.5)
+            
+            # now compute the linear correction
+            linear_corr = A0 + A1*self.k
             
             term1 = self.b1_bar*self.P00.total.mu0*(1. + switch*linear_corr) 
             term2 = (1. - switch)*self.b2_00_bar*self.K00(self.k)
-
             Phm.total.mu0 = term1 + term2
 
         return Phm
@@ -294,6 +314,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 return self.stochasticity_gp_model(mean_bias, self.k)
             elif self.stoch_model == 'log':
                 return self.stochasticity_log_model(self.k, mean_bias, self.z)
+            elif self.stoch_model == 'pade':
+                return self.stochasticity_pade_model(self.k, mean_bias, self.sigma8_z)
             else:
                 raise NotImplementedError("Do not understand stochasticity of "
                                           "type `%s`" %self.stoch_model)

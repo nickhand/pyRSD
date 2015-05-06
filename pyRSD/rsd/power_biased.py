@@ -16,7 +16,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
     #---------------------------------------------------------------------------
     def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
-                    stoch_model='gaussian_process', **kwargs):
+                    stoch_model='pade', **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)

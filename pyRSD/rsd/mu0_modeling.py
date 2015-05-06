@@ -5,7 +5,8 @@ from .simulation import GaussianProcessSimulationData
 from . import tools, INTERP_KMIN, INTERP_KMAX
 
 import itertools
-from sklearn.gaussian_process import GaussianProcess
+from scipy.interpolate import UnivariateSpline as spline
+import bisect 
 
 #-------------------------------------------------------------------------------
 # P_hm Models
@@ -79,7 +80,7 @@ class PhmBiasingCorrection(GaussianProcessSimulationData):
 #-------------------------------------------------------------------------------
 # Stochasticity modeling
 #-------------------------------------------------------------------------------
-class StochasticityPadeModel(GaussianProcessSimulationData):
+class StochasticityPadeModel(Cache):
     """
     Class implementing the stochasticity (either type A or type B), using a 
     Pade fit of the form
@@ -91,7 +92,7 @@ class StochasticityPadeModel(GaussianProcessSimulationData):
     The simulation data is indexed by `sigma8` at `z` and `b1`
     """    
     #---------------------------------------------------------------------------   
-    def __init__(self, stoch_type="B"):
+    def __init__(self, use_errors=True, stoch_type="B"):
         """
         Parameters
         ----------
@@ -99,11 +100,12 @@ class StochasticityPadeModel(GaussianProcessSimulationData):
             either type A or type B stochasticity. Default is `B`
         """        
         # initialize the base class
-        param_names = ['A0', 'A1']
-        super(StochasticityPadeModel, self).__init__(param_names, use_errors=False)
+        super(StochasticityPadeModel, self).__init__()
         
         # either type A or B stochasticity
         self.stoch_type = stoch_type
+        self.use_errors = use_errors
+        self.param_names = ['A0', 'A1', 'R']
 
     #---------------------------------------------------------------------------
     @parameter
@@ -113,6 +115,13 @@ class StochasticityPadeModel(GaussianProcessSimulationData):
         """
         if val.lower() not in ["a", "b"]:
             raise ValueError("Stochasticity type must be either `A` or `B`")
+        return val
+        
+    @parameter
+    def use_errors(self, val):
+        """
+        Whether to use the errors when interpolating
+        """
         return val
         
     @cached_property('stoch_type')
@@ -127,50 +136,88 @@ class StochasticityPadeModel(GaussianProcessSimulationData):
             return sim_data.stochB_pade_model_params()
                 
     #---------------------------------------------------------------------------
-    @cached_property("use_errors", "use_bias_ratio", 'corr', 'theta0', 'thetaU',
-                     'thetaL', 'random_start', 'regr')
-    def interpolation_table_R(self):
-        """
-        Setup the backend Gaussian processes for the `R` parameter
-        """
-        kwargs = {name : getattr(self, name) for name in self._gp_parameters}
-        kwargs['theta0'] = kwargs['theta0'][0]
-        kwargs['thetaU'] = kwargs['thetaU'][0]
-        kwargs['thetaL'] = kwargs['thetaL'][0]
+    @cached_property('sigma8s')
+    def sigma8_min(self):
+        return np.amin(self.sigma8s)
         
-        # get the data to be interpolated, making sure to remove nulls
-        y = self.data['R']
-        null_inds = y.notnull() 
-        y = y[null_inds] 
+    @cached_property('sigma8s')
+    def sigma8_max(self):
+        return np.amax(self.sigma8s)
         
-        # X values are only b1 not sigma8 too
-        X = np.array(y.index.get_level_values('b1'))           
-        inds = X.argsort()
-        y = y[inds]
-        X = np.atleast_2d(X[inds]).T
+    @cached_property('data')
+    def sigma8s(self):
+        return self.data.index.get_level_values('s8_z').unique()
+        
+    #---------------------------------------------------------------------------
+    @cached_property("use_errors", "data")
+    def interpolation_table(self):
+        """
+        Setup the backend splines for the parameters
+        """
+        table = {}
+        
+        # loop over each sigma8 value
+        for s8_z in self.sigma8s:
+            table[s8_z] = {}
+            
+            # loop over each parameter
+            for name in self.param_names:
+            
+                d = self.data.xs(s8_z)
+                
+                # get the data to be interpolated, making sure to remove nulls
+                y = d[name]
+                null_inds = y.notnull() 
+                y = np.array(y[null_inds])
+        
+                # X values are only b1 not sigma8 too
+                X = np.array(d.index)           
   
-        # check for error columns
-        if self.use_errors and 'R_err' in self.data:
-            dy = self.data['R_err'][null_inds]
-            dy = dy[inds]
-            kwargs['nugget'] = (dy/y)**2
-        else:
-            kwargs['nugget'] = 1e-5
+                # check for error columns
+                kwargs = {'k' : 2}
+                if self.use_errors and name+'_err' in self.data:
+                    dy = d[name+'_err'][null_inds]
+                    kwargs['w'] = 1.0/dy
 
-        # initialize
-        table = GaussianProcess(**kwargs)
-
-        # do the fit
-        table.fit(X, y)            
+                # set the spline
+                table[s8_z][name] = spline(X, y, **kwargs)
 
         return table
         
     #---------------------------------------------------------------------------
-    def _evaluate_R(self, b1):
+    def _get_parameters(self, b1, s8_z, col=None):
         """
-        Given the input `b1` value, return the `R` parameter
+        Return the parameter values
         """
-        return self.interpolation_table_R.predict(b1)[0]
+        # return NaNs if we are out of bounds
+        if s8_z < self.sigma8_min or s8_z > self.sigma8_max:
+            args = (s8_z, self.sigma8_min, self.sigma8_max)
+            return ValueError("Sigma8(z) vale {} is out of interpolation range [{}, {}]".format(*args))
+
+        if s8_z in self.sigma8s:
+            i = abs(self.sigma8s - s8_z).argmin()
+            s8_lo = s8_hi = self.sigma8s[i]
+            w = 0.
+        else:
+            ihi = bisect.bisect(self.sigma8s, s8_z)
+            ilo = ihi - 1
+
+            s8_lo = self.sigma8s[ilo]
+            s8_hi = self.sigma8s[ihi]
+            w = (s8_z - s8_lo) / (s8_hi - s8_lo) 
+        
+        if col is None:
+            toret = []
+            for col in self.param_names:
+                val_lo = (1 - w)*self.interpolation_table[s8_lo][col](b1) 
+                val_hi = w*self.interpolation_table[s8_hi][col](b1)
+                toret.append(val_lo + val_hi)
+            return toret
+        else:
+            val_lo = (1 - w)*self.interpolation_table[s8_lo][col](b1) 
+            val_hi = w*self.interpolation_table[s8_hi][col](b1)
+            return val_lo + val_hi
+        
     
     #---------------------------------------------------------------------------
     def __call__(self, *args, **kwargs):
@@ -191,21 +238,12 @@ class StochasticityPadeModel(GaussianProcessSimulationData):
         """
         if len(args) == 3:
             k, b1, s8_z = args
-            A0, A1 = GaussianProcessSimulationData.__call__(self, b1, s8_z)
-            R = self._evaluate_R(b1)
+            A0, A1, R = self._get_parameters(b1, s8_z)
             return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
         else:
             b1, s8_z = args
             col = kwargs.get('col', None)
-            if col is None: 
-                A0, A1 = GaussianProcessSimulationData.__call__(self, b1, s8_z)
-                R = self._evaluate_R(b1)
-                return A0, A1, R
-            else:
-                if col == 'R':
-                    return self._evaluate_R(b1)
-                else:
-                    return GaussianProcessSimulationData.__call__(self, *args, col=col)
+            return self._get_parameters(b1, s8_z, col=col)
         
     #---------------------------------------------------------------------------
  

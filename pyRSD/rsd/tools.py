@@ -134,7 +134,10 @@ class RSDSpline(InterpolatedUnivariateSpline):
         Return the interpolated value
         """
         if self.extrap: 
-            return self.linear_extrap(x_new)*1.
+            if np.isscalar(x_new):
+                return self.linear_extrap(x_new)*1.
+            else:
+                return np.array([self.linear_extrap(x) for x in x_new])
         else:
             return self._evaluate_spline(x_new)*1.
        

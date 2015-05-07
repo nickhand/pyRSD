@@ -80,7 +80,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self.alpha_par         = 1.
         self.alpha_perp        = 1.
         self.small_scale_sigma = 0.
-        self.sigma_v           = self.sigma_lin
+        self.sigmav_input      = self.sigma_lin
         self.sigma_v2          = 0.
         self.sigma_bv2         = 0.
         self.sigma_bv4         = 0.
@@ -221,10 +221,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return val
             
     @parameter
-    def sigma_v(self, val):
+    def sigmav_input(self, val):
         """
-        The velocity dispersion at z = 0. If not provided, defaults to the 
-        linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
+        The user-input velocity dispersion at z = 0. [units: Mpc/h]
         """
         return val
         
@@ -261,6 +260,14 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
+    @cached_property("sigmav_input")
+    def sigma_v(self, val):
+        """
+        The velocity dispersion at z = 0. If not provided, defaults to the 
+        linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
+        """
+        return val
+        
     @cached_property('z', 'cosmo')
     def _normalized_sigma8_z(self):
         """

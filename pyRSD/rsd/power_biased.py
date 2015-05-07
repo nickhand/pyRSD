@@ -245,13 +245,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return StochasticityPadeModel() 
              
-    @cached_property("b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_v")
-    def biased_sigma_v(self):
+    @cached_property("b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_lin")
+    def sigma_v(self):
         """
-        The velocity dispersion at z = 0. 
+        The velocity dispersion at z = 0. [units: Mpc/h]
         
         If not provided and ``sigmav_from_sims = False``, this defaults to 
-        the linear theory prediction [units: Mpc/h]
+        the linear theory prediction, which is independent of bias
         """
         if self.sigmav_from_sims:
             
@@ -263,7 +263,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             norm_factor = self.sigma8 / 0.807
             return sigma_v * norm_factor
         else:
-            return self.sigma_v
+            return self.sigma_lin
             
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
@@ -373,7 +373,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P00_ss_no_stoch
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "b1", "b1_bar", "max_mu", "Pdv", "P01")
+    @cached_property("b1", "b1_bar", "max_mu", "Pdv", "P01")
     def P01_ss(self):
         """
         The correlation of the halo density and halo momentum fields, which 
@@ -400,7 +400,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P01_ss
         
     #---------------------------------------------------------------------------
-    @cached_property("f", "b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch",
+    @cached_property("b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch",
                      "sigma_v", "sigma_bv2")
     def P02_ss(self):
         """
@@ -417,7 +417,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 2:
             
             # the mu^2 terms depending on velocity (velocities in Mpc/h)
-            sigma_lin = self.biased_sigma_v
+            sigma_lin = self.sigma_v
             sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
             sigsq_eff = sigma_lin**2 + sigma_02**2
             
@@ -444,7 +444,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P02_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "b1", "b1_bar", "max_mu", "P11")
+    @cached_property("b1", "b1_bar", "max_mu", "P11")
     def P11_ss(self):
         """
         The auto-correlation of the halo momentum field, which 
@@ -488,7 +488,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P11_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "P01_ss", "sigma_v", "sigma_v2")
+    @cached_property("P01_ss", "sigma_v", "sigma_v2")
     def P03_ss(self):
         """
         The cross-corelation of halo density with the rank three tensor field
@@ -500,7 +500,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # optionally add small scale velocity
-            sigma_lin = self.biased_sigma_v 
+            sigma_lin = self.sigma_v 
             sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
             sigsq_eff = sigma_lin**2 + sigma_03**2
             
@@ -509,7 +509,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P03_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "P01_ss", "sigma_v", "sigma_bv2")
+    @cached_property("P01_ss", "sigma_v", "sigma_bv2")
     def P12_ss(self):
         """
         The correlation of halo momentum and halo kinetic energy density, which 
@@ -523,7 +523,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             Plin = self.normed_power_lin(self.k)
             
             # now do mu^4 terms depending on velocity (velocities in Mpc/h)
-            sigma_lin = self.biased_sigma_v  
+            sigma_lin = self.sigma_v  
             sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
             sigsq_eff = sigma_lin**2 + sigma_12**2
             
@@ -549,7 +549,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P12_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "P11_ss", "sigma_v", "sigma_bv2", "sigma_v2")
+    @cached_property("P11_ss", "sigma_v", "sigma_bv2", "sigma_v2")
     def P13_ss(self):
         """
         The cross-correlation of halo momentum with the rank three tensor field
@@ -558,7 +558,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         P13_ss = PowerTerm()
         
         # vector small scale velocity additions
-        sigma_lin = self.biased_sigma_v 
+        sigma_lin = self.sigma_v 
         sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
         sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
         
@@ -584,7 +584,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P13_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "P22", "Pdd", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv2")
+    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv2")
     def P22_ss(self):
         """
         The auto-corelation of halo kinetic energy density, which contributes
@@ -598,7 +598,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # velocities in units of Mpc/h
-            sigma_lin = self.biased_sigma_v
+            sigma_lin = self.sigma_v
             sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
             sigsq_eff = sigma_lin**2 + sigma_22**2
         
@@ -627,7 +627,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P22_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("f", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv4")
+    @cached_property("P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv4")
     def P04_ss(self):
         """
         The cross-correlation of halo density with the rank four tensor field
@@ -640,7 +640,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # compute the relevant small-scale + linear velocities in Mpc/h
-            sigma_lin = self.biased_sigma_v 
+            sigma_lin = self.sigma_v 
             sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
             sigsq_eff = sigma_lin**2 + sigma_04**2
             

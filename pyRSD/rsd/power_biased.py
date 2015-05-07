@@ -373,7 +373,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P00_ss_no_stoch
             
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "Pdv", "P01")
+    @cached_property("f", "b1", "b1_bar", "max_mu", "Pdv", "P01")
     def P01_ss(self):
         """
         The correlation of the halo density and halo momentum fields, which 
@@ -400,7 +400,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P01_ss
         
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch",
+    @cached_property("f", "b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch",
                      "sigma_v", "sigma_bv2")
     def P02_ss(self):
         """
@@ -444,7 +444,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P02_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "P11")
+    @cached_property("f", "b1", "b1_bar", "max_mu", "P11")
     def P11_ss(self):
         """
         The auto-correlation of the halo momentum field, which 
@@ -488,7 +488,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P11_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P01_ss", "sigma_v", "sigma_v2")
+    @cached_property("f", "P01_ss", "sigma_v", "sigma_v2")
     def P03_ss(self):
         """
         The cross-corelation of halo density with the rank three tensor field
@@ -509,7 +509,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P03_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P01_ss", "sigma_v", "sigma_bv2")
+    @cached_property("f", "P01_ss", "sigma_v", "sigma_bv2")
     def P12_ss(self):
         """
         The correlation of halo momentum and halo kinetic energy density, which 
@@ -549,7 +549,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P12_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P11_ss", "sigma_v", "sigma_bv2", "sigma_v2")
+    @cached_property("f", "P11_ss", "sigma_v", "sigma_bv2", "sigma_v2")
     def P13_ss(self):
         """
         The cross-correlation of halo momentum with the rank three tensor field
@@ -584,7 +584,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P13_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv2")
+    @cached_property("f", "P22", "Pdd", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv2")
     def P22_ss(self):
         """
         The auto-corelation of halo kinetic energy density, which contributes
@@ -627,7 +627,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P22_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv4")
+    @cached_property("f", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv4")
     def P04_ss(self):
         """
         The cross-correlation of halo density with the rank four tensor field

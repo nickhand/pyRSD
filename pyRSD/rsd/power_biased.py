@@ -272,7 +272,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
     #---------------------------------------------------------------------------
-    @cached_property("b1", "P00", "use_Phm_model")
+    @cached_property("b1", "P00", "use_Phm_model", "sigma8_z")
     def Phm(self):
         """
         The halo - matter cross correlation for the 1st tracer
@@ -302,7 +302,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return Phm
         
-    @cached_property("b1_bar", "P00", "use_Phm_model")
+    @cached_property("b1_bar", "P00", "use_Phm_model", "sigma8_z")
     def Phm_bar(self):
         """
         The halo - matter cross correlation for the 2nd tracer
@@ -331,7 +331,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("stoch_model", "k", "b1", "b1_bar", "z")
+    @cached_property("stoch_model", "k", "b1", "b1_bar", "z", "sigma8_z")
     def stochasticity(self):
         """
         The isotropic stochasticity term due to the discreteness of the halos, 

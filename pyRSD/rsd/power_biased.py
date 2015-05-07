@@ -245,7 +245,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return StochasticityPadeModel() 
              
-    @cached_property("f", "b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_lin")
+    @cached_property("b1", "b1_bar", "sigma8", "sigmav_from_sims", "sigma_lin")
     def sigma_v(self):
         """
         The velocity dispersion at z = 0. [units: Mpc/h]
@@ -258,7 +258,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
             # get the sigma in Mpc/h with D(z)*f(z) behavior divided out
             mean_bias = np.sqrt(self.b1*self.b1_bar)
             sigma_v = self.sigmav_fitter(mean_bias, self.z)
-            sigma_v /= (self.f*self.D*100.)
             
             # normalize to correct sigma8
             norm_factor = self.sigma8 / 0.807

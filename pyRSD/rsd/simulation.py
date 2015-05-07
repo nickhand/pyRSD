@@ -255,18 +255,18 @@ class SigmavFits(GaussianProcessSimulationData):
 
         cols = ['sigmav']
         
-        # # convert the values to Mpc/h
-        # cosmo = pygcl.Cosmology("teppei_sims.ini")
-        # new_sim_results = {}
-        # for z_str, values in self.sim_results.iteritems():
-        #     z = float(z_str)
-        #     params = {}
-        #     for b1, sigma in values.iteritems():
-        #        factor = cosmo.f_z(z)*cosmo.D_z(z)*100.
-        #        params[b1] = (sigma/factor)
-        #        
-        #     new_sim_results[z_str] = params
-        # self.sim_results = new_sim_results
+        # convert the values to Mpc/h
+        cosmo = pygcl.Cosmology("teppei_sims.ini")
+        new_sim_results = {}
+        for z_str, values in self.sim_results.iteritems():
+            z = float(z_str)
+            params = {}
+            for b1, sigma in values.iteritems():
+               factor = cosmo.f_z(z)*cosmo.D_z(z)*100.
+               params[b1] = (sigma/factor)
+               
+            new_sim_results[z_str] = params
+        self.sim_results = new_sim_results
         super(SigmavFits, self).__init__(cols, use_bias_ratio=False)
         
     #---------------------------------------------------------------------------

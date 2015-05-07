@@ -201,32 +201,32 @@ class GalaxyPowerTheory(object):
         # f*sigma8 at z of the model
         self.fit_params.add_constraint('fsigma8', "{f}*{sigma8}*%s" %self.model.D)
         
-        # relation between sigma and bias
-        r = self.model.sigma_bias_relation
-        
-        # sat sigma
-        f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_s')
-        self.fit_params['sigma_s'].deriving_function = f
-        
-        # satA sigma
-        f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_sA')
-        self.fit_params['sigma_sA'].deriving_function = f
-        
-        # satB sigma
-        f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_sB')
-        self.fit_params['sigma_sB'].deriving_function = f
-        
-        # sat bias
-        f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_s')
-        self.fit_params['b1_s'].deriving_function = f
-        
-        # satA bias
-        f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_sA')
-        self.fit_params['b1_sA'].deriving_function = f
-        
-        # satB bias
-        f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_sB')
-        self.fit_params['b1_sB'].deriving_function = f
+        # # relation between sigma and bias
+        # r = self.model.sigma_bias_relation
+        # 
+        # # sat sigma
+        # f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_s')
+        # self.fit_params['sigma_s'].deriving_function = f
+        # 
+        # # satA sigma
+        # f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_sA')
+        # self.fit_params['sigma_sA'].deriving_function = f
+        # 
+        # # satB sigma
+        # f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_sB')
+        # self.fit_params['sigma_sB'].deriving_function = f
+        # 
+        # # sat bias
+        # f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_s')
+        # self.fit_params['b1_s'].deriving_function = f
+        # 
+        # # satA bias
+        # f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_sA')
+        # self.fit_params['b1_sA'].deriving_function = f
+        # 
+        # # satB bias
+        # f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_sB')
+        # self.fit_params['b1_sB'].deriving_function = f
             
     #---------------------------------------------------------------------------
     @property

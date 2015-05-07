@@ -218,8 +218,8 @@ class NonlinearBiasFits(GaussianProcessSimulationData):
 #-------------------------------------------------------------------------------
 class SigmavFits(GaussianProcessSimulationData):
     """
-    The halo velocity dispersion as measured from simulations, as computed
-    from Figure 7 of Vlah et al. 2013. 
+    The halo velocity dispersion in Mpc/h at z = 0, as measured from 
+    simulations. The values are taken from Figure 8 of Vlah et al. 2013. 
     
     These are computed in km/s as:
     
@@ -255,18 +255,18 @@ class SigmavFits(GaussianProcessSimulationData):
 
         cols = ['sigmav']
         
-        # convert the values to Mpc/h
-        cosmo = pygcl.Cosmology("teppei_sims.ini")
-        new_sim_results = {}
-        for z_str, values in self.sim_results.iteritems():
-            z = float(z_str)
-            params = {}
-            for b1, sigma in values.iteritems():
-               factor = cosmo.f_z(z)*cosmo.D_z(z)*100.
-               params[b1] = (sigma/factor)
-               
-            new_sim_results[z_str] = params
-        self.sim_results = new_sim_results
+        # # convert the values to Mpc/h
+        # cosmo = pygcl.Cosmology("teppei_sims.ini")
+        # new_sim_results = {}
+        # for z_str, values in self.sim_results.iteritems():
+        #     z = float(z_str)
+        #     params = {}
+        #     for b1, sigma in values.iteritems():
+        #        factor = cosmo.f_z(z)*cosmo.D_z(z)*100.
+        #        params[b1] = (sigma/factor)
+        #        
+        #     new_sim_results[z_str] = params
+        # self.sim_results = new_sim_results
         super(SigmavFits, self).__init__(cols, use_bias_ratio=False)
         
     #---------------------------------------------------------------------------

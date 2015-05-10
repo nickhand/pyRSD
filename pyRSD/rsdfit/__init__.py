@@ -1,5 +1,5 @@
 # import the drivers and run functions
-from .fitting_driver import FittingDriver
+from .fitting_driver import FittingDriver, load_driver
 from .run import run
 
 # import the specific modules as well

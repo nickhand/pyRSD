@@ -19,6 +19,17 @@ logger = logging.getLogger('rsdfit.fitting_driver')
 logger.addHandler(logging.NullHandler())
 
 #-------------------------------------------------------------------------------
+def load_driver(params_file, model_file, results_file):
+    """
+    Load a driver object from a parameter file, results file, and model file
+    """
+    driver = FittingDriver(params_file, initialize_model=False)
+    driver.set_model(model_file)
+    driver.results = rsd_io.load_pickle(results_file)
+    
+    return driver
+    
+#-------------------------------------------------------------------------------
 def _pickle_method(method):
     func_name = method.im_func.__name__
     obj = method.im_self

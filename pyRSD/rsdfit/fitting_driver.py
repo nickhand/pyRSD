@@ -321,6 +321,32 @@ class FittingDriver(object):
         
     #---------------------------------------------------------------------------
     @property
+    def results(self):
+        """
+        The `results` object storing the fitting results
+        """
+        try:
+            return self._results
+        except AttributeError:
+            return None
+        
+    @results.setter
+    def results(self, val):
+        """
+        Set the results, checking to make sure we re-order the fitted params
+        into the right order
+        """
+        
+        # possibly reorder the results
+        if hasattr(val, 'verify_param_ordering'):
+            free_params = self.theory.free_parameter_names
+            constrained_params = self.theory.constrained_parameter_names
+            val.verify_param_ordering(free_params, constrained_params)
+            
+        self._results = val
+        
+    #---------------------------------------------------------------------------
+    @property
     def model(self):
         """
         A list of model values for each `PowerMeasurement` in 

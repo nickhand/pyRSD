@@ -244,6 +244,36 @@ class EmceeResults(object):
             return getattr(self, key)
                     
     #---------------------------------------------------------------------------
+    def verify_param_ordering(self, free_params, constrained_params):
+        """
+        Verify the ordering of `EmceeResults.chain`, making sure that the
+        chains have the ordering specified by `free_params` and 
+        `constrained_params`
+        """
+        if sorted(self.free_parameter_names) != sorted(free_params):
+            raise ValueError("Mismatch in `EmceeResults` free parameters")
+        if sorted(self.constrained_parameter_names) != sorted(constrained_params):
+            raise ValueError("Mismatch in `EmceeResults` constrained parameters")
+        
+        reordered = False
+        # reorder `self.chain`
+        if self.free_parameter_names != free_params:
+            inds = [self.free_parameter_names.index(k) for k in free_params]
+            self.chain = self.chain[...,inds]
+            reordered = True
+        
+        # reorder self.constrained_chain
+        if self.constrained_parameter_names != constrained_params:
+            inds = [self.constrained_parameter_names.index(k) for k in constrained_params]
+            self.constrained_chain = self.constrained_chain[...,inds]
+            reordered = True
+        
+        if reordered:
+            self.free_parameter_names = free_params
+            self.constrained_parameter_names = constrained_params
+            self._save_results()
+            
+    #---------------------------------------------------------------------------
     def __add__(self, other):
         """
         Add two `EmceeResults` objects together
@@ -252,26 +282,14 @@ class EmceeResults(object):
             raise NotImplemented("Can only add two `EmceeResults` objects together")
         
         # check a few things first
-        if sorted(self.free_parameter_names) != sorted(other.free_parameter_names):
-            raise ValueError("Cannot add `EmceeResults` objects: mismatch in free parameters")
-        if sorted(self.constrained_parameter_names) != sorted(other.constrained_parameter_names):
-            raise ValueError("Cannot add `EmceeResults` objects: mismatch in constrained parameters")
         if self.walkers != other.chain.shape[0]:
             raise ValueError("Cannot add `EmceeResults` objects: mismatch in number of walkers")
         
         # copy to return
         toret = self.copy()
         
-        # might need to reorder
-        other_chain = other.chain
-        if self.free_parameter_names != other.free_parameter_names:
-            inds = [other.free_parameter_names.index(k) for k in self.free_parameter_names]
-            other_chain = other_chain[...,inds]
-            
-        other_constrained_chain = other.constrained_chain
-        if self.constrained_parameter_names != other.constrained_parameter_names:
-            inds = [other.constrained_parameter_names.index(k) for k in self.constrained_parameter_names]
-            other_constrained_chain = other_constrained_chain[...,inds]
+        # verify the ordering of the other one
+        other.verify_param_ordering(self.free_parameter_names, self.constrained_parameter_names)
         
         # add the chains together
         toret.chain = np.concatenate((self.chain, other_chain), axis=1)

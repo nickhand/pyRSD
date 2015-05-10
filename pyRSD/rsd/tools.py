@@ -22,7 +22,10 @@ def unpacked(method):
     @functools.wraps(method)
     def _decorator(*args, **kwargs):
         result = method(*args, **kwargs)
-        return result if len(result) != 1 else result[0]
+        try:
+            return result if len(result) != 1 else result[0]
+        except:
+            return result
     return _decorator
 
 #-------------------------------------------------------------------------------
@@ -173,8 +176,8 @@ class RSDSpline(InterpolatedUnivariateSpline):
 #-------------------------------------------------------------------------------
 class BiasToMassRelation(Cache):
     """
-    Class to handle conversions between mass and bias quickly using an 
-    interpolation table
+    Class to handle conversions between mass (in M_sun/h) and bias quickly 
+    using an interpolation table
     """
     # define the interpolation grid
     interpolation_grid = {}
@@ -194,7 +197,7 @@ class BiasToMassRelation(Cache):
             Whether to return results from an interpolation table
         """
         # initialize the Cache base class
-        Cache.__init__(self)
+        super(BiasToMassRelation, self).__init__()
         
         # save the parameters
         self.z = z
@@ -282,9 +285,11 @@ class BiasToMassRelation(Cache):
         return RegularGridInterpolator((sigma8s, b1s), grid_vals)
         
     #---------------------------------------------------------------------------
+    @unpacked
     def __call__(self, sigma8, b1):
         """
-        Return the mass associated with desired `b1` and `sigma8`
+        Return the mass [units: `M_sun/h`] associated with the desired 
+        `b1` and `sigma8` values
         
         Parameters
         ----------
@@ -314,51 +319,125 @@ class BiasToMassRelation(Cache):
 #-------------------------------------------------------------------------------
 # Sigma-Bias relation
 #-------------------------------------------------------------------------------
-class SigmaBiasRelation(object):
+class BiasToSigmaRelation(BiasToMassRelation):
     """
     Class to represent the relation between velocity dispersion and halo bias
     """
-    def __init__(self, z, linearPS):
+    def __init__(self, z, cosmo, interpolated=False, sigmav_0=None, M_0=None):
         """
-        Initialize and setup the splines
+        Parameters
+        ----------
+        z : float
+            The redshift to compute the relation at
+        cosmo : pygcl.Cosmology
+            The cosmology object
+        interpolated : bool, optional
+            Whether to return results from an interpolation table
         """
-        self.z = z
-        self.power_lin = linearPS
-        self._initialize_splines()
+        # initialize the base class
+        super(BiasToSigmaRelation, self).__init__(z, cosmo, interpolated)
+        
+        # store the normalizations
+        self.sigmav_0 = sigmav_0
+        self.M_0 = M_0
+        
         
     #---------------------------------------------------------------------------
-    def _initialize_splines(self):
+    @parameter
+    def sigmav_0(self, val):
         """
-        Initialize the splines we need
+        The velocity normalization of the sigma to mass relation
         """
-        biases = np.linspace(1.0, 7.0, 100)
-        sigmas = np.array([sigma_from_bias(bias, self.z, self.power_lin) for bias in biases])
+        return val
         
-        self.sigma_to_bias_spline = RSDSpline(sigmas, biases, extrap=True)
-        self.bias_to_sigma_spline = RSDSpline(biases, sigmas, extrap=True)
+    @parameter
+    def M_0(self, val):
+        """
+        The mass normalization of the sigma to mass relation
+        """
+        return val
+    
+    #---------------------------------------------------------------------------
+    # Cached properties
+    #---------------------------------------------------------------------------
+    @cached_property("z", "cosmo")
+    def Hz(self):
+        """
+        The Hubble parameter at `z`
+        """
+        return self.cosmo.H_z(self.z)
+        
+    @cached_property("z", "cosmo")
+    def Ez(self):
+        """
+        The normalized Hubble parameter at `z`
+        """
+        return self.cosmo.H_z(self.z) / self.cosmo.H0()
         
     #---------------------------------------------------------------------------
-    def bias(self, sigma):
+    def evrard_sigmav(self, mass):
         """
-        Return the linear bias for the input sigma in Mpc/h
+        Return the line-of-sight velocity dispersion for dark matter using
+        the relationship found between velocity dispersion and halo mass found
+        by Evrard et al. 2008:
+        
+        \sigma_DM(M, z) = (1082.9 km/s) * (E(z) * M / 1e15 M_sun/h)**0.33
+        
+        Parameters
+        ----------
+        mass : float
+            The halo mass in units of `M_sun/h`
         """
-        return self.sigma_to_bias_spline(sigma)
+        # model params
+        sigmav_0 = 1082.9 # in km/s
+        M_0      = 1e15 # in M_sun/h
+        alpha    = 0.336
+        
+        # the Evrard value
+        sigmav = sigmav_0*(self.Ez * mass/M_0)**alpha
+        
+        # LOS is sigmav / sqrt(3) due to spherical symmetry
+        sigmav /= 3**0.5
+        
+        # put it into units of Mpc/h
+        return sigmav * (1 + self.z)/self.Hz
+        
+    #---------------------------------------------------------------------------
+    @unpacked
+    def __call__(self, sigma8, b1):
+        """
+        Return the velocity dispersion [units: `Mpc/h`] associated with the 
+        desired `b1` and `sigma8` values
+        
+        Parameters
+        ----------
+        sigma8 : float
+            The sigma8 value
+        b1 : float
+            The linear bias
+        """
+        # first get the halo mass
+        M = BiasToMassRelation.__call__(self, sigma8, b1)
     
-    #-------------------------------------------------------------------------------
-    def sigma(self, bias):
-        """
-        Return the sigma in Mpc/h for the input linear bias value
-        """
-        return self.bias_to_sigma_spline(bias)
-    
-    #-------------------------------------------------------------------------------
+        # evrard relation
+        if self.sigmav_0 is None or self.M_0 is None:
+            return self.evrard_sigmav(M)
+        else:
+            return self.sigmav_0 * (M / self.M_0)**(1./3.)
+        
+    #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------        
 def mass_from_bias(bias, z, linearPS):
     """
     Given an input bias, return the corresponding mass, using Tinker et al.
     bias fits
+    
+    Notes
+    -----
+    This returns the halo mass in units of M_sun / h
     """
+    # convenience normalization for finding the zero crossing
     mass_norm = 1e13
     
     # critical density in units of h^2 M_sun / Mpc^3
@@ -417,6 +496,8 @@ def sigma_from_bias(bias, z, linearPS):
     sigma0 = 3.6 # in Mpc/h
     M0 = 5.4903e13 # in M_sun / h
     return sigma0 * (mass_from_bias(bias, z, linearPS) / M0)**(1./3)
+    
+#-------------------------------------------------------------------------------
  
 
     

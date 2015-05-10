@@ -1,5 +1,5 @@
 from .. import numpy as np
-from .tools import RSDSpline
+from .tools import RSDSpline, BiasToSigmaRelation
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits
@@ -92,7 +92,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'stochasticity_gp_model']
+                  'stochasticity_gp_model', 'bias_to_sigma_relation']
         self._update_models('z', models, val)
 
         return val
@@ -244,6 +244,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The Pade model for stochasticity, as measured from simulations
         """
         return StochasticityPadeModel() 
+        
+    @cached_property()
+    def bias_to_sigma_relation(self):
+        """
+        The relationship between bias and velocity dispersion, using the 
+        Tinker et al. relation for halo mass and bias, and the virial theorem
+        scaling between mass and velocity dispersion
+        """
+        return BiasToSigmaRelation(self.z, self.cosmo, interpolated=self.interpolate)
              
     @cached_property("b1", "b1_bar", "z")
     def _unnormed_sigmav_from_sims(self):
@@ -268,7 +277,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return self._unnormed_sigmav_from_sims * self.sigma8
         else:
             return self.sigma_lin
-            
+    
+    def sigmav_from_bias(self, bias):
+        """
+        Return the velocity dispersion `sigmav` value for the specified linear
+        bias value
+        """
+        return self.bias_to_sigma_relation(self.sigma8, bias)
+        
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
     #---------------------------------------------------------------------------

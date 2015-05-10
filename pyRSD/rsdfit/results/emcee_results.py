@@ -252,9 +252,9 @@ class EmceeResults(object):
             raise NotImplemented("Can only add two `EmceeResults` objects together")
         
         # check a few things first
-        if self.free_parameter_names != other.free_parameter_names:
+        if sorted(self.free_parameter_names) != sorted(other.free_parameter_names):
             raise ValueError("Cannot add `EmceeResults` objects: mismatch in free parameters")
-        if self.constrained_parameter_names != other.constrained_parameter_names:
+        if sorted(self.constrained_parameter_names) != sorted(other.constrained_parameter_names):
             raise ValueError("Cannot add `EmceeResults` objects: mismatch in constrained parameters")
         if self.walkers != other.chain.shape[0]:
             raise ValueError("Cannot add `EmceeResults` objects: mismatch in number of walkers")
@@ -262,9 +262,20 @@ class EmceeResults(object):
         # copy to return
         toret = self.copy()
         
+        # might need to reorder
+        other_chain = other.chain
+        if self.free_parameter_names != other.free_parameter_names:
+            inds = [other.free_parameter_names.index(k) for k in self.free_parameter_names]
+            other_chain = other_chain[...,inds]
+            
+        other_constrained_chain = other.constrained_chain
+        if self.constrained_parameter_names != other.constrained_parameter_names:
+            inds = [other.constrained_parameter_names.index(k) for k in self.constrained_parameter_names]
+            other_constrained_chain = other_constrained_chain[...,inds]
+        
         # add the chains together
-        toret.chain = np.concatenate((self.chain, other.chain), axis=1)
-        toret.constrained_chain = np.concatenate((self.constrained_chain, other.constrained_chain), axis=1)
+        toret.chain = np.concatenate((self.chain, other_chain), axis=1)
+        toret.constrained_chain = np.concatenate((self.constrained_chain, other_constrained_chain), axis=1)
         
         # add the log probs together
         toret.lnprobs = np.concatenate((self.lnprobs, other.lnprobs), axis=1)
@@ -302,10 +313,13 @@ class EmceeResults(object):
                 
                 # set the free parameters
                 for val, name in zip(theta, self.free_parameter_names):
-                    fit_params[name].value = val
+                    fit_params.set(name, val, update_constraints=False)
+
+                # update constraints
+                fit_params.update_constraints()
                                 
                 # set the constrained vals
-                constrained_vals = np.array([fit_params[name].value for name in self.constrained_parameter_names])
+                constrained_vals = fit_params.constrained_parameter_values
                 self.constrained_chain[nwalker, niter, :] = constrained_vals
                 
         # check for any constrained values that are fixed and remove

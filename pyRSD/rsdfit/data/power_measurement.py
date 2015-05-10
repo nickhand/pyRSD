@@ -234,12 +234,21 @@ class PowerData(object):
         """
         Initialize and setup up the measurements. 
         """
-        self.params = ParameterSet(param_file, tag='data', params_only=True)
+        self.params = ParameterSet(param_file, tag='data')
 
         # setup the measurements and covariances
         self._set_measurements()
         self._set_covariance()
         
+    #---------------------------------------------------------------------------
+    def to_file(self, filename, mode='w'):
+        """
+        Save the parameters of this data class to a file
+        """            
+        # save the params
+        self.params.to_file(filename, mode=mode, header_name='data params', 
+                            footer=True, as_dict=False)
+                                  
     #---------------------------------------------------------------------------
     def __repr__(self):
         """
@@ -364,7 +373,7 @@ class PowerData(object):
             logger.info('Initialized diagonal covariance matrix from error columns')
         
         # rescale the covariance matrix
-        if self.params['covariance_rescaling'] is not None:
+        if self.params.get('covariance_rescaling', None) is not None:
             rescale = self.params['covariance_rescaling'].value
             logger.info("Rescaled covariance matrix by value = {val}".format(val=str(rescale)))
             self.covariance *= rescale

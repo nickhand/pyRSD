@@ -82,15 +82,22 @@ def run(args, pool):
     if args.subparser_name == 'run':
 
         # either load the driver if it exists already, or initialize it
-        if 'driver.pickle' in args.params:
-            driver = rsd_io.load_pickle(args.params)
+        if 'params.dat' in args.params:            
+            initialize_model = False if 'model' in args else True
+            driver = FittingDriver(args.params, pool=pool, initialize_model=initialize_model)
+            if not initialize_model:
+                driver.set_model(args.model)
         else:
-            driver = FittingDriver(args.params, pool=pool)
+            driver = FittingDriver(args.params, extra_param_file=args.extra_params, pool=pool)
+            
+            # save the model and the params
+            driver.to_file(os.path.join(args.folder, 'params.dat'))
+            rsd_io.save_pickle(driver.theory.model, os.path.join(args.folder, 'model.pickle'))
         
         # store some command line arguments
-        driver.params.set('walkers', args.walkers)
-        driver.params.set('iterations', args.iterations)
-        driver.params.set('threads', args.threads)
+        driver.params.add('walkers', args.walkers)
+        driver.params.add('iterations', args.iterations)
+        driver.params.add('threads', args.threads)
         
         # set driver values from command line
         solver = driver.params['fitter'].value
@@ -117,18 +124,18 @@ def run(args, pool):
         # now save the log to the logs dir
         copy_log(temp_log_name, output_name)
         
-        # now let's save the new driver
-        rsd_io.save_pickle(driver, os.path.join(args.folder, 'driver.pickle'))
-        
     
     # restart from previous chain
     elif args.subparser_name == 'restart':
         
-        # load the driver 
-        driver = rsd_io.load_pickle(args.params)
+        # load the driver from param file, optionally reading model from file
+        initialize_model = False if 'model' in args else True
+        driver = FittingDriver(args.params, pool=pool, initialize_model=initialize_model)
+        if not initialize_model:
+            driver.set_model(args.model)
         
         # set driver values from command line
-        driver.params.set('threads', args.threads)
+        driver.params.add('threads', args.threads)
         if args.burnin is not None:
             driver.params.set('burnin', args.burnin)
             

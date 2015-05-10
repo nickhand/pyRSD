@@ -6,13 +6,6 @@ import copy
 import tempfile
 
 #-------------------------------------------------------------------------------
-def deriving_function(func, params, param_name):
-    """
-    Function to be used to derive parameter values from other parameters
-    """
-    return func(params[param_name]())
-
-#-------------------------------------------------------------------------------
 class GalaxyPowerParameters(ParameterSet):
     """
     A `ParameterSet` for the galaxy redshift space power spectrum in 
@@ -39,39 +32,31 @@ class GalaxyPowerParameters(ParameterSet):
                      'N' : 'constant offset to model, in (Mpc/h)^3'}
                    
     _extra_params = {'b1_s': 'linear bias of satellites',
-                     'b1': 'the total linear bias', 
                      'b1_c': 'linear bias of centrals', 
-                     'fsigma8' : 'f(z)*sigma8(z) at z of measurement', 
-                     'Nbar_sat' : "the avg number of sats in halos with >1 sat",
-                     'nbar' : "the mean number density in (h/Mpc)^3", 
-                     'f1h_cBs' : 'fraction multiplying 1-halo term, NcBs',
-                     'f1h_sBsB' : 'fraction multiplying 1-halo term, NsBsB',
-                     'gamma' : 'fraction of halos that host a central galaxy',
-                     'log10_NsBsB' : 'log10 of the 1-halo amplitude, NsBsB',
-                     'log10_NcBs' : 'log10 of the 1-halo amplitude, NcBs'}
-                     
-    _valid_keys = _model_params.keys() + _extra_params.keys()
-                   
+                     'b1': 'the total linear bias', 
+                     'fsigma8' : 'f(z)*sigma8(z) at z of measurement'}
+                                      
     #---------------------------------------------------------------------------
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filename, tag=None, extra_params=None):
         """
-        Initialize, optionally loading parameters from a file name
+        Initialize by loading parameters from a file name
+        
+        Parameters
+        ----------
+        filename : str
+            The name of the file to read the parameters from
         """
-        # initialize the base class
-        super(GalaxyPowerParameters, self).__init__(**kwargs)
-                
-        # now possibly load from file
-        loaded = False
-        if (len(args) == 1 and isinstance(args[0], basestring)):
-            loaded = True
-            self.load(args[0])
+        # add in any extra parameters that we read
+        if extra_params is not None:
+            self._extra_params.update(extra_params)
             
-        # load the model params first
+        # initialize the base class
+        super(GalaxyPowerParameters, self).__init__(filename, tag=tag)
+                                        
+        # add descriptions for the model params
         for name, desc in self._model_params.iteritems():
             if name in self and self[name] is not None:
                 self.update_param(name, description=desc)
-            else:
-                self[name] = Parameter(name=name, description=desc)
                 
         # and the extra params
         for name, desc in self._extra_params.iteritems():
@@ -81,49 +66,64 @@ class GalaxyPowerParameters(ParameterSet):
                 self[name] = Parameter(name=name, description=desc)
 
         # setup the dependencies
-        if loaded: self._set_default_constraints()
+        self.set_default_constraints()
             
     #---------------------------------------------------------------------------
-    def __setitem__(self, key, value):
+    def __setitem__(self, name, value):
         """
-        Only allow names to be set if they are in `self._valid_keys`. 
-        If not, do nothing
+        Only allow names to be set if they are a valid parameter, otherwise, 
+        do nothing
         """
-        if self._is_valid_key(key):
-            ParameterSet.__setitem__(self, key, value)
-    
+        if self.is_valid_parameter(name):
+            ParameterSet.__setitem__(self, name, value)
+
     #---------------------------------------------------------------------------
-    def _is_valid_key(self, key):
+    @property
+    def valid_parameters(self):
         """
-        Check if the key is valid
+        Return the names of the valid parameters
         """
-        return key in self._valid_keys
+        try:
+            return self._valid_parameters
+        except AttributeError:
+            self._valid_parameters = self._model_params.keys() + self._extra_params.keys()
+            return self._valid_parameters
+            
+    #---------------------------------------------------------------------------
+    def is_valid_parameter(self, name):
+        """
+        Check if the parameter name is valid
+        """
+        return name in self.valid_parameters
         
     #---------------------------------------------------------------------------
-    def _set_default_constraints(self):
+    def set_default_constraints(self):
         """
         Set the default constraints for this theory
         """       
         # central bias
-        self.add_constraint('b1_c', "(1 - {fcB})*{b1_cA} + {fcB}*{b1_cB}")
+        if 'b1_c' in self:
+            self.add_constraint('b1_c', "(1 - fcB)*b1_cA + fcB*b1_cB")
         
         # satellite bias
-        self.add_constraint('b1_s', "(1 - {fsB})*{b1_sA} + {fsB}*{b1_sB}")
+        if 'b1_s' in self:
+            self.add_constraint('b1_s', "(1 - fsB)*b1_sA + fsB*b1_sB")
         
         # total bias
-        self.add_constraint('b1', "(1 - {fs})*{b1_c} + {fs}*{b1_s}")
+        if 'b1' in self:
+            self.add_constraint('b1', "(1 - fs)*b1_c + fs*b1_s")
         
     #---------------------------------------------------------------------------
     @property
     def model_params(self):
         """
         Return a dictionary of (name, value) for each name that is in 
-        `self._model_params`
+        `GalaxyPowerParameters._model_params`
         """
         keys = self._model_params.keys()
         return dict((key, self[key].value) for key in keys if key in self)    
     #---------------------------------------------------------------------------   
-#endclass GalaxyPowerParameters
+
 
 #-------------------------------------------------------------------------------
 class GalaxyPowerTheory(object):
@@ -133,31 +133,50 @@ class GalaxyPowerTheory(object):
     evaluation of the model itself.
     """
     
-    def __init__(self, param_file, k=None):
+    def __init__(self, param_file, extra_param_file=None, k=None):
         """
-        Setup the theory 
+        Initialize the theory 
         
         Parameters
         ----------
         param_file : str
-            name of the file holding the parameters for the theory
+            name of the file holding the parameters for the theory    
+        extra_param_file : str
+            name of the file holding the names of any extra parameter files
         k : array_like, optional
             If not `None`, initalize the theoretical model at these `k` values
-        """   
+        """
+        # read the parameter file lines and save them for pickling   
         self._readlines = open(param_file, 'r').readlines()
          
+        # read any extra parameters and make a dict
+        if extra_param_file is not None:
+            extra_params =  ParameterSet(extra_param_file)
+            self.extra_params = extra_params.to_dict()
+        else:
+            self.extra_params = None
+        
+        # try to also read any extra params from the param file, tagged with 'theory_extra'
+        extra_params = ParameterSet(param_file, tag='theory_extra')
+        if len(extra_params) > 0:
+            if self.extra_params is None:
+                self.extra_params = extra_params.to_dict()
+            else:
+                self.extra_params.update(extra_params.to_dict())
+        
         # read in the fit parameters; this should extra only the keys that
         # are valid for the GalaxyPowerParameters
-        self.fit_params = GalaxyPowerParameters(param_file, tag='theory')
+        self.fit_params = GalaxyPowerParameters(param_file, tag='theory', extra_params=self.extra_params)
 
-        # now setup the model parameters; params are those not in `fit_params`
-        self.model_params = ParameterSet(param_file, params_only=True, tag='theory')
+        # now setup the model parameters; only the valid model kwargs are read
+        self.model_params = ParameterSet(param_file, tag='theory')
+        allowable_model_params = rsd.power_gal.GalaxySpectrum.allowable_kwargs
         for param in self.model_params:
-            if self.fit_params._is_valid_key(param):
+            if param not in allowable_model_params:
                 del self.model_params[param] 
         
         # initialize the galaxy power spectrum model
-        kwargs = {k:v() for k,v in self.model_params.iteritems() if k in rsd.power_gal.GalaxySpectrum.allowable_kwargs}
+        kwargs = {k:v() for k,v in self.model_params.iteritems()}
         if k is not None: kwargs['k'] = k
         self.model = rsd.power_gal.GalaxySpectrum(**kwargs)
         
@@ -165,10 +184,41 @@ class GalaxyPowerTheory(object):
         self._set_model_dependent_params()
 
     #---------------------------------------------------------------------------
+    def to_file(self, filename, mode='w'):
+        """
+        Save the parameters of this theory in a file
+        """            
+        # first save the fit params
+        self.fit_params.to_file(filename, mode=mode, header_name='theory params', 
+                                footer=True, as_dict=True)
+                                
+        # now any extra params
+        if self.extra_params is not None:
+            f = open(filename, 'a')
+            vals = ["theory_extra.%s =  %s" %(k, repr(v)) for k, v in self.extra_params.iteritems()]
+            f.write("%s\n\n" %("\n".join(vals)))
+            f.close()
+        
+        # now save the model params
+        self.model_params.to_file(filename, mode='a', header_name='model params', 
+                                  footer=True, as_dict=False)
+        
+    #---------------------------------------------------------------------------
     def __getstate__(self):
-        return {'lines' : self._readlines, 'model' : self.model}
+        """
+        Only need to store the parameter file lines, the model, and the
+        extra parameters dictionary to pickle
+        """
+        return {'lines' : self._readlines, 'model' : self.model, \
+                'extra_params' : self.extra_params}
     
+    #---------------------------------------------------------------------------
     def __setstate__(self, d):
+        """
+        Restore the object after pickling
+        """
+        # write the parameter file lines to a temporary file
+        self._readlines = d['lines']
         f = tempfile.NamedTemporaryFile(delete=False)
         name = f.name
         lines = "\n".join(d['lines'])
@@ -176,58 +226,48 @@ class GalaxyPowerTheory(object):
         f.close()
     
         # now set up the object
-        self.fit_params = GalaxyPowerParameters(name, tag='theory')
+        self.fit_params = GalaxyPowerParameters(name, tag='theory', extra_params=d['extra_params'])
 
         # now setup the model parameters; params are those not in `fit_params`
-        self.model_params = ParameterSet(name, params_only=True, tag='theory')
+        self.model_params = ParameterSet(name, tag='theory')
         for param in self.model_params:
-            if self.fit_params._is_valid_key(param):
-                del self.model_params[param] 
+            if self.fit_params.is_valid_parameter(param):
+                del self.model_params[param]
     
+        # set the model
         self.model = d['model']
         
         # setup any params depending on model
         self._set_model_dependent_params()
         
+        # remove the tempoerary file
         if os.path.exists(name):
             os.remove(name)
-        self._readlines = d['lines']
+        
     
     #---------------------------------------------------------------------------
     def _set_model_dependent_params(self):
         """
         Setup any parameters that depend on the model
         """
-        # f*sigma8 at z of the model
-        self.fit_params.add_constraint('fsigma8', "{f}*{sigma8}*%s" %self.model.D)
+        # f(z)*sigma8(z) at z of the model
+        self.fit_params.add_constraint('fsigma8', "f*sigma8*%s" %self.model.D)
         
-        # # relation between sigma and bias
-        # r = self.model.sigma_bias_relation
-        # 
-        # # sat sigma
-        # f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_s')
-        # self.fit_params['sigma_s'].deriving_function = f
-        # 
-        # # satA sigma
-        # f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_sA')
-        # self.fit_params['sigma_sA'].deriving_function = f
-        # 
-        # # satB sigma
-        # f = functools.partial(deriving_function, r.sigma, self.fit_params, 'b1_sB')
-        # self.fit_params['sigma_sB'].deriving_function = f
-        # 
-        # # sat bias
-        # f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_s')
-        # self.fit_params['b1_s'].deriving_function = f
-        # 
-        # # satA bias
-        # f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_sA')
-        # self.fit_params['b1_sA'].deriving_function = f
-        # 
-        # # satB bias
-        # f = functools.partial(deriving_function, r.bias, self.fit_params, 'sigma_sB')
-        # self.fit_params['b1_sB'].deriving_function = f
+        # add the relation between sigma and bias to the symtable
+        self.fit_params._asteval.symtable['sigmav_from_bias'] = self.model.sigmav_from_bias
+        
             
+    #---------------------------------------------------------------------------
+    # Properties
+    #---------------------------------------------------------------------------
+    @property
+    def ndim(self):
+        """
+        Returns the number of free parameters, i.e., the `dimension` of the 
+        theory
+        """
+        return len(self.free_parameter_names)
+    
     #---------------------------------------------------------------------------
     @property
     def lnprior_free(self):
@@ -254,22 +294,6 @@ class GalaxyPowerTheory(object):
         of each individual parameter
         """       
         return self.lnprior_free + self.lnprior_constrained
-        
-    #---------------------------------------------------------------------------
-    def set_free_parameters(self, theta):
-        """
-        Given an array of values `theta`, set the free parameters of 
-        `self.fit_params`. 
-        
-        Note: This assumes that theta is of the correct length, and sets the
-        values in the same order as returned by `self.fit_params.free_parameters`
-        """
-        # set the parameters
-        for val, name in zip(theta, self.free_parameter_names):
-            self.fit_params[name].value = val
-            
-        # also update the model 
-        self.update_model()
             
     #---------------------------------------------------------------------------
     @property
@@ -320,6 +344,27 @@ class GalaxyPowerTheory(object):
         return self.fit_params.constrained_parameters
 
     #---------------------------------------------------------------------------
+    def set_free_parameters(self, theta):
+        """
+        Given an array of values `theta`, set the free parameters of 
+        `GalaxyPowerTheory.fit_params`. 
+        
+        Notes
+        ------
+        This assumes that theta is of the correct length, and sets the
+        values in the same order as returned by `GalaxyPowerTheory.fit_params.free_parameters`
+        """
+        # set the parameters
+        for val, name in zip(theta, self.free_parameter_names):
+            self.fit_params.set(name, val, update_constraints=False)
+            
+        # update constraints
+        self.fit_params.update_constraints()
+        
+        # also update the model 
+        self.update_model()
+        
+    #---------------------------------------------------------------------------
     def model_callable(self, power_type, identifier, **kwargs):
         """
         Return the correct model function based on the type and identifier
@@ -333,27 +378,18 @@ class GalaxyPowerTheory(object):
             return functools.partial(self.model.Pgal_poles, np.array(identifier, ndmin=1), flatten=True, **kwargs)
         elif power_type == 'pkmu_diff':
             return functools.partial(self.model.Pgal_diff, identifier, flatten=True, **kwargs)
-                
-        # if we get here, we messed up
-        msg = "No power spectrum model for measurement of type".format(power_type, identifier)
-        raise NotImplementedError(msg)
+        else:        
+            # if we get here, we messed up
+            msg = "No power spectrum model for measurement of type {} {}".format(power_type, identifier)
+            raise NotImplementedError(msg)
     
     #---------------------------------------------------------------------------
     def update_model(self):
         """
         Update the theoretical model with the values currently in 
-        `self.fit_params`
+        `GalaxyPowerTheory.fit_params`
         """
         self.model.update(**self.fit_params.model_params)
-    
-    #---------------------------------------------------------------------------
-    @property
-    def ndim(self):
-        """
-        Returns the number of free parameters, i.e., the `dimension` of the 
-        theory
-        """
-        return len(self.free_parameter_names)
     
     #---------------------------------------------------------------------------
     def check(self, return_errors=False):
@@ -373,13 +409,13 @@ class GalaxyPowerTheory(object):
             # check bounds
             if par.bounded and not par.within_bounds:
                 doing_okay = False
-                args = par.name, par.value, par.limits
-                msg = '{}={} is outside of reasonable limits {}'.format(*args)
+                args = par.name, par.value, par.min, par.max
+                msg = '{}={} is outside of reasonable limits [{}, {}]'.format(*args)
                 error_messages.append(msg)
                 continue
                 
             # check prior
-            if par.has_prior() and np.isinf(par.lnprior): 
+            if par.has_prior and np.isinf(par.lnprior): 
                 doing_okay = False
                 msg = '{}={} is outside of prior {}'.format(par.name, par.value, par.prior)
                 error_messages.append(msg)
@@ -391,6 +427,5 @@ class GalaxyPowerTheory(object):
             return doing_okay   
             
     #---------------------------------------------------------------------------      
-#endclass GalaxyPowerTheory
 
 #-------------------------------------------------------------------------------

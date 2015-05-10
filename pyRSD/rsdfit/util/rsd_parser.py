@@ -88,6 +88,10 @@ def initialize_parser():
     h = 'file name holding the driver, theory, and data parameters'
     kwargs = {'dest':'params', 'type':existing_file, 'help':h}
     run_parser.add_argument('-p', '--params', **kwargs) 
+    
+    h = 'file name holding the names of any extra theory parameters'
+    kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
+    run_parser.add_argument('-xp', '--extra_params', **kwargs)
         
     # number of threads (OPTIONAL)
     h = 'number of python multiprocessing threads to spawn (default: 1)'
@@ -221,25 +225,34 @@ def parse_command_line():
         # if we are restarting, automatically use the same folder, 
         # and the driver.pickle
         args.folder = os.path.sep.join(args.restart_file.split(os.path.sep)[:-1])
-        args.params = os.path.join(args.folder, 'driver.pickle')
+        args.params = os.path.join(args.folder, 'params.dat')
+        args.model  = os.path.join(args.folder, 'model.pickle')
         if not os.path.exists(args.params):
             raise rsd_io.ConfigurationError(
-                  "Restarting but associated driver.pickle doesn't exist")
-        logger.warning("Restarting from %s." %args.restart_file +
-                       " Using associated driver.pickle")
+                    "Restarting but associated params.dat doesn't exist")
+        if not os.path.exists(args.model):
+            raise rsd_io.ConfigurationError(
+                    "Restarting but associated model.pickle doesn't exist")
+        
+        logger.warning("Restarting from %s. Using associated params.dat" %args.restart_file)
+        
     elif args.subparser_name == "run":
 
         # if the folder already exists, and no parameter files were specified
-        # try to use an existing driver.pickle
+        # try to use an existing params.dat
         if os.path.isdir(args.folder):
-            if os.path.exists(os.path.join(args.folder, 'driver.pickle')):
-                # if the driver.pickle exists, and param files were given, 
-                # use the driver.pickle, and notify the user
+            if os.path.exists(os.path.join(args.folder, 'params.dat')):
+                # if the params.dat exists, and param files were given, 
+                # use the params.dat, and notify the user
                 old_params = args.params
-                args.params = os.path.join(args.folder, 'driver.pickle')
+                args.params = os.path.join(args.folder, 'params.dat')
                 if old_params is not None:
                     logger.warning("Appending to an existing folder: using the "
-                                   "driver.pickle instead of %s" %old_params)
+                                   "params.dat instead of %s" %old_params)
+                                   
+                # also check for existing model file now
+                if os.path.exists(os.path.join(args.folder, 'model.pickle')):
+                    args.model = os.path.join(args.folder, 'model.pickle')
             else:
                 if args.params is None:
                     raise rsd_io.ConfigurationError(

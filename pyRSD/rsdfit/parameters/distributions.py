@@ -9,22 +9,8 @@ valid_distributions = {'normal' : ['mu', 'sigma'], \
                        'uniform': ['lower', 'upper'], \
                        'trace' : ['trace'] }
 
-def Distribution(name, **kwargs):
-    """
-    Return the distribution specified by `name`
-    """
-    if name not in valid_distributions:
-        raise ValueError("Distribution name must be one of {0}".format(valid_distributions.keys()))
         
-    if name == 'normal':
-        return Normal(kwargs['mu'], kwargs['sigma'])
-    elif name == 'uniform':
-        return Uniform(kwargs['lower'], kwargs['upper'])
-    elif name == 'trace':
-        return Trace(kwargs['trace'])
-        
-#-------------------------------------------------------------------------------
-        
+#-------------------------------------------------------------------------------    
 def histogram_bins(signal):
     """
     Return optimal number of bins.
@@ -64,6 +50,8 @@ class DistributionBase(object):
         # add the specific distribution parameters
         self.params = valid_distributions[self.name]
         for k, v in params.iteritems():
+            if v is None:
+                raise ValueError("`%s` attribute for `%s` prior distribution can not be `None`" %(k, self.name))
             setattr(self, k, v)
 
     #---------------------------------------------------------------------------
@@ -81,18 +69,7 @@ class DistributionBase(object):
         Builtin representation method
         """
         return self.__str__()
-        
     #---------------------------------------------------------------------------
-    def update(self, **params):
-        """
-        Update the distribution parameters.
-        """
-        for k, v in params.iteritems():
-            if not hasattr(self, k):
-                raise AttributeError("Cannot update attribute '{0}'; no such attribute".format(k))
-            setattr(self, k, v)        
-    #---------------------------------------------------------------------------
-#endclass DistributionBase
 
 #-------------------------------------------------------------------------------
 class Normal(DistributionBase):
@@ -228,31 +205,7 @@ class Normal(DistributionBase):
 
         kwargs = {'loc' : self.loc, 'scale' : self.scale}
         return domain, getattr(scipy.stats.norm(**kwargs), 'cdf')(domain)
-        
-    #---------------------------------------------------------------------------
-    def shrink(self, factor=10.):
-        """
-        Shrink the extent of the normal distribution.
-        
-        Parameters
-        ----------
-        factor : float
-            the factor with which to shrink the distribution
-        """
-        self.sigma /= factor
-        
-    #---------------------------------------------------------------------------
-    def expand(self, factor=10.):
-        """
-        Expand the extent of the normal distribution.
-        
-        Parameters
-        ----------
-        factor : float
-            the factor with which to expand the distribution
-        """
-        self.sigma *= factor
-    
+            
     #---------------------------------------------------------------------------   
     def plot(self, on_axis='x', **kwargs):
         """
@@ -285,8 +238,6 @@ class Normal(DistributionBase):
         return self.sigma
     #---------------------------------------------------------------------------
     
-#endclass Normal
-
 #-------------------------------------------------------------------------------
 class Uniform(DistributionBase):
     """
@@ -454,7 +405,6 @@ class Uniform(DistributionBase):
         """
         return self.upper - self.lower
     #---------------------------------------------------------------------------
-#endclass Uniform
 
 #-------------------------------------------------------------------------------
 class Trace(DistributionBase):
@@ -549,7 +499,6 @@ class Trace(DistributionBase):
         toret = np.array([bisect(lambda a: spline(a)-r, xmin, xmax) for r in rands])
         
         return toret if size > 1 else toret[0]
-    #end _draw_from_discrete
     
     #---------------------------------------------------------------------------
     def pdf(self, domain=None, factor=1.):
@@ -645,6 +594,5 @@ class Trace(DistributionBase):
         domain, pdf = self.pdf()
         ax.plot(domain, pdf, **kwargs)
     #---------------------------------------------------------------------------
-#endclass Trace
 
 #-------------------------------------------------------------------------------

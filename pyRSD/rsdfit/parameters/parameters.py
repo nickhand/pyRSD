@@ -1,33 +1,187 @@
 from . import tools, distributions as dists
 from ... import numpy as np
+from ...rsd._cache import Cache, parameter, cached_property
 
 from collections import OrderedDict, defaultdict
-import functools
 import itertools
 import string
 import copy
+import lmfit
 
 #-------------------------------------------------------------------------------
 class ParameterSet(OrderedDict):
     """
-    A dictionary of all the Parameters required to specify a fit model.
-    All keys must be strings and all values must be Parameters.
+    A subclass of `collectiosn.OrderedDict` that stores the `Parameter` objects 
+    required to specify a fit model. All keys must be strings and all the
+    values must be `Parameters`.
+    
+    Notes
+    -----
+    In order to accurately handle constrained parameters, parameter values
+    should be set through the `set(name, value)` function, which will 
+    automatically update any constrained parameters that depend on the 
+    parameter `name` 
     """
-    def __init__(self, *args, **kwargs):
+    def __init__(self, filename, tag=None):
+        """
+        Initialize the `ParameterSet`
+        
+        Parameters
+        ----------
+        filename : str
+            The name of the file to read the parameters from
+        tag : str, optional
+            If not `None`, only read the parameters with this prefix in their
+            key name
+        """
+        # initialize the base class
         super(ParameterSet, self).__init__()
+        self.tag = tag
         
-        # keep track of constraints
-        self.constraints = defaultdict(OrderedDict)
+        # load the parameters
+        self.load(filename)
         
-        # a few possible keywords
-        self.params_only = kwargs.pop('params_only', False)
-        self.tag = kwargs.pop('tag', None)
+        # initialize the constraint readers and update constraints
+        self._initialize_constraints()
+        self.update_constraints()
         
-        if (len(args) == 1 and isinstance(args[0], basestring)):
-            self.load(args[0])
-        else:
-            self.update(*args, **kwargs)
+
+    #---------------------------------------------------------------------------
+    def to_file(self, filename, mode='w', header_name=None, footer=False, as_dict=True):
+        """
+        Output the `ParameterSet` to a file, using the mode specified. 
+        Optionally, add a header and/or footer to make it look nice.
         
+        If `as_dict = True`, output the parameter as a dictionary, otherwise
+        just output the value
+        """
+        # open the file
+        f = open(filename, mode=mode)
+        
+        if header_name is not None:
+            header = "#{x}\n# {hdr}\n#{x}\n".format(hdr=header_name, x="-"*79)
+            f.write(header)
+        
+        output = []
+        for name, par in self.items():
+            key = name if self.tag is None else "{}.{}".format(self.tag, name)
+            
+            if as_dict:
+                par_dict = par.to_dict()
+                if len(par_dict):
+                    output.append("{} = {}".format(key, par_dict))
+            else:
+                output.append("{} = {}".format(key, repr(par())))
+            
+        f.write("%s\n" %("\n".join(output)))
+        
+        if footer:
+            f.write("#{}\n\n".format("-"*79))
+        f.close()
+        
+    #---------------------------------------------------------------------------
+    def _initialize_constraints(self):
+        """
+        Prepare and save the parameters. The important step here is initializing
+        the `asteval` and `ast` attributes so any parameters with `expr` can
+        be evaluated
+        """
+        # for each parameter, this will store the other params that depend
+        # on it
+        self._dependencies = defaultdict(set)
+        
+        # initalize asteval classes
+        self._asteval = lmfit.asteval.Interpreter()
+        self._namefinder = lmfit.astutils.NameFinder()
+
+        # check for any parameters that have `expr` defined
+        for name, par in self.items():
+            if par.expr is not None:
+                par.ast = self._asteval.parse(par.expr)
+                par.vary = False
+                par.deps = []
+                self._namefinder.names = []
+                self._namefinder.generic_visit(par.ast)
+                for symname in self._namefinder.names:
+                    if (symname in self and symname not in par.deps):
+                        par.deps.append(symname)
+                        self._dependencies[symname].add(name)
+        
+    #---------------------------------------------------------------------------
+    def add_constraint(self, name, expr):
+        """
+        Update the parameter `name` with the constraining expression `expr`, and
+        update then update the constraints
+        """
+        if name not in self:
+            raise ValueError("Cannot add constraint for parameter `%s`; not in ParameterSet" %name)
+            
+        par = self[name]
+        par.expr = expr
+        par.ast = self._asteval.parse(par.expr)
+        par.vary = False
+        par.deps = []
+        self._namefinder.names = []
+        self._namefinder.generic_visit(par.ast)
+        for symname in self._namefinder.names:
+            if (symname in self and symname not in par.deps):
+                par.deps.append(symname)
+                self._dependencies[symname].add(name)
+        
+        self.update_constraints()
+        
+    #---------------------------------------------------------------------------
+    def update_constraints(self):
+        """
+        Update all constrained parameters, checking that dependencies are
+        evaluated as needed.
+        """
+        self._updated = dict([(name, False) for name in self])
+        for name in self:
+            self._update_param_value(name)
+            
+    #---------------------------------------------------------------------------
+    def _update_param_value(self, name):
+        """
+        Update parameter value for a constrained parameter, which is a parameter
+        that has `expr` defined. This first updates (recursively) all parameters 
+        on which the parameter depends (using the 'deps' field).
+        """
+        if self._updated[name]:
+            return
+        
+        par = self[name]
+        if getattr(par, 'expr', None) is not None:
+            if getattr(par, 'ast', None) is None:
+                par.ast = self._asteval.parse(par.expr)
+            if par.deps is not None:
+                for dep in par.deps:
+                    self._update_param_value(dep)
+            par.value = self._asteval.run(par.ast)
+        self._asteval.symtable[name] = par.value
+        self._updated[name] = True
+        
+    #---------------------------------------------------------------------------
+    def __getstate__(self):
+        """
+        Make the class pickeable by deleting the `asteval` class first
+        """
+        # delete the non-pickeable stuff
+        if hasattr(self, '_asteval'): delattr(self, '_asteval')
+        d =  self.__dict__.copy()
+        return d
+
+    #---------------------------------------------------------------------------
+    def __setstate__(self, d):
+        """
+        Restore the class after pickling, and update the constraints
+        """
+        self.__dict__ = d
+
+        # restore the asteval and update constraints
+        self._asteval = lmfit.asteval.Interpreter()
+        self.update_constraints()
+
     #---------------------------------------------------------------------------
     def __str__(self):
         """
@@ -35,27 +189,40 @@ class ParameterSet(OrderedDict):
         """
         # first get the parameters
         toret = "Parameters\n" + "_"*10 + "\n"
-        toret += "\n".join(map(str, self.values()))
+        toret += "\n".join(map(str, sorted(self.values(), key=lambda p: p.name.lower())))
         
         # now get any constraints
-        if sum(len(self.constraints[k]) for k in ['value', 'min', 'max']):
-            toret += "\n\nConstraints\n" + "_"*10 + "\n"
-            for constraint_type in ['value', 'min', 'max']:
-                for name, text in self.constraints[constraint_type].iteritems():
-                    toret += "%s\n" %(self._get_text_constraint(name, text, constraint_type))
+        toret += "\n\nConstraints\n" + "_"*10 + "\n"
+        for name in self:
+            if self[name].expr is not None:
+                toret += "%s = %s\n" %(name, self[name].expr)
         
         return toret
         
     #--------------------------------------------------------------------------
     def __call__(self, key):
-        if not isinstance(key, int): 
-            raise KeyError("Key must be an integer")
-        if key >= len(self): 
-            raise KeyError("ParameterSet only has size %d" %len(self))
-        return self[self.keys()[key]]
+        """
+        Return the value of the parameter, specified either by the integer
+        value `key`, or the name of the parameter
+        """
+        if not isinstance(key, (int, basestring)): 
+            raise KeyError("Key must either be an integer or a basestring")
+        
+        if isinstance(key, basestring):
+            if key not in self:
+                raise ValueError("No parameter with name `%s` in ParameterSet" %key)
+            return self[key]()
+        else:
+            if key >= len(self): 
+                raise KeyError("ParameterSet only has size %d" %len(self))
+            key = self.keys()[key]
+            return self[key]()
 
     #---------------------------------------------------------------------------
     def __setitem__(self, key, value):
+        """
+        Set the item in the dictionary, making sure all items are `Parameters`
+        """
         if isinstance(value, dict):
             if all(k in Parameter._valid_keys for k in value.keys()):
                 value['name'] = key
@@ -68,14 +235,10 @@ class ParameterSet(OrderedDict):
             self.update_param(**value)
 
     #---------------------------------------------------------------------------
-    def __getitem__(self, key):
-        if key not in self:
-            return None
-        else:
-            return OrderedDict.__getitem__(self, key)
-    
-    #---------------------------------------------------------------------------
     def __repr__(self):
+        """
+        Builtin representation function
+        """
         return "<ParameterSet (size: %d)>" %len(self)
         
     #---------------------------------------------------------------------------
@@ -97,74 +260,6 @@ class ParameterSet(OrderedDict):
         elif len(line) != length:
             raise ValueError("Cannot understand line %d" %lineno)
         return True
-    #end _verify_line
-    
-    #---------------------------------------------------------------------------
-    def _get_text_constraint(self, name, text, constraint_type):
-        """
-        Return the text of a constraint
-        """
-        if constraint_type == 'value':
-            op = "="
-        elif constraint_type == 'min':
-            op = "<" if self[name].exclusive_min else "<="
-        elif constraint_type == 'max':
-            op = ">" if self[name].exclusive_max else ">="
-        
-        return " ".join([name, op, text])
-    #end _get_text_constraint
-    
-    #---------------------------------------------------------------------------
-    def _parse_bounds(self, line, lineno, op):
-        """
-        Parse a bounds statement from file
-        """
-        lindex = line.index(op)
-        rindex = line.rindex(op)
-        if lindex == rindex:
-            # first determine the operator
-            split_on = op
-            exclusive = True
-            if line[lindex+1] == "=": 
-                split_on = op + "="
-                exclusive = False
-                
-            # do the split and verify
-            line = line.split(split_on)
-            line = [x.strip() for x in line]
-            if not self._verify_line(line, 2, lineno): return
-            
-            # add the right limit
-            if op == "<":
-                self.add_upper_limit(line[0], line[-1], exclusive=exclusive)
-            elif op == ">":
-                self.add_lower_limit(line[0], line[-1], exclusive=exclusive)
-        else:
-            lexclusive = rexclusive = True
-            lsplit_on = op
-            if line[lindex+1] == "=": 
-                lsplit_on = op + "="
-                lexclusive = False
-            rsplit_on = op
-            if line[rindex+1] == "=": 
-                rsplit_on = op + "="
-                rexclusive = False
-            lsplit = line.split(lsplit_on, 1)
-            lsplit = [x.strip() for x in lsplit]
-            if not self._verify_line(lsplit, 2, lineno): return
-            
-            rsplit = lsplit[-1].split(rsplit_on, 1)
-            rsplit = [x.strip() for x in rsplit]
-            if not self._verify_line(rsplit, 2, lineno): return
-            
-            key = rsplit[0]
-            if op == "<":
-                self.add_lower_limit(key, lsplit[0], exclusive=lexclusive)
-                self.add_upper_limit(key, rsplit[-1], exclusive=rexclusive)
-            elif op == ">":
-                self.add_upper_limit(key, lsplit[0], exclusive=lexclusive)
-                self.add_lower_limit(key, rsplit[-1], exclusive=rexclusive)
-    #end _parse_bounds
     
     #---------------------------------------------------------------------------
     def get(self, name, default=None):
@@ -174,14 +269,51 @@ class ParameterSet(OrderedDict):
         return self[name]() if name in self else default
         
     #---------------------------------------------------------------------------
-    def set(self, name, value):
+    def _update_dependencies(self, name):
         """
-        Set the value
+        Update the dependencies, recursively
+        """
+        if name not in self._dependencies:
+            return
+            
+        constrained_params = self._dependencies[name]
+        for constrained_name in constrained_params:
+            self._updated[constrained_name] = False
+            self._update_param_value(constrained_name)
+            self._update_dependencies(constrained_name)
+            
+        
+    #---------------------------------------------------------------------------
+    def set(self, name, value, update_constraints=True):
+        """
+        Set the `Parameter` value with `name` to `value`. This will also update
+        the values of any parameters are constrained and depend on the parameter
+        given by `name`
+        
+        Notes
+        -----
+        The parameter given by `name` is assumed to already exist in the 
+        `ParameterSet`
         """
         if name not in self:
-            self[name] = Parameter(name=name, value=value)
-        else:
-            self[name].value = value
+            raise ValueError("Cannot set parameter `%s`; not in ParameterSet" %name)
+        
+        # set the value and update the symtable
+        self[name].value = value
+        self._asteval.symtable[name] = value
+        
+        # check for any constrained params that depend on this
+        if update_constraints:
+            self._updated = dict([(k, True) for k in self])
+            self._update_dependencies(name)
+        
+    #---------------------------------------------------------------------------
+    def add(self, name, value):
+        """
+        Add a `Parameter` with `name` to the ParameterSet with the specified 
+        `value`.
+        """
+        self[name] = Parameter(name=name, value=value)
             
     #---------------------------------------------------------------------------
     def load(self, filename, clear_current=False):
@@ -193,7 +325,6 @@ class ParameterSet(OrderedDict):
         filename = tools.find_file(filename)
             
         D = {} 
-        special_lines = {}
         old = ''
         for linecount, line in enumerate(open(filename, 'r')):
             line = line.strip()
@@ -212,12 +343,6 @@ class ParameterSet(OrderedDict):
                 if line[i] !=' ':
                     line = line[i:]
                     break
-            
-            # grab the special lines for later
-            if "==" in line or any(op in line for op in ['<', '>']):
-                if not self.params_only:
-                    special_lines[linecount] = line
-                continue
                 
             line = line.split('=')
             line = [x.strip() for x in line]
@@ -247,101 +372,7 @@ class ParameterSet(OrderedDict):
         if clear_current:
             self.clear()
         self.update(D)
-        
-        # now parse the special lines
-        for lineno, line in special_lines.iteritems():
-            # add the constraint
-            if "==" in line:
-                line = line.split('==')
-                line = [x.strip() for x in line]
-
-                if not self._verify_line(line, 2, lineno):
-                    continue
                 
-                self.add_constraint(line[0].strip(), line[1].strip())
-            else:
-                # do bounds
-                if "<" in line:
-                    self._parse_bounds(line, lineno, "<")
-                elif ">" in line:
-                    self._parse_bounds(line, lineno, ">")
-                else:
-                    raise ValueError("Error parsing constraint/bound on line %d" %lineno)
-                    
-    #end load
-
-    #---------------------------------------------------------------------------
-    def _set_function_as_attribute(self, name, text, att_name):
-        """
-        Set the attribute provided to a constraining function
-        
-        Returns
-        -------
-        sucesss : bool
-            `True` is returned if the text contains references to `Parameters`
-            in the `ParameterSet`, or `False` otherwise
-        """
-        # the parameter names to be replaced
-        param_names = set(tools.text_between_chars(text))
-            
-        if name in param_names and att_name == 'value':
-            raise ValueError("Cannot reference own parameter name when setting value constraint")
-
-        # any modules needing importing
-        modules = tools.import_function_modules(text)
-    
-        # bind the parameters
-        args = (self, text, param_names, modules)
-        f = functools.partial(tools.constraining_function, *args)
-        
-        if name not in self:
-            self[name] = Parameter(name=name)
-        
-        if len(param_names) == 0:
-            setattr(self[name], att_name, f())
-        else:
-            setattr(self[name], att_name, f)
-        
-        return param_names, modules
-    #end _set_function_as_attribute
-    
-    #---------------------------------------------------------------------------
-    def _set_bounds_from_constraint(self, name, constraint, param_names, modules):
-        """
-        Set the bounds of a parameter `name` based on the constraint 
-        """
-        extrema = ['min', 'max']
-        combos = list(itertools.combinations_with_replacement(extrema, len(param_names)))
-
-        values = []
-        for combo in combos:
-            to_fill = {k:self[k][att] for k, att in zip(param_names, combo)}
-            if any(v is None for v in to_fill.values()):
-                value = np.nan
-            else:
-                formatted_constraint = constraint.format(**to_fill)
-                value = eval(formatted_constraint, globals().update(modules))
-            values.append(value)
-        
-        args = (self, constraint, param_names, modules)
-        this_min = min(values)
-        this_max = max(values)
-        if np.isnan(this_min):
-            fmin = None
-        else:
-            min_combo = combos[values.index(this_min)]
-            fmin = functools.partial(tools.constraining_function, *args, props=list(min_combo))
-            
-        if np.isnan(this_max):
-            fmax = None
-        else:
-            max_combo = combos[values.index(this_max)]
-            fmax = functools.partial(tools.constraining_function, *args, props=list(max_combo))
-        
-        setattr(self[name], 'min', fmin)
-        setattr(self[name], 'max', fmax)
-    #end _set_bounds_from_constraint
-        
     #---------------------------------------------------------------------------
     def update_param(self, *name, **kwargs):
         """
@@ -361,159 +392,35 @@ class ParameterSet(OrderedDict):
             raise ValueError("Parameter `%s` not in this ParameterSet" %name)
         for k, v in kwargs.iteritems():
             setattr(self[name], k, v)
-    #end update_param
-          
-    #---------------------------------------------------------------------------
-    def add_constraint(self, name, constraint):
-        """
-        Add an explicit constraint to the parameter set. If `name` is not 
-        defined in the `ParameterSelf`, add the `Parameter` to the set
-        
-        No constraint is added if there are no parameter dependencies -- the 
-        value is just set to the constant
-        """            
-        param_depends, modules = self._set_function_as_attribute(name, constraint, 'value')
-        if len(param_depends):
-            self.constraints['value'][name] = constraint
-            
-            # also try to set min/max based on parameter dependencies
-            self._set_bounds_from_constraint(name, constraint, param_depends, modules)
-        else:
-            # delete constraint text stored
-            self.constraints['value'].pop(name, None)
-            
-            self._try_remove_limits(name)
-    #end add_constraint
-    
-    #---------------------------------------------------------------------------
-    def _try_remove_limits(self, name):
-        """
-        Try to remove any bounds that are callable
-        """
-        # remove any constraint-based bounds
-        try:
-            self.remove_upper_limt(name)
-        except:
-            pass
-        try:
-            self.remove_lower_limt(name)
-        except:
-            pass
-            
-    #---------------------------------------------------------------------------
-    def remove_constraint(self, name, val=None):
-        """
-        Remove a constraint from the `Parameter` specified by `name`
-        """
-        if name not in self:
-            raise ValueError("Parameter `%s` not in this ParameterSet" %name) 
-        if not self[name].constrained:
-            raise ValueError("Parameter `%s` is not constrained" %name)
-        
-        self[name].remove_constraint(val)
-        self.constraints['value'].pop(name)
-        self._try_remove_limits(name)
-        
-    #end remove_constraint
-    
-    #---------------------------------------------------------------------------
-    def add_upper_limit(self, name, upper_lim, exclusive=True):
-        """
-        Add an explicit upper limit to the parameter set. If `name` is not 
-        defined in the `ParameterSelf`, add the `Parameter` to the set
-        
-        No constraint is added if there are no parameter dependencies -- the 
-        limit is just set to the constant
-        """
-        if isinstance(upper_lim, basestring):            
-            param_depends, _ = self._set_function_as_attribute(name, upper_lim, 'max')
-            if len(param_depends):
-                self.constraints['max'][name] = upper_lim
-            else:
-                self.constraints['max'].pop(name, None)
-        else:
-            if name not in self:
-                self[name] = Parameter(name=name)
-            self[name].max = upper_lim
-            self.constraints['max'].pop(name, None)
-            
-        self[name].exclusive_max = exclusive
-     #end add_upper_limit
-    
-    #---------------------------------------------------------------------------
-    def add_lower_limit(self, name, lower_lim, exclusive=True):
-        """
-        Add an explicit lower limit to the parameter set. If `name` is not 
-        defined in the `ParameterSelf`, add the `Parameter` to the set
-        
-        No constraint is added if there are no parameter dependencies -- the 
-        limit is just set to the constant
-        """            
-        if isinstance(lower_lim, basestring):            
-            param_depends, _ = self._set_function_as_attribute(name, lower_lim, 'min')
-            if len(param_depends):
-                self.constraints['min'][name] = lower_lim
-            else:
-                self.constraints['min'].pop(name, None)
-        else:
-            if name not in self:
-                self[name] = Parameter(name=name)
-            self[name].min = lower_lim
-            self.constraints['min'].pop(name, None)
-            
-        self[name].exclusive_min = exclusive
-    #end add_lower_limit
-     
-    #-------------------------------------------------------------------------------
-    def remove_upper_limit(self, name, val=None):
-        """
-        Remove the upper limit from the `Parameter` specified by `name`
-        """
-        if name not in self:
-            raise ValueError("Parameter `%s` not in this ParameterSet" %name) 
-        if self[name].max is None:
-            raise ValueError("Parameter `%s` is does not have an upper limit" %name)
-        
-        self[name].remove_upper_limit(val)
-    #end remove_upper_limit
-    
-    #---------------------------------------------------------------------------
-    def remove_lower_limit(self, name, val=None):
-        """
-        Remove the lower limit from the `Parameter` specified by `name`
-        """
-        if name not in self:
-            raise ValueError("Parameter `%s` not in this ParameterSet" %name) 
-        if self[name].min is None:
-            raise ValueError("Parameter `%s` is does not have an lower limit" %name)
-        
-        self[name].remove_lower_limit(val)
-    #end remove_lower_limit
-    
+              
     #---------------------------------------------------------------------------
     @property
     def free_parameter_names(self):
         """
-        Return the free parameter names. `Free` means that `vary = True`,
-        `constrained = False, and `derived = False`
+        Return the free parameter names. `Free` means that 
+        `Parameter.vary = True` and `Parameter.constrained = False`
         """
-        return [k for k in self if self[k].vary and not (self[k].constrained or self[k].derived)]
+        try:
+            return self._free_parameter_names
+        except AttributeError:
+            self._free_parameter_names = [k for k in self if self[k].vary and not self[k].constrained]
+            return self._free_parameter_names
     
     #---------------------------------------------------------------------------
     @property
     def free_parameter_values(self):
         """
-        Return the free parameter values. `Free` means that `vary = True`,
-        `constrained = False, and `derived = False`
+        Return the free parameter values. `Free` means that 
+        `Parameter.vary = True` and `Parameter.constrained = False`
         """
-        return np.array([self[k].value for k in self.free_parameter_names])
+        return np.array([self[k]() for k in self.free_parameter_names])
     
     #---------------------------------------------------------------------------
     @property
     def free_parameters(self):
         """
-        Return the free `Parameter` objects. `Free` means that `vary = True` and 
-        `constrained = False`
+        Return the free `Parameter` objects. `Free` means that 
+        `Parameter.vary = True` and `Parameter.constrained = False`
         """
         return [self[k] for k in self.free_parameter_names]
     
@@ -522,9 +429,13 @@ class ParameterSet(OrderedDict):
     def constrained_parameter_names(self):
         """
         Return the constrained parameter names. `Constrained` means that 
-        `constrained = True` or `derived = True`
+        `Parameter.constrained = True`
         """
-        return [k for k in self if self[k].derived or self[k].constrained]
+        try:
+            return self._constrained_parameter_names
+        except AttributeError:
+            self._constrained_parameter_names = [k for k in self if self[k].constrained]
+            return self._constrained_parameter_names
     
     #---------------------------------------------------------------------------
     @property
@@ -550,63 +461,247 @@ class ParameterSet(OrderedDict):
         Convert the parameter set to a dictionary using (`name`, `value`)
         as the (key, value) pairs
         """
-        return {k : self[k].value for k in self}
+        return {k : self[k]() for k in self}
     #---------------------------------------------------------------------------
-#endclass ParameterSet
 
 #-------------------------------------------------------------------------------
-class Parameter(object):
+class Parameter(Cache):
     """
-    A class to represent a (possibly bounded) generic parameter. The prior
-    is taken to be a uniform distribution between the min/max allowed
-    parameter values
+    A class to represent a generic parameter, with a prior. Currently, the prior
+    can either be a uniform or normal distribution.
     """
-    _valid_keys = ['name', 'value', 'fiducial_value', 'vary', 'min', 'max', 
-                   'exclusive_min', 'exclusive_max', 'derived', 'description',
-                   'prior', 'posterior']
+    _valid_keys = ['name', 'value', 'fiducial', 'vary', 'min', 'max', 'expr', 
+                   'description', 'prior', 'lower', 'upper', 'mu', 'sigma']
                    
-    def __init__(self, name=None, **props):
-                
-        # no name is given, this is bad...
-        if name is None:
-            raise ValueError('`Parameter` instance needs at least a `name` as an argument')
+    #---------------------------------------------------------------------------
+    def __init__(self, name=None, **kwargs):
+        """
+        Initialize the parameter
+        
+        Parameters
+        ----------
+        name : str
+            The string name of the parameter. Must be supplied
+        description : str, optional
+            The string giving the parameter description
+        value : object, optional
+            The value. This can be a float, in which case the other attributes
+            have meaning; otherwise the class just stores the object value.
+            Default is `Parameter.fiducial`
+        fiducial : object, optional
+            A fiducial value to store for this parameter. Default is `None`.
+        vary : bool, optional
+            Whether to vary this parameter. Default is `False`.
+        min : float, optional
+            The minimum allowed limit for this parameter, for use in excluding
+            "disallowed" parameter spaces. Default is `None`
+        min : float, optional
+            The maximum allowed limit for this parameter, for use in excluding
+            "disallowed" parameter spaces. Default is `None`
+        expr : {str, callable}, optional
+            If a `str`, this gives a mathematical expression used to constrain 
+            the value during the fit. Otherwise, the function will be called
+            to evaluate the parameter's value. Default is `None`
+        prior : {'uniform', 'normal'}, optional
+            Use either a uniform or normal prior for this parameter. Default
+            is no prior.
+        lower, upper : floats, optional
+            The bounds of the uniform prior to use
+        mu, sigma : floats, optional
+            The mean and std deviation of the normal prior to use
+        """
+        # initialize the base class
+        super(Parameter, self).__init__()
         
         # store the name
-        props['name'] = name
+        if name is None:
+            raise ValueError("Must supply a name for the `Parameter`")
+        self.name = name
 
-        # setup default properties
-        props.setdefault('description', 'No description available')
-        props.setdefault('derived', False)
-        props.setdefault('vary', False)
-        props.setdefault('value', np.nan)
-        props.setdefault('exclusive_min', False)
-        props.setdefault('exclusive_max', False)
-        props.setdefault('fiducial_value', None)
-        props.setdefault('posterior', None)
-        props.setdefault('prior', None)
-                        
-        # remember initial settings
-        self._initial = props.copy()
-        for k, v in self._initial.iteritems():
-            setattr(self, k, v)
+        # setup default parameters
+        self.description = kwargs.get('description', 'No description available')
+        self.vary        = kwargs.get('vary', False)
+        self.fiducial    = kwargs.get('fiducial', None)
+        self.value       = kwargs.get('value', self.fiducial)
+        self.min         = kwargs.get('min', None)
+        self.max         = kwargs.get('max', None)
+        self.expr        = kwargs.get('expr', None)
         
-        # set default prior to be uniform if min/max supplied
-        if self.prior is None:
-            if self.min is not None and self.max is not None:
-                self.set_prior(name='uniform', lower=self.min, upper=self.max)
+        # set the prior-related parameters
+        self.lower      = kwargs.get('lower', None)
+        self.upper      = kwargs.get('upper', None)
+        self.mu         = kwargs.get('mu', None)
+        self.sigma      = kwargs.get('sigma', None)
+        self.prior_name = kwargs.get('prior', None)
         
     #---------------------------------------------------------------------------
-    def __getitem__(self, key):
-        return getattr(self, key, None)    
-
+    # Parameters
     #---------------------------------------------------------------------------
-    def keys(self):
-        return [k for k in self._valid_keys]
+    @parameter
+    def name(self, val):
+        """
+        The parameter name
+        """
+        return val
+    
+    @parameter
+    def description(self, val):
+        """
+        The parameter description
+        """
+        return val
+    
+    @parameter
+    def vary(self, val):
+        """
+        Whether to vary the parameter
+        """
+        return val
+    
+    @parameter
+    def fiducial(self, val):
+        """
+        The fiducial parameter value
+        """
+        return val
+    
+    @parameter
+    def value(self, val):
+        """
+        The parameter value
+        """
+        return val
         
+    @parameter
+    def min(self, val):
+        """
+        The minimum allowed parameter value
+        """
+        return val    
+        
+    @parameter
+    def max(self, val):
+        """
+        The maximum allowed parameter value
+        """
+        return val
+        
+    @parameter
+    def expr(self, val):
+        """
+        Either a mathematical expression for evaluating the parameter or 
+        a callable function that returns the parameter value
+        """
+        return val
+        
+    @parameter
+    def lower(self, val):
+        """
+        The lower limit of the uniform prior
+        """
+        return val
+        
+    @parameter
+    def upper(self, val):
+        """
+        The upper limit of the uniform prior
+        """
+        return val
+        
+    @parameter
+    def mu(self, val):
+        """
+        The mean value of the normal prior
+        """
+        return val
+        
+    @parameter
+    def sigma(self, val):
+        """
+        The standard deviation of the normal prior
+        """
+        return val
+        
+    @parameter
+    def prior_name(self, val):
+        """
+        The name of the prior distribution
+        """
+        allowed = ['uniform', 'normal', None]
+        if val not in allowed:
+            raise ValueError("Only allowed priors are %s" %allowed)
+        return val
+    
+    #---------------------------------------------------------------------------
+    # Cached properties
+    #---------------------------------------------------------------------------
+    @cached_property('prior_name', 'lower', 'upper', 'mu', 'sigma')
+    def prior(self):
+        """
+        The prior distribution
+        """
+        if self.prior_name is None:
+            return None
+        elif self.prior_name == 'uniform':
+            return dists.Uniform(self.lower, self.upper)
+        elif self.prior_name == 'normal':
+            return dists.Normal(self.mu, self.sigma)
+        else:
+            raise NotImplementedError("Only `uniform` and `normal` priors currently implemented")
+    
+    @cached_property('prior')
+    def has_prior(self):
+        """
+        Whether the parameter has a prior defined
+        """
+        return self.prior is not None
+        
+    @cached_property('value', 'bounded', 'min', 'max')
+    def within_bounds(self):
+        """
+        Returns `True` if the current value is within the bounds
+        """
+        if not self.bounded:
+            return True
+            
+        min_cond = True if self.min is None else self.value >= self.min
+        max_cond = True if self.max is None else self.value <= self.max
+        return min_cond and max_cond
+
+    @cached_property('min', 'max')
+    def bounded(self):
+        """
+        Parameter is bounded if either `min` or `max` is defined
+        """
+        return self.min is not None or self.max is not None
+    
+    @cached_property('expr')
+    def constrained(self):
+        """
+        Parameter is constrained if the `Parameter.expr == None`
+        """
+        return self.expr is not None
+            
+    @cached_property('value', 'min', 'max', 'prior')
+    def lnprior(self):
+        """
+        Return log of the prior, which is either a uniform or normal prior.
+        If the current value is outside `Parameter.min` or `Parameter.max`, 
+        return `numpy.inf`
+        """
+        lnprior = -np.inf
+        if self.within_bounds:
+            lnprior = 0
+            if self.has_prior:
+                lnprior = np.log(self.prior.pdf(domain=self.value)[1])
+        return lnprior
+    
+    #---------------------------------------------------------------------------
+    # Functions
     #---------------------------------------------------------------------------
     def __call__(self):
         """
-        Returns `self.value`
+        Returns `Parameter.value` when called
         """
         return self.value
         
@@ -616,7 +711,7 @@ class Parameter(object):
         Builtin representation method
         """
         s = []
-        s.append("{0:<15}".format("'" + self.name + "'"))
+        s.append("{0:<20}".format("'" + self.name + "'"))
         if tools.is_floatable(self.value):
             sval = "value={0:<15.5g}".format(self.value)
         else:
@@ -624,11 +719,9 @@ class Parameter(object):
             s.append(sval)
             
         if tools.is_floatable(self.value):
-            fid_tag = ", fiducial" if self.value == self.fiducial_value else ""
+            fid_tag = ", fiducial" if self.value == self.fiducial else ""
             if self.constrained:
                 t = " (constrained)"
-            elif self.derived:
-                t = " (derived)"
             elif not self.vary:
                 t = " (fixed%s)" %fid_tag
             else:
@@ -637,14 +730,12 @@ class Parameter(object):
 
             s.append(sval)
         
-            min_val = 'None'
-            max_val = 'None'
-            if tools.is_floatable(self.min):
-                min_val = "{:10.5g}".format(self.min).strip()
-            if tools.is_floatable(self.max):
-                max_val = "{:10.5g}".format(self.max).strip()
-
-            s.append("bounds={0:>10s}:{1:<10s}".format("["+min_val, max_val+"]>"))
+            # add the prior
+            if self.has_prior:
+                s.append(str(self.prior))
+            else:
+                s.append('no prior')
+                
         return "<Parameter %s" % ' '.join(s)
     
     #---------------------------------------------------------------------------
@@ -655,300 +746,36 @@ class Parameter(object):
         return self.__repr__()    
             
     #---------------------------------------------------------------------------
-    def reset(self):
+    def keys(self):
         """
-        Reset the parameter values to its initial values.
+        Return the valid, allowed attribute names
         """
-        for key in self._valid_keys:
-            if key in self._initial:
-                setattr(self, key, self._initial[key])
-            elif hasattr(self, key):
-                setattr(self, key, None)
-
-    #---------------------------------------------------------------------------
-    def remember(self):
-        """
-        Set the current properties as initial value.
-        """
-        for key in self._valid_keys:
-            if hasattr(self, key):
-                self._initial[key] = getattr(self, key)
-        
-    #---------------------------------------------------------------------------
-    def clear(self):
-        """
-        Strip this instance from its properties
-        """
-        for key in self._initial:
-            delattr(self, key)
-    
-    #---------------------------------------------------------------------------
-    def set_prior(self, **params):
-        """
-        Set the distribution of the parameter's prior.
-        
-        If no previous prior existed, it will be created.
-        If a previous prior existed, it's values will be overwritten.
-        
-        Example:
-        
-            >>> np.random.seed(100)
-            >>> mypar = Parameter(name='par')
-            >>> mypar.set_prior(name='uniform', lower=-1,upper=0.)
-            >>> prior = mypar.get_prior()
-            >>> print prior
-            Uniform(lower=-1., upper=0.)
-        """
-        if 'name' not in params:
-            raise ValueError("Must specify prior distribution name as a keyword argument")
-        
-        self.prior = dists.Distribution(params.pop('name'), **params)
-        
-    #---------------------------------------------------------------------------
-    def set_posterior(self, name, **params):
-        """
-        Set the distribution of the parameter's posterior.
-        """
-        if 'name' not in params:
-            raise ValueError("Must specify posterior distribution name as a keyword argument")
-        self.posterior = dists.Distribution(params.pop('name'), **params)
-        
-    #---------------------------------------------------------------------------
-    @property
-    def min(self):
-        """
-        The minimum allowed value for this parameter (inclusive)
-        """
-        try:
-            if callable(self._min):
-                return self._min()
-            else:
-                return self._min
-        except AttributeError:
-            return None
-    
-    @min.setter
-    def min(self, val):
-        if val == -np.inf: 
-            val = None
-        self._min = val
-        
-        if hasattr(self, 'prior'):
-            if self.prior is not None and self.prior.name == 'uniform':
-                if val is None:
-                    self.prior = None
-                else:
-                    self.prior.update(lower=val)
-        
-    def remove_lower_limit(self, val=None):
-        """
-        Remove the lower limit on this parameter. If `val = None`, this will set 
-        `self._min` to the current value returned by the constraining 
-        function, otherwise it will set it to `val`
-        """
-        if self.min is not None:
-            self.min = self.min if val is None else val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def max(self):
-        """
-        The maximum allowed value for this parameter (inclusive)
-        """
-        try:
-            if callable(self._max):
-                return self._max()
-            else:
-                return self._max
-        except AttributeError:
-            return None
-    
-    @max.setter
-    def max(self, val):
-        if val == np.inf: 
-            val = None
-        self._max = val
-        
-        if hasattr(self, 'prior'):
-            if self.prior is not None and self.prior.name == 'uniform':
-                if val is None:
-                    self.prior = None
-                else:
-                    self.prior.update(upper=val)
-    
-    def remove_upper_limit(self, val=None):
-        """
-        Remove the upper limit on this parameter. If `val = None`, this will set 
-        `self._max` to the current value returned by the constraining 
-        function, otherwise it will set it to `val`
-        """
-        if self.max is not None:
-            self.max = self.max if val is None else val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def within_bounds(self):
-        """
-        Returns `True` if the current value is within the bounds
-        """
-        if not self.bounded:
-            return True
-            
-        if self.exclusive_min:
-            min_cond = self.value > self.min
-        else:
-            min_cond = self.value >= self.min
-            
-        if self.exclusive_max:
-            max_cond = self.value < self.max
-        else:
-            max_cond = self.value <= self.max
-        return max_cond and min_cond
-              
-    #---------------------------------------------------------------------------
-    @property
-    def bounded(self):
-        """
-        Parameter is bounded if (min, max) != (None, None)
-        """
-        return self.limits != (None, None)
-    
-    @property
-    def limits(self):
-        """
-        Convenience property to return the limits
-        """
-        return self.min, self.max
-    
-    #---------------------------------------------------------------------------
-    @property
-    def value(self):
-        """
-        Return the value for this parameter, which could optionally be a
-        the value returned by a constraining function. If no value has been 
-        set, this returns the fiducial value by default
-        """
-        # if the parameter is derived, call the deriving function
-        if self.derived:
-            return self.deriving_function()
-           
-        try:
-            if callable(self._value):
-                return self._value()
-            else:
-                if self._value is not None:
-                    # check for default
-                    if tools.is_floatable(self._value) and np.isnan(self._value):
-                        raise AttributeError()
-                return self._value
-        except AttributeError:
-            if hasattr(self, 'fiducial_value') and self.fiducial_value is not None:
-                return self.fiducial_value
-            else:
-                raise AttributeError("No value has been defined for parameter %s" %self.name)
-    
-    @value.setter
-    def value(self, val):
-        self._value = val    
-    
-    #---------------------------------------------------------------------------
-    @property
-    def constrained(self):
-        """
-        Parameter is constrained if the `value` property is evaluating a 
-        function
-        """
-        return callable(self._value)
-        
-    def remove_constraint(self, val=None):
-        """
-        Remove the constraint on this parameter. If `val = None`, this will set 
-        `self._value` to the current value returned by the constraining 
-        function, otherwise it will set it to `val`
-        """
-        if self.constrained:
-            self.value = self.value if val is None else val
-    
-    #---------------------------------------------------------------------------
-    @property
-    def lnprior(self):
-        """
-        Return log of the prior, which is a uniform prior between `self.min`
-        and `self.max`
-        """
-        within_bounds = self.within_bounds
-        return 0 if within_bounds else -np.inf
-    
+        return self._valid_keys
+      
     #---------------------------------------------------------------------------
     def get_value_from_prior(self, size=1):
         """
         Get random values from the prior, of size `size`
         """
-        # check a few things
-        if self.prior is None:
+        if not self.has_prior:
             raise ValueError("Cannot draw from prior that does not exist")
-            
-        if self.prior.name == 'uniform' and not self.bounded:
-            raise ValueError("Cannot draw value from unbounded uniform prior")
             
         return self.prior.draw(size=size)
     
     #---------------------------------------------------------------------------
-    def set_value_from_prior(self):
+    def to_dict(self):
         """
-        Set a random value from the prior.
+        Convert the `Parameter` object to a dictionary
         """
-        try:
-            value = self.get_value_from_prior()
-        except ValueError:
-            return None
-        self.value = value
-
-    #---------------------------------------------------------------------------
-    def has_prior(self):
-        """
-        Return `True` if the parameter has a prior function
-        """
-        return self.prior is not None
-
-    #---------------------------------------------------------------------------
-    def get_value_from_posterior(self, size=1):
-        """
-        Get random values from the posterior, of size `size`
-        """
-        # check a few things
-        if self.posterior is None:
-            raise ValueError("Cannot draw from posterior that does not exist")
-            
-        if self.posterior.name == 'uniform' and not self.bounded:
-            raise ValueError("Cannot draw value from unbounded uniform posterior")
-            
-        return self.posterior.draw(size=size)
-    
-    #---------------------------------------------------------------------------
-    def set_value_from_posterior(self):
-        """
-        Set a random value from the posterior.
-        """
-        try:
-            value = self.get_value_from_posterior()
-        except ValueError:
-            return None
-        self.value = value
-        
-    #---------------------------------------------------------------------------
-    def has_posterior(self):
-        """
-        Return `True` if the parameter has a posterior function
-        """
-        return self.posterior is not None
-        
-    #---------------------------------------------------------------------------
-    def deriving_function(self):
-        """
-        Function that computes the value for the parameter, likely derived
-        from other `Parameters` in a `ParameterSet`
-        """
-        raise NotImplementedError("Parameter %s cannot be derived; no function provided" %self.name)
-    
-    #---------------------------------------------------------------------------
+        toret = {}
+        for k in self.keys():
+            if k == 'description': continue
+            if k == 'prior':
+                val = getattr(self, 'prior_name')
+            else:
+                val = getattr(self, k)
+                
+            if val is not None:
+                toret[k] = val
+        return toret
+#-------------------------------------------------------------------------------

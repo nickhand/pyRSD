@@ -42,7 +42,7 @@ class FittingDriver(object):
     A class to handle the data analysis pipeline, merging together a model, 
     theory, and fitting algorithm
     """
-    def __init__(self, param_file, pool=None):
+    def __init__(self, param_file, extra_param_file=None, pool=None, initialize_model=True):
         """
         Initialize the driver and the parameters
         """        
@@ -51,14 +51,15 @@ class FittingDriver(object):
         
         # initialize the theory
         k_obs = self.data.measurements[0].k
-        self.theory = GalaxyPowerTheory(param_file, k=k_obs)
+        self.theory = GalaxyPowerTheory(param_file, extra_param_file=extra_param_file, k=k_obs)
         
         # generic params
-        self.params = ParameterSet(param_file, tag='driver', params_only=True)
+        self.params = ParameterSet(param_file, tag='driver')
         self.pool = pool
         
         # setup the model for data
-        self._setup_for_data()
+        if initialize_model:
+            self._setup_for_data()
         
         # results are None for now
         self.results = None
@@ -66,6 +67,21 @@ class FittingDriver(object):
         # pickle instance methods
         copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
         
+    #---------------------------------------------------------------------------
+    def to_file(self, filename, mode='w'):
+        """
+        Save the parameters of this driver to a file
+        """
+        # first save the driver params
+        self.params.to_file(filename, mode='w', header_name='driver params', 
+                            footer=True, as_dict=False)
+                            
+        # now save the data params
+        self.data.to_file(filename, mode='a')
+        
+        # and now the theory params
+        self.theory.to_file(filename, mode='a')
+    
     #---------------------------------------------------------------------------
     def __getstate__(self):
         d = self.__dict__.copy()
@@ -94,7 +110,7 @@ class FittingDriver(object):
         elif init_from == 'fiducial':
             free = self.theory.free_parameter_names
             params = self.theory.fit_params
-            init_values = [params[key].fiducial_value for key in free]
+            init_values = [params[key].fiducial for key in free]
             if None in init_values:
                 raise ValueError("Cannot initialize from fiducial values")
             else:
@@ -151,7 +167,8 @@ class FittingDriver(object):
         old_chain = rsd_io.load_pickle(old_chain_file)
         
         # set the number of iterations to the total sum we want to do
-        self.params['iterations'].value = iterations + old_chain.iterations
+        self.params.add('iterations', iterations + old_chain.iterations)
+        self.params.add('walkers', old_chain.walkers)
         
         # make sure we want to use emcee
         solver_name = self.params.get('fitter', 'emcee').lower()
@@ -201,7 +218,26 @@ class FittingDriver(object):
         values = results.values()
         del results
         return values
+
+    #---------------------------------------------------------------------------
+    def set_model(self, filename):
+        """
+        Set the model, as read from a file
+        """
+        # read in the model
+        model = rsd_io.load_pickle(filename)
         
+        # set it
+        logger.info("Setting the theoretical model from file `%s`" %filename)
+        self.theory.model = model
+        self.theory._set_model_dependent_params()
+        
+
+        # make the list of model callables
+        self._get_model_callables()
+        logger.info("...theoretical model successfully read")
+
+
     #---------------------------------------------------------------------------
     def _setup_for_data(self):
         """
@@ -398,7 +434,7 @@ class FittingDriver(object):
         """
         free = self.theory.free_parameter_names
         params = self.theory.fit_params
-        theta = np.array([params[key].fiducial_value for key in free])
+        theta = np.array([params[key].fiducial for key in free])
         
         if len(theta) != self.theory.ndim:
             logger.error("Problem set fiducial values; not correct number")

@@ -347,7 +347,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("stoch_model", "k", "b1", "b1_bar", "z")
+    @cached_property("stoch_model", "k", "b1", "b1_bar", "z", "sigma8_z")
     def stochasticity(self):
         """
         The isotropic stochasticity term due to the discreteness of the halos, 
@@ -362,8 +362,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             elif self.stoch_model == 'log':
                 return self.stochasticity_log_model(self.k, mean_bias, self.z)
             elif self.stoch_model == 'pade':
-                s8_z = self._normalized_sigma8_z*self.cosmo.sigma8()
-                return self.stochasticity_pade_model(self.k, mean_bias, s8_z)
+                return self.stochasticity_pade_model(self.k, mean_bias, self.sigma8_z)
             else:
                 raise NotImplementedError("Do not understand stochasticity of "
                                           "type `%s`" %self.stoch_model)

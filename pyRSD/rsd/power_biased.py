@@ -283,7 +283,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Return the velocity dispersion `sigmav` value for the specified linear
         bias value
         """
-        return self.bias_to_sigma_relation(self.sigma8, bias)
+        try:
+            return self.bias_to_sigma_relation(self.sigma8, bias)
+        except Exception as e:
+            msg = "Warning: error in computing sigmav from bias = %.2f; original msg = %s" %(bias, e)
+            print msg
+            if bias < np.amin(self.interpolation_grid['b1']):
+                return self.bias_to_sigma_relation(self.sigma8, np.amin(self.interpolation_grid['b1']))
+            elif bias > np.amax(self.interpolation_grid['b1']):
+                return self.bias_to_sigma_relation(self.sigma8, np.amax(self.interpolation_grid['b1']))
+            else:
+                return 0.
         
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES

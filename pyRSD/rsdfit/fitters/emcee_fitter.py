@@ -194,10 +194,15 @@ def run(params, theory, objective, pool=None, init_values=None):
         except:
             pass
         
-    except KeyboardInterrupt:
+    except Exception as e:
         if not converged:
             exception = True
-            logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
+            if isinstance(e, KeyboardInterrupt):
+                logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
+            else:
+                logger.warning("EMCEE: exception occurred - trying to save current state of chain")
+                logger.warning("EMCEE: exception message: %s" %e)
+                logger.warning("EMCEE: current parameters:\n %s" %str(theory.fit_params))
 
     finally:
         new_results = EmceeResults(sampler, theory.fit_params, burnin)

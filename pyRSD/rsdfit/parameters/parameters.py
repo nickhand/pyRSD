@@ -22,7 +22,7 @@ class ParameterSet(OrderedDict):
     automatically update any constrained parameters that depend on the 
     parameter `name` 
     """
-    def __init__(self, filename, tag=None):
+    def __init__(self, filename, tag=None, update_on_init=True):
         """
         Initialize the `ParameterSet`
         
@@ -33,6 +33,8 @@ class ParameterSet(OrderedDict):
         tag : str, optional
             If not `None`, only read the parameters with this prefix in their
             key name
+        update_on_init : bool, optional
+            Update any constraints on initialization
         """
         # initialize the base class
         super(ParameterSet, self).__init__()
@@ -42,8 +44,11 @@ class ParameterSet(OrderedDict):
         self.load(filename)
         
         # initialize the constraint readers and update constraints
-        self._initialize_constraints()
-        self.update_constraints()
+        self._asteval = lmfit.asteval.Interpreter()
+        self._namefinder = lmfit.astutils.NameFinder()
+        self._update_dependencies()
+        if update_on_init:
+            self.update_constraints()
         
 
     #---------------------------------------------------------------------------
@@ -80,7 +85,7 @@ class ParameterSet(OrderedDict):
         f.close()
         
     #---------------------------------------------------------------------------
-    def _initialize_constraints(self):
+    def _update_dependencies(self):
         """
         Prepare and save the parameters. The important step here is initializing
         the `asteval` and `ast` attributes so any parameters with `expr` can
@@ -90,10 +95,6 @@ class ParameterSet(OrderedDict):
         # on it
         self._dependencies = defaultdict(set)
         
-        # initalize asteval classes
-        self._asteval = lmfit.asteval.Interpreter()
-        self._namefinder = lmfit.astutils.NameFinder()
-
         # check for any parameters that have `expr` defined
         for name, par in self.items():
             if par.expr is not None:
@@ -108,34 +109,27 @@ class ParameterSet(OrderedDict):
                         self._dependencies[symname].add(name)
         
     #---------------------------------------------------------------------------
-    def add_constraint(self, name, expr):
+    def add_constraint(self, name, expr, update_constraints=True):
         """
         Update the parameter `name` with the constraining expression `expr`, and
         update then update the constraints
         """
         if name not in self:
             raise ValueError("Cannot add constraint for parameter `%s`; not in ParameterSet" %name)
-            
-        par = self[name]
-        par.expr = expr
-        par.ast = self._asteval.parse(par.expr)
-        par.vary = False
-        par.deps = []
-        self._namefinder.names = []
-        self._namefinder.generic_visit(par.ast)
-        for symname in self._namefinder.names:
-            if (symname in self and symname not in par.deps):
-                par.deps.append(symname)
-                self._dependencies[symname].add(name)
         
-        self.update_constraints()
+        # update the dependencies
+        self[name].expr = expr
+        self._update_dependencies()
+        
+        if update_constraints:
+            self.update_constraints()
         
     #---------------------------------------------------------------------------
     def update_constraints(self):
         """
         Update all constrained parameters, checking that dependencies are
         evaluated as needed.
-        """
+        """    
         self._updated = dict([(name, False) for name in self])
         for name in self:
             self._update_param_value(name)
@@ -269,9 +263,9 @@ class ParameterSet(OrderedDict):
         return self[name]() if name in self else default
         
     #---------------------------------------------------------------------------
-    def _update_dependencies(self, name):
+    def _update_constrained_params(self, name):
         """
-        Update the dependencies, recursively
+        Update the constrained params that depend on `name`, recursively
         """
         if name not in self._dependencies:
             return
@@ -280,7 +274,7 @@ class ParameterSet(OrderedDict):
         for constrained_name in constrained_params:
             self._updated[constrained_name] = False
             self._update_param_value(constrained_name)
-            self._update_dependencies(constrained_name)
+            self._update_constrained_params(constrained_name)
             
         
     #---------------------------------------------------------------------------
@@ -305,7 +299,7 @@ class ParameterSet(OrderedDict):
         # check for any constrained params that depend on this
         if update_constraints:
             self._updated = dict([(k, True) for k in self])
-            self._update_dependencies(name)
+            self._update_constrained_params(name)
         
     #---------------------------------------------------------------------------
     def add(self, name, value):

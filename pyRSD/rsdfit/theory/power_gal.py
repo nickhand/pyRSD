@@ -51,7 +51,7 @@ class GalaxyPowerParameters(ParameterSet):
             self._extra_params.update(extra_params)
             
         # initialize the base class
-        super(GalaxyPowerParameters, self).__init__(filename, tag=tag)
+        super(GalaxyPowerParameters, self).__init__(filename, tag=tag, update_on_init=False)
                                         
         # add descriptions for the model params
         for name, desc in self._model_params.iteritems():
@@ -64,9 +64,6 @@ class GalaxyPowerParameters(ParameterSet):
                 self.update_param(name, description=desc)
             else:
                 self[name] = Parameter(name=name, description=desc)
-
-        # setup the dependencies
-        self.set_default_constraints()
             
     #---------------------------------------------------------------------------
     def __setitem__(self, name, value):
@@ -103,15 +100,15 @@ class GalaxyPowerParameters(ParameterSet):
         """       
         # central bias
         if 'b1_c' in self:
-            self.add_constraint('b1_c', "(1 - fcB)*b1_cA + fcB*b1_cB")
+            self.add_constraint('b1_c', "(1 - fcB)*b1_cA + fcB*b1_cB", False)
         
         # satellite bias
         if 'b1_s' in self:
-            self.add_constraint('b1_s', "(1 - fsB)*b1_sA + fsB*b1_sB")
+            self.add_constraint('b1_s', "(1 - fsB)*b1_sA + fsB*b1_sB", False)
         
         # total bias
         if 'b1' in self:
-            self.add_constraint('b1', "(1 - fs)*b1_c + fs*b1_s")
+            self.add_constraint('b1', "(1 - fs)*b1_c + fs*b1_s", False)
         
     #---------------------------------------------------------------------------
     @property
@@ -169,7 +166,7 @@ class GalaxyPowerTheory(object):
         self.fit_params = GalaxyPowerParameters(param_file, tag='theory', extra_params=self.extra_params)
 
         # now setup the model parameters; only the valid model kwargs are read
-        self.model_params = ParameterSet(param_file, tag='theory')
+        self.model_params = ParameterSet(param_file, tag='theory', update_on_init=False)
         allowable_model_params = rsd.power_gal.GalaxySpectrum.allowable_kwargs
         for param in self.model_params:
             if param not in allowable_model_params:
@@ -180,8 +177,8 @@ class GalaxyPowerTheory(object):
         if k is not None: kwargs['k'] = k
         self.model = rsd.power_gal.GalaxySpectrum(**kwargs)
         
-        # setup any params depending on model
-        self._set_model_dependent_params()
+        # update the constraints
+        self.update_constraints()
 
     #---------------------------------------------------------------------------
     def to_file(self, filename, mode='w'):
@@ -204,57 +201,26 @@ class GalaxyPowerTheory(object):
                                   footer=True, as_dict=False)
         
     #---------------------------------------------------------------------------
-    def __getstate__(self):
+    def update_constraints(self):
         """
-        Only need to store the parameter file lines, the model, and the
-        extra parameters dictionary to pickle
+        Update the constraints
         """
-        return {'lines' : self._readlines, 'model' : self.model, \
-                'extra_params' : self.extra_params}
-    
-    #---------------------------------------------------------------------------
-    def __setstate__(self, d):
-        """
-        Restore the object after pickling
-        """
-        # write the parameter file lines to a temporary file
-        self._readlines = d['lines']
-        f = tempfile.NamedTemporaryFile(delete=False)
-        name = f.name
-        lines = "\n".join(d['lines'])
-        f.write(lines)
-        f.close()
-    
-        # now set up the object
-        self.fit_params = GalaxyPowerParameters(name, tag='theory', extra_params=d['extra_params'])
-
-        # now setup the model parameters; params are those not in `fit_params`
-        self.model_params = ParameterSet(name, tag='theory')
-        for param in self.model_params:
-            if self.fit_params.is_valid_parameter(param):
-                del self.model_params[param]
-    
-        # set the model
-        self.model = d['model']
+        # first add this to the symtable, before updating constraints
+        self.fit_params._asteval.symtable['sigmav_from_bias'] = self.model.sigmav_from_bias
         
-        # setup any params depending on model
-        self._set_model_dependent_params()
+        # now do the constraints
+        self.fit_params.set_default_constraints()
+        self.set_model_dependent_constraints()
         
-        # remove the tempoerary file
-        if os.path.exists(name):
-            os.remove(name)
+        # update
+        self.fit_params.update_constraints()
         
-    
-    #---------------------------------------------------------------------------
-    def _set_model_dependent_params(self):
+    def set_model_dependent_constraints(self):
         """
         Setup any parameters that depend on the model
         """
         # f(z)*sigma8(z) at z of the model
-        self.fit_params.add_constraint('fsigma8', "f*sigma8*%s" %self.model.D)
-        
-        # add the relation between sigma and bias to the symtable
-        self.fit_params._asteval.symtable['sigmav_from_bias'] = self.model.sigmav_from_bias
+        self.fit_params.add_constraint('fsigma8', "f*sigma8*%s" %self.model.D, False)
         
             
     #---------------------------------------------------------------------------
@@ -357,12 +323,21 @@ class GalaxyPowerTheory(object):
         # set the parameters
         for val, name in zip(theta, self.free_parameter_names):
             self.fit_params.set(name, val, update_constraints=False)
-            
-        # update constraints
-        self.fit_params.update_constraints()
+           
+        # only do this if the free params have finite priors
+        if not np.isfinite(self.lnprior_free):
+            return False
+    
+        # try to update
+        try:
+            self.fit_params.update_constraints()
         
-        # also update the model 
-        self.update_model()
+            # also update the model 
+            self.update_model()
+        except:
+            return False
+        
+        return True
         
     #---------------------------------------------------------------------------
     def model_callable(self, power_type, identifier, **kwargs):

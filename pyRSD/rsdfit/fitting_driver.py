@@ -241,7 +241,7 @@ class FittingDriver(object):
         # set it
         logger.info("Setting the theoretical model from file `%s`" %filename)
         self.theory.model = model
-        self.theory._set_model_dependent_params()
+        self.theory.update_constraints()
         
 
         # make the list of model callables
@@ -455,7 +455,9 @@ class FittingDriver(object):
         """
         # set the free parameters
         if theta is not None:
-            self.theory.set_free_parameters(theta)
+            good_model = self.theory.set_free_parameters(theta)
+            if not good_model:
+                return -np.inf
         
         lp = self.lnprior()
         if not np.isfinite(lp):

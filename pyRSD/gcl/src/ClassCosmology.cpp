@@ -38,16 +38,20 @@ const string ClassCosmology::FindFilename(const string& file_name) {
     string fullpath(file_name);
     FILE* fp = fopen(fullpath.c_str(), "r");
 
-    if(!fp) {
+    if(fp == NULL) {
         /* Next search in the default data directory */
         fullpath = DATADIR "/" + fullpath;
         fp = fopen(fullpath.c_str(), "r");
+		if (fp == NULL) {
+	        error("ClassCosmology: could not find parameter file '%s'\n  tried ./%s and %s/%s\n", \
+	                file_name.c_str(), file_name.c_str(), DATADIR, file_name.c_str());
+		}
+		else
+			fclose(fp);
     }
+	else 
+		fclose(fp);
 
-    if(!fp) {
-        error("ClassCosmology: could not find parameter file '%s'\n  tried ./%s and %s/%s\n", \
-                file_name.c_str(), file_name.c_str(), DATADIR, file_name.c_str());
-    }
     return fullpath;
 }
 /*----------------------------------------------------------------------------*/

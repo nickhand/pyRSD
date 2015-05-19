@@ -16,7 +16,9 @@ class MyInstall(Install):
             raise OSError(msg)
         
         # make pygcl
-        ans = os.system("cd pyRSD/gcl; make gcl;")
+        install_path_args = self.install_libbase, self.config_vars['dist_name']
+        data_dir = "{}/{}/data/params".format(*install_path_args)
+        ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
         if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
         
         # run the python setup
@@ -24,8 +26,7 @@ class MyInstall(Install):
         
         # copy over the shared object library to the installation directory
         print "copying gcl shared object library to install dir"
-        args = self.install_libbase, self.config_vars['dist_name'] 
-        install_path = "{}/{}/gcl/python".format(*args)
+        install_path = "{}/{}/gcl/python".format(*install_path_args)
         ans = os.system("cp pyRSD/gcl/python/_gcl.so {}".format(install_path))
         if (ans > 0): raise ValueError("Error copying shared object libraries")
 
@@ -60,6 +61,8 @@ VERSION             = '1.0'
 
 #-------------------------------------------------------------------------------   
 scripts_dir = 'pyRSD/rsdfit/scripts'
+pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
+            'data/params/*', 'data/simulation_fits/*']
 setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
         name=DISTNAME,
         description=DESCRIPTION,
@@ -74,5 +77,6 @@ setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
             'scikit-learn',
             'numpy',
             'scipy'
-        ]
+        ],
+        package_data={'pyRSD': pkg_data}
     )

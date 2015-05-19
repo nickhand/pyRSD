@@ -3,7 +3,9 @@
 
 MDIR := $(shell pwd)
 WRKDIR = $(MDIR)/build
-DATADIR := $(shell cd ../data/params; pwd )
+ifndef
+	DATADIR := $(shell cd ../data/params; pwd )
+endif
 
 .base:
 	if ! [ -e $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;
@@ -74,7 +76,7 @@ PY_LIBS = -lgfortran -lgcl -lgomp
 ifdef COMPILE_EMU
     ifeq ($(COMPILE_EMU), 1)
         # c flags
-        INCLUDES += $(GSL_INC)
+        INCLUDES += -I$(GSL_INC)
         LIBS += -L$(GSL_LIBDIR)
         MCK_CXXFLAGS += $(GSL_LIBS)
         

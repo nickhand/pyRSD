@@ -23,12 +23,6 @@ class MyInstall(Install):
         
         # run the python setup
         Install.run(self)
-        
-        # copy over the shared object library to the installation directory
-        print "copying gcl shared object library to install dir"
-        install_path = "{}/{}/gcl/python".format(*install_path_args)
-        ans = os.system("cp pyRSD/gcl/python/_gcl.so {}".format(install_path))
-        if (ans > 0): raise ValueError("Error copying shared object libraries")
 
 #-------------------------------------------------------------------------------        
 # my own command to do a clean of all necessary files      
@@ -62,7 +56,7 @@ VERSION             = '1.0'
 #-------------------------------------------------------------------------------   
 scripts_dir = 'pyRSD/rsdfit/scripts'
 pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
-            'data/params/*', 'data/simulation_fits/*']
+            'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl.so']
 setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
         name=DISTNAME,
         description=DESCRIPTION,

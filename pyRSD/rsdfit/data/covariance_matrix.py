@@ -25,7 +25,7 @@ class CovarianceMatrix(object):
     `index`, which can be used to associated values with each element of the 
     matrix. This is useful for trimming the matrix to a given `index` range.
     """
-    def __init__(self, data, index=None, verify=False):
+    def __init__(self, data, index=None, verify=True):
         """
         Parameters
         ----------

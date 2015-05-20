@@ -288,12 +288,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         except Exception as e:
             msg = "Warning: error in computing sigmav from bias = %.2f; original msg = %s" %(bias, e)
             print msg
-            if bias < np.amin(self.interpolation_grid['b1']):
-                return self.bias_to_sigma_relation(self.sigma8, np.amin(self.interpolation_grid['b1']))
-            elif bias > np.amax(self.interpolation_grid['b1']):
-                return self.bias_to_sigma_relation(self.sigma8, np.amax(self.interpolation_grid['b1']))
+            b1s = self.bias_to_sigma_relation.interpolation_grid['b1']
+            if bias < np.amin(b1s):
+                toret = self.bias_to_sigma_relation(self.sigma8, np.amin(b1s))
+            elif bias > np.amax(b1s):
+                toret = self.bias_to_sigma_relation(self.sigma8, np.amax(b1s))
             else:
-                return 0.
+                toret = 0.
+                
+            print "  returning sigma = ", toret
+            return toret
         
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES

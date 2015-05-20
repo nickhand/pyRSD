@@ -161,12 +161,18 @@ class GalaxyPowerTheory(object):
             else:
                 self.extra_params.update(extra_params.to_dict())
         
-        # read in the fit parameters; this should extra only the keys that
+        # read in the fit parameters; this should read only the keys that
         # are valid for the GalaxyPowerParameters
         self.fit_params = GalaxyPowerParameters(param_file, tag='theory', extra_params=self.extra_params)
 
-        # now setup the model parameters; only the valid model kwargs are read
+        # read in the parameters again to get params that aren't fit params
         self.model_params = ParameterSet(param_file, tag='theory', update_on_init=False)
+        
+        # determine the theory callables
+        self.pkmu_callable = self.model_params.get('pkmu_callable', 'Pgal')
+        self.poles_callable = self.model_params.get('poles_callable', 'Pgal_poles')
+        
+        # now setup the model parameters; only the valid model kwargs are read
         allowable_model_params = rsd.power_gal.GalaxySpectrum.allowable_kwargs
         for param in self.model_params:
             if param not in allowable_model_params:
@@ -215,6 +221,7 @@ class GalaxyPowerTheory(object):
         # update
         self.fit_params.update_constraints()
         
+    #---------------------------------------------------------------------------
     def set_model_dependent_constraints(self):
         """
         Setup any parameters that depend on the model
@@ -347,14 +354,26 @@ class GalaxyPowerTheory(object):
         
         Any keyword arguments supplied will be passed to the callables
         """
+        # computing pkmu
         if power_type == 'pkmu':
-            return functools.partial(self.model.Pgal, np.array(identifier, ndmin=1), flatten=True, **kwargs)
+            if not hasattr(self.model, self.pkmu_callable):
+                raise ValueError("RSD model has no function `%s` to compute P(k,mu)" %self.pkmu_callable)
+                
+            f = getattr(self.model, self.pkmu_callable)
+            return functools.partial(f, np.array(identifier, ndmin=1), flatten=True, **kwargs)
+        
+        # computing multipoles
         elif power_type == 'pole':
-            return functools.partial(self.model.Pgal_poles, np.array(identifier, ndmin=1), flatten=True, **kwargs)
-        elif power_type == 'pkmu_diff':
-            return functools.partial(self.model.Pgal_diff, identifier, flatten=True, **kwargs)
+            
+            if not hasattr(self.model, self.poles_callable):
+                raise ValueError("RSD model has no function `%s` to compute multipoles" %self.poles_callable)
+                
+            f = getattr(self.model, self.poles_callable)
+            return functools.partial(f, np.array(identifier, ndmin=1), flatten=True, **kwargs)
+            
+        # all is lost...
         else:        
-            # if we get here, we messed up
+            # something has gone horribly wrong...
             msg = "No power spectrum model for measurement of type {} {}".format(power_type, identifier)
             raise NotImplementedError(msg)
     

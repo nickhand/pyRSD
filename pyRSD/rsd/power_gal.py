@@ -232,7 +232,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
-    def Pgal_cAcB(self, mum flatten=False):
+    def Pgal_cAcB(self, mu, flatten=False):
          """
          The centrals galaxy cross spectrum, which is a 2-halo term only.
          """

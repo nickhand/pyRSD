@@ -25,7 +25,7 @@ class CovarianceMatrix(object):
     `index`, which can be used to associated values with each element of the 
     matrix. This is useful for trimming the matrix to a given `index` range.
     """
-    def __init__(self, data, index=None, verify=True):
+    def __init__(self, data, index=None, verify=False):
         """
         Parameters
         ----------
@@ -799,7 +799,7 @@ class PowerCovarianceMatrix(CovarianceMatrix):
             
         # do the trimming
         frame = self._trim(self.full(), lower, upper, self._k_level, fixed=x)
-
+        
         # make a copy
         toret = self.copy()
         super(PowerCovarianceMatrix, toret).__init__(np.asarray(frame), index=frame.index)
@@ -814,7 +814,7 @@ class PowerCovarianceMatrix(CovarianceMatrix):
                 
         # delete store quantities
         del toret.inverse, toret.diag
-        
+
         return toret
         
     #---------------------------------------------------------------------------

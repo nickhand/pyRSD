@@ -67,9 +67,9 @@ class PowerMeasurement(object):
         else:
             self._error_input = None
             
-        if power_type not in ['pkmu', 'pkmu_diff', 'pole']:
-            logger.error("PowerMeasurement must be of type 'pkmu', 'pkmu_diff', or 'pole', not '{0}'".format(power_type))
-            raise ValueError("PowerMeasurement type must be either `pkmu`, `pkmu_diff`, or `pole`")
+        if power_type not in ['pkmu', 'pole']:
+            logger.error("PowerMeasurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
+            raise ValueError("PowerMeasurement type must be either `pkmu` or `pole`")
             
         self.type = power_type
         self._identifier = identifier
@@ -298,16 +298,12 @@ class PowerData(object):
         for stat_name in stats:
             
             # parse the name
-            if not 'pkmu_diff' in stat_name:
-                power_type, value = stat_name.lower().split('_')
-                value = float(value)
-            else:
-                power_type, mu_hi, mu_lo = stat_name.lower().rsplit('_', 2)
-                value = (float(mu_hi), float(mu_lo))
+            power_type, value = stat_name.lower().split('_')
+            value = float(value)
             
-            if power_type not in ['pkmu', 'pole', 'pkmu_diff']:
-                logger.error("Measurement must be of type 'pkmu', 'pole', or 'pkmu_diff' not '{0}'".format(power_type))
-                raise ValueError("Measurement type must be either `pkmu`, `pkmu_diff`, or `pole`")
+            if power_type not in ['pkmu', 'pole']:
+                logger.error("Measurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
+                raise ValueError("Measurement type must be either `pkmu` or `pole`")
             
             # now make the PowerMeasurement object
             if stat_name not in self.params:
@@ -337,9 +333,7 @@ class PowerData(object):
         index_ks = []
         index_mus = []
         for d in self.measurements:
-            if d.type == 'pkmu_diff':
-                index_mus.append(0.5*(d.mu[0] + d.mu[1]))
-            elif d.type == 'pkmu':
+            if d.type == 'pkmu':
                 index_mus.append(d.mu)
             index_ks += list(d.k)
         

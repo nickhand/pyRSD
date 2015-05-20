@@ -169,7 +169,7 @@ def run(params, theory, objective, pool=None, init_values=None):
                                                 (AF={}, AC={})".format(niter,
                                                 np.mean(sampler.acceptance_fraction),
                                                 np.amax(acor)))
-                    raise KeyboardInterrupt
+                    raise Exception
                 
             if niter < 10:
                 update_progress(theory, sampler, niters, nwalkers)
@@ -194,15 +194,14 @@ def run(params, theory, objective, pool=None, init_values=None):
         except:
             pass
         
+    except KeyboardInterrupt:
+        logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
     except Exception as e:
         if not converged:
             exception = True
-            if isinstance(e, KeyboardInterrupt):
-                logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
-            else:
-                logger.warning("EMCEE: exception occurred - trying to save current state of chain")
-                logger.warning("EMCEE: exception message: %s" %e)
-                logger.warning("EMCEE: current parameters:\n %s" %str(theory.fit_params))
+            logger.warning("EMCEE: exception occurred - trying to save current state of chain")
+            logger.warning("EMCEE: exception message: %s" %e)
+            logger.warning("EMCEE: current parameters:\n %s" %str(theory.fit_params))
 
     finally:
         new_results = EmceeResults(sampler, theory.fit_params, burnin)

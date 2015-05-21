@@ -120,6 +120,7 @@ class ParameterSet(OrderedDict):
         # update the dependencies
         self[name].expr = expr
         self._update_dependencies()
+        del self.constrained_parameter_names
         
         if update_constraints:
             self.update_constraints()
@@ -430,6 +431,11 @@ class ParameterSet(OrderedDict):
         except AttributeError:
             self._constrained_parameter_names = [k for k in self if self[k].constrained]
             return self._constrained_parameter_names
+    
+    @constrained_parameter_names.deleter
+    def constrained_parameter_names(self):
+        if hasattr(self, '_constrained_parameter_names'):
+            delattr(self, '_constrained_parameter_names')
     
     #---------------------------------------------------------------------------
     @property

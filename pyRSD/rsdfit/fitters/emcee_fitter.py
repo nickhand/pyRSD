@@ -209,7 +209,6 @@ def run(params, theory, objective, pool=None, init_values=None):
             new_results = old_results + new_results
         
     return new_results, exception
-#end run
 
 #-------------------------------------------------------------------------------
     

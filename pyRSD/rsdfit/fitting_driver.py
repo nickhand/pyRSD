@@ -192,7 +192,10 @@ class FittingDriver(object):
         # run the solver 
         logger.info("Restarting `emcee` solver from an old chain")
         kwargs = {'pool' : pool, 'init_values' : old_chain}
-        self.results, exception = solver(self.params, self.theory, objective, **kwargs)
+        results, exception = solver(self.params, self.theory, objective, **kwargs)
+        
+        # set the results
+        self.results = results
         logger.info("...fitting complete")
 
         return exception

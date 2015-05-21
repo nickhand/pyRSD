@@ -203,6 +203,10 @@ class GalaxyPowerTheory(object):
             f.close()
         
         # now save the model params
+        if self.pkmu_callable != 'Pgal':
+            self.model_params.add('pkmu_callable', self.pkmu_callable)
+        if self.poles_callable != 'Pgal_poles':
+            self.model_params.add('poles_callable', self.poles_callable)       
         self.model_params.to_file(filename, mode='a', header_name='model params', 
                                   footer=True, as_dict=False)
         
@@ -228,7 +232,6 @@ class GalaxyPowerTheory(object):
         """
         # f(z)*sigma8(z) at z of the model
         self.fit_params.add_constraint('fsigma8', "f*sigma8*%s" %self.model.D, False)
-        
             
     #---------------------------------------------------------------------------
     # Properties

@@ -253,6 +253,8 @@ class EmceeResults(object):
         if sorted(self.free_parameter_names) != sorted(free_params):
             raise ValueError("Mismatch in `EmceeResults` free parameters")
         if sorted(self.constrained_parameter_names) != sorted(constrained_params):
+            print sorted(self.constrained_parameter_names)
+            print sorted(constrained_params)
             raise ValueError("Mismatch in `EmceeResults` constrained parameters")
         
         reordered = False
@@ -340,18 +342,18 @@ class EmceeResults(object):
                 constrained_vals = fit_params.constrained_parameter_values
                 self.constrained_chain[nwalker, niter, :] = constrained_vals
                 
-        # check for any constrained values that are fixed and remove
-        tocat = ()
-        names = []
-        for i in range(shape[-1]):
-            trace = self.constrained_chain[...,i]
-            fixed = len(np.unique(trace)) == 1
-            if not fixed:
-                tocat += (trace[...,None],)
-                names.append(self.constrained_parameter_names[i])
-                
-        self.constrained_parameter_names = names
-        self.constrained_chain = np.concatenate(tocat, axis=2)
+        # # check for any constrained values that are fixed and remove
+        # tocat = ()
+        # names = []
+        # for i in range(shape[-1]):
+        #     trace = self.constrained_chain[...,i]
+        #     fixed = len(np.unique(trace)) == 1
+        #     if not fixed:
+        #         tocat += (trace[...,None],)
+        #         names.append(self.constrained_parameter_names[i])
+        #
+        # self.constrained_parameter_names = names
+        # self.constrained_chain = np.concatenate(tocat, axis=2)
                 
     #---------------------------------------------------------------------------
     def _save_results(self):

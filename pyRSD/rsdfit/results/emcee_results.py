@@ -232,7 +232,7 @@ class EmceeResults(object):
         Builtin representation
         """
         N = len(self.constrained_parameter_names)
-        return "<EmceeResults: {} free paremeters, {} constrained parameters>".format(self.ndim, N)
+        return "<EmceeResults: {} free parameters, {} constrained parameters>".format(self.ndim, N)
         
     #---------------------------------------------------------------------------
     def __getitem__(self, key):

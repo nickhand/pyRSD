@@ -285,7 +285,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(mu, hires=hires)
         PcBcB = self.fcB**2 * self.Pgal_cBcB(mu, hires=hires)
         toret = PcAcA + PcAcB + PcBcB + N
-                
+          
+        self.N = N      
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------
@@ -359,6 +360,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         PcBs = self.fcB*self.Pgal_cBs(mu, hires=hires)
         toret = PcAs + PcBs + N
         
+        self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
@@ -447,6 +449,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         # now return
         toret = PsAsA + PsAsB + PsBsB + N
+        self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
                     
         
@@ -481,6 +484,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Pss = self.fs**2 * self.Pgal_ss(mu, hires=hires)
         
         toret = Pcc + Pcs + Pss + N
+        self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------

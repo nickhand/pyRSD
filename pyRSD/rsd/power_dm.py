@@ -1,6 +1,6 @@
 from ._cache import Cache, parameter, interpolated_property, cached_property
 from . import tools, INTERP_KMIN, INTERP_KMAX
-from .. import pygcl, numpy as np
+from .. import pygcl, numpy as np, data as sim_data
 
 from ._integrals import Integrals
 from ._sim_loader import SimLoader
@@ -20,7 +20,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     # kwargs
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
     allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', \
-                        'max_mu', 'interpolate']
+                        'max_mu', 'interpolate', 'load_dm_sims']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
@@ -31,6 +31,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                        transfer_fit="CLASS",
                        max_mu=4,
                        interpolate=True,
+                       load_dm_sims=None,
                        **kwargs):
         """
         Parameters
@@ -64,6 +65,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         # initialize the Cache subclass first
         Cache.__init__(self)
         
+        # initialize the other abstract base classes
+        SimLoader.__init__(self)
+        
         # set the input parameters
         self.hires          = False # by default
         self.interpolate    = interpolate
@@ -73,6 +77,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self.include_2loop  = include_2loop
         self.z              = z 
         self.k_input        = k
+        self.load_dm_sims   = load_dm_sims
         
         # initialize the cosmology parameters and set defaults
         self.sigma8            = self.cosmo.sigma8()
@@ -92,13 +97,46 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             val = kwargs.get(name, True)
             setattr(self, name, val)
         
-        # initialize the other abstract base classes
+        # initialize the integrals    
         Integrals.__init__(self)
-        SimLoader.__init__(self)
         
     #---------------------------------------------------------------------------
     # ATTRIBUTES
     #---------------------------------------------------------------------------
+    @parameter
+    def load_dm_sims(self, val):
+        """
+        Load simulation data for the dark matter terms
+        """
+        # try to unload any load sim data
+        if val is None:
+            names = ['P00_mu0', 'P01_mu2', 'P11_mu4', 'Pdv']
+            for name in names:
+                if getattr(self, name+'_loaded'):
+                    self.unload(name)
+        
+        else:
+            allowed = ['teppei_lowz', 'teppei_midz', 'teppei_highz']
+            if val not in allowed:
+                raise ValueError("Allowed simulations to load are %s" %allowed)
+            
+            z_tags = {'teppei_lowz' : '000', 'teppei_midz' : '509', 'teppei_highz' : '989'}
+            z_tag = z_tags[val]
+                
+            # get the data
+            P00_mu0_data = getattr(sim_data, 'P00_mu0_z_0_%s' %z_tag)()
+            P01_mu2_data = getattr(sim_data, 'P01_mu2_z_0_%s' %z_tag)()
+            P11_mu4_data = getattr(sim_data, 'P11_mu4_z_0_%s' %z_tag)()
+            Pdv_mu0_data = getattr(sim_data, 'Pdv_mu0_z_0_%s' %z_tag)()
+            
+            self.load('P00_mu0', P00_mu0_data[:,0], P00_mu0_data[:,1])
+            self.load('P01_mu2', P01_mu2_data[:,0], P01_mu2_data[:,1])
+            self.load('P11_mu4', P11_mu4_data[:,0], P11_mu4_data[:,1])
+            self.load('Pdv', Pdv_mu0_data[:,0], Pdv_mu0_data[:,1])
+            
+            
+        return val
+        
     @parameter
     def interpolate(self, val):
         """

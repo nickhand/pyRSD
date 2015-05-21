@@ -217,10 +217,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # Central power spectrum
     #--------------------------------------------------------------------------- 
-    def Pgal_cAcA(self, mu, flatten=False):
+    def Pgal_cAcA(self, mu, flatten=False, hires=False):
         """
         The central type `A` galaxy auto spectrum, which is a 2-halo term only.
         """
+        self.hires = hires
+        
         # set the linear biases first
         self.b1 = self.b1_bar = self.b1_cA
         
@@ -232,10 +234,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
-    def Pgal_cAcB(self, mu, flatten=False):
+    def Pgal_cAcB(self, mu, flatten=False, hires=False):
          """
          The centrals galaxy cross spectrum, which is a 2-halo term only.
          """
+         self.hires = hires
+         
          # set the linear biases first
          if self.use_mean_bias:
              mean_bias = np.sqrt(self.b1_cA*self.b1_cB)
@@ -252,10 +256,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
          return toret if not flatten else np.ravel(toret, order='F')
          
     #---------------------------------------------------------------------------
-    def Pgal_cBcB(self, mu, flatten=False):
+    def Pgal_cBcB(self, mu, flatten=False, hires=False):
         """
         The central type `B` galaxy auto spectrum, which is a 2-halo term only.
         """
+        self.hires = hires
+        
         # set the linear biases first
         self.b1 = self.b1_bar = self.b1_cB
 
@@ -267,25 +273,31 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------
-    def Pgal_cc(self, mu, flatten=False):
+    def Pgal_cc(self, mu, flatten=False, hires=False):
         """
         The totals centrals galaxy spectrum, which is a 2-halo term only.
         """
-        PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(mu)
-        PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(mu)
-        PcBcB = self.fcB**2 * self.Pgal_cBcB(mu)
-        toret = PcAcA + PcAcB + PcBcB
+        self.hires = hires
+        N = self.N
+        self.N = 0
+        
+        PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(mu, hires=hires)
+        PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(mu, hires=hires)
+        PcBcB = self.fcB**2 * self.Pgal_cBcB(mu, hires=hires)
+        toret = PcAcA + PcAcB + PcBcB + N
                 
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------
     # Central-satellite cross spectrum
     #---------------------------------------------------------------------------
-    def Pgal_cAs(self, mu, flatten=False):
+    def Pgal_cAs(self, mu, flatten=False, hires=False):
         """
         The cross spectrum between centrals with no satellites and satellites. 
         This is a 2-halo term only. 
         """
+        self.hires = hires
+        
         # set the linear biases first
         if self.use_mean_bias:
             mean_bias = np.sqrt(self.b1_cA*self.b1_s)
@@ -303,11 +315,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------
-    def Pgal_cBs(self, mu, flatten=False):
+    def Pgal_cBs(self, mu, flatten=False, hires=False):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
         This has both a 1-halo and 2-halo term only.
         """
+        self.hires = hires
+        
         # the FOG damping
         G_c = self.evaluate_fog(self.sigma_c, mu)
         G_s = self.evaluate_fog(self.sigma_s, mu)
@@ -333,21 +347,30 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.power(mu)
     
     #---------------------------------------------------------------------------
-    def Pgal_cs(self, mu, flatten=False):
+    def Pgal_cs(self, mu, flatten=False, hires=False):
         """
         The total central-satellite cross spectrum.
-        """            
-        toret = (1. - self.fcB)*self.Pgal_cAs(mu) + self.fcB*self.Pgal_cBs(mu)
+        """
+        self.hires = hires
+        N = self.N
+        self.N = 0
+                    
+        PcAs = (1. - self.fcB)*self.Pgal_cAs(mu, hires=hires)
+        PcBs = self.fcB*self.Pgal_cBs(mu, hires=hires)
+        toret = PcAs + PcBs + N
+        
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
     # Satellites auto spectrum
     #---------------------------------------------------------------------------
-    def Pgal_sAsA(self, mu, flatten=False):
+    def Pgal_sAsA(self, mu, flatten=False, hires=False):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
         is a 2-halo term only.
         """            
+        self.hires = hires
+        
         # set the linear biases first
         self.b1     = self.b1_sA
         self.b1_bar = self.b1_sA
@@ -360,11 +383,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------
-    def Pgal_sAsB(self, mu, flatten=False):
+    def Pgal_sAsB(self, mu, flatten=False, hires=False):
         """
         The cross spectrum of satellites with and without no other sats in 
         same halo. This is a 2-halo term only.
         """
+        self.hires = hires
+        
         # set the linear biases first
         if self.use_mean_bias:
             mean_bias = np.sqrt(self.b1_sA*self.b1_sB)
@@ -382,11 +407,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
-    def Pgal_sBsB(self, mu, flatten=False):
+    def Pgal_sBsB(self, mu, flatten=False, hires=False):
         """
         The auto spectrum of satellits with other sats in the same halo.
         This has both a 1-halo and 2-halo term only.
         """
+        self.hires = hires
+        
         # the FOG damping terms
         G = self.evaluate_fog(self.sigma_sB, mu)
         
@@ -406,16 +433,20 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.power(mu)
             
     #---------------------------------------------------------------------------
-    def Pgal_ss(self, mu, flatten=False):
+    def Pgal_ss(self, mu, flatten=False, hires=False):
         """
         The total satellites auto spectrum
         """
-        PsAsA = (1. - self.fsB)**2 * self.Pgal_sAsA(mu)
-        PsAsB = 2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu)
-        PsBsB = self.fsB**2 * self.Pgal_sBsB(mu) 
+        self.hires = hires
+        N = self.N
+        self.N = 0
+        
+        PsAsA = (1. - self.fsB)**2 * self.Pgal_sAsA(mu, hires=hires)
+        PsAsB = 2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(mu, hires=hires)
+        PsBsB = self.fsB**2 * self.Pgal_sBsB(mu, hires=hires) 
         
         # now return
-        toret = PsAsA + PsAsB + PsBsB
+        toret = PsAsA + PsAsB + PsBsB + N
         return toret if not flatten else np.ravel(toret, order='F')
                     
         
@@ -441,13 +472,15 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             return those corresponding to `self.k`
         """        
         self.hires = hires
+        N = self.N
+        self.N = 0
         
         # get the model
-        Pcc = (1. - self.fs)**2 * self.Pgal_cc(mu)
-        Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(mu)
-        Pss = self.fs**2 * self.Pgal_ss(mu)
+        Pcc = (1. - self.fs)**2 * self.Pgal_cc(mu, hires=hires)
+        Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(mu, hires=hires)
+        Pss = self.fs**2 * self.Pgal_ss(mu, hires=hires)
         
-        toret = Pcc + Pcs + Pss
+        toret = Pcc + Pcs + Pss + N
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------

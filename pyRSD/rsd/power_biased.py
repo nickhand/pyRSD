@@ -3,21 +3,23 @@ from .tools import RSDSpline, BiasToSigmaRelation
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits
-from .mu0_modeling import StochasticityGPModel, StochasticityLogModel, \
-                          StochasticityPadeModel, PhmBiasingCorrection
+from .mu0_modeling import StochasticityModelParams, PhmResidualModelParams, \
+                        PhmCorrectedPTModelParams, PhhModelParams
 
 
 #-------------------------------------------------------------------------------
 class BiasedSpectrum(DarkMatterSpectrum):
     
-    allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
+    allowable_models = DarkMatterSpectrum.allowable_models + ['Phh']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                        ['sigmav_from_sims', 'use_tidal_bias', 'use_Phm_model', \
-                         'stoch_model', 'use_mu_corrections']    
+                        ['sigmav_from_sims', 'use_tidal_bias',
+                         'Phm_model', 'use_Phh_model', 
+                         'stoch_model', 'use_mu_corrections']  
 
     #---------------------------------------------------------------------------
     def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
-                    stoch_model='pade', use_mu_corrections=False, **kwargs):
+                    stoch_model='pade', Phm_model='residual', Phh_model=None, 
+                    use_mu_corrections=False, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -26,16 +28,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.sigmav_from_sims   = sigmav_from_sims
         self.use_tidal_bias     = use_tidal_bias
         self.include_2loop      = False # don't violate galilean invariance, fool
-        self.stoch_model        = stoch_model
-        self.use_mu_corrections = use_mu_corrections
         self.b1                 = 2.
         if (self.__class__.__name__ != "HaloSpectrum"):
             self.b1_bar           = 2.
             
-        # turn off the Phm model by default
-        val = kwargs.get('use_Phm_model', True)
-        self.use_Phm_model = val
-        
+        # default model parameters
+        self.stoch_model        = stoch_model
+        self.Phm_model          = Phm_model
+        self.use_mu_corrections = use_mu_corrections
+        self.use_Phh_model      = kwargs.get('use_Phh_model', False)
+         
     #---------------------------------------------------------------------------
     # ATTRIBUTES
     #---------------------------------------------------------------------------
@@ -54,9 +56,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
         
     @parameter
-    def use_Phm_model(self, val):
+    def use_Phh_model(self, val):
         """
-        Whether to use a GP model for the Phm residual
+        Whether to use a model for Phh
         """
         return val
         
@@ -113,11 +115,25 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
                 
     @parameter
+    def Phm_model(self, val):
+        """
+        Attribute determining which (if any) Phm model to use.
+        """
+        allowable = ['residual', 'corrected_pt']
+        if isinstance(val, basestring):
+            if val not in allowable:
+                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
+        else:
+            if not val is None:
+                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
+        return val
+            
+    @parameter
     def stoch_model(self, val):
         """
         Attribute determining the stochasticity model to use.
         """
-        allowable = ['gaussian_process', 'log', 'pade']
+        allowable = ['pade']
         if isinstance(val, basestring):
             if val not in allowable:
                 raise ValueError("`stoch_model` must be one of %s or a scalar float" %allowable)
@@ -143,6 +159,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
+    @cached_property('Phm_model')
+    def use_Phm_model(self):
+        """
+        Whether to use a model for Phh
+        """
+        return self.Phm_model is not None
+        
     @cached_property("b1", "z", "nonlinear_bias_fitter")
     def b2_00(self):
         """
@@ -208,15 +231,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Interpolator from simulation data for nonlinear biases
         """
         return NonlinearBiasFits()
-        
-    @cached_property()
-    def Phm_biasing_correction(self):
-        """
-        Interpolator from simulation data for the Phm nonlinear biasing 
-        correction model
-        """
-        return PhmBiasingCorrection()
-          
+                  
     @cached_property()
     def sigmav_fitter(self):
         """
@@ -225,25 +240,24 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return SigmavFits()
         
     @cached_property()
-    def stochasticity_log_model(self):
+    def stoch_model_params(self):
         """
-        The log model for stochasticity, as measured from simulations
+        The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
+        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
         """
-        return StochasticityLogModel()
-
-    @cached_property()
-    def stochasticity_gp_model(self):
-        """
-        The GP model for stochasticity, as measured from simulations
-        """
-        return StochasticityGPModel(self.z, self.sigma8, self.cosmo, self.interpolate) 
+        return StochasticityModelParams() 
         
     @cached_property()
-    def stochasticity_pade_model(self):
-        """
-        The Pade model for stochasticity, as measured from simulations
-        """
-        return StochasticityPadeModel() 
+    def Phm_residual_model_params(self):
+        return PhmResidualModelParams()
+        
+    @cached_property()
+    def Phm_corrPT_model_params(self):
+        return PhmCorrectedPTModelParams()
+        
+    @cached_property()
+    def Phh_model_params(self):
+        return PhhModelParams()
         
     @cached_property()
     def bias_to_sigma_relation(self):
@@ -300,8 +314,87 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return toret
         
     #---------------------------------------------------------------------------
-    # POWER TERM ATTRIBUTES
+    # MU0 MODELING ATTRIBUTES
     #---------------------------------------------------------------------------
+    @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
+    def stochasticity_model(self):
+        """
+        The model for the (type B) stochasticity, modeled using a Pade expansion,
+        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+        """
+        mean_bias = (self.b1*self.b1_bar)**0.5
+        def model(k, A0=None, A1=None, R=None):
+            return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
+            
+        params = self.stoch_model_params.to_dict(self.sigma8_z, mean_bias)
+        return model(self.k, **params)
+        
+    @cached_property("k", "b1", "z", "sigma8_z")
+    def Phm_residual_model(self):
+        R = 26. * (self.sigma8_z/0.8)**0.15
+        def model(k, A0=None, R1=None, R1h=None, R2h=None):
+            F = 1. - 1./(1. + (k*R)**2)
+            return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
+            
+        params = self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1)
+        return model(self.k, **params) + self.b1*self.P00_model.zeldovich_power(self.k)
+    
+    @cached_property("k", "b1_bar", "z", "sigma8_z")
+    def Phm_residual_model_bar(self):
+        R = 26. * (self.sigma8_z/0.8)**0.15
+        def model(k, A0=None, R1=None, R1h=None, R2h=None):
+            F = 1. - 1./(1. + (k*R)**2)
+            return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
+            
+        params = self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1_bar)
+        return model(self.k, **params) + self.b1_bar*self.P00_model.zeldovich_power(self.k)
+        
+    @cached_property("k", "b1", "z", "sigma8_z")
+    def Phm_corrPT_model(self):
+        
+        def transition(k, k_transition=0.4, b=0.05):
+            return 0.5 + 0.5*np.tanh((k-k_transition)/b)
+        
+        def model(k, A0=None, A1=None, b2_00=None, k_t=None):
+            switch = transition(k, k_t)
+            linear_corr = A0 + A1*k
+            term1 = self.b1*self.P00_model(k)*(1. + switch*linear_corr) 
+            term2 = (1. - switch)*b2_00*self.K00(k)
+            return term1 + term2
+            
+        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self.b1)
+        return model(self.k, **params)
+    
+    @cached_property("k", "b1_bar", "z", "sigma8_z")
+    def Phm_corrPT_model_bar(self):
+        def transition(k, k_transition=0.4, b=0.05):
+            return 0.5 + 0.5*np.tanh((k-k_transition)/b)
+        
+        def model(k, A0=None, A1=None, b2_00=None, k_t=None):
+            switch = transition(k, k_t)
+            linear_corr = A0 + A1*k
+            term1 = self.b1_bar*self.P00_model(k)*(1. + switch*linear_corr) 
+            term2 = (1. - switch)*b2_00*self.K00(k)
+            return term1 + term2
+            
+        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self.b1_bar)
+        return model(self.k, **params)
+    
+    @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
+    def Phh_model(self):
+        mean_bias = (self.b1*self.b1_bar)**0.5
+        
+        def model(k, A1=None, A2=None, dP=None, R=None):
+            Phh_2halo = self.P00_model.zeldovich_power(k)
+            Phh_1halo = self.P00_model.broadband_power(k)
+            return A1**2*Phh_2halo + A2*Phh_1halo + dP/(1 + (k*R)**2)
+            
+        params = self.Phh_model_params.to_dict(self.sigma8_z, mean_bias)
+        return model(self.k, **params)
+    
+    #---------------------------------------------------------------------------
+    # POWER TERM ATTRIBUTES
+    #---------------------------------------------------------------------------        
     @cached_property("b1", "P00", "use_Phm_model", "sigma8_z")
     def Phm(self):
         """
@@ -315,20 +408,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            
-            # get the parameters of the correction
-            switch = self.Phm_biasing_correction.transition(self.k)
-            A0, A1_scaled = self.Phm_biasing_correction(self.b1, self.z)
-            
-            # rescale A1 by the cosmology dependence
-            A1 = A1_scaled * (self.sigma8_z / 0.8)**(1.5)
-            
-            # now compute the linear correction
-            linear_corr = A0 + A1*self.k
-            
-            term1 = self.b1*self.P00.total.mu0*(1. + switch*linear_corr) 
-            term2 = (1. - switch)*self.b2_00*self.K00(self.k)
-            Phm.total.mu0 = term1 + term2
+            if self.Phm_model == 'residual':
+                Phm.total.mu0 = self.Phm_residual_model
+            elif self.Phm_model == 'corrected_pt':
+                Phm.total.mu0 = self.Phm_corrPT_model
             
         return Phm
         
@@ -345,41 +428,23 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            # get the parameters of the correction
-            switch = self.Phm_biasing_correction.transition(self.k)
-            A0, A1_scaled = self.Phm_biasing_correction(self.b1_bar, self.z)
-            
-            # rescale A1 by the cosmology dependence
-            A1 = A1_scaled * (self.sigma8_z / 0.8)**(1.5)
-            
-            # now compute the linear correction
-            linear_corr = A0 + A1*self.k
-            
-            term1 = self.b1_bar*self.P00.total.mu0*(1. + switch*linear_corr) 
-            term2 = (1. - switch)*self.b2_00_bar*self.K00(self.k)
-            Phm.total.mu0 = term1 + term2
+            if self.Phm_model == 'residual':
+                Phm.total.mu0 = self.Phm_residual_model_bar
+            elif self.Phm_model == 'corrected_pt':
+                Phm.total.mu0 = self.Phm_corrPT_model_bar
 
         return Phm
         
-    @cached_property("stoch_model", "k", "b1", "b1_bar", "z", "sigma8_z")
+    @cached_property("stoch_model", "stochasticity_model")
     def stochasticity(self):
         """
-        The isotropic stochasticity term due to the discreteness of the halos, 
-        i.e., Poisson noise.
+        The isotropic (type B) stochasticity term due to the discreteness of the 
+        halos, i.e., Poisson noise at 1st order.
         """
         if not isinstance(self.stoch_model, basestring):
             return self.k*0. + self.stoch_model
         else:
-            mean_bias = (self.b1*self.b1_bar)**0.5
-            if self.stoch_model == 'gaussian_process':                
-                return self.stochasticity_gp_model(mean_bias, self.k)
-            elif self.stoch_model == 'log':
-                return self.stochasticity_log_model(self.k, mean_bias, self.z)
-            elif self.stoch_model == 'pade':
-                return self.stochasticity_pade_model(self.k, mean_bias, self.sigma8_z)
-            else:
-                raise NotImplementedError("Do not understand stochasticity of "
-                                          "type `%s`" %self.stoch_model)
+            return self.stochasticity_model
                 
                 
     @cached_property("P00_ss_no_stoch", "stochasticity")
@@ -394,15 +459,18 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P00_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P00", "Phm", "Phm_bar")
+    @cached_property("P00", "Phm", "Phm_bar", "use_Phh_model")
     def P00_ss_no_stoch(self):
         """
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
         P00_ss_no_stoch = PowerTerm()
-        b1_k = self.Phm.total.mu0  / self.P00.total.mu0
-        b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
-        P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
+        if not self.use_Phh_model:
+            b1_k = self.Phm.total.mu0  / self.P00.total.mu0
+            b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
+            P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
+        else:
+            P00_ss_no_stoch.total.mu0 = self.Phh_model
         	       
         return P00_ss_no_stoch
             

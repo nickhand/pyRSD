@@ -7,6 +7,7 @@ functionality of being automatically updated when a parent property is
 updated.
 """
 from functools import update_wrapper
+import numpy as np
 
 class Cache(object):
     def __init__(self):
@@ -167,7 +168,16 @@ def parameter(f):
             old_val = None
             doset = True
 
-        if old_val is None or val != old_val or doset:
+        not_same = True
+        try:
+            if old_val is not None:
+                if np.isscalar(val) and np.isscalar(old_val):
+                    not_same = val != old_val
+                else:
+                    not_same = ~np.allclose(val, old_val)
+        except:
+            pass
+        if old_val is None or not_same or doset:
             if isinstance(val, dict) and hasattr(self, prop):
                 getattr(self, prop).update(val)
             else:

@@ -30,11 +30,10 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'stochA_gp_model',
-           'stochB_gp_model',
-           'stochA_pade_model_params',
-           'stochB_pade_model_params',
-           'Phm_biasing_correction']
+           'stochB_gp_params',
+           'Phm_residual_gp_params',
+           'Phm_correctedPT_gp_params',
+           'Phh_gp_params']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -302,49 +301,36 @@ def P11_mu4_z_0_989():
 #-------------------------------------------------------------------------------
 # SIMULATIONS
 #-------------------------------------------------------------------------------
-def stochA_gp_model():
+def stochB_gp_params():
     """
-    Return a `sklearn.GaussianProcess` object fit to the `type A` stochasticity,
-    as a function of bias, redshift, and wavenumber
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of Pade expansion for the `type B` stochasticity,
+    as a function of sigma8(z) and b1
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochA_gp_from_fits_reindex_linear.pickle')
-    return cPickle.load(open(fname, 'r'))
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_bestfit_params.pickle')
+    return fname
     
-#-------------------------------------------------------------------------------
-def stochB_gp_model():
+def Phm_residual_gp_params():
     """
-    Return a `sklearn.GaussianProcess` object fit to the `type B` stochasticity,
-    as a function of bias, redshift, and wavenumber
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of a Pade expansion modeling Phm - b1*Pzel
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_from_fits_reindex_linear.pickle')
-    return cPickle.load(open(fname, 'r'))
-    
-#-------------------------------------------------------------------------------
-def stochA_pade_model_params():
-    """
-    Return a pandas DataFrame holding the best-fit parameters for the Pade 
-    model used to model the type A stochasticity
-    """   
-    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_stochA_pade_model_reindex.dat')
-    return pd.read_csv(fname, sep=' ', index_col=['s8_z', 'b1']).sort_index()
-    
-#-------------------------------------------------------------------------------
-def stochB_pade_model_params():
-    """
-    Return a pandas DataFrame holding the best-fit parameters for the Pade 
-    model used to model the type B stochasticity
-    """   
-    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_stochB_pade_model_reindex.dat')
-    return pd.read_csv(fname, sep=' ', index_col=['s8_z', 'b1']).sort_index()
-    
-#-------------------------------------------------------------------------------
-def Phm_biasing_correction():
-    """
-    Return a pandas DataFrame holding the parameters that give the corrections
-    to the Phm nonlinear biasing model 
-    """   
+    fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_bestfit_params.pickle')
+    return fname
 
-    fname = _os.path.join(data_dir, 'simulation_fits/bestfit_params_Phm_biasing_corr_formatted.dat')
-    return pd.read_csv(fname, sep=' ', index_col=['z', 'b1']).sort_index()
+def Phm_correctedPT_gp_params():
+    """
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of a Pade expansion modeling the corrected PT Phm
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/Phm_correctedPT_gp_bestfit_params.pickle')
+    return fname
     
-#-------------------------------------------------------------------------------
+def Phh_gp_params():
+    """
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of a mode for Phh
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/Phh_gp_bestfit_params.pickle')
+    return fname
+

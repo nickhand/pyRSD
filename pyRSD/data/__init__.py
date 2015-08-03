@@ -307,7 +307,7 @@ def stochB_gp_params():
     the parameters of Pade expansion for the `type B` stochasticity,
     as a function of sigma8(z) and b1
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochB_gp_bestfit_params.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_log_gp_bestfit_params.pickle')
     return fname
     
 def Phm_residual_gp_params():
@@ -333,4 +333,6 @@ def Phh_gp_params():
     """    
     fname = _os.path.join(data_dir, 'simulation_fits/Phh_gp_bestfit_params.pickle')
     return fname
+    
+    
 

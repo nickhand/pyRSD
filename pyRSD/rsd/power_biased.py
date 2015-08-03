@@ -316,18 +316,32 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # MU0 MODELING ATTRIBUTES
     #---------------------------------------------------------------------------
+    @cached_property("b1", "b1_bar", "z", "sigma8_z")
+    def stoch_model_params(self):
+        mean_bias = (self.b1*self.b1_bar)**0.5
+        return self.stoch_model_params.to_dict(self.sigma8_z, mean_bias)
+    
     @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
     def stochasticity_model(self):
         """
         The model for the (type B) stochasticity, modeled using a Pade expansion,
         and interpolated using a Gaussian process as a function of sigma8(z) and b1 
-        """
-        mean_bias = (self.b1*self.b1_bar)**0.5
-        def model(k, A0=None, A1=None, R=None):
-            return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
+        """     
+        # def model(k, A0=None, A1=None, R=None):
+        #     return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
+        def model(k, A0=None, A1=None):
+            return A0 + A1*np.log(k)
             
-        params = self.stoch_model_params.to_dict(self.sigma8_z, mean_bias)
+        params = self.stoch_model_params
         return model(self.k, **params)
+        
+    @cached_property("b1", "z", "sigma8_z")
+    def Phm_model_params(self):
+        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1)
+    
+    @cached_property("b1_bar", "z", "sigma8_z")
+    def Phm_model_params_bar(self):
+        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1_bar)
         
     @cached_property("k", "b1", "z", "sigma8_z")
     def Phm_residual_model(self):
@@ -336,7 +350,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             F = 1. - 1./(1. + (k*R)**2)
             return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
             
-        params = self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1)
+        params = self.Phm_model_params
         return model(self.k, **params) + self.b1*self.P00_model.zeldovich_power(self.k)
     
     @cached_property("k", "b1_bar", "z", "sigma8_z")
@@ -346,7 +360,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             F = 1. - 1./(1. + (k*R)**2)
             return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
             
-        params = self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1_bar)
+        params = self.Phm_model_params_bar
         return model(self.k, **params) + self.b1_bar*self.P00_model.zeldovich_power(self.k)
         
     @cached_property("k", "b1", "z", "sigma8_z")

@@ -1,6 +1,7 @@
 from .. import numpy as np, data as sim_data
 import cPickle
 import itertools
+import bisect
 
 def align_domain(*args, **kwargs):
     """
@@ -66,10 +67,67 @@ class GPModelParams(object):
             
     def to_dict(self, *args, **kwargs):
         data = self.__call__(*args, **kwargs)
-        data = np.concatenate([data[k][...,None] for k in self.param_names],axis=-1)
+        keys = data.keys()
+        data = np.concatenate([data[k][...,None] for k in keys],axis=-1)
         shape = data.shape[:-1]
         if not len(shape):
-            return dict(zip(self.param_names, data))
+            return dict(zip(keys, data))
+        toret = np.empty(shape, dtype=object)
+        for sl in np.ndindex(*shape):
+            toret[sl] = dict(zip(self.param_names, data[sl]))
+        return toret
+        
+class SplineTableModelParams(object):
+    
+    def __init__(self, path):
+        self.data = cPickle.load(open(path, 'r'))
+        self.index = np.array(sorted(self.data.keys()))
+        self.index_min = np.amin(self.index)
+        self.index_max = np.amax(self.index)
+        
+        self.param_names = self.data[self.index[0]].keys()
+        self.ndims = 2 # by default
+        
+    def __call__(self, *args, **kwargs):
+        col = kwargs.get('col', None)
+        x, y = args
+        
+        # return NaNs if we are out of bounds
+        if x < self.index_min or x > self.index_max:
+            args = (x, self.index_min, self.index_max)
+            return ValueError("index value {} is out of interpolation range [{}, {}]".format(*args))
+
+        if x in self.index:
+            i = abs(self.index - x).argmin()
+            x_lo = x_hi = self.index[i]
+            w = 0.
+        else:
+            ihi = bisect.bisect(self.index, x)
+            ilo = ihi - 1
+
+            x_lo = self.index[ilo]
+            x_hi = self.index[ihi]
+            w = (x - x_lo) / (x_hi - x_lo) 
+        
+        if col is None:
+            toret = {}
+            for col in self.param_names:
+                val_lo = (1 - w)*self.data[x_lo][col](y) 
+                val_hi = w*self.data[x_hi][col](y)
+                toret[col] = (val_lo + val_hi)
+            return toret
+        else:
+            val_lo = (1 - w)*self.data[x_lo][col](y) 
+            val_hi = w*self.data[x_hi][col](y)
+            return val_lo + val_hi
+            
+    def to_dict(self, *args, **kwargs):
+        data = self.__call__(*args, **kwargs)
+        keys = data.keys()
+        data = np.concatenate([data[k][...,None] for k in keys],axis=-1)
+        shape = data.shape[:-1]
+        if not len(shape):
+            return dict(zip(keys, data))
         toret = np.empty(shape, dtype=object)
         for sl in np.ndindex(*shape):
             toret[sl] = dict(zip(self.param_names, data[sl]))
@@ -86,7 +144,7 @@ class StochasticityModelParams(GPModelParams):
     def __init__(self):
         path = sim_data.stochB_gp_params()
         super(StochasticityModelParams, self).__init__(path)
-        
+    
 class PhmResidualModelParams(GPModelParams):
     """
     The model for the Phm residual, Phm - b1*Pzel, modeled using a Pade expansion,

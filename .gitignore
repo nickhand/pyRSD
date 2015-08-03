@@ -4,3 +4,4 @@ setup.config
 pyRSD/data/halo-matter
 pyRSD/data/halo
 pyRSD/data/simulation_fits/
+pyRSD/gcl/python/_gcl.so.*

@@ -136,14 +136,23 @@ class SplineTableModelParams(object):
 #------------------------------------------------------------------------------
 # Models
 #------------------------------------------------------------------------------
-class StochasticityModelParams(GPModelParams):
+class StochasticityPadeModelParams(GPModelParams):
     """
     The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
     and interpolated using a Gaussian process as a function of sigma8(z) and b1 
     """
     def __init__(self):
-        path = sim_data.stochB_gp_params()
-        super(StochasticityModelParams, self).__init__(path)
+        path = sim_data.stochB_pade_gp_params()
+        super(StochasticityPadeModelParams, self).__init__(path)
+
+class StochasticityLogModelParams(GPModelParams):
+    """
+    The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
+    and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+    """
+    def __init__(self):
+        path = sim_data.stochB_log_gp_params()
+        super(StochasticityLogModelParams, self).__init__(path)
     
 class PhmResidualModelParams(GPModelParams):
     """

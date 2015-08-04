@@ -182,7 +182,7 @@ class BiasToMassRelation(Cache):
     # define the interpolation grid
     interpolation_grid = {}
     interpolation_grid['sigma8'] = np.linspace(0.5, 1.5, 50)
-    interpolation_grid['b1'] = np.linspace(1.1, 6., 50)
+    interpolation_grid['b1'] = np.linspace(0.9, 7., 50)
     
     #---------------------------------------------------------------------------
     def __init__(self, z, cosmo, interpolated=False):
@@ -277,7 +277,13 @@ class BiasToMassRelation(Cache):
             rescaling = self.D * (s8 / s8_0)
             
             # find the zero
-            M = brentq(objective, 1e-8, 1e3, args=(b1, rescaling))*mass_norm
+            try:
+                M = brentq(objective, 1e-10, 1e4, args=(b1, rescaling))*mass_norm
+            except Exception as e:
+                print s8, b1
+                print objective(1e-10, b1, rescaling), objective(1e4, b1, rescaling)
+                raise Exception(e)
+                
             grid_vals.append(M)
         grid_vals = np.array(grid_vals).reshape((len(sigma8s), len(b1s)))
         
@@ -404,6 +410,13 @@ class BiasToSigmaRelation(BiasToMassRelation):
         
     #---------------------------------------------------------------------------
     @unpacked
+    def mass(self, sigma8, b1):
+        """
+        Return the mass at this bias and sigma8 value
+        """
+        return BiasToMassRelation.__call__(self, sigma8, b1)
+        
+    @unpacked
     def __call__(self, sigma8, b1):
         """
         Return the velocity dispersion [units: `Mpc/h`] associated with the 
@@ -417,7 +430,7 @@ class BiasToSigmaRelation(BiasToMassRelation):
             The linear bias
         """
         # first get the halo mass
-        M = BiasToMassRelation.__call__(self, sigma8, b1)
+        M = self.mass(sigma8, b1)
     
         # evrard relation
         if self.sigmav_0 is None or self.M_0 is None:

@@ -30,7 +30,8 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'stochB_gp_params',
+           'stochB_pade_gp_params',
+           'stochB_log_gp_params',
            'Phm_residual_gp_params',
            'Phm_correctedPT_gp_params',
            'Phh_gp_params']
@@ -301,7 +302,16 @@ def P11_mu4_z_0_989():
 #-------------------------------------------------------------------------------
 # SIMULATIONS
 #-------------------------------------------------------------------------------
-def stochB_gp_params():
+def stochB_pade_gp_params():
+    """
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of Pade expansion for the `type B` stochasticity,
+    as a function of sigma8(z) and b1
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_pade_gp_bestfit_params.pickle')
+    return fname
+    
+def stochB_log_gp_params():
     """
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of Pade expansion for the `type B` stochasticity,

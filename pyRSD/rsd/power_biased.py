@@ -3,8 +3,8 @@ from .tools import RSDSpline, BiasToSigmaRelation
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits
-from .mu0_modeling import StochasticityModelParams, PhmResidualModelParams, \
-                        PhmCorrectedPTModelParams, PhhModelParams
+from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
+                          PhmResidualModelParams, PhmCorrectedPTModelParams, PhhModelParams
 
 
 #-------------------------------------------------------------------------------
@@ -240,13 +240,21 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return SigmavFits()
         
     @cached_property()
-    def stoch_model_params(self):
+    def stoch_log_model_params(self):
+        """
+        The bestfit params for the (type B) stochasticity, modeled using a log model,
+        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+        """
+        return StochasticityLogModelParams() 
+        
+    @cached_property()
+    def stoch_pade_model_params(self):
         """
         The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
         and interpolated using a Gaussian process as a function of sigma8(z) and b1 
         """
-        return StochasticityModelParams() 
-        
+        return StochasticityPadeModelParams()
+    
     @cached_property()
     def Phm_residual_model_params(self):
         return PhmResidualModelParams()
@@ -318,8 +326,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     @cached_property("b1", "b1_bar", "z", "sigma8_z")
     def stoch_model_params_dict(self):
+        def pade_model(k, A0=None, A1=None, R=None):
+             return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
+        def log_model(k, A0=None, A1=None):
+             return A0 + A1*np.log(k)
+             
         mean_bias = (self.b1*self.b1_bar)**0.5
-        return self.stoch_model_params.to_dict(self.sigma8_z, mean_bias)
+        mass = self.bias_to_sigma_relation.mass(self.sigma8, mean_bias)
+        if mass > 10**13.6:
+            return pade_model, self.stoch_pade_model_params.to_dict(self.sigma8_z, mean_bias)
+        else:
+            return log_model, self.stoch_log_model_params.to_dict(self.sigma8_z, mean_bias)
     
     @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
     def stochasticity_model(self):
@@ -327,12 +344,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The model for the (type B) stochasticity, modeled using a Pade expansion,
         and interpolated using a Gaussian process as a function of sigma8(z) and b1 
         """     
-        # def model(k, A0=None, A1=None, R=None):
-        #     return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
-        def model(k, A0=None, A1=None):
-            return A0 + A1*np.log(k)
-            
-        params = self.stoch_model_params_dict
+        model, params = self.stoch_model_params_dict
         return model(self.k, **params)
         
     @cached_property("b1", "z", "sigma8_z")

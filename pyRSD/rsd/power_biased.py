@@ -325,27 +325,30 @@ class BiasedSpectrum(DarkMatterSpectrum):
     # MU0 MODELING ATTRIBUTES
     #---------------------------------------------------------------------------
     @cached_property("b1", "b1_bar", "z", "sigma8_z")
-    def stoch_model_params_dict(self):
-        def pade_model(k, A0=None, A1=None, R=None):
-             return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
-        def log_model(k, A0=None, A1=None):
-             return A0 + A1*np.log(k)
-             
+    def stoch_model_params_dict(self):             
         mean_bias = (self.b1*self.b1_bar)**0.5
         mass = self.bias_to_sigma_relation.mass(self.sigma8, mean_bias)
         if mass > 10**13.6:
-            return pade_model, self.stoch_pade_model_params.to_dict(self.sigma8_z, mean_bias)
+            return 'pade', self.stoch_pade_model_params.to_dict(self.sigma8_z, mean_bias)
         else:
-            return log_model, self.stoch_log_model_params.to_dict(self.sigma8_z, mean_bias)
+            return 'log', self.stoch_log_model_params.to_dict(self.sigma8_z, mean_bias)
     
     @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
     def stochasticity_model(self):
         """
         The model for the (type B) stochasticity, modeled using a Pade expansion,
         and interpolated using a Gaussian process as a function of sigma8(z) and b1 
-        """     
-        model, params = self.stoch_model_params_dict
-        return model(self.k, **params)
+        """  
+        def pade_model(k, A0=None, A1=None, R=None):
+             return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
+        def log_model(k, A0=None, A1=None):
+             return A0 + A1*np.log(k)
+                
+        model_name, params = self.stoch_model_params_dict
+        if model_name == 'pade':
+            return pade_model(self.k, **params)
+        else:
+            return log_model(self.k, **params)
         
     @cached_property("b1", "z", "sigma8_z")
     def Phm_model_params_dict(self):

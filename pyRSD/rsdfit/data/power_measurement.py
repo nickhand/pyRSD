@@ -15,13 +15,12 @@ class PowerMeasurement(object):
     Class representing a power spectrum measurement, either P(k, mu) or 
     multipole moments
     """
-    def __init__(self, 
-                 filename, 
-                 k_col, 
-                 power_col,
+    def __init__(self,  
+                 k, 
+                 power,
                  power_type, 
                  identifier, 
-                 err_col=None,
+                 error=None,
                  width=None, 
                  k_min=None,
                  k_max=None):
@@ -54,16 +53,12 @@ class PowerMeasurement(object):
             The minimum wavenumber (inclusive) in units of `h/Mpc`
         k_max : float, optional
             The maximum wavenumber (inclusive) in units of `h/Mpc`
-        """
-        # find the correct path
-        filename = tools.find_file(filename)
-                       
-        # load the data
-        data = np.loadtxt(filename)
-        self._k_input = data[:,k_col]
-        self._power_input = data[:,power_col]
-        if err_col is not None:
-            self._error_input = data[:,err_col]
+        """                       
+        # save the data
+        self._k_input = k
+        self._power_input = power
+        if error is not None:
+            self._error_input = error
         else:
             self._error_input = None
             
@@ -236,11 +231,24 @@ class PowerData(object):
         """
         self.params = ParameterSet(param_file, tag='data')
 
+        # read the data file
+        self.read_data()
+
         # setup the measurements and covariances
         self._set_measurements()
         self._set_covariance()
         
     #---------------------------------------------------------------------------
+    def read_data(self):
+        with open(self.params['data_file'].value, 'r') as ff:
+            shape = tuple(map(int, ff.readline().split()))
+            columns = ff.readline().split()
+            data = np.loadtxt(ff)
+        dtype = [(col, 'f8') for col in columns]
+        self.data = np.empty(shape, dtype=dtype)
+        for i, col in enumerate(columns):
+            self.data[col] = data[...,i].reshape(shape)
+            
     def to_file(self, filename, mode='w'):
         """
         Save the parameters of this data class to a file
@@ -295,7 +303,7 @@ class PowerData(object):
         
         # loop over each statistic
         self.measurements = []
-        for stat_name in stats:
+        for i, stat_name in enumerate(stats):
             
             # parse the name
             power_type, value = stat_name.lower().split('_')
@@ -304,21 +312,22 @@ class PowerData(object):
             if power_type not in ['pkmu', 'pole']:
                 logger.error("Measurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
                 raise ValueError("Measurement type must be either `pkmu` or `pole`")
-            
+            if power_type == 'pole':
+                raise NotImplementedError("`pole` type not implemented currently")
+                
             # now make the PowerMeasurement object
-            if stat_name not in self.params:
-                raise ValueError("Statistic `%s` must have associated parameter for info" %stat_name)
-            info = self.params[stat_name].value
-            args = info['file'], info['x_col'], info['y_col'], power_type, value
-            kwargs = {'err_col' : info.get('err_col', None), 'width' : info.get('width', None)}
-            self.measurements.append(PowerMeasurement(*args, **kwargs))
+            k = self.data['k'][:,i]
+            mu = np.mean(self.data['mu'][:,i])
+            power = self.data['power'][:,i]
+            error = self.data['error'][:,i]
+            self.measurements.append(PowerMeasurement(k, power, 'pkmu', mu, error=error))
         
-        # make sure all the ks are the same
-        tmp = self.measurements
-        if not all(np.array_equal(tmp[i].k, tmp[i+1].k) for i in range(len(tmp)-1)):
-            msg = "All measurements read do not have same wavenumber array"
-            logger.error(msg)
-            raise ValueError(msg)
+        # # make sure all the ks are the same
+        # tmp = self.measurements
+        # if not all(np.array_equal(tmp[i].k, tmp[i+1].k) for i in range(len(tmp)-1)):
+        #     msg = "All measurements read do not have same wavenumber array"
+        #     logger.error(msg)
+        #     raise ValueError(msg)
         
         logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             

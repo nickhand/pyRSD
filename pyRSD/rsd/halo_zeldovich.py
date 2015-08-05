@@ -36,10 +36,51 @@ class HaloZeldovichPS(Cache):
         self.z            = z
         self.sigma8       = sigma8
         self.interpolated = interpolated
-           
+        
+        self._A0_amp = 730.
+        self._A0_slope = 3.75
+        self._R1_amp = 3.25
+        self._R1_slope = 0.7
+        self._R1h_amp = 3.87
+        self._R1h_slope = 0.29
+        self._R2h_amp = 1.69
+        self._R2h_slope = 0.43           
+        
     #---------------------------------------------------------------------------
     # PARAMETERS
     #---------------------------------------------------------------------------
+    @parameter
+    def _A0_amp(self, val):
+        return val
+        
+    @parameter
+    def _A0_slope(self, val):
+        return val
+        
+    @parameter
+    def _R1_amp(self, val):
+        return val
+        
+    @parameter
+    def _R1_slope(self, val):
+        return val
+        
+    @parameter
+    def _R1h_amp(self, val):
+        return val
+        
+    @parameter
+    def _R1h_slope(self, val):
+        return val
+        
+    @parameter
+    def _R2h_amp(self, val):
+        return val
+        
+    @parameter
+    def _R2h_slope(self, val):
+        return val
+        
     @parameter
     def interpolated(self, val):
         """
@@ -116,14 +157,14 @@ class HaloZeldovichPS(Cache):
     #---------------------------------------------------------------------------
     # Model Parameters
     #---------------------------------------------------------------------------
-    @cached_property('sigma8_z')
+    @cached_property('sigma8_z', '_A0_amp', '_A0_slope')
     def A0(self):
         """
         Returns the A0 radius parameter (see eqn 4 of arXiv:1501.07512)
 
         Note: the units are power [(h/Mpc)^3]
         """
-        return 750*(self.sigma8_z/0.8)**3.75
+        return self._A0_amp*(self.sigma8_z/0.8)**self._A0_slope
 
     #---------------------------------------------------------------------------
     @cached_property('sigma8_z')
@@ -136,34 +177,34 @@ class HaloZeldovichPS(Cache):
         return 26*(self.sigma8_z/0.8)**0.15
 
     #---------------------------------------------------------------------------
-    @cached_property('sigma8_z')
+    @cached_property('sigma8_z', '_R1_amp', '_R1_slope')
     def R1(self):
         """
         Returns the R1 radius parameter (see eqn 5 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return 3.33*(self.sigma8_z/0.8)**0.88
+        return self._R1_amp*(self.sigma8_z/0.8)**self._R1_slope
 
     #---------------------------------------------------------------------------
-    @cached_property('sigma8_z')
+    @cached_property('sigma8_z', '_R1h_amp', '_R1h_slope')
     def R1h(self):
         """
         Returns the R1h radius parameter (see eqn 5 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return 3.87*(self.sigma8_z/0.8)**0.29
+        return self._R1h_amp*(self.sigma8_z/0.8)**self._R1h_slope
     
     #---------------------------------------------------------------------------
-    @cached_property('sigma8_z')
+    @cached_property('sigma8_z', '_R2h_amp', '_R2h_slope')
     def R2h(self):
         """
         Returns the R2h radius parameter (see eqn 5 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return 1.69*(self.sigma8_z/0.8)**0.43
+        return self._R2h_amp*(self.sigma8_z/0.8)**self._R2h_slope
 
     #---------------------------------------------------------------------------
     # Function calls

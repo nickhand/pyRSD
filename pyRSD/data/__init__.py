@@ -30,11 +30,12 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'stochB_pade_gp_params',
-           'stochB_log_gp_params',
-           'Phm_residual_gp_params',
-           'Phm_correctedPT_gp_params',
-           'Phh_gp_params']
+           'stochB_pade_params',
+           'stochB_log_params',
+           'Phm_residual_params',
+           'Phm_correctedPT_params',
+           'Phh_params',
+           'stochB_cross_log_params']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -302,7 +303,7 @@ def P11_mu4_z_0_989():
 #-------------------------------------------------------------------------------
 # SIMULATIONS
 #-------------------------------------------------------------------------------
-def stochB_pade_gp_params():
+def stochB_pade_params():
     """
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of Pade expansion for the `type B` stochasticity,
@@ -311,16 +312,25 @@ def stochB_pade_gp_params():
     fname = _os.path.join(data_dir, 'simulation_fits/stochB_pade_gp_bestfit_params.pickle')
     return fname
     
-def stochB_log_gp_params():
+def stochB_log_params():
     """
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of Pade expansion for the `type B` stochasticity,
     as a function of sigma8(z) and b1
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochB_log_gp_bestfit_params.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_log_spline_bestfit_params.pickle')
     return fname
     
-def Phm_residual_gp_params():
+def stochB_cross_log_params():
+    """
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of Pade expansion for the `type B` cross bin stochasticity,
+    as a function of sigma8(z) and b1
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/stochB_cross_log_gp_bestfit_params.pickle')
+    return fname
+    
+def Phm_residual_params():
     """
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of a Pade expansion modeling Phm - b1*Pzel
@@ -328,7 +338,7 @@ def Phm_residual_gp_params():
     fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_bestfit_params.pickle')
     return fname
 
-def Phm_correctedPT_gp_params():
+def Phm_correctedPT_params():
     """
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of a Pade expansion modeling the corrected PT Phm
@@ -336,7 +346,7 @@ def Phm_correctedPT_gp_params():
     fname = _os.path.join(data_dir, 'simulation_fits/Phm_correctedPT_gp_bestfit_params.pickle')
     return fname
     
-def Phh_gp_params():
+def Phh_params():
     """
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of a mode for Phh

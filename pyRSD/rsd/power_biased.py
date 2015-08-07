@@ -4,7 +4,8 @@ from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits
 from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
-                          PhmResidualModelParams, PhmCorrectedPTModelParams, PhhModelParams
+                          PhmResidualModelParams, PhmCorrectedPTModelParams, \
+                          PhhModelParams, CrossStochasticityLogModelParams
 
 
 #-------------------------------------------------------------------------------
@@ -14,17 +15,18 @@ class BiasedSpectrum(DarkMatterSpectrum):
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
                         ['sigmav_from_sims', 'use_tidal_bias',
                          'Phm_model', 'use_Phh_model', 
-                         'stoch_model', 'use_mu_corrections']  
+                         'stoch_model', 'use_mu_corrections', 'use_mean_bias']  
 
     #---------------------------------------------------------------------------
     def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
                     stoch_model='pade', Phm_model='residual', Phh_model=None, 
-                    use_mu_corrections=False, **kwargs):
+                    use_mu_corrections=False, use_mean_bias=False, **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
         
         # set the default parameters
+        self.use_mean_bias      = use_mean_bias
         self.sigmav_from_sims   = sigmav_from_sims
         self.use_tidal_bias     = use_tidal_bias
         self.include_2loop      = False # don't violate galilean invariance, fool
@@ -40,7 +42,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
          
     #---------------------------------------------------------------------------
     # ATTRIBUTES
-    #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------        
+    @parameter
+    def use_mean_bias(self, val):
+        """
+        Evaluate cross-spectra using the geometric mean of the biases 
+        """           
+        return val
+        
     @parameter
     def use_mu_corrections(self, val):
         """
@@ -155,62 +164,75 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The linear bias factor of the 2nd tracer.
         """
         return val
-    
+            
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
-    @cached_property('Phm_model')
-    def use_Phm_model(self):
+    @cached_property("use_mean_bias", "b1", "b1_bar")
+    def _ib1(self):
         """
-        Whether to use a model for Phh
+        The internally used bias of the 1st tracer
         """
-        return self.Phm_model is not None
+        if not self.use_mean_bias:
+            return self.b1
+        else:
+            return (self.b1*self.b1_bar)**0.5
+    
+    @cached_property("use_mean_bias", "b1", "b1_bar")
+    def _ib1_bar(self):
+        """
+        The internally used bias of the first tracer
+        """
+        if not self.use_mean_bias:
+            return self.b1_bar
+        else:
+            return (self.b1*self.b1_bar)**0.5
         
-    @cached_property("b1", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1", "z", "nonlinear_bias_fitter")
     def b2_00(self):
         """
         The quadratic, local bias used for the P00_ss term for the 1st tracer.
         """
-        return self.nonlinear_bias_fitter(self.b1, self.z, col='b2_00')
+        return self.nonlinear_bias_fitter(self._ib1, self.z, col='b2_00')
         
-    @cached_property("b1_bar", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1_bar", "z", "nonlinear_bias_fitter")
     def b2_00_bar(self):
         """
         The quadratic, local bias used for the P00_ss term for the 2nd tracer.
         """
-        return self.nonlinear_bias_fitter(self.b1_bar, self.z, col='b2_00')
+        return self.nonlinear_bias_fitter(self._ib1_bar, self.z, col='b2_00')
     
-    @cached_property("b1", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1", "z", "nonlinear_bias_fitter")
     def b2_01(self):
         """
         The quadratic, local bias used for the P01_ss term for the 1st tracer.
         """
-        return self.nonlinear_bias_fitter(self.b1, self.z, col='b2_01')        
+        return self.nonlinear_bias_fitter(self._ib1, self.z, col='b2_01')        
     
-    @cached_property("b1_bar", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1_bar", "z", "nonlinear_bias_fitter")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term for the 2nd tracer.
         """
-        return self.nonlinear_bias_fitter(self.b1_bar, self.z, col='b2_01')
+        return self.nonlinear_bias_fitter(self._ib1_bar, self.z, col='b2_01')
     
-    @cached_property("b1", "use_tidal_bias")
+    @cached_property("_ib1", "use_tidal_bias")
     def bs(self):
         """
         The quadratic, nonlocal tidal bias factor for the first tracer
         """
         if self.use_tidal_bias:
-            return -2./7 * (self.b1 - 1.)
+            return -2./7 * (self._ib1 - 1.)
         else:
             return 0.
         
-    @cached_property("b1_bar", "use_tidal_bias")
+    @cached_property("_ib1_bar", "use_tidal_bias")
     def bs_bar(self):
         """
         The quadratic, nonlocal tidal bias factor
         """
         if self.use_tidal_bias:
-            return -2./7 * (self.b1_bar - 1.)
+            return -2./7 * (self._ib1_bar - 1.)
         else:
             return 0.
     
@@ -238,6 +260,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Interpolator from simulation data for linear sigmav of halos
         """
         return SigmavFits()
+
+    @cached_property()
+    def cross_stoch_log_model_params(self):
+        """
+        The bestfit params for the (type B) cross-bin stochasticity, modeled 
+        using a log model, and interpolated using a Gaussian process as a function of 
+        sigma8(z) and b1 
+        """
+        return CrossStochasticityLogModelParams()
         
     @cached_property()
     def stoch_log_model_params(self):
@@ -276,14 +307,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return BiasToSigmaRelation(self.z, self.cosmo, interpolated=self.interpolate)
              
-    @cached_property("b1", "b1_bar", "z")
+    @cached_property("_ib1", "_ib1_bar", "z")
     def _unnormed_sigmav_from_sims(self):
         """
         The sigma_v value from simulations, evaluated with sigma8 = 1, such
         that the true sigma_v is obtained by multiplying by `sigma8`
         """
         # get the sigma in Mpc/h with D(z)*f(z) behavior divided out
-        mean_bias = np.sqrt(self.b1*self.b1_bar)
+        mean_bias = np.sqrt(self._ib1*self._ib1_bar)
         return self.sigmav_fitter(mean_bias, self.z) / 0.807
         
     @cached_property("_unnormed_sigmav_from_sims", "sigma8", "sigmav_from_sims", 
@@ -318,22 +349,38 @@ class BiasedSpectrum(DarkMatterSpectrum):
             else:
                 toret = 0.
                 
-            print "  returning sigma = ", toret
             return toret
+        
+    @cached_property('Phm_model')
+    def use_Phm_model(self):
+        """
+        Whether to use a model for Phh
+        """
+        return self.Phm_model is not None
         
     #---------------------------------------------------------------------------
     # MU0 MODELING ATTRIBUTES
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "z", "sigma8_z")
+    @cached_property("_ib1", "z", "sigma8_z")
     def stoch_model_params_dict(self):             
-        mean_bias = (self.b1*self.b1_bar)**0.5
-        mass = self.bias_to_sigma_relation.mass(self.sigma8, mean_bias)
-        if mass > 10**13.6:
-            return 'pade', self.stoch_pade_model_params.to_dict(self.sigma8_z, mean_bias)
+        if self._ib1 != self._ib1_bar:
+            raise ValueError("should probably call cross_stoch_model_params_dict if b1 != b1_bar")
+            
+        if self._ib1 > 1.9:
+            return 'pade', self.stoch_pade_model_params.to_dict(self.sigma8_z, self._ib1)
         else:
-            return 'log', self.stoch_log_model_params.to_dict(self.sigma8_z, mean_bias)
+            # this is a spline table, so could crash
+            try:
+                return 'log', self.stoch_log_model_params.to_dict(self.sigma8_z, self._ib1)
+            except:
+                return 'pade', self.stoch_pade_model_params.to_dict(self.sigma8_z, self._ib1)
     
-    @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
+    @cached_property("_ib1", "_ib1_bar", "z", "sigma8_z")
+    def cross_stoch_model_params_dict(self):   
+        biases = sorted([self._ib1, self._ib1_bar])          
+        return self.cross_stoch_log_model_params.to_dict(self.sigma8_z, biases[0], biases[-1])
+    
+    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
     def stochasticity_model(self):
         """
         The model for the (type B) stochasticity, modeled using a Pade expansion,
@@ -344,21 +391,25 @@ class BiasedSpectrum(DarkMatterSpectrum):
         def log_model(k, A0=None, A1=None):
              return A0 + A1*np.log(k)
                 
-        model_name, params = self.stoch_model_params_dict
-        if model_name == 'pade':
-            return pade_model(self.k, **params)
-        else:
+        if self._ib1 != self._ib1_bar:
+            params = self.cross_stoch_model_params_dict
             return log_model(self.k, **params)
+        else:
+            model_name, params = self.stoch_model_params_dict
+            if model_name == 'pade':
+                return pade_model(self.k, **params)
+            else:
+                return log_model(self.k, **params)
         
-    @cached_property("b1", "z", "sigma8_z")
+    @cached_property("_ib1", "z", "sigma8_z")
     def Phm_model_params_dict(self):
-        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1)
+        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self._ib1)
     
-    @cached_property("b1_bar", "z", "sigma8_z")
+    @cached_property("_ib1_bar", "z", "sigma8_z")
     def Phm_model_params_dict_bar(self):
-        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self.b1_bar)
+        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self._ib1_bar)
         
-    @cached_property("k", "b1", "z", "sigma8_z")
+    @cached_property("k", "_ib1", "z", "sigma8_z")
     def Phm_residual_model(self):
         R = 26. * (self.sigma8_z/0.8)**0.15
         def model(k, A0=None, R1=None, R1h=None, R2h=None):
@@ -366,9 +417,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
             
         params = self.Phm_model_params_dict
-        return model(self.k, **params) + self.b1*self.P00_model.zeldovich_power(self.k)
+        return model(self.k, **params) + self._ib1*self.P00_model.zeldovich_power(self.k)
     
-    @cached_property("k", "b1_bar", "z", "sigma8_z")
+    @cached_property("k", "_ib1_bar", "z", "sigma8_z")
     def Phm_residual_model_bar(self):
         R = 26. * (self.sigma8_z/0.8)**0.15
         def model(k, A0=None, R1=None, R1h=None, R2h=None):
@@ -376,9 +427,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
             
         params = self.Phm_model_params_dict_bar
-        return model(self.k, **params) + self.b1_bar*self.P00_model.zeldovich_power(self.k)
+        return model(self.k, **params) + self._ib1_bar*self.P00_model.zeldovich_power(self.k)
         
-    @cached_property("k", "b1", "z", "sigma8_z")
+    @cached_property("k", "_ib1", "z", "sigma8_z")
     def Phm_corrPT_model(self):
         
         def transition(k, k_transition=0.4, b=0.05):
@@ -387,14 +438,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
         def model(k, A0=None, A1=None, b2_00=None, k_t=None):
             switch = transition(k, k_t)
             linear_corr = A0 + A1*k
-            term1 = self.b1*self.P00_model(k)*(1. + switch*linear_corr) 
+            term1 = self._ib1*self.P00_model(k)*(1. + switch*linear_corr) 
             term2 = (1. - switch)*b2_00*self.K00(k)
             return term1 + term2
             
-        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self.b1)
+        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self._ib1)
         return model(self.k, **params)
     
-    @cached_property("k", "b1_bar", "z", "sigma8_z")
+    @cached_property("k", "_ib1_bar", "z", "sigma8_z")
     def Phm_corrPT_model_bar(self):
         def transition(k, k_transition=0.4, b=0.05):
             return 0.5 + 0.5*np.tanh((k-k_transition)/b)
@@ -402,16 +453,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         def model(k, A0=None, A1=None, b2_00=None, k_t=None):
             switch = transition(k, k_t)
             linear_corr = A0 + A1*k
-            term1 = self.b1_bar*self.P00_model(k)*(1. + switch*linear_corr) 
+            term1 = self._ib1_bar*self.P00_model(k)*(1. + switch*linear_corr) 
             term2 = (1. - switch)*b2_00*self.K00(k)
             return term1 + term2
             
-        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self.b1_bar)
+        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self._ib1_bar)
         return model(self.k, **params)
     
-    @cached_property("k", "b1", "b1_bar", "z", "sigma8_z")
+    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
     def Phh_model(self):
-        mean_bias = (self.b1*self.b1_bar)**0.5
+        mean_bias = (self._ib1*self._ib1_bar)**0.5
         
         def model(k, A1=None, A2=None, dP=None, R=None):
             Phh_2halo = self.P00_model.zeldovich_power(k)
@@ -424,7 +475,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
     #---------------------------------------------------------------------------        
-    @cached_property("b1", "P00", "use_Phm_model", "sigma8_z")
+    @cached_property("_ib1", "P00", "use_Phm_model", "sigma8_z")
     def Phm(self):
         """
         The halo - matter cross correlation for the 1st tracer
@@ -432,7 +483,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Phm = PowerTerm()
         
         if not self.use_Phm_model:
-            term1 = self.b1*self.P00.total.mu0
+            term1 = self._ib1*self.P00.total.mu0
             term2 = self.b2_00*self.K00(self.k)
             term3 = self.bs*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
@@ -444,7 +495,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return Phm
         
-    @cached_property("b1_bar", "P00", "use_Phm_model", "sigma8_z")
+    @cached_property("_ib1_bar", "P00", "use_Phm_model", "sigma8_z")
     def Phm_bar(self):
         """
         The halo - matter cross correlation for the 2nd tracer
@@ -452,7 +503,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Phm = PowerTerm()
         
         if not self.use_Phm_model:
-            term1 = self.b1_bar*self.P00.total.mu0
+            term1 = self._ib1_bar*self.P00.total.mu0
             term2 = self.b2_00_bar*self.K00(self.k)
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
@@ -504,7 +555,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P00_ss_no_stoch
             
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "Pdv", "P01")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01")
     def P01_ss(self):
         """
         The correlation of the halo density and halo momentum fields, which 
@@ -521,24 +572,24 @@ class BiasedSpectrum(DarkMatterSpectrum):
             K11  = self.K11(self.k)
             K11s = self.K11s(self.k)
             
-            term1 = (self.b1*self.b1_bar) * self.P01.total.mu2
-            term2 = -self.Pdv*(self.b1*(1. - self.b1_bar) + self.b1_bar*(1. - self.b1))
+            term1 = (self._ib1*self._ib1_bar) * self.P01.total.mu2
+            term2 = -self.Pdv*(self._ib1*(1. - self._ib1_bar) + self._ib1_bar*(1. - self._ib1))
             term3 = self.f*((self.b2_01 + self.b2_01_bar)*K10 + (self.bs + self.bs_bar)*K10s )
-            term4 = self.f*((self.b1_bar*self.b2_01 + self.b1*self.b2_01_bar)*K11 + \
-                        (self.b1_bar*self.bs + self.b1*self.bs_bar)*K11s)
+            term4 = self.f*((self._ib1_bar*self.b2_01 + self._ib1*self.b2_01_bar)*K11 + \
+                        (self._ib1_bar*self.bs + self._ib1*self.bs_bar)*K11s)
     
             P01_ss.total.mu2 = term1 + term2 + term3 + term4
         return P01_ss
         
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "P02", "P00_ss_no_stoch",
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "P02", "P00_ss_no_stoch",
                      "sigma_v", "sigma_bv2")
     def P02_ss(self):
         """
         The correlation of the halo density and halo kinetic energy, which 
         contributes mu^2 and mu^4 terms to the power expansion.
         """
-        b1, b1_bar       = self.b1, self.b1_bar
+        b1, b1_bar       = self._ib1, self._ib1_bar
         b2_00, b2_00_bar = self.b2_00, self.b2_00_bar
         bs, bs_bar       = self.bs, self.bs_bar
         
@@ -575,7 +626,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P02_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("b1", "b1_bar", "max_mu", "P11")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11")
     def P11_ss(self):
         """
         The auto-correlation of the halo momentum field, which 
@@ -584,7 +635,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         the scalar part on large scales (linear term) and the vector part
         on small scales.
         """
-        b1, b1_bar = self.b1, self.b1_bar
+        b1, b1_bar = self._ib1, self._ib1_bar
         P11_ss = PowerTerm()
 
         # do mu^2 terms?
@@ -646,7 +697,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The correlation of halo momentum and halo kinetic energy density, which 
         contributes mu^4 and mu^6 terms to the power expansion.
         """
-        b1, b1_bar = self.b1, self.b1_bar
+        b1, b1_bar = self._ib1, self._ib1_bar
         P12_ss = PowerTerm()
         
         # do mu^4 terms?
@@ -722,7 +773,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         mu^4, mu^6, mu^8 terms to the power expansion. There are no linear 
         contributions here. 
         """
-        b1, b1_bar = self.b1, self.b1_bar
+        b1, b1_bar = self._ib1, self._ib1_bar
         P22_ss = PowerTerm()
         
         # do mu^4 terms?
@@ -764,7 +815,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The cross-correlation of halo density with the rank four tensor field
         ((1+delta_h)v)^4, which contributes mu^4 and mu^6 terms, at 2-loop order.
         """
-        b1, b1_bar = self.b1, self.b1_bar
+        b1, b1_bar = self._ib1, self._ib1_bar
         P04_ss = PowerTerm()
         
         # do mu^4 terms?
@@ -833,7 +884,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         A = 1.
         if self.use_mu_corrections:
-            mean_bias = (self.b1*self.b1_bar)**0.5
+            mean_bias = (self._ib1*self._ib1_bar)**0.5
             A = max(self.mu6_correction(mean_bias), 0.)        
             
         return A*(self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k))

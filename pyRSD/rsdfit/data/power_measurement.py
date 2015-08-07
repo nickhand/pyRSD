@@ -171,7 +171,7 @@ class PowerMeasurement(object):
         if self.type == 'pole':
             raise AttributeError("No `mu` attribute for `PowerMeasurement` of type `pole`")
         
-        return self._identifier
+        return self._identifier[self._k_trim_inds]
         
     #---------------------------------------------------------------------------
     @property
@@ -303,6 +303,7 @@ class PowerData(object):
         
         # loop over each statistic
         self.measurements = []
+        self.kmin, self.kmax = np.inf, 0.
         for i, stat_name in enumerate(stats):
             
             # parse the name
@@ -317,11 +318,13 @@ class PowerData(object):
                 
             # now make the PowerMeasurement object
             k = self.data['k'][:,i]
-            mu = np.mean(self.data['mu'][:,i])
+            mu = self.data['mu'][:,i]
             power = self.data['power'][:,i]
             error = self.data['error'][:,i]
             self.measurements.append(PowerMeasurement(k, power, 'pkmu', mu, error=error))
-        
+            self.kmin = min(np.amin(k), self.kmin)
+            self.kmax = max(np.amax(k), self.kmax)
+            
         # # make sure all the ks are the same
         # tmp = self.measurements
         # if not all(np.array_equal(tmp[i].k, tmp[i+1].k) for i in range(len(tmp)-1)):
@@ -343,7 +346,7 @@ class PowerData(object):
         index_mus = []
         for d in self.measurements:
             if d.type == 'pkmu':
-                index_mus.append(d.mu)
+                index_mus.append(np.mean(d.mu))
             index_ks += list(d.k)
         
         # load the covariance from a pickle

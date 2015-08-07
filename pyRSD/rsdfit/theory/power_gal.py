@@ -29,9 +29,7 @@ class GalaxyPowerParameters(ParameterSet):
                      'sigma_sA': 'satA FOG damping in Mpc/h', 
                      'sigma_sB': 'satB FOG damping in Mpc/h',
                      'small_scale_sigma': 'additional small scale velocity in km/s',
-                     'N' : 'constant offset to model, in (Mpc/h)^3', 
-                     'fso' : 'fraction of extra SO satellites around centrals',
-                     'sigma_cA' : 'FOG damping in Mpc/h of extra SO satellites' }
+                     'N' : 'constant offset to model, in (Mpc/h)^3'}
                    
     _extra_params = {'b1_s': 'linear bias of satellites',
                      'b1_c': 'linear bias of centrals', 
@@ -132,7 +130,7 @@ class GalaxyPowerTheory(object):
     evaluation of the model itself.
     """
     
-    def __init__(self, param_file, extra_param_file=None, k=None):
+    def __init__(self, param_file, extra_param_file=None, kmin=None, kmax=None):
         """
         Initialize the theory 
         
@@ -142,8 +140,10 @@ class GalaxyPowerTheory(object):
             name of the file holding the parameters for the theory    
         extra_param_file : str
             name of the file holding the names of any extra parameter files
-        k : array_like, optional
-            If not `None`, initalize the theoretical model at these `k` values
+        kmin : float, optional
+            If not `None`, initalize the model with this `kmin` value
+        kmax : float, optional
+            If not `None`, initalize the model with this `kmax` value
         """
         # read the parameter file lines and save them for pickling   
         self._readlines = open(param_file, 'r').readlines()
@@ -182,7 +182,8 @@ class GalaxyPowerTheory(object):
         
         # initialize the galaxy power spectrum model
         kwargs = {k:v() for k,v in self.model_params.iteritems()}
-        if k is not None: kwargs['k'] = k
+        if kmin is not None: kwargs['kmin'] = kmin
+        if kmax is not None: kwargs['kmax'] = kmax
         self.model = rsd.power_gal.GalaxySpectrum(**kwargs)
         
         # update the constraints
@@ -352,7 +353,7 @@ class GalaxyPowerTheory(object):
         return True
         
     #---------------------------------------------------------------------------
-    def model_callable(self, power_type, identifier, **kwargs):
+    def model_callable(self, k, mu, **kwargs):
         """
         Return the correct model function based on the type and identifier
         (from a PowerMeasurement)
@@ -360,26 +361,17 @@ class GalaxyPowerTheory(object):
         Any keyword arguments supplied will be passed to the callables
         """
         # computing pkmu
-        if power_type == 'pkmu':
+        try:
             if not hasattr(self.model, self.pkmu_callable):
                 raise ValueError("RSD model has no function `%s` to compute P(k,mu)" %self.pkmu_callable)
                 
             f = getattr(self.model, self.pkmu_callable)
-            return functools.partial(f, np.array(identifier, ndmin=1), flatten=True, **kwargs)
-        
-        # computing multipoles
-        elif power_type == 'pole':
-            
-            if not hasattr(self.model, self.poles_callable):
-                raise ValueError("RSD model has no function `%s` to compute multipoles" %self.poles_callable)
-                
-            f = getattr(self.model, self.poles_callable)
-            return functools.partial(f, np.array(identifier, ndmin=1), flatten=True, **kwargs)
+            return functools.partial(f, k, mu, **kwargs)
             
         # all is lost...
-        else:        
+        except Exception as e:        
             # something has gone horribly wrong...
-            msg = "No power spectrum model for measurement of type {} {}".format(power_type, identifier)
+            msg = "No power spectrum model for measurement of type {} {}: {}".format(power_type, identifier, str(e))
             raise NotImplementedError(msg)
     
     #---------------------------------------------------------------------------

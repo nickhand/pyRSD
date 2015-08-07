@@ -1,3 +1,12 @@
+"""
+    fitting_driver.py
+    pyRSD.rsdfit
+
+    __author__ : Nick Hand
+    __email__  : nhand@berkeley.edu
+    __desc__   : the driver for the main rsdfit fitter
+"""
+
 try:
     import plotify as pfy
 except:
@@ -19,6 +28,8 @@ logger = logging.getLogger('rsdfit.fitting_driver')
 logger.addHandler(logging.NullHandler())
 
 #-------------------------------------------------------------------------------
+# utility functions
+#-------------------------------------------------------------------------------
 def load_driver(params_file, model_file, results_file):
     """
     Load a driver object from a parameter file, results file, and model file
@@ -29,14 +40,12 @@ def load_driver(params_file, model_file, results_file):
     
     return driver
     
-#-------------------------------------------------------------------------------
 def _pickle_method(method):
     func_name = method.im_func.__name__
     obj = method.im_self
     cls = method.im_class
     return _unpickle_method, (func_name, obj, cls)
  
-#-------------------------------------------------------------------------------
 def _unpickle_method(func_name, obj, cls):
     for cls in cls.mro():
         try:
@@ -47,7 +56,6 @@ def _unpickle_method(func_name, obj, cls):
             break
     return func.__get__(obj, cls)
     
-#-------------------------------------------------------------------------------
 class FittingDriver(object):
     """
     A class to handle the data analysis pipeline, merging together a model, 
@@ -61,8 +69,11 @@ class FittingDriver(object):
         self.data = PowerData(param_file)
         
         # initialize the theory
-        k_obs = self.data.measurements[0].k
-        self.theory = GalaxyPowerTheory(param_file, extra_param_file=extra_param_file, k=k_obs)
+        kwargs = {}
+        kwargs['extra_param_file'] = extra_param_file
+        kwargs['kmin'] = self.data.kmin
+        kwargs['kmax'] = self.data.kmax
+        self.theory = GalaxyPowerTheory(param_file, **kwargs)
         
         # generic params
         self.params = ParameterSet(param_file, tag='driver')
@@ -78,7 +89,6 @@ class FittingDriver(object):
         # pickle instance methods
         copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
         
-    #---------------------------------------------------------------------------
     def to_file(self, filename, mode='w'):
         """
         Save the parameters of this driver to a file
@@ -93,7 +103,6 @@ class FittingDriver(object):
         # and now the theory params
         self.theory.to_file(filename, mode='a')
     
-    #---------------------------------------------------------------------------
     def __getstate__(self):
         d = self.__dict__.copy()
         d.pop('_model_callables')
@@ -108,7 +117,6 @@ class FittingDriver(object):
         self.__dict__ = d
         self._get_model_callables()
         
-    #---------------------------------------------------------------------------
     def run(self):
         """
         The main function, this will run the whole analysis from start to 
@@ -156,7 +164,6 @@ class FittingDriver(object):
         
         return exception
 
-    #---------------------------------------------------------------------------
     def restart_chain(self, iterations, old_chain_file, pool=None):
         """
         Load the old chain given by `old_chain_file`, store as `self.results`, 
@@ -200,7 +207,6 @@ class FittingDriver(object):
 
         return exception
     
-    #---------------------------------------------------------------------------
     def finalize_fit(self, exception, results_file):
         """
         Finalize the fit, saving the results file
@@ -211,8 +217,7 @@ class FittingDriver(object):
         
         if not exception:
             self.results.summarize_fit()
-            
-    #---------------------------------------------------------------------------
+
     def do_maximum_likelihood(self):
         """
         Compute the maximum likelihood values and return them as an array
@@ -233,7 +238,6 @@ class FittingDriver(object):
         del results
         return values
 
-    #---------------------------------------------------------------------------
     def set_model(self, filename):
         """
         Set the model, as read from a file
@@ -246,13 +250,10 @@ class FittingDriver(object):
         self.theory.model = model
         self.theory.update_constraints()
         
-
         # make the list of model callables
         self._get_model_callables()
         logger.info("...theoretical model successfully read")
 
-
-    #---------------------------------------------------------------------------
     def _setup_for_data(self):
         """
         Setup the model callables for this set of data
@@ -266,39 +267,22 @@ class FittingDriver(object):
         # make the list of model callables
         self._get_model_callables()
                 
-    #---------------------------------------------------------------------------
     def _get_model_callables(self):
         """
         Compute the model callables
         """
         # get the mu/ell mappings
-        mus, ells = [], []
+        ks, mus = [], []
         for i, meas in enumerate(self.data.measurements):
+            ks.append(meas.k)
             if meas.type == 'pkmu':
-                mus.append(meas.mu)   
-            elif meas.type == 'pole':
-                ells.append(meas.ell)
-        inds = np.argsort(mus)
-        
-        self._mus = [mus[i] for i in inds]
-        self._ells = sorted(ells)
-        
-        # initialize
-        self._model_callables = {}
-        self._model_callables_hires = {}
-        
-        # pkmu
-        if len(self._mus) > 0:
-            kwargs = {}            
-            self._model_callables['pkmu'] = self.theory.model_callable('pkmu', self._mus, **kwargs)
-            self._model_callables_hires['pkmu'] = self.theory.model_callable('pkmu', self._mus, hires=True, **kwargs)
-
-        # multipoles
-        if len(self._ells) > 0:
-            self._model_callables['pole'] = self.theory.model_callable('pole', self._ells)
-            self._model_callables_hires['pole'] = self.theory.model_callable('pole', self._ells, hires=True)
+                mus.append(meas.mu)
+            else:
+                raise NotImplementedError("only pkmu supported right now")
+        self._ks = np.concatenate(ks)
+        self._mus = np.concatenate(mus)
+        self._model_callable = self.theory.model_callable(self._ks, self._mus)
                 
-    #---------------------------------------------------------------------------
     def save(self, filename):
         """
         Save as a pickle
@@ -308,7 +292,6 @@ class FittingDriver(object):
         self.pool = None
         rsd_io.save_pickle(self)
         
-    #---------------------------------------------------------------------------
     @property
     def results(self):
         """
@@ -334,39 +317,24 @@ class FittingDriver(object):
             
         self._results = val
         
-    #---------------------------------------------------------------------------
     @property
     def model(self):
         """
         A list of model values for each `PowerMeasurement` in 
         `self.data.measurements`
         """
-        # split the pkmu/pole results
-        if 'pkmu' in self._model_callables:
-            pkmu_results = np.split(self._model_callables['pkmu'](), len(self._mus))
-        if 'pole' in self._model_callables:
-            pole_results = np.split(self._model_callables['pole'](), len(self._ells))
-            
-        toret = []
-        for m in self.data.measurements:
-            if m.type == 'pole':
-                index = self._ells.index(m.ell)
-                toret.append(pole_results[index])
-            else:
-                index = self._mus.index(m.mu)
-                toret.append(pkmu_results[index])
-        return toret
-        
-    #---------------------------------------------------------------------------        
+        N = len(self.data.measurements)
+        result = self._model_callable()
+        return result.reshape((N, -1)).T
+    
     @property
     def combined_model(self):
         """
         Return the model values for each measurement concatenated into a single
         array
         """
-        return np.concatenate(self.model)
+        return self.model.ravel(order='F')
         
-    #---------------------------------------------------------------------------
     @property
     def dof(self):
         """
@@ -385,7 +353,6 @@ class FittingDriver(object):
         """
         return self.theory.lnprior
 
-    #---------------------------------------------------------------------------
     def normed_residuals(self, theta=None):
         """
         Return an array of the normed residuals: (model - data) / diag(covariance)**0.5
@@ -396,8 +363,7 @@ class FittingDriver(object):
         
         norm = np.sqrt(self.data.covariance.diag())
         return  (self.combined_model - self.data.combined_power) / norm
-        
-    #---------------------------------------------------------------------------
+
     def chi2(self, theta=None):
         """
         The chi-squared for the specified model function, based 
@@ -413,22 +379,19 @@ class FittingDriver(object):
               
         diff = self.combined_model - self.data.combined_power
         return np.dot(diff, np.dot(self.data.covariance.inverse, diff))
-    
-    #---------------------------------------------------------------------------
+
     def reduced_chi2(self):
         """
         The reduced chi squared value
         """
         return self.chi2() / self.dof
         
-    #---------------------------------------------------------------------------
     def lnlike(self):
         """
         The log of the likelihood, equal to -0.5 * chi2
         """
         return -0.5*self.chi2()
         
-    #---------------------------------------------------------------------------
     def lnprob(self, theta=None):
         """
         Set the theory free parameters, update the model, and return the log of
@@ -450,9 +413,7 @@ class FittingDriver(object):
             return -np.inf
         else:
             return lp + self.lnlike()
-    #end lnprob
-    
-    #---------------------------------------------------------------------------
+
     def set_fiducial(self):
         """
         Set the fiducial values as the current values of the free parameters
@@ -465,8 +426,7 @@ class FittingDriver(object):
             logger.error("Problem set fiducial values; not correct number")
             raise ValueError("Number of fiducial values not equal to number of free params")
         self.theory.set_free_parameters(theta)
-    
-    #---------------------------------------------------------------------------
+
     def set_fit_results(self):
         """
         Set the free parameters from the results objects and update the model
@@ -475,8 +435,7 @@ class FittingDriver(object):
             theta = self.results.values()
             self.theory.set_free_parameters(theta)
             
-    #---------------------------------------------------------------------------
-    def data_model_pairs(self, hires=False):
+    def data_model_pairs(self):
         """
         Return the data - model pairs for each measurement
         
@@ -486,28 +445,14 @@ class FittingDriver(object):
             A list of (k_model, model, k_data, data, err) for each measurement in 
             `self.data.measurements`
         """
-        if not hires:
-            callables = self._model_callables
-        else:
-            callables = self._model_callables_hires
-            
-        # get the pkmu/pole values
-        if 'pkmu' in callables:
-            pkmu_results = np.split(callables['pkmu'](), len(self._mus))
-        if 'pole' in callables:
-            pole_results = np.split(callables['pole'](), len(self._ells))
+        N = len(self.data.measurements)
+        ks = self._ks.reshape((N, -1)).T
+        model = self.model
 
         # get the model and data measurements
         toret = []
-        for m in self.data.measurements:
-            if m.type == 'pole':
-                index = self._ells.index(m.ell)
-                model = pole_results[index]
-            else:
-                index = self._mus.index(m.mu)
-                model = pkmu_results[index]
-            
-            toret.append((self.theory.model.k_obs, model, m.k, m.power, m.error))
+        for i, m in enumerate(self.data.measurements):          
+            toret.append((ks[...,i], model[...,i], m.k, m.power, m.error))
             
         return toret
     
@@ -521,9 +466,6 @@ class FittingDriver(object):
         """
         # get the data - model pairs (k, model, data, err)
         results = self.data_model_pairs()
-
-        pkmu_results, pole_results = [], []
-        mus, ells = [], []
 
         # loop over each measurement
         for i, result in enumerate(results):
@@ -542,42 +484,22 @@ class FittingDriver(object):
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
         ax.legend(loc=0, ncol=2)
             
-        
-    #---------------------------------------------------------------------------
     def plot(self):
         """
         Plot the model and data points for the measurements, plotting the 
         P(k, mu) and multipoles on separate figures
         """
         # get the data - model pairs (k, model, data, err)
-        results = self.data_model_pairs(hires=True)
-        
-        pkmu_results, pole_results = [], []
-        mus, ells = [], []
+        results = self.data_model_pairs()
         
         # loop over each measurement
-        for i, result in enumerate(results):
-            
-            m = self.data.measurements[i]
-            kind = m.type
-            if kind == 'pkmu':
-                mus.append(m.mu)
-                pkmu_results.append(result)
-            else:
-                ells.append(m.ell)
-                pole_results.append(result)
-            
-        # plot pkmu
-        if len(pkmu_results) > 0:
-            fig = pfy.figure()
-            self._plot_pkmu(fig, pkmu_results, mus)
-            
-        # plot poles
-        if len(pole_results) > 0:
-            fig = pfy.figure()
-            self._plot_poles(fig, pole_results, ells)
-            
-    #---------------------------------------------------------------------------
+        mus = []
+        for i, m in enumerate(self.data.measurements):
+            mus.append(np.mean(m.mu))
+
+        fig = pfy.figure()
+        self._plot_pkmu(fig, results, mus)
+
     def _plot_pkmu(self, fig, results, mus):
         """
         Plot the model and data points for any P(k,mu) measurements
@@ -595,7 +517,7 @@ class FittingDriver(object):
         for i in range(len(mus)):
             
             mu = mus[i]
-            label=r"$\mu = %s$" %mu
+            label=r"$\mu = %.4f$" %mu
             
             # unpack the result
             k_model, model, k_data, data, errs = results[i]
@@ -612,47 +534,8 @@ class FittingDriver(object):
         ax.legend(loc=0, ncol=ncol)
         ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
         ax.ylabel.update(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
-    
-    #---------------------------------------------------------------------------
-    def _plot_poles(self, fig, results, ells):
-        """
-        Plot the model and data points for any multipole measurements
-        """
-        ax = fig.gca()
-        ax.color_cycle = 'Paired'
 
-        # set up the normalization
-        f = self.theory.model.f; b1 = self.theory.model.b1
-        beta = f/b1
-        mono_kaiser = lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * self.theory.model.normed_power_lin(k)
-
-        for i, ell in enumerate(ells):
-            
-            # unpack the result
-            k_model, model, k_data, data, errs = results[i]
-            
-            # plot the model
-            norm = mono_kaiser(k_model)
-            pfy.plot(k_model, model/norm)
-            
-            # plot the measurement
-            if ell == 0:
-                label = "monopole"
-            elif ell == 2:
-                label = "quadrupole"
-            else:
-                raise ValueError("Do not understand `ell` value for plotting purposes")
-            norm = mono_kaiser(k_data)
-            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
-
-        ax.legend(loc=0)
-        ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
-        ax.ylabel.update(r"$P^{\ gg}_{\ell=0,2} / P^\mathrm{NW}_{\ell=0,2} (k)$", fontsize=16)
-
-    #---------------------------------------------------------------------------
-#endclass FittingDriver
-
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
         
     
     

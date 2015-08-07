@@ -34,9 +34,10 @@ def monopole(f):
     Decorator to compute the monopole from a `self.power` function
     """     
     def wrapper(self, *args, **kwargs):
+        k = args[0]
         mus = np.linspace(0., 1., 101)
-        Pkmus = f(self, mus, **kwargs)
-        return np.array([simps(Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+        Pkmus = f(self, k, mus, **kwargs)
+        return np.array([simps(pk, x=mus) for pk in Pkmus])
     return wrapper
 
 #-------------------------------------------------------------------------------
@@ -45,10 +46,11 @@ def quadrupole(f):
     Decorator to compute the quadrupole from a `self.power` function
     """     
     def wrapper(self, *args, **kwargs):
+        k = args[0]
         mus = np.linspace(0., 1., 101)
-        Pkmus = f(self, mus, **kwargs)
+        Pkmus = f(self, k, mus, **kwargs)
         kern = 2.5*(3*mus**2 - 1.)
-        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+        return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
     return wrapper
 
 #-------------------------------------------------------------------------------
@@ -57,10 +59,11 @@ def hexadecapole(f):
     Decorator to compute the hexadecapole from a `self.power` function
     """  
     def wrapper(self, *args, **kwargs):
+        k = args[0]
         mus = np.linspace(0., 1., 1001)
-        Pkmus = f(self, mus, **kwargs)
+        Pkmus = f(self, k, mus, **kwargs)
         kern = 9./8.*(35*mus**4 - 30.*mus**2 + 3.)
-        return np.array([simps(kern*Pkmus[k_index,:], x=mus) for k_index in xrange(len(self.k_obs))])
+        return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
     return wrapper
     
 

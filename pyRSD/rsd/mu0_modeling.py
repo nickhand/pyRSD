@@ -95,7 +95,7 @@ class SplineTableModelParams(object):
         # return NaNs if we are out of bounds
         if x < self.index_min or x > self.index_max:
             args = (x, self.index_min, self.index_max)
-            return ValueError("index value {} is out of interpolation range [{}, {}]".format(*args))
+            raise ValueError("index value {} is out of interpolation range [{}, {}]".format(*args))
 
         if x in self.index:
             i = abs(self.index - x).argmin()
@@ -142,17 +142,27 @@ class StochasticityPadeModelParams(GPModelParams):
     and interpolated using a Gaussian process as a function of sigma8(z) and b1 
     """
     def __init__(self):
-        path = sim_data.stochB_pade_gp_params()
+        path = sim_data.stochB_pade_params()
         super(StochasticityPadeModelParams, self).__init__(path)
 
-class StochasticityLogModelParams(GPModelParams):
+class StochasticityLogModelParams(SplineTableModelParams):
     """
     The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
-    and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+    and interpolated using a spline table as a function of sigma8(z) and b1 
     """
     def __init__(self):
-        path = sim_data.stochB_log_gp_params()
+        path = sim_data.stochB_log_params()
         super(StochasticityLogModelParams, self).__init__(path)
+
+class CrossStochasticityLogModelParams(GPModelParams):
+    """
+    The bestfit params for the (type B) cross bin stochasticity, modeled using 
+    a Pade expansion, and interpolated using a Gaussian process as a function 
+    of sigma8(z) and b1 
+    """
+    def __init__(self):
+        path = sim_data.stochB_cross_log_params()
+        super(CrossStochasticityLogModelParams, self).__init__(path)
     
 class PhmResidualModelParams(GPModelParams):
     """
@@ -160,7 +170,7 @@ class PhmResidualModelParams(GPModelParams):
     and interpolated using a Gaussian process as a function of sigma8(z) and b1 
     """
     def __init__(self):
-        path = sim_data.Phm_residual_gp_params()
+        path = sim_data.Phm_residual_params()
         super(PhmResidualModelParams, self).__init__(path)
         
 class PhmCorrectedPTModelParams(GPModelParams):
@@ -170,7 +180,7 @@ class PhmCorrectedPTModelParams(GPModelParams):
     of sigma8(z) and b1 
     """
     def __init__(self):
-        path = sim_data.Phm_correctedPT_gp_params()
+        path = sim_data.Phm_correctedPT_params()
         super(PhmCorrectedPTModelParams, self).__init__(path)
         
 class PhhModelParams(GPModelParams):
@@ -179,7 +189,7 @@ class PhhModelParams(GPModelParams):
     function of sigma8(z) and b1 
     """
     def __init__(self):
-        path = sim_data.Phh_gp_params()
+        path = sim_data.Phh_params()
         super(PhhModelParams, self).__init__(path)
         
 

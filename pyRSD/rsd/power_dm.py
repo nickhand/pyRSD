@@ -7,6 +7,12 @@ from ._sim_loader import SimLoader
 from .simulation import SimulationPdv, SimulationP11
 from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01
 
+def verify_krange(k, kmin, kmax):
+    if np.amin(k) < kmin:
+        raise ValueError("cannot compute power spectrum for k < %.2f" %kmin)
+    if np.amax(k) > kmax:
+        raise ValueError("cannot compute power spectrum for k > %.2f" %kmax)
+
 #-------------------------------------------------------------------------------
 class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     """
@@ -24,7 +30,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
-    def __init__(self, k=np.logspace(-2, np.log10(0.5), 100),
+    def __init__(self, kmin=0.01,
+                       kmax=0.5,
+                       Nk=500,
                        z=0., 
                        cosmo="planck1_WP.ini",
                        include_2loop=False,
@@ -36,8 +44,14 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         Parameters
         ----------
-        k : array_like, optional
-            The wavenumbers to compute power spectrum at [units: `h/Mpc`]
+        kmin : float, optional
+            The minimum wavenumber to compute the power spectrum at [units: `h/Mpc`]
+        
+        kmax : float, optional
+            The maximum wavenumber to compute the power spectrum at [units: `h/Mpc`]
+            
+        Nk : int, optional
+            The number of log-spaced bins to use as the underlying domain for splines
             
         z : float, optional
             The redshift to compute the power spectrum at. Default = 0.
@@ -69,15 +83,16 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         SimLoader.__init__(self)
         
         # set the input parameters
-        self.hires          = False # by default
         self.interpolate    = interpolate
         self.transfer_fit   = transfer_fit
         self.cosmo_filename = cosmo
         self.max_mu         = max_mu
         self.include_2loop  = include_2loop
         self.z              = z 
-        self.k_input        = k
         self.load_dm_sims   = load_dm_sims
+        self.kmin           = kmin
+        self.kmax           = kmax
+        self.Nk             = Nk
         
         # initialize the cosmology parameters and set defaults
         self.sigma8            = self.cosmo.sigma8()
@@ -133,7 +148,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             self.load('P01_mu2', P01_mu2_data[:,0], P01_mu2_data[:,1])
             self.load('P11_mu4', P11_mu4_data[:,0], P11_mu4_data[:,1])
             self.load('Pdv', Pdv_mu0_data[:,0], Pdv_mu0_data[:,1])
-            
             
         return val
         
@@ -196,20 +210,26 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return val
 
     @parameter
-    def k_input(self, val):
+    def kmin(self, val):
         """
-        The input wavenumbers specified by the user
-        """
-        return val
-    
-    @parameter
-    def hires(self, val):
-        """
-        If `True`, return "high-resolution" results with 20x as many wavenumber
-        data points.
+        Minimum observed wavenumber needed for results
         """
         return val
         
+    @parameter
+    def kmax(self, val):
+        """
+        Minimum observed wavenumber needed for results
+        """
+        return val
+        
+    @parameter
+    def Nk(self, val):
+        """
+        Number of log-spaced wavenumber bins to use in underlying splines
+        """
+        return val
+    
     @parameter
     def sigma8(self, val):
         """
@@ -299,12 +319,12 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
     @cached_property("sigmav_input")
-    def sigma_v(self, val):
+    def sigma_v(self):
         """
         The velocity dispersion at z = 0. If not provided, defaults to the 
         linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
         """
-        return val
+        return self.sigmav_input
         
     @cached_property('z', 'cosmo')
     def _normalized_sigma8_z(self):
@@ -326,33 +346,19 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         A `pygcl.Cosmology` object holding the cosmological parameters
         """
         return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit)
-        
-    @cached_property("k_input", "hires")
-    def k_obs(self):
-        """
-        The "observed" wavenumbers to compute the power spectrum at.
-        """
-        if not self.hires:
-            return self.k_input
-        else:
-            lo = np.amin(self.k_input)
-            hi = np.amax(self.k_input)
-            return np.linspace(lo, hi, 20*len(self.k_input))
-              
-    @cached_property("alpha_perp", "alpha_par", "k_obs")
+                      
+    @cached_property("alpha_perp", "alpha_par", "kmin", "kmax", "Nk")
     def k(self):
         """
-        Return a hires range in wavenumbers, set by the minimum/maximum
-        allowed values, given the desired wavenumbers `k_obs` and the
+        Return a range in wavenumbers, set by the minimum/maximum
+        allowed values, given the desired `kmin` and `kmax` and the
         current values of the AP effect parameters, `alpha_perp` and `alpha_par`
         """
-        k_mu0 = self.k_true(self.k_obs, 0.)
-        k_mu1 = self.k_true(self.k_obs, 1.)
-        kmin = 0.95*min(np.amin(k_mu0), np.amin(k_mu1))
-        kmax = 1.05*max(np.amax(k_mu0), np.amax(k_mu1))
+        kmin = 0.95*min(self.k_true(self.kmin, 0.), self.k_true(self.kmin, 1.))
+        kmax = 1.05*max(self.k_true(self.kmax, 0.), self.k_true(self.kmax, 1.))
 
         if kmin < INTERP_KMIN:
-            msg = "Minimum possible k value with this `k_obs` and "
+            msg = "Minimum possible k value with this `kmin` and "
             msg += "`alpha_par`, `alpha_perp` values is below the minimum "
             msg += "value used for interpolation purposes; exiting before "
             msg += "bad things happen."
@@ -365,7 +371,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             msg += "bad things happen."
             raise ValueError(msg)
 
-        return np.logspace(np.log10(kmin), np.log10(kmax), 500)
+        return np.logspace(np.log10(kmin), np.log10(kmax), self.Nk)
     
     @cached_property("z", "cosmo")
     def D(self):
@@ -1068,13 +1074,13 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return P04
     
     #---------------------------------------------------------------------------
-    def _power_one_mu(self, mu_obs):
+    def _power_one_mu(self, k, mu_obs):
         """
         Internal function to evaluate P(k, mu) at a scalar mu value
         """
         # set the observed mu value
         mu = self.mu_true(mu_obs)
-        k = self.k_true(self.k_obs, mu_obs)
+        k = self.k_true(k, mu_obs)
         vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
                 
         if self.max_mu == 0:
@@ -1091,13 +1097,15 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return np.nan_to_num(vol_scaling*P_out)
     
     #---------------------------------------------------------------------------
-    def power(self, mu, flatten=False):
+    def power(self, k, mu, flatten=False):
         """
         Return the redshift space power spectrum at the specified value of mu, 
         including terms up to ``mu**self.max_mu``.
         
         Parameters
         ----------
+        k : float or array_like
+            The wavenumbers in `h/Mpc` to evaluate the model at
         mu : float, array_like
             The mu values to evaluate the power at.
         
@@ -1110,39 +1118,40 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             model evaluated at different `mu` values. If `flatten = True`, then
             the returned array is raveled, with dimensions of `(N*len(self.k), )`
         """
-        if np.isscalar(mu):
-            return self._power_one_mu(mu)
+        verify_krange(k, self.kmin, self.kmax)
+        if np.isscalar(mu) or len(mu) == len(k):
+            return self._power_one_mu(k, mu)
         else:
-            toret = np.vstack([self._power_one_mu(imu) for imu in mu]).T
+            toret = np.vstack([self._power_one_mu(k, imu) for imu in mu]).T
             if flatten: toret = np.ravel(toret, order='F')
             return toret
     
     #---------------------------------------------------------------------------
     @tools.monopole
-    def monopole(self, mu):
+    def monopole(self, k, mu, **kwargs):
         """
         The monopole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        return self.power(mu)
+        return self.power(k, mu)
             
     #---------------------------------------------------------------------------
     @tools.quadrupole
-    def quadrupole(self, mu):
+    def quadrupole(self, k, mu, **kwargs):
         """
         The quadrupole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        return self.power(mu)
+        return self.power(k, mu)
     
     #---------------------------------------------------------------------------
     @tools.hexadecapole
-    def hexadecapole(self, mu):
+    def hexadecapole(self, k, mu, **kwargs):
         """
         The hexadecapole moment of the power spectrum. Include mu terms up to 
         mu**max_mu.
         """
-        return self.power(mu)
+        return self.power(k, mu)
                 
     #---------------------------------------------------------------------------
 

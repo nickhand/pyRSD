@@ -6,64 +6,39 @@
     __email__  : nhand@berkeley.edu
     __desc__   : the driver for the main rsdfit fitter
 """
-
-try:
-    import plotify as pfy
-except:
-    raise ImportError("`Plotify` plotting package required for `rsdfit`")
-    
-from .. import numpy as np, pygcl 
+from .. import numpy as np, os
+from . import logging, params_filename, model_filename
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData
 from .fitters import *
 from .util import rsd_io
-
 import functools
-import logging
-import copy_reg
-import types
 
 logger = logging.getLogger('rsdfit.fitting_driver')
 logger.addHandler(logging.NullHandler())
 
-#-------------------------------------------------------------------------------
-# utility functions
-#-------------------------------------------------------------------------------
-def load_driver(params_file, model_file, results_file):
-    """
-    Load a driver object from a parameter file, results file, and model file
-    """
-    driver = FittingDriver(params_file, initialize_model=False)
-    driver.set_model(model_file)
-    driver.results = rsd_io.load_pickle(results_file)
-    
-    return driver
-    
-def _pickle_method(method):
-    func_name = method.im_func.__name__
-    obj = method.im_self
-    cls = method.im_class
-    return _unpickle_method, (func_name, obj, cls)
- 
-def _unpickle_method(func_name, obj, cls):
-    for cls in cls.mro():
-        try:
-            func = cls.__dict__[func_name]
-        except KeyError:
-            pass
-        else:
-            break
-    return func.__get__(obj, cls)
-    
 class FittingDriver(object):
     """
     A class to handle the data analysis pipeline, merging together a model, 
     theory, and fitting algorithm
     """
-    def __init__(self, param_file, extra_param_file=None, pool=None, initialize_model=True):
+    __metaclass__ = rsd_io.PickeableClass
+    
+    def __init__(self, param_file, extra_param_file=None, pool=None, init_model=True):
         """
-        Initialize the driver and the parameters
+        Initialize the driver with the specified parameters
+        
+        Parameters
+        ----------
+        param_file : str
+            a string specifying the name of the main parameter file
+        extra_param_file : str, optional
+            a string specifying the name of a file holding extra extra theory parameters
+        pool : mpi4py.Pool, optional
+            if provided, a pool of MPI processes to use; default is ``None``
+        init_model : bool, optional
+            if `True`, initialize the theoretical model upon initialization; default is `True`
         """        
         # initialize the data too
         self.data = PowerData(param_file)
@@ -76,62 +51,118 @@ class FittingDriver(object):
         self.theory = GalaxyPowerTheory(param_file, **kwargs)
         
         # generic params
-        self.params = ParameterSet(param_file, tag='driver')
+        self.params = ParameterSet.from_file(param_file, tags='driver')
         self.pool = pool
         
         # setup the model for data
-        if initialize_model:
-            self._setup_for_data()
+        if init_model: self._setup_for_data()
         
         # results are None for now
         self.results = None
         
-        # pickle instance methods
-        copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
+    @classmethod
+    def from_directory(cls, dirname, results_file=None, init_model=True, **kwargs):
+        """
+        Load a ``FittingDriver`` from a results directory, reading the 
+        ``params.dat`` and ``model.pickle`` files, and optionally loading
+        a pickled results object
         
+        Parameters
+        ----------
+        dirname : str
+            the name of the directory holding the results
+        results_file : str, optional
+            the name of the file holding the results. Default is ``None``
+        init_model : bool, optional
+            whether to initialize the RSD model upon loading. If a model
+            file exists in the specified directory, the model is loaded and
+            no new model is initialized
+        """
+        if not os.path.isdir(dirname):
+            raise rsd_io.ConfigurationError('`%s` is not a valid directory' %dirname)
+        params_path = os.path.join(dirname, params_filename)
+        model_path = os.path.join(dirname, model_filename)
+        if not os.path.exists(params_path):
+            raise rsd_io.ConfigurationError('parameter file `%s` must exist to load driver' %params_path)
+            
+        init_model = (not os.path.exists(model_path)) and init_model
+        driver = cls(params_path, init_model=init_model, **kwargs)
+        
+        # set the model and results
+        if os.path.exists(model_path):
+            driver.set_model(model_path)
+        if results_file is not None:
+            if not os.path.exists(results_file):
+                if not os.path.join(dirname, results_file):
+                    raise rsd_io.ConfigurationError('specified results file `%s` does not exist' %results_file)
+                else:
+                    results_file = os.path.join(dirname, results_file)
+            driver.results = rsd_io.load_pickle(results_file)
+    
+        return driver
+        
+    @classmethod
+    def from_restart(cls, dirname, restart_file, iterations, **kwargs):
+        """
+        Restart chain from a previous run, returning the driver with the results 
+        loaded from the specified chain file
+        
+        Parameters
+        ----------
+        dirname : str
+            the name of the directory holding the results
+        restart_file : str
+            the name of the file holding the results from the chain to restart from
+        iterations : int
+            the number of additional iterations to run
+        """
+        # get the driver
+        driver = cls.from_directory(dirname, results_file=restart_file, **kwargs)
+        
+        # tell driver we are starting from previous run
+        driver.params['init_from'].value = 'previous_run'
+                
+        # set the number of iterations to the total sum we want to do
+        driver.params.add('iterations', value=iterations+driver.results.iterations)
+        driver.params.add('walkers', value=driver.results.walkers)
+        
+        # make sure we want to use emcee
+        solver_name = driver.params.get('fitter', 'emcee').lower()
+        if solver_name != 'emcee':
+            raise ValueError("cannot restart chain if desired solver is not `emcee`")
+        
+        return driver
+    
     def to_file(self, filename, mode='w'):
         """
-        Save the parameters of this driver to a file
+        Write the parameters of this driver to a file
+        
+        Parameters
+        ----------
+        filename : str
+            the name of the file to write out
+        mode : {'a', 'w'}
+            the mode to use when writing to file
         """
-        # first save the driver params
-        self.params.to_file(filename, mode='w', header_name='driver params', 
-                            footer=True, as_dict=False)
-                            
-        # now save the data params
+        kwargs = {'mode':mode, 'header_name':'driver_params', 'footer':True, 'as_dict':False}
+        self.params.to_file(filename, **kwargs)
         self.data.to_file(filename, mode='a')
-        
-        # and now the theory params
         self.theory.to_file(filename, mode='a')
-    
-    def __getstate__(self):
-        d = self.__dict__.copy()
-        d.pop('_model_callables')
-        d['pool'] = None
-        return d
-        
-    def __setstate__(self, d):
-        
-        # pickle instance methods
-        copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
-        
-        self.__dict__ = d
-        self._get_model_callables()
-        
+            
     def run(self):
         """
-        The main function, this will run the whole analysis from start to 
-        finish (hopefully)
+        Run the whole fitting analysis, from start to finish
         """
         # if we are initializing from max-like, first call lmfit
         init_from = self.params.get('init_from', None)
         if init_from == 'max-like':
             init_values = self.do_maximum_likelihood()
         elif init_from == 'fiducial':
-            free = self.theory.free_parameter_names
+            free = self.theory.free_names
             params = self.theory.fit_params
             init_values = [params[key].fiducial for key in free]
             if None in init_values:
-                raise ValueError("Cannot initialize from fiducial values")
+                raise ValueError("cannot initialize from fiducial values")
             else:
                 init_values = np.array(init_values)
             
@@ -148,63 +179,29 @@ class FittingDriver(object):
             kwargs['pool'] = self.pool
             if init_from in ['max-like', 'fiducial']: 
                 kwargs['init_values'] = init_values
+            elif init_from == 'previous_run':
+                kwargs['init_values'] = self.results.copy()
+                
         # lmfit
         elif solver_name == 'lmfit':
             solver = lmfit_fitter.run
             objective = functools.partial(FittingDriver.normed_residuals, self)
-        
-        # try again
+            
+        # incorrect
         else:
-            raise NotImplementedError("Fitter with name '{}' not currently available".format(solver_name))
+            raise NotImplementedError("fitter with name '{}' not currently available".format(solver_name))
           
         # run the solver and store the results
-        logger.info("Calling the '{}' fitter's solve function".format(solver_name))
+        if init_from == 'previous_run':
+            logger.info("Restarting `emcee` solver from an old chain")
+        else:
+            logger.info("Calling the '{}' fitter's solve function".format(solver_name))
         self.results, exception = solver(self.params, self.theory, objective, **kwargs)
         logger.info("...fitting complete")
         
-        return exception
-
-    def restart_chain(self, iterations, old_chain_file, pool=None):
-        """
-        Load the old chain given by `old_chain_file`, store as `self.results`, 
-        and continue sampling the chain for `iterations` more steps
+        if self.pool is not None:
+            self.pool.close()
         
-        Parameters
-        ----------
-        iterations : int 
-            the number of iterations to run
-        old_chain_file : str
-            the old chain file to start from
-        pool : emcee.MPIPool, NoneType
-            an optional pool of processors to use
-        """
-        # tell driver we are starting from previous run
-        self.params['init_from'].value = 'previous_run'
-        
-        # load the old chain
-        old_chain = rsd_io.load_pickle(old_chain_file)
-        
-        # set the number of iterations to the total sum we want to do
-        self.params.add('iterations', iterations + old_chain.iterations)
-        self.params.add('walkers', old_chain.walkers)
-        
-        # make sure we want to use emcee
-        solver_name = self.params.get('fitter', 'emcee').lower()
-        if solver_name != 'emcee':
-            raise ValueError("Cannot restart chain if desired solver is not `emcee`")
-            
-        solver = emcee_fitter.run
-        objective = functools.partial(FittingDriver.lnprob, self)
-        
-        # run the solver 
-        logger.info("Restarting `emcee` solver from an old chain")
-        kwargs = {'pool' : pool, 'init_values' : old_chain}
-        results, exception = solver(self.params, self.theory, objective, **kwargs)
-        
-        # set the results
-        self.results = results
-        logger.info("...fitting complete")
-
         return exception
     
     def finalize_fit(self, exception, results_file):
@@ -228,7 +225,7 @@ class FittingDriver(object):
         
         # make params
         params = ParameterSet()
-        params['lmfit_method'] = 'leastsq'
+        params.add('lmfit_method', value='leastsq')
         
         logger.info("Computing the maximum likelihood values to use as initialization")
         results, exception = solver(params, self.theory, objective)
@@ -282,16 +279,7 @@ class FittingDriver(object):
         self._ks = np.concatenate(ks)
         self._mus = np.concatenate(mus)
         self._model_callable = self.theory.model_callable(self._ks, self._mus)
-                
-    def save(self, filename):
-        """
-        Save as a pickle
-        """
-        logger.info("Saving driver class as pickle to filename '{}'".format(filename))
-        
-        self.pool = None
-        rsd_io.save_pickle(self)
-        
+                        
     @property
     def results(self):
         """
@@ -308,13 +296,11 @@ class FittingDriver(object):
         Set the results, checking to make sure we re-order the fitted params
         into the right order
         """
-        
         # possibly reorder the results
         if hasattr(val, 'verify_param_ordering'):
-            free_params = self.theory.free_parameter_names
-            constrained_params = self.theory.constrained_parameter_names
-            val.verify_param_ordering(free_params, constrained_params)
-            
+            free_params = self.theory.free_names
+            constrained_params = self.theory.constrained_names
+            val.verify_param_ordering(free_params, constrained_params)            
         self._results = val
         
     @property
@@ -341,7 +327,7 @@ class FittingDriver(object):
         Return the degrees of freedom, equal to number of data points minus
         the number of free parameters
         """
-        return len(self.combined_model) - len(self.theory.free_parameters)
+        return len(self.combined_model) - self.theory.ndim
         
     #---------------------------------------------------------------------------
     # Probability functions
@@ -418,7 +404,7 @@ class FittingDriver(object):
         """
         Set the fiducial values as the current values of the free parameters
         """
-        free = self.theory.free_parameter_names
+        free = self.theory.free_names
         params = self.theory.fit_params
         theta = np.array([params[key].fiducial for key in free])
         
@@ -464,6 +450,8 @@ class FittingDriver(object):
         Plot the residuals of the measurements with respect to the model, 
         model - measurement
         """
+        import plotify as pfy
+        
         # get the data - model pairs (k, model, data, err)
         results = self.data_model_pairs()
 
@@ -489,6 +477,8 @@ class FittingDriver(object):
         Plot the model and data points for the measurements, plotting the 
         P(k, mu) and multipoles on separate figures
         """
+        import plotify as pfy
+        
         # get the data - model pairs (k, model, data, err)
         results = self.data_model_pairs()
         
@@ -504,6 +494,8 @@ class FittingDriver(object):
         """
         Plot the model and data points for any P(k,mu) measurements
         """
+        import plotify as pfy
+        
         ax = fig.gca()
         ax.color_cycle = 'Paired'
 

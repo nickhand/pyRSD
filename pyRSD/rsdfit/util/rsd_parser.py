@@ -86,10 +86,6 @@ def initialize_parser():
     kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
     run_parser.add_argument('-xp', '--extra_params', **kwargs)
         
-    # number of threads (OPTIONAL)
-    h = 'number of python multiprocessing threads to spawn (default: 1)'
-    run_parser.add_argument('-N', help=h, type=int, default=1, dest='threads')
-    
     # silence the output (OPTIONAL)
     h = 'silence the standard output to the console'
     run_parser.add_argument('--silent', help=h, action='store_true')
@@ -101,6 +97,10 @@ def initialize_parser():
     # number of iterations (OPTIONAL)
     h = 'number of steps in the chain to run'
     run_parser.add_argument('-i', help=h, type=positive_int, dest='iterations')
+    
+    # number of chains to run concurrently
+    h = 'number of chains to run concurrently'
+    run_parser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
     
     # the output folder
     h = 'the folder where the results will be written'
@@ -134,9 +134,9 @@ def initialize_parser():
     h = 'the number of steps to consider burnin'
     restart_parser.add_argument('-b', help=h, type=positive_int, dest='burnin')
                                 
-    # number of threads (OPTIONAL)
-    h = 'number of python multiprocessing threads to spawn (default: 1)'
-    restart_parser.add_argument('-N', help=h, type=int, default=1, dest='threads')
+    # number of chains to run concurrently
+    h = 'number of chains to run concurrently'
+    restart_parser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
     
     # arbitrary numbering of an output chain (OPTIONAL)
     h = """An arbitrary number for the output chain. \n

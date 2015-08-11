@@ -244,7 +244,8 @@ class Parameter(lmfit.Parameter, Cache):
         Get random values from the prior, of size `size`
         """
         if not self.has_prior:
-            raise ValueError("cannot draw from prior that does not exist")
+            print self
+            raise ValueError("for parameter `%s`, cannot draw from prior that does not exist" %self.name)
             
         return self.prior.draw(size=size)
     

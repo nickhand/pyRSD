@@ -6,7 +6,6 @@ import copy_reg
 import types
 
 class PickeableClass(type):
-    
     def __init__(cls, name, bases, attrs):
         copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
 
@@ -44,7 +43,7 @@ def save_pickle(obj, filename):
     cPickle.dump(obj, open(filename, 'w'))
     
 #-------------------------------------------------------------------------------
-def create_output_file(args, solver_type, walkers, iterations):
+def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0):
     """
     Automatically create a new name for the results file.
     
@@ -60,7 +59,7 @@ def create_output_file(args, solver_type, walkers, iterations):
         tag = solver_type
         
     # output file
-    outname_base = '{0}_{1}__'.format(date.today(), tag)
+    outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
     suffix = 0
     trying = True
     if args.chain_number is None:

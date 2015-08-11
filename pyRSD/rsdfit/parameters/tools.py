@@ -1,21 +1,13 @@
-from ... import os, sys, data_dir
-import ast 
+from ... import os, sys
+import ast
 
-#-------------------------------------------------------------------------------
-def find_file(filename):
-    """
-    Return the filename, searching in the `pyRSD.data_dir` as well
-    """
-    # try to find the file 
-    if os.path.exists(filename):
-        return filename
-    elif (os.path.exists("%s/%s" %(data_dir, filename))):
-        return "%s/%s" %(data_dir, filename)
+def get_abspath(value):
+    if isinstance(value, basestring) and os.path.exists(value):
+        return os.path.abspath(value)
     else:
-        raise ValueError("Could not find file '%s', tried ./%s and %s/%s" \
-                         %(filename, filename, data_dir, filename))
-                         
-#-------------------------------------------------------------------------------
+        return value
+
+
 def is_floatable(val):
     if isinstance(val, (basestring, bool)):
         return False
@@ -24,38 +16,7 @@ def is_floatable(val):
         return True
     except:
         return False
-        
-#-------------------------------------------------------------------------------
-def constraining_function(param_set, constraint, keys, modules, props='value'):
-    """
-    A constraining function to return the value of a `Parameter`, which 
-    depends on other `Parameters` in a `ParameterSet`
-    """
-    if not isinstance(props, list):
-        props = [props]*len(keys)
-        
-    formatted_constraint = constraint.format(**{k:param_set[k][att] for k, att in zip(keys, props)})
-    return eval(formatted_constraint, globals().update(modules))
-        
-#-------------------------------------------------------------------------------
-def text_between_chars(s, start_char="{", stop_char="}"):
-    """
-    Find the text between two characters, probably curly braces or 
-    parentheses. 
-    """
-    toret = []
-    start = 0
-    while True:
-        start = s.find( '{' , start, len(s))
-        end = s.find( '}', start, len(s))
-        if start != -1 and end != -1:
-            toret.append(s[start+1:end])
-            start = end
-        else:
-            break
-    return toret
 
-#-------------------------------------------------------------------------------
 class ParseCall(ast.NodeVisitor):
     def __init__(self):
         self.ls = []
@@ -74,15 +35,14 @@ class FindFuncs(ast.NodeVisitor):
         p.visit(node.func)
         self.names.append(".".join(p.ls))
         ast.NodeVisitor.generic_visit(self, node)
-        
-#-------------------------------------------------------------------------------
-def stringToFunction(astr):
+
+def string_to_function(astr):
     """
     Given a string containing the name of a function, convert it to a function
-    
+
     Parameters
     ----------
-    astr : str 
+    astr : str
         the string to convert to a function name
     """
     module, _, function = astr.rpartition('.')
@@ -98,9 +58,6 @@ def stringToFunction(astr):
             mod = sys.modules['__builtin__']
             return getattr(mod, function)
 
-#end stringToFunction
-
-#-------------------------------------------------------------------------------
 def replace_vars(s, D):
     """
     Given a string s and a dictionary of variables D, replace all variable
@@ -120,7 +77,7 @@ def replace_vars(s, D):
 
     I know my abcs and 123's
     """
-    s_in = str(s) 
+    s_in = str(s)
     s_out = ''
 
     while True:
@@ -165,17 +122,15 @@ def replace_vars(s, D):
             s_in = s_in[i:]
             s_out += str(D[var])
     return s_out
-    
-#end replace_vars
 
-#-------------------------------------------------------------------------------
+
 def import_function_modules(line):
     """
     Find any function calls in the string specified by `line`, import the
     necessary modules, and return a dict of the imported modules
     """
     modules = {}
-    
+
     # find the functions
     tree = ast.parse(line)
     function_finder = FindFuncs()
@@ -186,10 +141,18 @@ def import_function_modules(line):
         mod, _, function = function.rpartition('.')
         mod = __import__(mod)
         modules[mod.__name__] = mod
-        
+
     return modules
-
-#end import_function_modules
-
-#-------------------------------------------------------------------------------
     
+def verify_line(line, length, lineno):
+    """
+    Verify the line read makes sense
+    """
+    if (len(line) == 0 or line[0] == ''): 
+        return False
+    if len(line) == 1:
+        raise ValueError("Error reading parameter %s on line %d" %(line[0], lineno))
+    elif len(line) != length:
+        raise ValueError("Cannot understand line %d" %lineno)
+        
+    return True

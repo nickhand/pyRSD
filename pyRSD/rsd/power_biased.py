@@ -2,7 +2,7 @@ from .. import numpy as np
 from .tools import RSDSpline, BiasToSigmaRelation
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
-from .simulation import SigmavFits, NonlinearBiasFits
+from .simulation import SigmavFits, NonlinearBiasFits, Mu6CorrectionParams
 from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
                           PhmResidualModelParams, PhmCorrectedPTModelParams, \
                           PhhModelParams, CrossStochasticityLogModelParams
@@ -237,15 +237,21 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return 0.
     
     @cached_property()
+    def mu6_correction_params(self):
+        """
+        Model params giving the mu^6 amplitude correction as a function
+        of linear bias
+        """
+        return Mu6CorrectionParams()
+        
+    @cached_property('z', '_ib1', '_ib1_bar')
     def mu6_correction(self):
         """
         Spline function giving the mu^6 amplitude correction as a function
         of linear bias
         """
-        b1s = np.array([2.016, 2.49, 2.68, 3.27])
-        corrs = np.array([0.3, 1., 1.4, 2.9])
-        
-        return RSDSpline(b1s, corrs, extrap=True, k=2)
+        mean_bias = (self._ib1*self._ib1_bar)**0.5
+        return self.mu6_correction_params.to_dict(self.z, mean_bias)
                 
     @cached_property()
     def nonlinear_bias_fitter(self):
@@ -884,8 +890,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         A = 1.
         if self.use_mu_corrections:
-            mean_bias = (self._ib1*self._ib1_bar)**0.5
-            A = max(self.mu6_correction(mean_bias), 0.)        
+            A = max(self.mu6_correction['A'],0.)
             
         return A*(self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k))
 

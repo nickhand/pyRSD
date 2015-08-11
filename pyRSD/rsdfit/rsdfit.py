@@ -126,7 +126,7 @@ def run():
     if args.subparser_name == 'run':
 
         # either load the driver if it exists already, or initialize it
-        if os.path.isdir(args.folder):            
+        if os.path.isdir(args.folder) and os.path.exists(os.path.join(args.folder, params_filename)):            
             driver = FittingDriver.from_directory(args.folder, **mpi_kwargs)
         else:
             driver = FittingDriver(args.params, extra_param_file=args.extra_params, **mpi_kwargs)

@@ -14,6 +14,7 @@ from .data import PowerData
 from .fitters import *
 from .util import rsd_io
 import functools
+import copy
 
 logger = logging.getLogger('rsdfit.fitting_driver')
 logger.addHandler(logging.NullHandler())
@@ -25,7 +26,7 @@ class FittingDriver(object):
     """
     __metaclass__ = rsd_io.PickeableClass
     
-    def __init__(self, param_file, extra_param_file=None, pool=None, init_model=True):
+    def __init__(self, param_file, extra_param_file=None, pool=None, chains_comm=None, init_model=True):
         """
         Initialize the driver with the specified parameters
         
@@ -36,7 +37,10 @@ class FittingDriver(object):
         extra_param_file : str, optional
             a string specifying the name of a file holding extra extra theory parameters
         pool : mpi4py.Pool, optional
-            if provided, a pool of MPI processes to use; default is ``None``
+            if provided, a pool of MPI processes to use for ``emcee`` fitting; default is ``None``
+        chains_comm : mpi4py.Intracomm
+            if provided, an MPI Intracommunicator used to communicate between multiple chains
+            running concurrently
         init_model : bool, optional
             if `True`, initialize the theoretical model upon initialization; default is `True`
         """        
@@ -53,6 +57,7 @@ class FittingDriver(object):
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
         self.pool = pool
+        self.chains_comm = chains_comm
         
         # setup the model for data
         if init_model: self._setup_for_data()
@@ -177,6 +182,7 @@ class FittingDriver(object):
             
             # add some kwargs to pass too
             kwargs['pool'] = self.pool
+            kwargs['chains_comm'] = self.chains_comm
             if init_from in ['max-like', 'fiducial']: 
                 kwargs['init_values'] = init_values
             elif init_from == 'previous_run':
@@ -196,11 +202,8 @@ class FittingDriver(object):
             logger.info("Restarting `emcee` solver from an old chain")
         else:
             logger.info("Calling the '{}' fitter's solve function".format(solver_name))
-        self.results, exception = solver(self.params, self.theory, objective, **kwargs)
+        self.results, exception = solver(self.params, copy.deepcopy(self.theory), objective, **kwargs)
         logger.info("...fitting complete")
-        
-        if self.pool is not None:
-            self.pool.close()
         
         return exception
     

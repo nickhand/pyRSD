@@ -2,8 +2,30 @@ from ... import os
 from datetime import date
 import cPickle
 import fcntl
+import copy_reg
+import types
 
-#-------------------------------------------------------------------------------
+class PickeableClass(type):
+    
+    def __init__(cls, name, bases, attrs):
+        copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
+
+def _pickle_method(method):
+    func_name = method.im_func.__name__
+    obj = method.im_self
+    cls = method.im_class
+    return _unpickle_method, (func_name, obj, cls)
+ 
+def _unpickle_method(func_name, obj, cls):
+    for cls in cls.mro():
+        try:
+            func = cls.__dict__[func_name]
+        except KeyError:
+            pass
+        else:
+            break
+    return func.__get__(obj, cls)
+
 def load_pickle(filename):
     """
     Load an instance, i.e., `FittingDriver`, `EmceeResults` that has been 
@@ -14,7 +36,6 @@ def load_pickle(filename):
     except Exception as e:
         raise ConfigurationError("Cannot load the pickle `%s`; original message: %s" %(filename, e))
     
-#-------------------------------------------------------------------------------
 def save_pickle(obj, filename):
     """
     Pickle an instance using `cPickle`

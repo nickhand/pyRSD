@@ -1,18 +1,13 @@
 from . import rsd_io
+from .. import logging, model_filename, params_filename
 from ... import os
 
 import argparse as ap
 import textwrap as tw
-import logging
-
 
 logger = logging.getLogger('rsdfit.parser')
 logger.addHandler(logging.NullHandler())
 
-
-#-------------------------------------------------------------------------------
-# parser types
-#-------------------------------------------------------------------------------
 def existing_file(fname):
     """
     Check if the file exists. If not raise an error
@@ -29,10 +24,9 @@ def existing_file(fname):
     if os.path.isfile(fname):
         return fname
     else:
-        msg = "The file '{}' does not exist".format(fname)
+        msg = "the file '{}' does not exist".format(fname)
         raise ap.ArgumentTypeError(msg)
 
-#-------------------------------------------------------------------------------
 def positive_int(string):
     """
     Check if the input is integer positive
@@ -50,9 +44,8 @@ def positive_int(string):
             raise ValueError
         return value
     except ValueError:
-        raise ap.ArgumentTypeError("Argument requires a positive integer")
+        raise ap.ArgumentTypeError("argument requires a positive integer")
             
-#-------------------------------------------------------------------------------
 def initialize_parser():
     """
     Initialize the parser of command-line arguments. 
@@ -207,10 +200,8 @@ def initialize_parser():
     analyze_parser.add_argument('--ext', help=h, type=str, dest='extension', 
                                 default='pdf', choices=['pdf', 'png', 'eps'])
                                 
-    
     return parser
 
-#-------------------------------------------------------------------------------
 def parse_command_line():
     """
     Parse the command line arguments
@@ -219,40 +210,42 @@ def parse_command_line():
     parser = initialize_parser()
     args = parser.parse_args()
     
-    # a few checks
+    ## restart from existing
     if args.subparser_name == 'restart':
         
         # if we are restarting, automatically use the same folder, 
         # and the driver.pickle
         args.folder = os.path.sep.join(args.restart_file.split(os.path.sep)[:-1])
-        args.params = os.path.join(args.folder, 'params.dat')
-        args.model  = os.path.join(args.folder, 'model.pickle')
+        args.params = os.path.join(args.folder, params_filename)
+        args.model  = os.path.join(args.folder, model_filename)
         if not os.path.exists(args.params):
             raise rsd_io.ConfigurationError(
-                    "Restarting but associated params.dat doesn't exist")
+                    "Restarting but associated `%s` doesn't exist" %params_filename)
         if not os.path.exists(args.model):
             raise rsd_io.ConfigurationError(
-                    "Restarting but associated model.pickle doesn't exist")
-        
-        logger.warning("Restarting from %s. Using associated params.dat" %args.restart_file)
-        
+                    "Restarting but associated `%s` doesn't exist" %model_filename)
+        logger.warning("Restarting from %s and using associated params.dat" %args.restart_file)
+    
+    ## run from new  
     elif args.subparser_name == "run":
 
         # if the folder already exists, and no parameter files were specified
         # try to use an existing params.dat
         if os.path.isdir(args.folder):
-            if os.path.exists(os.path.join(args.folder, 'params.dat')):
+            params_path = os.path.join(args.folder, params_filename)
+            model_path = os.path.join(args.folder, model_filename)
+            if os.path.exists(params_path):
                 # if the params.dat exists, and param files were given, 
                 # use the params.dat, and notify the user
                 old_params = args.params
-                args.params = os.path.join(args.folder, 'params.dat')
+                args.params = params_path
                 if old_params is not None:
                     logger.warning("Appending to an existing folder: using the "
-                                   "params.dat instead of %s" %old_params)
+                                   "`%s` instead of %s" %(params_filename, old_params))
                                    
                 # also check for existing model file now
-                if os.path.exists(os.path.join(args.folder, 'model.pickle')):
-                    args.model = os.path.join(args.folder, 'model.pickle')
+                if os.path.exists(model_path):
+                    args.model = model_path
             else:
                 if args.params is None:
                     raise rsd_io.ConfigurationError(

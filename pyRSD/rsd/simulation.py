@@ -2,6 +2,7 @@ from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
 from .. import pygcl, numpy as np, data as sim_data
 from . import tools, INTERP_KMIN, INTERP_KMAX
+from .mu0_modeling import GPModelParams 
 
 import itertools
 import pandas as pd
@@ -599,5 +600,14 @@ class SimulationPdv(InterpolatedSimulationData):
             pts = np.asarray(list(itertools.product([fs8_sq], k)))
         return self.interpolation_table(pts)*factor
     #---------------------------------------------------------------------------
+
+ #------------------------------------------------------------------------------
+class Mu6CorrectionParams(GPModelParams):
+    """
+    The model parameters for the mu^6 correction 
+    """
+    def __init__(self):
+        path = sim_data.mu6_correction_params()
+        super(Mu6CorrectionParams, self).__init__(path)
     
     

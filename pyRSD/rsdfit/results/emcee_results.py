@@ -1,21 +1,13 @@
-try:
-    import plotify as pfy
-except:
-    raise ImportError("`Plotify` plotting package required for `rsdfit`")
-    
 from ... import numpy as np
+from .. import logging
 from . import triangle, tools
 
 from matplotlib.ticker import MaxNLocator
-import copy
-import logging
-import cPickle
 import scipy.stats
 
 logger = logging.getLogger('rsdfit.emcee_results')
 logger.addHandler(logging.NullHandler())
 
-#-------------------------------------------------------------------------------
 class EmceeParameter(object):
     """
     Class to hold the parameter fitting result
@@ -26,24 +18,15 @@ class EmceeParameter(object):
         self._trace = trace # shape is (nwalkers, niters)
         self.burnin = int(burnin)
         
-    #---------------------------------------------------------------------------
     def __repr__(self):
-        """
-        Builtin representation method
-        """
         sig1 = self.one_sigma
         sig2 = self.two_sigma
         args = (self.name+":", self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
         return "<Parameter {:<15s} {:.4g} (+{:.4g} -{:.4g}) (+{:.4g} -{:.4g})>".format(*args)
         
-    #---------------------------------------------------------------------------
     def __str__(self):
-        """
-        Builtin string method
-        """
         return self.__repr__()
         
-    #---------------------------------------------------------------------------
     @property
     def burnin(self):
         """
@@ -55,8 +38,7 @@ class EmceeParameter(object):
     def burnin(self, val):
         self._burnin = val
         del self.median, self.one_sigma, self.two_sigma
-        
-    #---------------------------------------------------------------------------
+
     @property
     def flat_trace(self):
         """
@@ -64,8 +46,7 @@ class EmceeParameter(object):
         "burnin" period
         """
         return self._trace[:, self.burnin:].flatten()
-        
-    #---------------------------------------------------------------------------
+
     @property
     def median(self):
         """
@@ -81,7 +62,6 @@ class EmceeParameter(object):
     def median(self):
         if hasattr(self, '_median'): delattr(self, '_median')
         
-    #---------------------------------------------------------------------------
     @property
     def mean(self):
         """
@@ -90,7 +70,6 @@ class EmceeParameter(object):
         """
         return self.median
     
-    #---------------------------------------------------------------------------
     @property
     def peak(self):
         """
@@ -108,7 +87,6 @@ class EmceeParameter(object):
     def peak(self):
         if hasattr(self, '_peak'): delattr(self, '_peak')
     
-    #---------------------------------------------------------------------------
     @property
     def one_sigma(self):
         """
@@ -132,7 +110,6 @@ class EmceeParameter(object):
     def one_sigma(self):
         if hasattr(self, '_one_sigma'): delattr(self, '_one_sigma')
     
-    #---------------------------------------------------------------------------
     @property
     def two_sigma(self):
         """
@@ -156,7 +133,6 @@ class EmceeParameter(object):
     def two_sigma(self):
         if hasattr(self, '_two_sigma'): delattr(self, '_two_sigma')
         
-    #--------------------------------------------------------------------------- 
     def trace(self, niter=None):
         """
         Return the sample values at a specific iteration number.
@@ -167,10 +143,8 @@ class EmceeParameter(object):
             return self._trace
         else:
             return self._trace[:,niter]
-    #---------------------------------------------------------------------------
-#endclass EmceeParameter
 
-#-------------------------------------------------------------------------------
+
 class EmceeResults(object):
     """
     Class to hold the fitting results from an `emcee` MCMC run
@@ -180,8 +154,8 @@ class EmceeResults(object):
         Initialize with the `emcee` sampler and the fitting parameters
         """      
         # store the parameter names
-        self.free_parameter_names = fit_params.free_parameter_names
-        self.constrained_parameter_names = fit_params.constrained_parameter_names
+        self.free_names = fit_params.free_names
+        self.constrained_names = fit_params.constrained_names
         
         # chain
         (walkers, _, ndim) = sampler.chain.shape
@@ -209,13 +183,9 @@ class EmceeResults(object):
             logger.info("setting the burnin period to {} iterations".format(burnin))
         self.burnin = int(burnin)
         
-    #---------------------------------------------------------------------------
     def __str__(self):
-        """
-        Builtin string method
-        """
-        free_params = [self[name] for name in self.free_parameter_names]
-        constrained_params = [self[name] for name in self.constrained_parameter_names]
+        free_params = [self[name] for name in self.free_names]
+        constrained_params = [self[name] for name in self.constrained_names]
         
         # first get the parameters
         toret = "Free parameters [ mean (+/-68%) (+/-95%) ]\n" + "_"*15 + "\n"
@@ -226,56 +196,47 @@ class EmceeResults(object):
         
         return toret
     
-    #---------------------------------------------------------------------------
     def __repr__(self):
-        """
-        Builtin representation
-        """
-        N = len(self.constrained_parameter_names)
+        N = len(self.constrained_names)
         return "<EmceeResults: {} free parameters, {} constrained parameters>".format(self.ndim, N)
         
-    #---------------------------------------------------------------------------
     def __getitem__(self, key):
         
         # check if key is the name of a free or constrained param
-        if key in (self.free_parameter_names + self.constrained_parameter_names):
+        if key in (self.free_names + self.constrained_names):
             return self._results[key]
         else:
             return getattr(self, key)
                     
-    #---------------------------------------------------------------------------
     def verify_param_ordering(self, free_params, constrained_params):
         """
         Verify the ordering of `EmceeResults.chain`, making sure that the
         chains have the ordering specified by `free_params` and 
         `constrained_params`
         """
-        if sorted(self.free_parameter_names) != sorted(free_params):
-            raise ValueError("Mismatch in `EmceeResults` free parameters")
-        if sorted(self.constrained_parameter_names) != sorted(constrained_params):
-            print sorted(self.constrained_parameter_names)
-            print sorted(constrained_params)
-            raise ValueError("Mismatch in `EmceeResults` constrained parameters")
+        if sorted(self.free_names) != sorted(free_params):
+            raise ValueError("mismatch in `EmceeResults` free parameters")
+        if sorted(self.constrained_names) != sorted(constrained_params):
+            raise ValueError("mismatch in `EmceeResults` constrained parameters")
         
         reordered = False
         # reorder `self.chain`
-        if self.free_parameter_names != free_params:
-            inds = [self.free_parameter_names.index(k) for k in free_params]
+        if self.free_names != free_params:
+            inds = [self.free_names.index(k) for k in free_params]
             self.chain = self.chain[...,inds]
             reordered = True
         
         # reorder self.constrained_chain
-        if self.constrained_parameter_names != constrained_params:
-            inds = [self.constrained_parameter_names.index(k) for k in constrained_params]
+        if self.constrained_names != constrained_params:
+            inds = [self.constrained_names.index(k) for k in constrained_params]
             self.constrained_chain = self.constrained_chain[...,inds]
             reordered = True
         
         if reordered:
-            self.free_parameter_names = free_params
-            self.constrained_parameter_names = constrained_params
+            self.free_names = free_params
+            self.constrained_names = constrained_params
             self._save_results()
-            
-    #---------------------------------------------------------------------------
+
     def __add__(self, other):
         """
         Add two `EmceeResults` objects together
@@ -291,55 +252,52 @@ class EmceeResults(object):
         toret = self.copy()
         
         # verify the ordering of the other one
-        other.verify_param_ordering(self.free_parameter_names, self.constrained_parameter_names)
+        other.verify_param_ordering(self.free_names, self.constrained_names)
         
         # add the chains together
-        toret.chain = np.concatenate((self.chain, other_chain), axis=1)
-        toret.constrained_chain = np.concatenate((self.constrained_chain, other_constrained_chain), axis=1)
+        toret.chain = np.concatenate((self.chain, other.chain), axis=1)
+        toret.constrained_chain = np.concatenate((self.constrained_chain, other.constrained_chain), axis=1)
         
         # add the log probs together
         toret.lnprobs = np.concatenate((self.lnprobs, other.lnprobs), axis=1)
         
         # update the new EmceeParameters
         toret._save_results()
-        
         return toret
     
-    #---------------------------------------------------------------------------
     def __radd__(self, other):
         return self.__add__(other)
-            
-    #---------------------------------------------------------------------------
+
     def copy(self):
         """
         Return a deep copy of the `EmceeResults` object
         """
+        import copy
         return copy.deepcopy(self)
             
-    #---------------------------------------------------------------------------
     def _make_constrained_chain(self, fit_params):
         """
         Make the chain for the constrained parameters
         """
-        if len(self.constrained_parameter_names) == 0:
+        if len(self.constrained_names) == 0:
             self.constrained_chain = None
             return
         
         # make the constrained chain from the other chain
-        shape = (self.walkers, self.iterations, len(self.constrained_parameter_names))
+        shape = (self.walkers, self.iterations, len(self.constrained_names))
         self.constrained_chain = np.zeros(shape)
         for niter in xrange(self.iterations):
             for nwalker, theta in enumerate(self.chain[:,niter,:]):
                 
                 # set the free parameters
-                for val, name in zip(theta, self.free_parameter_names):
-                    fit_params.set(name, val, update_constraints=False)
+                for val, name in zip(theta, self.free_names):
+                    fit_params[name].value = val
 
                 # update constraints
-                fit_params.update_constraints()
+                fit_params.update_values()
                                 
                 # set the constrained vals
-                constrained_vals = fit_params.constrained_parameter_values
+                constrained_vals = fit_params.constrained_values
                 self.constrained_chain[nwalker, niter, :] = constrained_vals
                 
         # # check for any constrained values that are fixed and remove
@@ -350,12 +308,11 @@ class EmceeResults(object):
         #     fixed = len(np.unique(trace)) == 1
         #     if not fixed:
         #         tocat += (trace[...,None],)
-        #         names.append(self.constrained_parameter_names[i])
+        #         names.append(self.constrained_names[i])
         #
-        # self.constrained_parameter_names = names
+        # self.constrained_names = names
         # self.constrained_chain = np.concatenate(tocat, axis=2)
                 
-    #---------------------------------------------------------------------------
     def _save_results(self):
         """
         Make the dictionary of `EmceeParameters`
@@ -363,12 +320,12 @@ class EmceeResults(object):
         self._results = {}
         
         # the free parameters
-        for i, name in enumerate(self.free_parameter_names):
+        for i, name in enumerate(self.free_names):
             self._results[name] = EmceeParameter(name, self.chain[...,i])
         
         # the constrained parameters
         if self.constrained_chain is not None:
-            for i, name in enumerate(self.constrained_parameter_names):
+            for i, name in enumerate(self.constrained_names):
                 self._results[name] = EmceeParameter(name, self.constrained_chain[...,i])
                         
     #---------------------------------------------------------------------------
@@ -381,7 +338,6 @@ class EmceeResults(object):
         """
         return self.chain.shape[1]
         
-    #---------------------------------------------------------------------------
     @property
     def walkers(self):
         """
@@ -389,15 +345,13 @@ class EmceeResults(object):
         """
         return self.chain.shape[0]
         
-    #---------------------------------------------------------------------------
     @property
     def ndim(self):
         """
         The number of free parameters
         """
-        return len(self.free_parameter_names)
+        return len(self.free_names)
         
-    #---------------------------------------------------------------------------
     @property
     def burnin(self):
         """
@@ -414,7 +368,6 @@ class EmceeResults(object):
         for param in self._results:
             self._results[param].burnin = val
     
-    #---------------------------------------------------------------------------
     @property
     def max_lnprob(self):
         """
@@ -422,7 +375,6 @@ class EmceeResults(object):
         """
         return np.amax(self.lnprobs)
         
-    #---------------------------------------------------------------------------
     def max_lnprob_values(self, *names):
         """
         Return the value of the parameters at the iteration with the maximum
@@ -432,7 +384,6 @@ class EmceeResults(object):
         nwalker, niter = nwalker[0], niter[0]
         return np.array([self[name].trace()[nwalker, niter] for name in names])
         
-    #---------------------------------------------------------------------------
     def plot_timeline(self, *names, **kwargs):
         """
         Plot the chain timeline for as many parameters as specified in the 
@@ -453,6 +404,8 @@ class EmceeResults(object):
         fig : matplotlib.Figure
             The figure object
         """
+        import plotify as pfy
+        
         outfile = kwargs.get('outfile', None)
         N = len(names)
         if N < 1:
@@ -479,7 +432,6 @@ class EmceeResults(object):
             
         return fig
         
-    #---------------------------------------------------------------------------
     def plot_triangle(self, *names, **kwargs):
         """
         Make the triange plot for as many parameters as specified in the 
@@ -519,7 +471,6 @@ class EmceeResults(object):
             fig.savefig(outfile)
         return fig
         
-    #---------------------------------------------------------------------------
     def plot_2D_trace(self, param1, param2, outfile=None):
         """
         Plot the 2D traces of the given parameters, showing the 1 and 2 sigma
@@ -542,10 +493,12 @@ class EmceeResults(object):
             The figure object
         
         """
+        import plotify as pfy
+        
         fig = pfy.figure()
         ax = fig.gca()
         
-        names = self.free_parameter_names + self.constrained_parameter_names
+        names = self.free_names + self.constrained_names
         if not all(name in names for name in [param1, param2]):
             raise ValueError("Specified parameter names not valid")
             
@@ -564,7 +517,6 @@ class EmceeResults(object):
             fig.savefig(outfile)
         return fig
 
-    #---------------------------------------------------------------------------
     def summarize_fit(self):
         """
         Summarize the fit, by plotting figures and outputing the relevant 
@@ -580,15 +532,11 @@ class EmceeResults(object):
         # print the results to the logger
         logger.info("\n"+hdr+str(self))
         
-    #---------------------------------------------------------------------------
     def values(self):
         """
         Convenience function to return the values for the free parameters
         as an array
         """
-        return np.array([self[name].mean for name in self.free_parameter_names])
-    #---------------------------------------------------------------------------
-#endclass EmceeResults
+        return np.array([self[name].mean for name in self.free_names])
 
-#-------------------------------------------------------------------------------
     

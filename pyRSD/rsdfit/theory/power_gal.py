@@ -6,6 +6,7 @@
     __email__  : nhand@berkeley.edu
     __desc__   : A ParameterSet for the rsd.GalaxySpectrum class
 """
+from . import base_model_params, extra_model_params
 from ..parameters import Parameter, ParameterSet
 from ... import rsd, numpy as np, os
 
@@ -14,34 +15,9 @@ class GalaxyPowerParameters(ParameterSet):
     A `ParameterSet` for the galaxy redshift space power spectrum in 
     `pyRSD.rsd.GalaxySpectrum`
     """
-    model_params = {'sigma8': 'mass variance at r = 8 Mpc/h',
-                    'f': 'growth rate, f = dlnD/dlna', 
-                    'alpha_perp': 'perpendicular Alcock-Paczynski effect parameter', 
-                    'alpha_par': 'parallel Alcock-Paczynski effect parameter', 
-                    'b1_sA': 'linear bias of sats w/o other sats in same halo',
-                    'b1_sB': 'linear bias of sats w/ other sats in same halo',
-                    'b1_cA': 'linear bias of cens w/o sats in same halo',
-                    'b1_cB': 'linear bias of cens w/ sats in same halo',
-                    'fcB': 'fraction of cens with sats in same halo',
-                    'fsB': 'fraction of sats with other sats in same halo', 
-                    'fs': 'fraction of total galaxies that are satellites',
-                    'NcBs': 'amplitude of 1-halo power for cenB-sat in (Mpc/h)^3', 
-                    'NsBsB': 'amplitude of 1-halo power for satB-satB in (Mpc/h)^3', 
-                    'sigma_c': 'centrals FOG damping in Mpc/h',
-                    'sigma_s': 'satellite FOG damping in Mpc/h',
-                    'sigma_sA': 'satA FOG damping in Mpc/h', 
-                    'sigma_sB': 'satB FOG damping in Mpc/h',
-                    'small_scale_sigma': 'additional small scale velocity in km/s',
-                    'N' : 'constant offset to model, in (Mpc/h)^3',
-                    'fso' : 'so satelltie fraction around type A centrals',
-                    'sigma_cA' : 'FOG damping in Mpc/h of SO satellites around type A centrals',
-                    'sigma_so' : 'FOG damping in Mpc/h due to SO satellites'}
-                   
-    extra_params = {'b1_s': 'linear bias of satellites',
-                    'b1_c': 'linear bias of centrals', 
-                    'b1': 'the total linear bias', 
-                    'fsigma8' : 'f(z)*sigma8(z) at z of measurement'}
-    
+    model_params = base_model_params
+    extra_params = extra_model_params
+         
     @classmethod                 
     def from_file(cls, filename, tag=None, extra_params={}):
         """        
@@ -71,6 +47,9 @@ class GalaxyPowerParameters(ParameterSet):
                 params.update_param(name, description=desc)
             else:
                 params[name] = Parameter(name=name, description=desc)
+        
+        params.model_params = cls.model_params
+        params.extra_params = cls.extra_params
         return params
             
     def __setitem__(self, name, value):
@@ -207,7 +186,7 @@ class GalaxyPowerTheory(object):
         Update the constraints
         """
         # first add this to the symtable, before updating constraints
-        self.fit_params._asteval.symtable['sigmav_from_bias'] = self.model.sigmav_from_bias
+        self.fit_params.register_function('sigmav_from_bias', self.model.sigmav_from_bias)
         
         # now do the constraints
         self.fit_params.set_default_constraints()
@@ -350,7 +329,7 @@ class GalaxyPowerTheory(object):
         doing_okay = True
         
         # loop over each parameter
-        for name in self.fit_params:
+        for name in self.fit_params.free_names:
             par = self.fit_params[name]
 
             # check bounds

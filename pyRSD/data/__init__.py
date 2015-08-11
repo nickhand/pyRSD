@@ -35,7 +35,8 @@ __all__ = ['load',
            'Phm_residual_params',
            'Phm_correctedPT_params',
            'Phh_params',
-           'stochB_cross_log_params']
+           'stochB_cross_log_params',
+           'mu6_correction_params']
 
 #-------------------------------------------------------------------------------
 def load(f):
@@ -352,6 +353,14 @@ def Phh_params():
     the parameters of a mode for Phh
     """    
     fname = _os.path.join(data_dir, 'simulation_fits/Phh_gp_bestfit_params.pickle')
+    return fname
+    
+def mu6_correction_params():
+    """
+    Return the filename of a pickled Gaussian Process holding fits to 
+    the parameters of the mu6 correction model
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/mu6_corrs_gp_bestfit_params.pickle')
     return fname
     
     

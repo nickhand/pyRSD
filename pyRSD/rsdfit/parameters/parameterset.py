@@ -10,38 +10,56 @@
 import collections
 import string
 import copy
+import copy_reg
 
 from . import tools, Parameter
 from .. import lmfit
 from ... import numpy as np, os
+
+class PickeableClass(type):
+    def __init__(cls, name, bases, attrs):
+        copy_reg.pickle(cls, _pickle, _unpickle)
+
+def _pickle(params):    
+    items = [[k, params[k]] for k in params]
+    inst_dict = vars(params).copy()
+    for k in vars(collections.OrderedDict()):
+        inst_dict.pop(k, None)
+    inst_dict.pop('_asteval')
+    return _unpickle, (params.__class__, items, inst_dict, )
+
+def _unpickle(cls, items, meta):
+    toret = cls()
+    for k in meta: setattr(toret, k, meta[k])
+    toret.update(items)
+    for k, v in toret._registered_functions.iteritems():
+        toret.register_function(k, v)
+    toret.prepare_params()
+    try:
+        toret.update_values()
+    except:
+        pass
+    return toret
 
 class ParameterSet(lmfit.Parameters):
     """
     A subclass of `lmfit.Parameters` that adds the ability to update values
     based on constraints in place
     """
-    def __init__(self):
-        
-        super(ParameterSet, self).__init__()
+    __metaclass__ = PickeableClass
+    
+    def __init__(self, *args, **kwargs):
+        super(ParameterSet, self).__init__(*args, **kwargs)
 
         self._asteval = lmfit.asteval.Interpreter()
         self._namefinder = lmfit.astutils.NameFinder()
         self._prepared = False
+        self._registered_functions = {}
         self.tag = None
         
     #---------------------------------------------------------------------------
     # builtin functions
     #---------------------------------------------------------------------------
-    def __getstate__(self):
-        if hasattr(self, '_asteval'): delattr(self, '_asteval')
-        d =  self.__dict__.copy()
-        return d
-
-    def __setstate__(self, d):
-        self.__dict__ = d
-        self.prepare_params()
-        self.update_values()
-        
     def __str__(self):
         # first get the parameters
         toret = "Parameters\n" + "_"*10 + "\n"
@@ -218,6 +236,15 @@ class ParameterSet(lmfit.Parameters):
     #---------------------------------------------------------------------------
     # functions to handle param constraints
     #---------------------------------------------------------------------------
+    def register_function(self, name, function):
+        """
+        Register a function in the ``symtable`` of the ``asteval`` attribute
+        """
+        if not hasattr(self, '_asteval'):
+            self._asteval = lmfit.asteval.Interpreter()
+        self._asteval.symtable[name] = function
+        self._registered_functions[name] = function
+        
     def prepare_params(self):
         """
         Prepare the parameters by parsing the dependencies. We initialize the 

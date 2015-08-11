@@ -54,7 +54,6 @@ MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
 VERSION             = '1.0'
 
 #-------------------------------------------------------------------------------   
-scripts_dir = 'pyRSD/rsdfit/scripts'
 pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
             'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl.so']
 setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
@@ -65,12 +64,12 @@ setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
         maintainer_email=MAINTAINER_EMAIL,
         version=VERSION,
         packages=find_packages(),
-        scripts=[os.path.join(scripts_dir, script) for script in os.listdir(scripts_dir)],
         install_requires=[
             'pandas', 
             'scikit-learn',
             'numpy',
             'scipy'
         ],
-        package_data={'pyRSD': pkg_data}
+        package_data={'pyRSD': pkg_data},
+        entry_points={'console_scripts': ['rsdfit = pyRSD.rsdfit.__main__:run']},
     )

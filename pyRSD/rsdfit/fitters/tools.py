@@ -25,7 +25,7 @@ def univariate_init(theory, nwalkers, draw_from='prior', logger=None):
         Log output to this logger
     """
     # get the free params
-    pars = theory.fit_params.free_parameters
+    pars = theory.fit_params.free
     
     # draw function: if it's from posteriors and a par has no posterior, fall
     # back to prior
@@ -111,7 +111,7 @@ def multivariate_init(theory, nwalkers, draw_from='prior', logger=None):
         Log output to this logger
     """
     # get the free params
-    pars = theory.fit_params.free_parameters
+    pars = theory.fit_params.free
     npars = len(pars)
     
     # draw function

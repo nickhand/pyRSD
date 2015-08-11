@@ -33,7 +33,7 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     except:
         acc_frac = np.array([np.nan])        
     text += ["      acceptance_fraction ({}->{} (median {}))".format(acc_frac.min(), acc_frac.max(), np.median(acc_frac))]      
-    for i, par in enumerate(theory.free_parameters):
+    for i, par in enumerate(theory.free):
         pos = chain[:,-last:,i].ravel()
         text.append("  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g}) (autocorr: {:.3g})".format(par.name,
                                             np.median(pos), np.std(pos), chain[best_walker, best_iter, i], acor[i]))
@@ -121,7 +121,6 @@ def run(params, theory, objective, pool=None, init_values=None):
         # copy the results object
         old_results = init_values.copy()
         
-        
         # get the attributes
         chain = old_results.chain
         lnprob0 = old_results.lnprobs[:,-1]
@@ -132,6 +131,8 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     # 3) start from scratch
     else:
+        if init_from == 'previous_run':
+            raise ValueError('trying to init from previous run, but old chain failed')
 
         # Initialize a set of parameters
         try:

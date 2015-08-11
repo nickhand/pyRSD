@@ -25,7 +25,7 @@ def run(params, theory, objective, **kwargs):
     # make lmfit.Parameters out of all free parameters
     pars = lmfit.Parameters()
     logger.info("LMFIT: Making `Parameter` objects for all free parameters")
-    for name in theory.fit_params.free_parameter_names:
+    for name in theory.fit_params.free_names:
         par = theory.fit_params[name]
         minimum, maximum = par.limits
         pars.add(name, value=par.value, min=minimum, max=maximum, vary=True)

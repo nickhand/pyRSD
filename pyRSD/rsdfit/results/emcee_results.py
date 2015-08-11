@@ -1,8 +1,6 @@
 from ... import numpy as np
 from .. import logging
-from . import triangle, tools
-
-from matplotlib.ticker import MaxNLocator
+from . import tools
 import scipy.stats
 
 logger = logging.getLogger('rsdfit.emcee_results')
@@ -405,6 +403,7 @@ class EmceeResults(object):
             The figure object
         """
         import plotify as pfy
+        from matplotlib.ticker import MaxNLocator
         
         outfile = kwargs.get('outfile', None)
         N = len(names)
@@ -454,6 +453,8 @@ class EmceeResults(object):
         fig : matplotlib.Figure
             The figure object 
         """
+        from . import triangle
+        
         thin = kwargs.get('thin', 1)
         outfile = kwargs.get('outfile', None)
         if len(names) < 2:

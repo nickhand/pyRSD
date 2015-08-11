@@ -1,9 +1,3 @@
-try:
-    import plotify as pfy
-except:
-    msg = "Covariance matrix plotting requires `plotify` plotting package"
-    raise ImportError(msg)
-    
 from ... import numpy as np
 from . import tools
 import copy
@@ -304,8 +298,7 @@ class CovarianceMatrix(object):
         Plot the correlation matrix (normalized covariance matrix), optionally
         saving if `filename != None`
         """
-
-        
+        import plotify as pfy
         pfy.clf()
         corr = self.normalized().asarray()
         colormesh = pfy.pcolormesh(corr, vmin=-1, vmax=1)
@@ -1061,7 +1054,8 @@ class PkmuCovarianceMatrix(PowerCovarianceMatrix):
                     P(k) + Pshot(k)
                 subtract_gaussian : bool
                     Subtract out the Gaussian prediction
-        """     
+        """ 
+        import plotify as pfy    
         # get the current axes
         if ax is None: ax = pfy.gca()
         
@@ -1156,6 +1150,7 @@ class PkmuCovarianceMatrix(PowerCovarianceMatrix):
                 show_zero_line : bool
                     If `True`, plot a y=0 horizontal line
         """
+        import plotify as pfy
         import scipy.stats
                 
         # get the current axes
@@ -1557,7 +1552,8 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
                     Subtract out the Gaussian prediction
                 absmag : bool
                     Plot the absolute magnitude, relevant for cross multipoles
-        """     
+        """ 
+        import plotify as pfy    
         # get the current axes
         if ax is None: ax = pfy.gca()
         
@@ -1663,6 +1659,7 @@ class PoleCovarianceMatrix(PowerCovarianceMatrix):
                 show_zero_line : bool
                     If `True`, plot a y=0 horizontal line
         """
+        import plotify as pfy
         import scipy.stats
                 
         # get the current axes

@@ -11,7 +11,19 @@ from . import tools, distributions as dists
 from .. import lmfit
 from ... import numpy as np
 from ...rsd._cache import Cache, parameter, cached_property
+import copy_reg
 
+class PickeableClass(type):
+    def __init__(cls, name, bases, attrs):
+        copy_reg.pickle(cls, _pickle, _unpickle)
+
+def _pickle(param):
+    d = {k:getattr(param, k, None) for k in param.keys()}
+    d['prior'] = param.prior_name
+    return _unpickle, (param.__class__, d, )
+
+def _unpickle(cls, kwargs):
+    return cls(**kwargs)
 
 class Parameter(lmfit.Parameter, Cache):
     """
@@ -19,6 +31,7 @@ class Parameter(lmfit.Parameter, Cache):
     functionality is largely the ability to associate a prior with the parameter.
     Currently, the prior can either be a uniform or normal distribution.
     """
+    __metaclass__ = PickeableClass
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
                    'description', 'fiducial', 'prior', 'lower', 'upper', 'mu', 'sigma']
                    
@@ -199,7 +212,7 @@ class Parameter(lmfit.Parameter, Cache):
         else:
             sval = "value={0:<15s}".format(str(self.value) + ">")
             s.append(sval)
-            
+
         if tools.is_floatable(self.value):
             fid_tag = ", fiducial" if self.value == self.fiducial else ""
             if self.constrained:
@@ -211,18 +224,18 @@ class Parameter(lmfit.Parameter, Cache):
             sval += "%-20s" %t
 
             s.append(sval)
-        
+
             # add the prior
             if self.has_prior:
                 s.append(str(self.prior))
             else:
                 s.append('no prior')
-                
+
         return "<Parameter %s" % ' '.join(s)
-    
+
     def __str__(self):
-        return self.__repr__()    
-            
+        return self.__repr__()
+
     def keys(self):
         return self.valid_keys
       

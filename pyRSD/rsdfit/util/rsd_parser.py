@@ -115,6 +115,10 @@ def initialize_parser():
            automatically updated index."""
     run_parser.add_argument('--chain-number', help=h)
     
+    # debug
+    h = 'whether to print more info about the mpi4py.Pool object'
+    run_parser.add_argument('--debug', help=h, action='store_true', default=False)
+    
     #---------------------------------------------------------------------------
     # RESTART SUBPARSER
     #---------------------------------------------------------------------------
@@ -148,6 +152,10 @@ def initialize_parser():
     
     h = 'silence the standard output to the console'
     restart_parser.add_argument('--silent', help=h, action='store_true')
+    
+    # debug
+    h = 'whether to print more info about the mpi4py.Pool object'
+    restart_parser.add_argument('--debug', help=h, action='store_true', default=False)
     
     #---------------------------------------------------------------------------
     # ANALYZE SUBPARSER

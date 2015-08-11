@@ -72,7 +72,7 @@ def univariate_init(theory, nwalkers, draw_from='prior', logger=None):
             for ii, par in enumerate(pars):
                 value = getattr(par, draw_funcs[ii])(size=1)                    
                 walker.append(value)
-    
+                
     # Perhaps it was difficult to initialise walkers, warn the user
     if exceed_max_try or difficult_try:
         if logger is not None:
@@ -91,7 +91,6 @@ def univariate_init(theory, nwalkers, draw_from='prior', logger=None):
         drew_from = 'mixture of priors and posteriors'
     
     return p0, drew_from
-#end univariate_init
 
 #-------------------------------------------------------------------------------
 def multivariate_init(theory, nwalkers, draw_from='prior', logger=None):
@@ -172,7 +171,5 @@ def multivariate_init(theory, nwalkers, draw_from='prior', logger=None):
                 logger.warning("Walker {} could not be initalised with valid parameters".format(i))
     
     return sample, draw_from
-#end multivariate_init
 
-#-------------------------------------------------------------------------------
 

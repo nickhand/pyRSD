@@ -32,9 +32,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
     for biased redshift space power spectra
     """
-    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + ['fog_model']
+    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + \
+                        ['fog_model', 'use_so_correction']
     
     def __init__(self, fog_model='modified_lorentzian', 
+                       use_so_correction=False,
                        **kwargs):
         
         # initalize the dark matter power spectrum
@@ -42,7 +44,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         # set the parameters
         self.fog_model         = fog_model
-        
+        self.use_so_correction = use_so_correction
+
         # set the defaults
         self.include_2loop = False
         self.fs            = 0.10
@@ -61,10 +64,20 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.NcBs          = 3e4
         self.NsBsB         = 9e4
         self.N             = 0.
-        
+        self.fso           = 0.
+        self.sigma_cA      = 0.
+        self.sigma_so      = 0.
+     
     #---------------------------------------------------------------------------
     # PARAMETERS
     #---------------------------------------------------------------------------
+    @parameter
+    def use_so_correction(self, val):
+        """
+        Whether to correct the Pgal_cAcA spectrum for SO/FoF differences
+        """
+        return val
+        
     @parameter
     def fog_model(self, val):
         """
@@ -82,6 +95,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     def fs(self, val):
         """
         The satellite fraction, fs = N_sat / N_gal 
+        """
+        return val
+        
+    @parameter
+    def fso(self, val):
+        """
+        The fraction of satellites in SO halo finders compared to FOF
         """
         return val
 
@@ -133,7 +153,24 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The FOG velocity dispersion for centrals in Mpc/h
         """
         return val
+    
+    @parameter
+    def sigma_cA(self, val):
+        """
+        The FOG velocity dispersion for type A centrals in Mpc/h, accounting
+        for FOG from SO/FOF differences around central type A galaxies
+        """
+        return val
                 
+    @parameter
+    def sigma_so(self, val):
+        """
+        The FOG velocity dispersion for type A centrals in Mpc/h, accounting
+        for FOG from SO/FOF differences around central type A galaxies
+        """
+        return val
+    
+    
     @parameter
     def sigma_s(self, val):
         """
@@ -202,13 +239,14 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         Initialize the underlying splines, etc
         """
-        return self.Pgal(0.5, 0.5)
+        k = 0.5*(self.kmin+self.kmax)
+        return self.Pgal(k, 0.5)
             
     def evaluate_fog(self, k, mu, sigma):
         """
         Compute the FOG damping, evaluating at `k` and `mu`. The 
         `alpha_par` dependence here is just absorbed into the `sigma` parameter
-        """
+        """        
         if np.isscalar(mu) or len(mu) == len(k):
             return self.fog_model(k*mu*sigma)
         else:
@@ -228,7 +266,17 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.evaluate_fog(k, mu, self.sigma_c)
 
         # now return the power spectrum here
-        toret = G**2 * self.power(k, mu) + self.N
+        pk = self.power(k, mu)
+        
+        if self.use_so_correction:
+            G2 = self.evaluate_fog(k, mu, self.sigma_cA)
+            term1 = (1 - self.fso)**2 * G**2 * pk
+            term2 = 2*self.fso*(1-self.fso)*G*G2*pk
+            term3 = self.fso**2 * G2**2 * pk
+            term4 = 2*G*G2*self.fso*self.fcB/(1-self.fcB)*self.NcBs
+            toret = term1 + term2 + term3 + term4 + self.N
+        else:
+            toret = G**2 * pk + self.N
         
         return toret if not flatten else np.ravel(toret, order='F')
     
@@ -436,7 +484,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(k, mu)
         Pss = self.fs**2 * self.Pgal_ss(k, mu)
         
-        toret = Pcc + Pcs + Pss 
+        toadd = N*self.evaluate_fog(k, mu, self.sigma_so)**2
+        toret = Pcc + Pcs + Pss + toadd
         self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
         

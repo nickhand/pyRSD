@@ -1,12 +1,10 @@
 from ... import numpy as np, os
+from .. import logging
 from ..results import EmceeResults
 from . import tools
 
 import emcee
-import logging
 import time
-import scipy.stats
-import cPickle
 
 logger = logging.getLogger('rsdfit.emcee_fitter')
 logger.addHandler(logging.NullHandler())
@@ -40,9 +38,62 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     
     text = "\n".join(text) +'\n'
     logger.warning(text)
+    
+    
+def do_convergence(niter):
+    """
+    Determine if we should check convergence at this iteration
+    """
+    if niter < 200:
+        return False
+    elif niter < 1000 and niter % 50 == 0:
+        return True
+    elif niter >= 1000 and niter % 25 == 0:
+        return True
 
+    return False
+    
+def test_convergence(chains0, niter, epsilon):
+    """
+    Test convergence using the Gelman-Rubin diagnostic
+    
+    # Calculate Gelman & Rubin diagnostic
+    # 1. Remove the first half of the current chains
+    # 2. Calculate the within chain and between chain variances
+    # 3. estimate your variance from the within chain and between chain variance
+    # 4. Calculate the potential scale reduction parameter
+    """
+    (walkers, _, ndim) = chains0[0].shape
+    Nchains = len(chains0)
+    n = max(niter/2, 1)
+    
+    chains, withinchainvar, meanchain = [],[],[]
+    for chain in chains0:
+        inds = np.nonzero(chain)
+        chain = chain[inds].reshape((walkers, -1, ndim))
+        chain = chain[:, n:, :].reshape((-1, ndim))
+        chains.append(chain)
+        withinchainvar.append(np.var(chain, axis=0))
+        meanchain.append(np.mean(chain, axis=0))
+    
+    meanall = np.mean(meanchain, axis=0)
+    W = np.mean(withinchainvar, axis=0)
+    B = np.zeros(ndim)
+
+    for jj in range(0, Nchains):
+        B += n*(meanall - meanchain[jj])**2 / (Nchains-1.)
+    estvar = (1. - 1./n)*W + B/n
+    with np.errstate(invalid='ignore'):
+        scalereduction = np.sqrt(estvar/W)
+    
+    converged = abs(1.-scalereduction) <= epsilon
+    logger.warning("EMCEE: testing convergence with epsilon = %.4f" %epsilon)
+    logger.warning("            %d/%d parameters have converged" %(converged.sum(), ndim))
+    logger.warning("            scale-reduction = %s" %str(scalereduction))
+    return np.all(converged)
+    
 #-------------------------------------------------------------------------------
-def run(params, theory, objective, pool=None, init_values=None):
+def run(params, theory, objective, pool=None, chains_comm=None, init_values=None):
     """
     Perform MCMC sampling of the parameter space of a system using `emcee`.
         
@@ -79,10 +130,8 @@ def run(params, theory, objective, pool=None, init_values=None):
     label     = params.get('label')
     ndim      = theory.ndim
     init_from = params.get('init_from', 'prior')
-    minAF     = params.get('min_acceptance_fraction', 0.2)
-    maxAF     = params.get('max_acceptance_fraction', 0.5)
-    nEff      = params.get('autocorr_convergence', 10)
-    threads   = params.get('threads', 1)
+    epsilon   = params.get('epsilon', 0.02)
+    test_conv = params.get('test_convergence', True)
     
     #---------------------------------------------------------------------------
     # let's check a few things so we dont mess up too badly
@@ -104,6 +153,7 @@ def run(params, theory, objective, pool=None, init_values=None):
     old_results = None
     start_iter = 0
     lnprob0 = None
+    start_chain = None
     
     # 1) initialixe from initial provided values
     if init_from == 'max-like' or init_from == 'fiducial':
@@ -122,10 +172,10 @@ def run(params, theory, objective, pool=None, init_values=None):
         old_results = init_values.copy()
         
         # get the attributes
-        chain = old_results.chain
+        start_chain = old_results.chain
         lnprob0 = old_results.lnprobs[:,-1]
-        start_iter = chain.shape[1]
-        p0 = np.array(chain[:, -1, :])
+        start_iter = start_chain.shape[1]
+        p0 = np.array(start_chain[:, -1, :])
         
         logger.warning("EMCEE: continuing previous run (starting at iteration {})".format(start_iter))
     
@@ -146,31 +196,22 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     # initialize the sampler
     logger.warning("EMCEE: initializing sampler with {} walkers".format(nwalkers))
-    sampler = emcee.EnsembleSampler(nwalkers, ndim, objective, pool=pool, threads=threads)
+    sampler = emcee.EnsembleSampler(nwalkers, ndim, objective, pool=pool)
 
-    # iterator interface allows us to trap ctrl+c and know where we are
+    # iterator interface allows us to tap ctrl+c and know where we are
     exception = False
     converged = False
     niters -= start_iter
     burnin = 0 if start_iter > 0 else params.get('burnin', 100)
-    try:                               
+    try:                           
         logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
         start = time.time()    
         generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters, storechain=True)
-        
+     
         # loop over all the steps
         for niter, result in enumerate(generator):                    
-            
-            # check convergence
-            if ( (niter > burnin) and (minAF < np.mean(sampler.acceptance_fraction) < maxAF) ):
-                acor = sampler.acor
-                if np.all(niter-burnin > 10*acor) and niter > 50:
-                    converged = True
-                    logger.warning("EMCEE: convergence criteria satisfied; breaking chain at step {}.\
-                                                (AF={}, AC={})".format(niter,
-                                                np.mean(sampler.acceptance_fraction),
-                                                np.amax(acor)))
-                    raise Exception
+      
+            print niter
                 
             if niter < 10:
                 update_progress(theory, sampler, niters, nwalkers)
@@ -180,13 +221,21 @@ def run(params, theory, objective, pool=None, init_values=None):
                 update_progress(theory, sampler, niters, nwalkers)
             elif niter % 100 == 0:
                 update_progress(theory, sampler, niters, nwalkers)
+                
+            # check convergence
+            if chains_comm is not None and test_conv and do_convergence(start_iter+niter+1):
+                chain = sampler.chain if start_chain is None else np.concatenate([start_chain, sampler.chain],axis=1)
+                
+                chains_comm.Barrier() # sync each chain to same number of iterations
+                chains = chains_comm.gather(chain, root=0)
+                if chains_comm.rank == 0:
+                    converged = test_convergence(chains, start_iter+niter+1, epsilon)
+                chains_comm.Barrier() # sync each chain to same number of iterations
+                converged = chains_comm.bcast(converged, root=0)
+                if converged: raise Exception
 
         stop = time.time()
         logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(tools.hms_string(stop-start)))
-
-        # close the pool processes
-        if pool is not None: 
-            pool.close()
 
         # acceptance fraction should be between 0.2 and 0.5 (rule of thumb)
         logger.warning("EMCEE: mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
@@ -202,13 +251,15 @@ def run(params, theory, objective, pool=None, init_values=None):
             exception = True
             logger.warning("EMCEE: exception occurred - trying to save current state of chain")
             logger.warning("EMCEE: exception message: %s" %e)
-            logger.warning("EMCEE: current parameters:\n %s" %str(theory.fit_params))
+        else:
+            logger.warning("EMCEE: convergence criteria satisfied -- exiting")
+        logger.warning("EMCEE: current parameters:\n %s" %str(theory.fit_params))
 
-    finally:
-        new_results = EmceeResults(sampler, theory.fit_params, burnin)
-        if old_results is not None:
-            new_results = old_results + new_results
-        
+    #finally:
+    new_results = EmceeResults(sampler, theory.fit_params, burnin)
+    if old_results is not None:
+        new_results = old_results + new_results
+    
     return new_results, exception
 
 #-------------------------------------------------------------------------------

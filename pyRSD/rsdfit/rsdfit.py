@@ -1,7 +1,6 @@
-from .util import rsd_io, parse_command_line
-from . import FittingDriver, logging, params_filename, model_filename
-from .. import os, sys
-
+from pyRSD.rsdfit.util import rsd_io, parse_command_line
+from pyRSD.rsdfit import FittingDriver, logging, params_filename, model_filename
+from pyRSD import os, sys
 import tempfile
 
 def split_ranks(N_ranks, N_chunks):
@@ -88,8 +87,12 @@ def run():
     world_group = world_comm.Get_group()
     
     # parse the command line arguments
-    args = parse_command_line()
-    
+    if world_comm > 1:
+        args = None
+        if world_rank == 0:
+            args = parse_command_line()
+        args = world_comm.bcast(args, root=0)
+        
     # split ranks
     chains_group, chains_comm, pool_comm, pool = [None]*4
     if world_size > 1:
@@ -191,10 +194,11 @@ def run():
         # if we made it this far, it's safe to delete the old results
         if os.path.exists(temp_log_name):
             os.remove(temp_log_name)
-        if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
-            os.remove(args.restart_file)
+        if world_size > 1 and world_rank == 0:
+            if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
+                os.remove(args.restart_file)
         
-#-------------------------------------------------------------------------------
-
+if __name__ == "__main__":
+    run()
     
     

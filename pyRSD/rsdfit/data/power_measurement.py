@@ -1,10 +1,11 @@
 from ... import numpy as np
-from ..parameters import ParameterSet, tools
+from .. import logging
+from ..parameters import ParameterSet
 from . import CovarianceMatrix, load_covariance
 from . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 
 import pickle
-import logging
+
 
 logger = logging.getLogger('rsdfit.data')
 logger.addHandler(logging.NullHandler())
@@ -217,7 +218,6 @@ class PowerMeasurement(object):
         """
         return self.__repr__()
     #---------------------------------------------------------------------------
-#endclass PowerMeasurement
 
 #-------------------------------------------------------------------------------
 class PowerData(object):
@@ -229,8 +229,9 @@ class PowerData(object):
         """
         Initialize and setup up the measurements. 
         """
-        self.params = ParameterSet(param_file, tag='data')
-
+        self.params = ParameterSet.from_file(param_file, tags='data')
+        self.kmin, self.kmax = self.params['fitting_range'].value
+            
         # read the data file
         self.read_data()
 
@@ -303,7 +304,6 @@ class PowerData(object):
         
         # loop over each statistic
         self.measurements = []
-        self.kmin, self.kmax = np.inf, 0.
         for i, stat_name in enumerate(stats):
             
             # parse the name
@@ -322,8 +322,6 @@ class PowerData(object):
             power = self.data['power'][:,i]
             error = self.data['error'][:,i]
             self.measurements.append(PowerMeasurement(k, power, 'pkmu', mu, error=error))
-            self.kmin = min(np.amin(k), self.kmin)
-            self.kmax = max(np.amax(k), self.kmax)
             
         # # make sure all the ks are the same
         # tmp = self.measurements
@@ -352,7 +350,7 @@ class PowerData(object):
         # load the covariance from a pickle
         if self.params['covariance'].value is not None:
             
-            filename = tools.find_file(self.params['covariance'].value)
+            filename = self.params['covariance'].value
             C = load_covariance(filename)            
             
             if isinstance(C, np.ndarray):
@@ -389,14 +387,14 @@ class PowerData(object):
             self._set_errs_from_cov()
             
         # trim the covariance
-        if self.k_max is not None or self.k_min is not None:
-            self.covariance = self.covariance.trim_k(lower=self.k_min, upper=self.k_max)
-            logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.k_min, self.k_max))
+        if self.kmax is not None or self.kmin is not None:
+            self.covariance = self.covariance.trim_k(lower=self.kmin, upper=self.kmax)
+            logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
 
         # trim the measurements
         for d in self.measurements:
-            d.k_max = self.k_max
-            d.k_min = self.k_min
+            d.k_max = self.kmax
+            d.k_min = self.kmin
                   
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:

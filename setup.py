@@ -70,5 +70,6 @@ setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
             'numpy',
             'scipy'
         ],
-        package_data={'pyRSD': pkg_data}
+        package_data={'pyRSD': pkg_data},
+        entry_points={'console_scripts' : ['rsdfit = pyRSD.rsdfit.rsdfit:run']}
     )

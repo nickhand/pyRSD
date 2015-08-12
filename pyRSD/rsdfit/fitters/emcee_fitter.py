@@ -44,11 +44,11 @@ def do_convergence(niter):
     """
     Determine if we should check convergence at this iteration
     """
-    if niter < 200:
+    if niter < 500:
         return False
-    elif niter < 1000 and niter % 50 == 0:
+    elif niter < 1500 and niter % 200 == 0:
         return True
-    elif niter >= 1000 and niter % 25 == 0:
+    elif niter >= 1500 and niter % 100 == 0:
         return True
 
     return False

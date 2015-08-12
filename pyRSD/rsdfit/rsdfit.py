@@ -175,13 +175,14 @@ def run():
         raise Exception(e)
     finally:
                 
-        print "world_rank = ", world_rank
         # get the output and finalize
         kwargs = {}
         if driver.results is not None:
             kwargs['walkers'] = driver.results.walkers
             kwargs['iterations'] =  driver.results.iterations
             output_name = rsd_io.create_output_file(args, driver.params['fitter'].value, chain_number, **kwargs)
+            
+            print "rank = ", world_rank, ", output_name = ", output_name
             driver.finalize_fit(exception, output_name)
     
             # now save the log to the logs dir

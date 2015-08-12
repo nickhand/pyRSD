@@ -209,10 +209,7 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
         generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters, storechain=True)
      
         # loop over all the steps
-        for niter, result in enumerate(generator):                    
-      
-            print niter
-                
+        for niter, result in enumerate(generator):                            
             if niter < 10:
                 update_progress(theory, sampler, niters, nwalkers)
             elif niter < 50 and niter % 2 == 0:

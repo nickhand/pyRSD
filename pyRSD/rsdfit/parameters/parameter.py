@@ -263,4 +263,7 @@ class Parameter(lmfit.Parameter, Cache):
                 
             if val is not None:
                 toret[k] = val
+        for k in ['min', 'max']:
+            if k in toret and not np.isfinite(toret[k]):
+                toret.pop(k)
         return toret

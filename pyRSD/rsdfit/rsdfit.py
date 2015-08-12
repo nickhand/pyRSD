@@ -178,7 +178,7 @@ def run():
                 
         # get the output and finalize
         kwargs = {}
-        print print "rank = ", world_rank, driver.results is None
+        print "rank = ", world_rank, driver.results is None
         if driver.results is not None:
             kwargs['walkers'] = driver.results.walkers
             kwargs['iterations'] =  driver.results.iterations

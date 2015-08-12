@@ -401,7 +401,8 @@ class FittingDriver(object):
         if not np.isfinite(lp):
             return -np.inf
         else:
-            return lp + self.lnlike()
+            toret = lp + self.lnlike() 
+            return toret if not np.isnan(toret) else -np.inf
 
     def set_fiducial(self):
         """

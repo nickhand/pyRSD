@@ -174,12 +174,8 @@ def run():
     except Exception as e:
         raise Exception(e)
     finally:
-        
-        # handle the MPI stuff
-        if pool is not None: pool.close()
-        if chains_group is not None: chains_group.Free()
-        if chains_comm is not None: chains_comm.Free()
-        
+                
+        print "world_rank = ", world_rank
         # get the output and finalize
         kwargs = {}
         if driver.results is not None:
@@ -194,9 +190,14 @@ def run():
         # if we made it this far, it's safe to delete the old results
         if os.path.exists(temp_log_name):
             os.remove(temp_log_name)
-        if world_size > 1 and world_rank == 0:
+        if world_rank == 0:
             if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
                 os.remove(args.restart_file)
+                
+        # handle the MPI stuff
+        if pool is not None: pool.close()
+        if chains_group is not None: chains_group.Free()
+        if chains_comm is not None: chains_comm.Free()
         
 if __name__ == "__main__":
     run()

@@ -35,7 +35,7 @@ class GalaxyPowerParameters(ParameterSet):
         
         # initialize the base class
         params = super(GalaxyPowerParameters, cls).from_file(filename, tags=tag)
-                                        
+                                   
         # add descriptions for the model params
         for name, desc in cls.model_params.iteritems():
             if name in params and params[name] is not None:
@@ -159,6 +159,11 @@ class GalaxyPowerTheory(object):
         
         # update the constraints
         self.update_constraints()
+        
+        # delete any empty parameters
+        for k in self.fit_params:
+            if self.fit_params[k].value is None:
+                del self.fit_params[k]
 
     def to_file(self, filename, mode='w'):
         """

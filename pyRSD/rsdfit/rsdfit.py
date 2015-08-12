@@ -190,6 +190,9 @@ def run():
             # now save the log to the logs dir
             copy_log(temp_log_name, output_name, **copy_kwargs)
 
+        # wait for all the processes
+        chains_comm.Barrier()
+        
         # if we made it this far, it's safe to delete the old results
         if os.path.exists(temp_log_name):
             os.remove(temp_log_name)
@@ -197,10 +200,12 @@ def run():
             if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
                 os.remove(args.restart_file)
                 
+        
         # handle the MPI stuff
-        if pool is not None: pool.close()
-        if chains_group is not None: chains_group.Free()
-        if chains_comm is not None: chains_comm.Free()
+        if world_rank == 0:
+            if pool is not None: pool.close()
+            if chains_group is not None: chains_group.Free()
+            if chains_comm is not None: chains_comm.Free()
         
 if __name__ == "__main__":
     run()

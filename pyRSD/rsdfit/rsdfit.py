@@ -172,11 +172,13 @@ def run():
         exception = driver.run()
         
     except Exception as e:
+        print "rank = ", world_rank, ", exception = ", str(e)
         raise Exception(e)
     finally:
                 
         # get the output and finalize
         kwargs = {}
+        print print "rank = ", world_rank, driver.results is None
         if driver.results is not None:
             kwargs['walkers'] = driver.results.walkers
             kwargs['iterations'] =  driver.results.iterations

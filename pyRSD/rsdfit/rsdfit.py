@@ -172,26 +172,23 @@ def run():
         exception = driver.run()
         
     except Exception as e:
-        print "rank = ", world_rank, ", exception = ", str(e)
         raise Exception(e)
     finally:
                 
         # get the output and finalize
         kwargs = {}
-        print "rank = ", world_rank, driver.results is None
         if driver.results is not None:
             kwargs['walkers'] = driver.results.walkers
             kwargs['iterations'] =  driver.results.iterations
             output_name = rsd_io.create_output_file(args, driver.params['fitter'].value, chain_number, **kwargs)
-            
-            print "rank = ", world_rank, ", output_name = ", output_name
             driver.finalize_fit(exception, output_name)
     
             # now save the log to the logs dir
             copy_log(temp_log_name, output_name, **copy_kwargs)
 
-        # wait for all the processes
-        chains_comm.Barrier()
+        # wait for all the processes, if we more than one
+        if world_size > 1:
+            chains_comm.Barrier()
         
         # if we made it this far, it's safe to delete the old results
         if os.path.exists(temp_log_name):
@@ -200,7 +197,6 @@ def run():
             if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
                 os.remove(args.restart_file)
                 
-        
         # handle the MPI stuff
         if world_rank == 0:
             if pool is not None: pool.close()

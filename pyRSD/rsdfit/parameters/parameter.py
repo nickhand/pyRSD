@@ -35,7 +35,7 @@ class Parameter(lmfit.Parameter, Cache):
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
                    'description', 'fiducial', 'prior', 'lower', 'upper', 'mu', 'sigma']
                    
-    def __init__(self, name=None, value=None, vary=True, min=None, max=None, expr=None, **kwargs):
+    def __init__(self, name=None, value=None, vary=False, min=None, max=None, expr=None, **kwargs):
         """
         Parameters
         ----------

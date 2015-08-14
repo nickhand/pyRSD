@@ -270,6 +270,7 @@ def plot_2d_posteriors(info, tag, param_names, saved_subplots):
                 trace.mean(), bounds[0, -1],bounds[0, 0])
         title = '%s=$%.{0}g^{{+%.{0}g}}_{{%.{0}g}}$'.format(info.decimal) %args
         ax.set_title(title, fontsize=info.fontsize, y=1.05)
+        ax.set_xlabel(info.plot_tex_names[native_index],fontsize=info.fontsize)
 
         # xtick labels
         ax.set_xticklabels(['%.{0}g'.format(info.decimal) % s

@@ -19,7 +19,8 @@ base_model_params = {'sigma8': 'mass variance at r = 8 Mpc/h',
                     'N' : 'constant offset to model, in (Mpc/h)^3',
                     'fso' : 'so satelltie fraction around type A centrals',
                     'sigma_cA' : 'FOG damping in Mpc/h of SO satellites around type A centrals',
-                    'sigma_so' : 'FOG damping in Mpc/h due to SO satellites'}
+                    'sigma_so' : 'FOG damping in Mpc/h due to SO satellites', 
+                    'R_so' : 'radius of profile damping in SO satellites'}
 
 extra_model_params = {'b1_s': 'linear bias of satellites',
                     'b1_c': 'linear bias of centrals', 

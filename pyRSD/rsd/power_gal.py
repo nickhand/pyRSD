@@ -67,6 +67,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.fso           = 0.
         self.sigma_cA      = 0.
         self.sigma_so      = 0.
+        self.R_so          = 0.
      
     #---------------------------------------------------------------------------
     # PARAMETERS
@@ -320,7 +321,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
         PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
         toret = PcAcA + PcAcB + PcBcB + N
-          
+        
+        G_so = self.evaluate_fog(k, mu, self.sigma_so)
+        toadd = G**2 * N*(1. - (k*self.R_so)**2)
+        toret += toadd
+        
         self.N = N      
         return toret if not flatten else np.ravel(toret, order='F')
         
@@ -483,9 +488,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Pcc = (1. - self.fs)**2 * self.Pgal_cc(k, mu)
         Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(k, mu)
         Pss = self.fs**2 * self.Pgal_ss(k, mu)
-        
-        toadd = N*self.evaluate_fog(k, mu, self.sigma_so)**2
-        toret = Pcc + Pcs + Pss + toadd
+        toret = Pcc + Pcs + Pss + N
         self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
         

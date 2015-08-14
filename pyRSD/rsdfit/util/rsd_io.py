@@ -58,7 +58,7 @@ def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0,
         tag = solver_type
         
     # output file
-    if restart_file is None:
+    if restart is None:
         outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
     else:
         # need to extract the original chain number

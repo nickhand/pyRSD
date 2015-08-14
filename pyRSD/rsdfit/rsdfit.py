@@ -129,6 +129,7 @@ def run():
     chain_number = chains_comm.rank if chains_comm is not None else 0
     if not silent: add_console_logger(chain_number)
     copy_kwargs = {}
+    kwargs = {}
 
     # run the full fitting pipeline
     if args.subparser_name == 'run':
@@ -164,6 +165,7 @@ def run():
         if args.burnin is not None:
             driver.params.add('burnin', value=args.burnin)
         copy_kwargs['restart'] = args.restart_file
+        kwargs['restart'] = args.restart_file
                     
     try:
         # log to a temporary file (for now)
@@ -180,7 +182,6 @@ def run():
     finally:
                 
         # get the output and finalize
-        kwargs = {}
         if driver.results is not None:
             kwargs['walkers'] = driver.results.walkers
             kwargs['iterations'] =  driver.results.iterations

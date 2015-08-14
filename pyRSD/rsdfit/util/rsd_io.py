@@ -42,7 +42,7 @@ def save_pickle(obj, filename):
     cPickle.dump(obj, open(filename, 'w'))
     
 #-------------------------------------------------------------------------------
-def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0):
+def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0, restart=None):
     """
     Automatically create a new name for the results file.
     
@@ -58,7 +58,13 @@ def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0)
         tag = solver_type
         
     # output file
-    outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
+    if restart_file is None:
+        outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
+    else:
+        # need to extract the original chain number
+        fields = os.path.basename(restart).split('_')
+        outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
+        
     suffix = 0
     if args.chain_number is None:
         for files in os.listdir(args.folder):

@@ -5,7 +5,7 @@ import lmfit
 import logging
 
 # import the drivers and run functions
-from .fitting_driver import FittingDriver
+from .driver import FittingDriver
 
 # import the specific modules as well
 import data

@@ -19,11 +19,26 @@ class EmceeParameter(object):
     def __repr__(self):
         sig1 = self.one_sigma
         sig2 = self.two_sigma
-        args = (self.name+":", self.mean, sig1[0], sig1[1], sig2[0], sig2[1])
-        return "<Parameter {:<15s} {:.4g} (+{:.4g} -{:.4g}) (+{:.4g} -{:.4g})>".format(*args)
+        args = (self.name+":", self.mean, sig1[-1], sig1[0], sig2[-1], sig2[0])
+        return "<Parameter {:<15s} {:.4g} (+{:.4g} {:.4g}) (+{:.4g} {:.4g})>".format(*args)
         
     def __str__(self):
         return self.__repr__()
+        
+
+    @property
+    def fiducial(self):
+        """
+        The fiducial value of the parameter
+        """
+        try:
+            return self._fiducial
+        except AttributeError:
+            return None
+    
+    @fiducial.setter
+    def fiducial(self, val):
+        self._fiducial = val
         
     @property
     def burnin(self):
@@ -35,7 +50,7 @@ class EmceeParameter(object):
     @burnin.setter
     def burnin(self, val):
         self._burnin = val
-        del self.median, self.one_sigma, self.two_sigma
+        del self.median, self.one_sigma, self.two_sigma, self.three_sigma
 
     @property
     def flat_trace(self):
@@ -93,7 +108,7 @@ class EmceeParameter(object):
         
         Returns
         -------
-        upper, lower
+        lower, upper
             The lower and upper 1-sigma error intervals 
         """
         try: 
@@ -101,7 +116,7 @@ class EmceeParameter(object):
         except AttributeError:
             percentiles = [50., 15.86555, 84.13445]
             vals = np.percentile(self.flat_trace, percentiles)
-            self._one_sigma = [vals[2] - vals[0], vals[0] - vals[1]]
+            self._one_sigma = [-(vals[0] - vals[1]), vals[2] - vals[0]]
             return self._one_sigma
 
     @one_sigma.deleter
@@ -112,11 +127,11 @@ class EmceeParameter(object):
     def two_sigma(self):
         """
         Return the upper and lower two-sigma error intervals, as computed from
-        the percentiles, `50 - 2.2775` and `84.13445 - 50`
+        the percentiles, `50 - 2.2775` and `97.7225 - 50`
 
         Returns
         -------
-        upper, lower
+        lower, upper
             The lower and upper 1-sigma error intervals 
         """
         try: 
@@ -124,12 +139,35 @@ class EmceeParameter(object):
         except AttributeError:
             percentiles = [50, 2.2775, 97.7225]
             vals = np.percentile(self.flat_trace, percentiles)
-            self._two_sigma = [vals[2] - vals[0], vals[0] - vals[1]]
+            self._two_sigma = [-(vals[0] - vals[1]), vals[2] - vals[0]]
             return self._two_sigma
         
     @two_sigma.deleter
     def two_sigma(self):
         if hasattr(self, '_two_sigma'): delattr(self, '_two_sigma')
+        
+    @property
+    def three_sigma(self):
+        """
+        Return the upper and lower three-sigma error intervals, as computed from
+        the percentiles, `50 - 0.135` and `99.865 - 50`
+
+        Returns
+        -------
+        lower, upper
+            The lower and upper 1-sigma error intervals 
+        """
+        try: 
+            return self._three_sigma
+        except AttributeError:
+            percentiles = [50, 0.135, 99.865]
+            vals = np.percentile(self.flat_trace, percentiles)
+            self._three_sigma = [-(vals[0] - vals[1]), vals[2] - vals[0]]
+            return self._three_sigma
+        
+    @three_sigma.deleter
+    def three_sigma(self):
+        if hasattr(self, '_three_sigma'): delattr(self, '_three_sigma')
         
     def trace(self, niter=None):
         """
@@ -174,12 +212,19 @@ class EmceeResults(object):
         # make result params
         self._save_results()
         
+        # save fiducial values
+        for name in self:
+            self[name].fiducial = fit_params[name].fiducial
+        
         # set the burnin
         if burnin is None: 
             max_autocorr = 3*np.amax(self.autocorr_times)
             burnin = int(max_autocorr) if not np.isnan(max_autocorr) else int(0.1*self.iterations) 
             logger.info("setting the burnin period to {} iterations".format(burnin))
         self.burnin = int(burnin)
+        
+    def __iter__(self):
+        return iter(self.free_names + self.constrained_names)
         
     def __str__(self):
         free_params = [self[name] for name in self.free_names]
@@ -371,16 +416,15 @@ class EmceeResults(object):
         """
         The value of the maximum log probability
         """
-        return np.amax(self.lnprobs)
+        return self.lnprobs.max()
         
     def max_lnprob_values(self, *names):
         """
         Return the value of the parameters at the iteration with the maximum
         probability
         """
-        nwalker, niter = (self.lnprobs == self.max_lnprob).nonzero()
-        nwalker, niter = nwalker[0], niter[0]
-        return np.array([self[name].trace()[nwalker, niter] for name in names])
+        nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
+        return self.chain[nwalker, niter, :]
         
     def plot_timeline(self, *names, **kwargs):
         """

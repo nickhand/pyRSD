@@ -14,7 +14,7 @@ import copy_reg
 
 from . import tools, Parameter
 from .. import lmfit
-from ... import numpy as np, os
+from ... import os, numpy as np
 
 class PickeableClass(type):
     def __init__(cls, name, bases, attrs):
@@ -203,7 +203,7 @@ class ParameterSet(lmfit.Parameters):
                 except:
                     pass
         return toret
-        
+                        
     def to_file(self, filename, mode='w', header_name=None, footer=False, as_dict=True):
         """
         Output the `ParameterSet` to a file, using the mode specified. 
@@ -262,6 +262,28 @@ class ParameterSet(lmfit.Parameters):
                         par.deps.append(symname)
         self._prepared = True
         
+    def update_fiducial(self):
+        """
+        Update the fiducial values of the constrained parameters
+        """
+        values = self.valuesdict()
+
+        for name in self:
+            if self[name].expr is None:
+                fid = self[name].fiducial
+                self[name].value = fid if fid is not None else np.inf
+            
+        self.update_values()
+        for name in self:
+            if self[name].expr is not None:
+                val = self[name].value
+                if val is not None and not np.isfinite(val): val = None 
+                self[name].fiducial = val
+            
+        for k,v in values.items():
+            if self[k].expr is None:
+                self[k].value = v
+                
     def update_values(self):
         """
         Update the values of all parameters, checking that dependencies are
@@ -287,7 +309,7 @@ class ParameterSet(lmfit.Parameters):
             if par.deps is not None:
                 for dep in par.deps:
                     self._update_parameter(dep)
-            par.value = self._asteval.run(par.ast)
+            par.value = self._asteval.run(par.ast)  
         self._asteval.symtable[name] = par.value
         self._updated[name] = True
     

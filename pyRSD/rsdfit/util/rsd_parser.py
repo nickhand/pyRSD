@@ -46,14 +46,201 @@ def positive_int(string):
     except ValueError:
         raise ap.ArgumentTypeError("argument requires a positive integer")
             
+
+def setup_run_subparser(parent):
+    """
+    Setup the subparser for the ``run`` subcommand
+    """
+    subparser = parent.add_parser('run', help="run the MCMC chains from scratch")
+    
+    # the general driver parameters
+    h = 'file name holding the driver, theory, and data parameters'
+    kwargs = {'dest':'params', 'type':existing_file, 'help':h}
+    subparser.add_argument('-p', '--params', **kwargs) 
+    
+    h = 'file name holding the names of any extra theory parameters'
+    kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
+    subparser.add_argument('-xp', '--extra_params', **kwargs)
+        
+    # silence the output (OPTIONAL)
+    h = 'silence the standard output to the console'
+    subparser.add_argument('--silent', help=h, action='store_true')
+    
+    # number of walkers (OPTIONAL)
+    h = 'number of walkers in the chain'
+    subparser.add_argument('-w', help=h, type=positive_int, dest='walkers')
+    
+    # number of iterations (OPTIONAL)
+    h = 'number of steps in the chain to run'
+    subparser.add_argument('-i', help=h, type=positive_int, dest='iterations')
+    
+    # number of chains to run concurrently
+    h = 'number of chains to run concurrently'
+    subparser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
+    
+    # the output folder
+    h = 'the folder where the results will be written'
+    kwargs = {'help':h, 'type':str, 'required':True, 'dest':'folder'}
+    subparser.add_argument('-o', '--output', **kwargs)
+    
+    # arbitrary numbering of an output chain (OPTIONAL)
+    h = """An arbitrary number for the output chain. \n
+           By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with
+           year, month and day being extracted, `K` being the number of
+           walkers, `M` being the number of steps, and `i` an 
+           automatically updated index."""
+    subparser.add_argument('--chain-number', help=h)
+    
+    # debug
+    h = 'whether to print more info about the mpi4py.Pool object'
+    subparser.add_argument('--debug', help=h, action='store_true', default=False)
+    
+def setup_restart_subparser(parent):
+    """
+    Setup the subparser for the ``restart`` subcommand
+    """
+    h = "restart a MCMC fit from an existing chain"
+    subparser = parent.add_parser('restart', help=h)
+    
+    # the general driver parameters (REQUIRED)
+    h = 'the name of the existing results file to restart from'
+    subparser.add_argument('restart_file', type=existing_file, help=h)
+    
+    # number of iterations (REQUIRED)
+    h = 'the number of additional steps to run using the old chain'
+    subparser.add_argument('-i', help=h, required=True, type=positive_int, 
+                                default=0, dest='iterations')
+                                
+    # number of iterations (REQUIRED)
+    h = 'the number of steps to consider burnin'
+    subparser.add_argument('-b', help=h, type=positive_int, dest='burnin')
+                                
+    # number of chains to run concurrently
+    h = 'number of chains to run concurrently'
+    subparser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
+    
+    # arbitrary numbering of an output chain (OPTIONAL)
+    h = """An arbitrary number for the output chain. \n
+           By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with
+           year, month and day being extracted, `K` being the number of
+           walkers, `M` being the number of steps, and `i` an 
+           automatically updated index."""
+    subparser.add_argument('--chain-number', help=h)
+    
+    h = 'silence the standard output to the console'
+    subparser.add_argument('--silent', help=h, action='store_true')
+    
+    # debug
+    h = 'whether to print more info about the mpi4py.Pool object'
+    subparser.add_argument('--debug', help=h, action='store_true', default=False)
+
+def setup_analyze_subparser(parent):
+    """
+    Setup the subparser for the ``restart`` subcommand
+    """
+    h = "analyze the MCMC chains"
+    kwargs = {'help':h, 'formatter_class':ap.ArgumentDefaultsHelpFormatter}
+    subparser = parent.add_parser('analyze', **kwargs)
+
+    # the folder to analyze
+    h = "files to analyze: either a file(s), or a complete directory name"
+    subparser.add_argument('files', help=h, nargs='+')
+    
+    # to only write the covmat and bestfit, without computing the posterior
+    h = "use this flag to avoid computing the posterior distribution"
+    subparser.add_argument('--minimal', help=h, action='store_true')
+    
+    # the number of bins (defaulting to 20)
+    h = """number of bins in the histograms used to derive posterior 
+           probabilities. Decrease this number for smoother plots at the 
+           expense of masking details."""
+    subparser.add_argument('--bins', help=h, type=int, default=20)
+                                                 
+    # to remove the mean-likelihood line
+    h = "remove the mean likelihood from the 1D posterior plots"
+    subparser.add_argument('--no-mean', help=h, dest='mean_likelihood', 
+                                action='store_false')
+    
+    # if you just want the covariance matrix, use this option
+    h = "do not produce any plot, simply compute the posterior"
+    subparser.add_argument('--noplot', help=h, dest='plot', 
+                                action='store_false')
+                            
+    # if you just want to output 1d posterior distributions (faster)
+    h = "produce only the 1d posterior plot"
+    subparser.add_argument('--noplot-2d', help=h, dest='plot_2d', 
+                                action='store_false')
+    
+    # don't include fiducial lines on 1D posterior plots
+    h = "don't include fiducial lines on 1D posterior plots"
+    subparser.add_argument('--no-fiducial', help=h, dest='show_fiducial', 
+                                action='store_false')
+                            
+    # when plotting 2d posterior distribution, use contours and not contours
+    # filled (might be useful when comparing several folders)
+    h = "do not fill the contours on the 2d plot"
+    subparser.add_argument('--contours-only', help=h, dest='contours_only', 
+                                action='store_true')
+                                
+    # if you want to output every single subplots
+    h = "output every subplot and data in separate files"
+    subparser.add_argument('--all', help=h, dest='subplot', 
+                                action='store_true')
+    
+    # output file extension
+    h = "change the extension for the output file"
+    subparser.add_argument('--ext', help=h, type=str, dest='extension', 
+                                default='pdf', choices=['pdf', 'png', 'eps'])
+                                
+    # -------------------------------------
+    # fontsize of plots (defaulting to 16)
+    h = 'the desired fontsize of output fonts'
+    subparser.add_argument('--fontsize', help=h, type=int, default=16)
+    
+    # ticksize of plots (defaulting to 14)
+    h = 'the tick size on the plots'
+    subparser.add_argument('--ticksize', help=h, type=int, default=14)
+    
+    # linewidth of 1d plots (defaulting to 4, 2 being a bare minimum for
+    # legible graphs
+    h = 'the linewidth of 1d plots'
+    subparser.add_argument('--line-width', help=h, type=int, default=4)
+    
+    # number of decimal places that appear on the tick legend. If you want
+    # to increase the number of ticks, you should reduce this number
+    h = "number of decimal places on ticks"
+    subparser.add_argument('--decimal', help=h, type=int, default=3)
+    
+    # number of ticks that appear on the graph.
+    h = "number of ticks on each axis"
+    subparser.add_argument('--ticknumber', help=h, type=int, default=3)
+                                
+    # possible plot file describing custom commands
+    h = """ extra file to customize the output plots. You can actually
+        set all the possible options in this file, including line-width,
+        ticknumber, ticksize, etc... You can specify four fields,
+        `info.redefine` (dict with keys set to the previous variable, and
+        the value set to a numerical computation that should replace this
+        variable), `info.to_change` (dict with keys set to the old variable
+        name, and value set to the new variable name), `info.to_plot` (list
+        of variables with new names to plot), and `info.new_scales` (dict
+        with keys set to the new variable names, and values set to the
+        number by which it should be multiplied in the graph).
+        For instance,
+        .. code::
+            analyze.to_plot=['name1','name2','newname3',...]
+            analyze.new_scales={'name1':number1,'name2':number2,...}"""
+    subparser.add_argument('--extra', help=h, dest='optional_plot_file', default='')
+
+                                
 def initialize_parser():
     """
     Initialize the parser of command-line arguments. 
     
     The main parser has three subparsers, `run`, `restart`, and `analyze`. 
-    If you run :code:`runRSDFitter -h`, this information will be printed to 
+    If you run :code:`rsdfit -h`, this information will be printed to 
     the console. Further help information can be found by including the name 
-    of a specific submode, i.e., run code:`pyRSDFitter run -h`.
+    of a specific subcommand, i.e., run code:`rsdfit run -h`.
     """
     # set up the main parser
     usage = """%(prog)s [-h] [--version] {run,restart,analyze} ... """
@@ -72,142 +259,13 @@ def initialize_parser():
     # add the subparsers
     subparser = parser.add_subparsers(dest='subparser_name')
     
-    #---------------------------------------------------------------------------
-    # RUN SUBPARSER
-    #---------------------------------------------------------------------------
-    run_parser = subparser.add_parser('run', help="run the MCMC chains")
-    
-    # the general driver parameters
-    h = 'file name holding the driver, theory, and data parameters'
-    kwargs = {'dest':'params', 'type':existing_file, 'help':h}
-    run_parser.add_argument('-p', '--params', **kwargs) 
-    
-    h = 'file name holding the names of any extra theory parameters'
-    kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
-    run_parser.add_argument('-xp', '--extra_params', **kwargs)
-        
-    # silence the output (OPTIONAL)
-    h = 'silence the standard output to the console'
-    run_parser.add_argument('--silent', help=h, action='store_true')
-    
-    # number of walkers (OPTIONAL)
-    h = 'number of walkers in the chain'
-    run_parser.add_argument('-w', help=h, type=positive_int, dest='walkers')
-    
-    # number of iterations (OPTIONAL)
-    h = 'number of steps in the chain to run'
-    run_parser.add_argument('-i', help=h, type=positive_int, dest='iterations')
-    
-    # number of chains to run concurrently
-    h = 'number of chains to run concurrently'
-    run_parser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
-    
-    # the output folder
-    h = 'the folder where the results will be written'
-    kwargs = {'help':h, 'type':str, 'required':True, 'dest':'folder'}
-    run_parser.add_argument('-o', '--output', **kwargs)
-    
-    # arbitrary numbering of an output chain (OPTIONAL)
-    h = """An arbitrary number for the output chain. \n
-           By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with
-           year, month and day being extracted, `K` being the number of
-           walkers, `M` being the number of steps, and `i` an 
-           automatically updated index."""
-    run_parser.add_argument('--chain-number', help=h)
-    
-    # debug
-    h = 'whether to print more info about the mpi4py.Pool object'
-    run_parser.add_argument('--debug', help=h, action='store_true', default=False)
-    
-    #---------------------------------------------------------------------------
-    # RESTART SUBPARSER
-    #---------------------------------------------------------------------------
-    h = "restart a fit from an existing chain"
-    restart_parser = subparser.add_parser('restart', help=h)
-    
-    # the general driver parameters (REQUIRED)
-    h = 'the name of the existing results file to restart from'
-    restart_parser.add_argument('restart_file', type=existing_file, help=h)
-    
-    # number of iterations (REQUIRED)
-    h = 'the number of additional steps to run using the old chain'
-    restart_parser.add_argument('-i', help=h, required=True, type=positive_int, 
-                                default=0, dest='iterations')
-                                
-    # number of iterations (REQUIRED)
-    h = 'the number of steps to consider burnin'
-    restart_parser.add_argument('-b', help=h, type=positive_int, dest='burnin')
-                                
-    # number of chains to run concurrently
-    h = 'number of chains to run concurrently'
-    restart_parser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
-    
-    # arbitrary numbering of an output chain (OPTIONAL)
-    h = """An arbitrary number for the output chain. \n
-           By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with
-           year, month and day being extracted, `K` being the number of
-           walkers, `M` being the number of steps, and `i` an 
-           automatically updated index."""
-    restart_parser.add_argument('--chain-number', help=h)
-    
-    h = 'silence the standard output to the console'
-    restart_parser.add_argument('--silent', help=h, action='store_true')
-    
-    # debug
-    h = 'whether to print more info about the mpi4py.Pool object'
-    restart_parser.add_argument('--debug', help=h, action='store_true', default=False)
-    
-    #---------------------------------------------------------------------------
-    # ANALYZE SUBPARSER
-    #---------------------------------------------------------------------------
-    h = "analyze the MCMC chains"
-    kwargs = {'help':h, 'formatter_class':ap.ArgumentDefaultsHelpFormatter}
-    analyze_parser = subparser.add_parser('analyze', **kwargs)
-
-    # the folder to analyze
-    h = "files to analyze: either a single file, or a complete folder"
-    analyze_parser.add_argument('files', help=h, nargs='+')
-    
-    # to only write the covmat and bestfit, without computing the posterior
-    h = "use this flag to avoid computing the posterior distribution"
-    analyze_parser.add_argument('--minimal', help=h, action='store_true')
-    
-    # the number of bins (defaulting to 20)
-    h = """number of bins in the histograms used to derive posterior 
-           probabilities and credible intervals"""
-    analyze_parser.add_argument('--bins', help=h, type=int, default=20)
-                                                 
-    # to remove the mean-likelihood line
-    h = "remove the mean likelihood from the 1D posterior plots"
-    analyze_parser.add_argument('--no-mean', help=h, dest='mean_likelihood', 
-                                action='store_false')
-    
-    # if you just want the covariance matrix, use this option
-    h = "do not produce any plot, simply compute the posterior"
-    analyze_parser.add_argument('--noplot', help=h, dest='plot', 
-                                action='store_false')
-                            
-    # if you just want to output 1d posterior distributions (faster)
-    h = "produce only the 1d posterior plot"
-    analyze_parser.add_argument('--noplot-2d', help=h, dest='plot_2d', 
-                                action='store_false')
-                            
-    # when plotting 2d posterior distribution, use contours and not contours
-    # filled (might be useful when comparing several folders)
-    h = "do not fill the contours on the 2d plot"
-    analyze_parser.add_argument('--contours-only', help=h, dest='contours_only', 
-                                action='store_true')
-                                
-    # if you want to output every single subplots
-    h = "output every subplot and data in separate files"
-    analyze_parser.add_argument('--all', help=h, dest='subplot', 
-                                action='store_true')
-    
-    # output file extension
-    h = "change the extension for the output file."
-    analyze_parser.add_argument('--ext', help=h, type=str, dest='extension', 
-                                default='pdf', choices=['pdf', 'png', 'eps'])
-                                
+    # run subcommand
+    setup_run_subparser(subparser)
+    # restart subcommand
+    setup_restart_subparser(subparser)
+    # analyze subcommand
+    setup_analyze_subparser(subparser)
+                   
     return parser
 
 def parse_command_line():

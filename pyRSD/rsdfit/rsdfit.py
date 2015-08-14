@@ -76,7 +76,7 @@ def run():
         A `Namespace` containing the arguments passed to the `pyRSDFitter`,
         script. These are the arguments returned from the parser initialized
         by `util.initialize_parser`
-    """
+    """        
     from mpi4py import MPI
     from emcee.utils import MPIPool
     
@@ -92,6 +92,14 @@ def run():
         if world_rank == 0:
             args = parse_command_line()
         args = world_comm.bcast(args, root=0)
+        
+    # analyze an existing chain
+    if args.subparser_name == 'analyze':
+        from pyRSD.rsdfit import analysis
+        
+        driver = analysis.AnalysisDriver(**vars(args))
+        driver.run()
+        return
         
     # split ranks
     chains_group, chains_comm, pool_comm, pool = [None]*4
@@ -156,11 +164,7 @@ def run():
         if args.burnin is not None:
             driver.params.add('burnin', value=args.burnin)
         copy_kwargs['restart'] = args.restart_file
-        
-    # analyze an existing chain
-    elif args.subparser_name == 'analyze':
-        return
-            
+                    
     try:
         # log to a temporary file (for now)
         temp_log = tempfile.NamedTemporaryFile(delete=False)
@@ -202,6 +206,8 @@ def run():
             if pool is not None: pool.close()
             if chains_group is not None: chains_group.Free()
             if chains_comm is not None: chains_comm.Free()
+            
+    
         
 if __name__ == "__main__":
     run()

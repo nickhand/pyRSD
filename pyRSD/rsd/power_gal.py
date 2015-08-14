@@ -67,7 +67,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.fso           = 0.
         self.sigma_cA      = 0.
         self.sigma_so      = 0.
-        self.R_so          = 0.
+        self.Rso           = 0.
      
     #---------------------------------------------------------------------------
     # PARAMETERS
@@ -213,6 +213,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Constant offset to model, set to 0 by default
         """
         return val
+        
+    @parameter
+    def Rso(self, val):
+        """
+        Radius of SO fitting
+        """
+        return val
                                         
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
@@ -323,7 +330,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         toret = PcAcA + PcAcB + PcBcB + N
         
         G_so = self.evaluate_fog(k, mu, self.sigma_so)
-        toadd = G**2 * N*(1. - (k*self.R_so)**2)
+        toadd = G**2 * N*(1. - (k*self.Rso)**2)
         toret += toadd
         
         self.N = N      

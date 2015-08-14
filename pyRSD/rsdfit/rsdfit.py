@@ -191,7 +191,7 @@ def run():
             copy_log(temp_log_name, output_name, **copy_kwargs)
 
         # wait for all the processes, if we more than one
-        if world_size > 1:
+        if chains_comm is not None and chains_comm.size > 1:
             chains_comm.Barrier()
         
         # if we made it this far, it's safe to delete the old results

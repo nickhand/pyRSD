@@ -178,7 +178,11 @@ class AnalysisDriver(object):
 
             logger.info('writing .info and .tex files')
             self.write_information_files()
-    
+            
+        # save the combined output
+        bestfit_path = os.path.join(self.folder, 'info', 'combined_result.pickle')
+        rsd_io.save_pickle(self.combined_result, bestfit_path)
+        print self.combined_result
     
     @property
     def min_minus_lkl(self):

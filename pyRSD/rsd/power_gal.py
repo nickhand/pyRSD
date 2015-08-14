@@ -330,7 +330,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         toret = PcAcA + PcAcB + PcBcB + N
         
         G_so = self.evaluate_fog(k, mu, self.sigma_so)
-        toadd = G**2 * N*(1. - (k*self.Rso)**2)
+        toadd = G_so**2 * N*(1. - (k*self.Rso)**2)
         toret += toadd
         
         self.N = N      

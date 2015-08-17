@@ -44,7 +44,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         # set the parameters
         self.fog_model         = fog_model
-        self.use_so_correction = use_so_correction
 
         # set the defaults
         self.include_2loop = False
@@ -64,21 +63,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.NcBs          = 3e4
         self.NsBsB         = 9e4
         self.N             = 0.
-        self.fso           = 0.
-        self.sigma_cA      = 0.
-        self.sigma_so      = 0.
-        self.Rso           = 0.
+        
      
     #---------------------------------------------------------------------------
     # PARAMETERS
-    #---------------------------------------------------------------------------
-    @parameter
-    def use_so_correction(self, val):
-        """
-        Whether to correct the Pgal_cAcA spectrum for SO/FoF differences
-        """
-        return val
-        
+    #---------------------------------------------------------------------------        
     @parameter
     def fog_model(self, val):
         """
@@ -96,13 +85,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     def fs(self, val):
         """
         The satellite fraction, fs = N_sat / N_gal 
-        """
-        return val
-        
-    @parameter
-    def fso(self, val):
-        """
-        The fraction of satellites in SO halo finders compared to FOF
         """
         return val
 
@@ -154,24 +136,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         The FOG velocity dispersion for centrals in Mpc/h
         """
         return val
-    
-    @parameter
-    def sigma_cA(self, val):
-        """
-        The FOG velocity dispersion for type A centrals in Mpc/h, accounting
-        for FOG from SO/FOF differences around central type A galaxies
-        """
-        return val
                 
-    @parameter
-    def sigma_so(self, val):
-        """
-        The FOG velocity dispersion for type A centrals in Mpc/h, accounting
-        for FOG from SO/FOF differences around central type A galaxies
-        """
-        return val
-    
-    
     @parameter
     def sigma_s(self, val):
         """
@@ -213,14 +178,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Constant offset to model, set to 0 by default
         """
         return val
-        
-    @parameter
-    def Rso(self, val):
-        """
-        Radius of SO fitting
-        """
-        return val
-                                        
+                   
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
@@ -274,18 +232,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G = self.evaluate_fog(k, mu, self.sigma_c)
 
         # now return the power spectrum here
-        pk = self.power(k, mu)
-        
-        if self.use_so_correction:
-            G2 = self.evaluate_fog(k, mu, self.sigma_cA)
-            term1 = (1 - self.fso)**2 * G**2 * pk
-            term2 = 2*self.fso*(1-self.fso)*G*G2*pk
-            term3 = self.fso**2 * G2**2 * pk
-            term4 = 2*G*G2*self.fso*self.fcB/(1-self.fcB)*self.NcBs
-            toret = term1 + term2 + term3 + term4 + self.N
-        else:
-            toret = G**2 * pk + self.N
-        
+        toret = G**2 * self.power(k, mu) + self.N        
         return toret if not flatten else np.ravel(toret, order='F')
     
     def Pgal_cAcB(self, k, mu, flatten=False):
@@ -328,10 +275,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
         PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
         toret = PcAcA + PcAcB + PcBcB + N
-        
-        G_so = self.evaluate_fog(k, mu, self.sigma_so)
-        toadd = G_so**2 * N*(1. - (k*self.Rso)**2)
-        toret += toadd
         
         self.N = N      
         return toret if not flatten else np.ravel(toret, order='F')

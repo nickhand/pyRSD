@@ -206,6 +206,7 @@ class BiasToMassRelation(Cache):
         self.z = z
         self.cosmo = cosmo
         self.interpolated = interpolated
+        self.delta_halo = 200
         
     #---------------------------------------------------------------------------
     # Parameters
@@ -229,6 +230,10 @@ class BiasToMassRelation(Cache):
         """
         The cosmology of the input linear power spectrum
         """
+        return val
+        
+    @parameter
+    def delta_halo(self, val):
         return val
             
     #---------------------------------------------------------------------------
@@ -320,7 +325,7 @@ class BiasToMassRelation(Cache):
             # the objective function to minimize
             def objective(mass):
                 sigma = rescaling*self.power_lin.Sigma(mass_to_radius(mass))
-                return bias_Tinker(sigma) - b1
+                return bias_Tinker(sigma, delta_halo=self.delta_halo) - b1
 
             return brentq(objective, 1e-8, 1e3)*mass_norm
     #---------------------------------------------------------------------------

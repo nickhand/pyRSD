@@ -196,6 +196,7 @@ class GalaxyPowerTheory(object):
         # now do the constraints
         self.fit_params.set_default_constraints()
         self.fit_params['fsigma8'].expr = "f*sigma8*%s" %self.model.D
+        self.fit_params['b1sigma8'].expr = "b1*sigma8*%s" %self.model.D
         
         # update
         self.fit_params.prepare_params()

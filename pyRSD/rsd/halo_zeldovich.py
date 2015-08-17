@@ -395,3 +395,182 @@ class HaloZeldovichP01(HaloZeldovichPS):
     #---------------------------------------------------------------------------
     
 #-------------------------------------------------------------------------------
+class HaloZeldovichPhm(HaloZeldovichPS):
+    """
+    Halo Zel'dovich Phm
+    """ 
+    def __init__(self, cosmo, z, sigma8, interpolated=False, indep_var='b1'):
+        """
+        Parameters
+        ----------
+        cosmo : pygcl.Cosmology
+            The cosmology object
+        z : float
+            The desired redshift to compute the power at
+        sigma8 : float
+            The desired sigma8 to compute the power at
+        interpolated : bool, optional
+            Whether to return Zel'dovich power from the interpolation table
+            using sigma8 as the index variable
+        indep_var : {`b1`, `M`}, optional (`b1`)
+            Compute Phm as a function of linear bias b1 or halo mass M
+        """   
+        # initialize the Pzel object
+        self.Pzel = pygcl.ZeldovichP00(cosmo, z)
+        
+        # bias to mass relation
+        self.bias_to_mass = tools.BiasToMassRelation(z, cosmo, interpolated)
+        
+        # initialize the base class
+        super(HaloZeldovichPhm, self).__init__(z, sigma8, interpolated)
+        
+        # save the cosmology too
+        self.cosmo = cosmo
+        self.delta_halo = 200.
+        self.indep_var = indep_var
+        
+    #---------------------------------------------------------------------------
+    @parameter
+    def delta_halo(self, val):
+        """
+        The halo bias relation delta halo value to use
+        """
+        self.bias_to_mass.delta_halo = val
+        return val
+        
+    @parameter
+    def indep_var(self, val):
+        """
+        Either interpolate the model as a function of bias or mass
+        """
+        if val not in ['b1', 'M']:
+            raise ValueError("can only compute model as function of `b1` or `M`")
+        return val
+        
+    @parameter
+    def interpolated(self, val):
+        """
+        If `True`, return the Zel'dovich power term from an interpolation table
+        """
+        self.bias_to_mass.interpolated = val
+        return val
+        
+    @parameter
+    def b1(self, val):
+        """
+        The linear bias
+        """
+        return val
+    
+    @parameter
+    def z(self, val):
+        """
+        The redshift
+        """
+        self.Pzel.SetRedshift(val)
+        self.bias_to_mass.z = val
+        return val
+        
+    #---------------------------------------------------------------------------
+    @cached_property('cosmo')
+    def rho_bar(self):
+        """
+        The mean density at z = 0
+        """
+        return self.cosmo.rho_bar_z(0.)
+        
+    @cached_property('b1', 'sigma8')
+    def M(self):
+        """
+        The mass corresponding to the `b1` attribute in units of `M_sun/h`
+        """
+        return self.bias_to_mass(self.sigma8, self.b1)
+        
+    @cached_property('sigma8_z', 'b1', 'M', 'indep_var')
+    def A0(self):
+        """
+        Returns the A0 radius parameter
+
+        Note: the units are power [(h/Mpc)^3]
+        """
+        if self.indep_var == 'M':
+            A = 3.86302
+            alpha = 0.85907
+            A_dm = 558.8
+            beta = 2.12412
+            return A*(self.M / self.rho_bar)**alpha + A_dm*(self.sigma8_z/0.8)**beta
+        else:
+            A = 2020.01836
+            alpha = 1.75573445
+            beta = 3.54727209
+            return A*(self.b1/2.)**alpha * (self.sigma8_z/0.8)**beta
+        
+    @cached_property('z', 'b1', 'M', 'indep_var')
+    def R1(self):
+        """
+        Returns the R1 radius parameter
+
+        Note: the units are length [Mpc/h]
+        """
+        if self.indep_var == 'M':
+            alpha = -1.06964
+            beta = -0.21583
+            A = 4.78815
+            return A * (1 + self.z)**alpha * (self.M/1e13)**beta
+        else:
+            alpha = -0.33982440
+            beta = -0.68821979
+            A = 3.00806916
+            return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+        
+    @cached_property('z', 'b1', 'M', 'indep_var')
+    def R1h(self):
+        """
+        Returns the R1h radius parameter
+
+        Note: the units are length [Mpc/h]
+        """
+        if self.indep_var == 'M':
+            alpha = -1.00030
+            beta = -0.31141
+            A = 7.23103
+            return A * (1 + self.z)**alpha * (self.M/1e13)**beta
+        else:
+            alpha = 0.05856132
+            beta = -0.96655841
+            A = 3.66950760
+            return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+    
+    @cached_property('z', 'b1', 'M', 'indep_var')
+    def R2h(self):
+        """
+        Returns the R2h radius parameter
+
+        Note: the units are length [Mpc/h]
+        """
+        if self.indep_var == 'M':
+            alpha = -1.08029
+            beta = -0.31523
+            A = 2.54474
+            return A * (1 + self.z)**alpha * (self.M/1e13)**beta
+        else:
+            alpha = -0.01661535
+            beta = -1.12900026
+            A = 1.23815050
+            return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+        
+    def __call__(self, b1, k):
+        """
+        Return the total power, equal to the b1 * Zeldovich power + broadband 
+        correction
+        
+        Parameters
+        ----------
+        b1 : float
+            the linear bias to compute the bias at
+        k : array_like
+            the wavenumbers in `h/Mpc` to compute the power at
+        """
+        self.b1 = b1
+        return self.broadband_power(k) + b1*self.zeldovich_power(k)
+    

@@ -6,6 +6,7 @@ from .simulation import SigmavFits, NonlinearBiasFits, Mu6CorrectionParams
 from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
                           PhmResidualModelParams, PhmCorrectedPTModelParams, \
                           PhhModelParams, CrossStochasticityLogModelParams
+from .halo_zeldovich import HaloZeldovichPhm
 
 
 #-------------------------------------------------------------------------------
@@ -14,8 +15,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
     allowable_models = DarkMatterSpectrum.allowable_models + ['Phh']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
                         ['sigmav_from_sims', 'use_tidal_bias',
-                         'Phm_model', 'use_Phh_model', 
-                         'stoch_model', 'use_mu_corrections', 'use_mean_bias']  
+                         'use_Phh_model', 'stoch_model', 'use_mu_corrections', 'use_mean_bias']  
 
     #---------------------------------------------------------------------------
     def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
@@ -35,8 +35,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
             self.b1_bar           = 2.
             
         # default model parameters
+        self.use_Phm_model      = kwargs.get('use_Phm_model', True)
         self.stoch_model        = stoch_model
-        self.Phm_model          = Phm_model
         self.use_mu_corrections = use_mu_corrections
         self.use_Phh_model      = kwargs.get('use_Phh_model', False)
          
@@ -77,7 +77,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model', 'stochasticity_gp_model']
+        models = ['P00_model', 'P01_model', 'Phm_model', 'stochasticity_gp_model']
         self._update_models('interpolate', models, val)
         
         return val
@@ -91,7 +91,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'stochasticity_gp_model']
+                  'Phm_model', 'stochasticity_gp_model']
         self._update_models('sigma8', models, val)
 
         return val
@@ -103,7 +103,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'stochasticity_gp_model', 'bias_to_sigma_relation']
+                  'Phm_model', 'stochasticity_gp_model', 'bias_to_sigma_relation']
         self._update_models('z', models, val)
 
         return val
@@ -123,19 +123,19 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return val
                 
-    @parameter
-    def Phm_model(self, val):
-        """
-        Attribute determining which (if any) Phm model to use.
-        """
-        allowable = ['residual', 'corrected_pt']
-        if isinstance(val, basestring):
-            if val not in allowable:
-                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
-        else:
-            if not val is None:
-                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
-        return val
+    # @parameter
+    # def Phm_model(self, val):
+    #     """
+    #     Attribute determining which (if any) Phm model to use.
+    #     """
+    #     allowable = ['residual', 'corrected_pt']
+    #     if isinstance(val, basestring):
+    #         if val not in allowable:
+    #             raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
+    #     else:
+    #         if not val is None:
+    #             raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
+    #     return val
             
     @parameter
     def stoch_model(self, val):
@@ -168,6 +168,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
+    @cached_property()
+    def Phm_model(self):
+        """
+        The class holding the Halo Zeldovich model for the Phm term
+        """
+        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8, self.interpolate)
+        
     @cached_property("use_mean_bias", "b1", "b1_bar")
     def _ib1(self):
         """
@@ -356,13 +363,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 toret = 0.
                 
             return toret
-        
-    @cached_property('Phm_model')
-    def use_Phm_model(self):
+    
+    @parameter
+    def use_Phm_model(self, val):
         """
         Whether to use a model for Phh
         """
-        return self.Phm_model is not None
+        return val
         
     #---------------------------------------------------------------------------
     # MU0 MODELING ATTRIBUTES
@@ -494,10 +501,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            if self.Phm_model == 'residual':
-                Phm.total.mu0 = self.Phm_residual_model
-            elif self.Phm_model == 'corrected_pt':
-                Phm.total.mu0 = self.Phm_corrPT_model
+            Phm.total.mu0 = self.Phm_model(self._ib1, self.k)
+            # if self.Phm_model == 'residual':
+            #     Phm.total.mu0 = self.Phm_residual_model
+            # elif self.Phm_model == 'corrected_pt':
+            #     Phm.total.mu0 = self.Phm_corrPT_model
             
         return Phm
         
@@ -514,10 +522,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
         else:
-            if self.Phm_model == 'residual':
-                Phm.total.mu0 = self.Phm_residual_model_bar
-            elif self.Phm_model == 'corrected_pt':
-                Phm.total.mu0 = self.Phm_corrPT_model_bar
+            Phm.total.mu0 = self.Phm_model(self._ib1_bar, self.k)
+            # if self.Phm_model == 'residual':
+            #     Phm.total.mu0 = self.Phm_residual_model_bar
+            # elif self.Phm_model == 'corrected_pt':
+            #     Phm.total.mu0 = self.Phm_corrPT_model_bar
 
         return Phm
         

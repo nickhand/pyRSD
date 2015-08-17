@@ -16,15 +16,12 @@ base_model_params = {'sigma8': 'mass variance at r = 8 Mpc/h',
                     'sigma_sA': 'satA FOG damping in Mpc/h', 
                     'sigma_sB': 'satB FOG damping in Mpc/h',
                     'small_scale_sigma': 'additional small scale velocity in km/s',
-                    'N' : 'constant offset to model, in (Mpc/h)^3',
-                    'fso' : 'so satelltie fraction around type A centrals',
-                    'sigma_cA' : 'FOG damping in Mpc/h of SO satellites around type A centrals',
-                    'sigma_so' : 'FOG damping in Mpc/h due to SO satellites', 
-                    'Rso' : 'radius of profile damping in SO satellites'}
+                    'N' : 'constant offset to model, in (Mpc/h)^3'}
 
 extra_model_params = {'b1_s': 'linear bias of satellites',
                     'b1_c': 'linear bias of centrals', 
                     'b1': 'the total linear bias', 
-                    'fsigma8' : 'f(z)*sigma8(z) at z of measurement'}
+                    'fsigma8' : 'f(z)*sigma8(z) at z of measurement',
+                    'b1sigma8' : 'b1*sigma8(z) at z of measurement'}
                     
 from .power_gal import GalaxyPowerParameters, GalaxyPowerTheory

@@ -494,15 +494,15 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         Note: the units are power [(h/Mpc)^3]
         """
         if self.indep_var == 'M':
-            A = 3.86302
-            alpha = 0.85907
-            A_dm = 558.8
-            beta = 2.12412
+            A = 11.462 
+            alpha = 0.719
+            A_dm = 476.71
+            beta = 4.643
             return A*(self.M / self.rho_bar)**alpha + A_dm*(self.sigma8_z/0.8)**beta
         else:
-            A = 2020.01836
-            alpha = 1.75573445
-            beta = 3.54727209
+            A = 2035.69288
+            alpha = 1.78606
+            beta = 3.6492
             return A*(self.b1/2.)**alpha * (self.sigma8_z/0.8)**beta
         
     @cached_property('z', 'b1', 'M', 'indep_var')
@@ -513,14 +513,14 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         Note: the units are length [Mpc/h]
         """
         if self.indep_var == 'M':
-            alpha = -1.06964
-            beta = -0.21583
-            A = 4.78815
+            alpha = -1.146
+            beta = -0.206
+            A = 4.837 
             return A * (1 + self.z)**alpha * (self.M/1e13)**beta
         else:
-            alpha = -0.33982440
-            beta = -0.68821979
-            A = 3.00806916
+            alpha = -0.40178 
+            beta = -0.64280
+            A = 3.07209 
             return A * (1 + self.z)**alpha * (self.b1/2.)**beta
         
     @cached_property('z', 'b1', 'M', 'indep_var')
@@ -531,14 +531,14 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         Note: the units are length [Mpc/h]
         """
         if self.indep_var == 'M':
-            alpha = -1.00030
-            beta = -0.31141
-            A = 7.23103
+            alpha = -1.082
+            beta = -0.293
+            A = 7.242 
             return A * (1 + self.z)**alpha * (self.M/1e13)**beta
         else:
-            alpha = 0.05856132
-            beta = -0.96655841
-            A = 3.66950760
+            alpha = -0.01459
+            beta = -0.88849
+            A = 3.74763 
             return A * (1 + self.z)**alpha * (self.b1/2.)**beta
     
     @cached_property('z', 'b1', 'M', 'indep_var')
@@ -549,14 +549,14 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         Note: the units are length [Mpc/h]
         """
         if self.indep_var == 'M':
-            alpha = -1.08029
-            beta = -0.31523
-            A = 2.54474
+            alpha = -1.135
+            beta = -0.324
+            A = 2.579 
             return A * (1 + self.z)**alpha * (self.M/1e13)**beta
         else:
-            alpha = -0.01661535
-            beta = -1.12900026
-            A = 1.23815050
+            alpha = 0.00188
+            beta = -1.15442 
+            A = 1.22377 
             return A * (1 + self.z)**alpha * (self.b1/2.)**beta
         
     def __call__(self, b1, k):

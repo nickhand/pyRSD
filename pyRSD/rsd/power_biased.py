@@ -4,23 +4,22 @@ from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import SigmavFits, NonlinearBiasFits, Mu6CorrectionParams
 from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
-                          PhmResidualModelParams, PhmCorrectedPTModelParams, \
-                          PhhModelParams, CrossStochasticityLogModelParams
+                          PhmResidualModelParams, CrossStochasticityLogModelParams
 from .halo_zeldovich import HaloZeldovichPhm
 
 
 #-------------------------------------------------------------------------------
 class BiasedSpectrum(DarkMatterSpectrum):
     
-    allowable_models = DarkMatterSpectrum.allowable_models + ['Phh']
+    allowable_models = DarkMatterSpectrum.allowable_models
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
                         ['sigmav_from_sims', 'use_tidal_bias',
-                         'use_Phh_model', 'stoch_model', 'use_mu_corrections', 'use_mean_bias']  
+                         'use_mu_corrections', 'use_mean_bias', 'Phm_model']  
 
     #---------------------------------------------------------------------------
     def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
-                    stoch_model='pade', Phm_model='residual', Phh_model=None, 
-                    use_mu_corrections=False, use_mean_bias=False, **kwargs):
+                    use_mu_corrections=False, use_mean_bias=False, 
+                    Phm_model='halo_zeldovich', **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -33,12 +32,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.b1                 = 2.
         if (self.__class__.__name__ != "HaloSpectrum"):
             self.b1_bar           = 2.
-            
-        # default model parameters
-        self.use_Phm_model      = kwargs.get('use_Phm_model', True)
-        self.stoch_model        = stoch_model
+        self.Phm_model          = Phm_mdoel
         self.use_mu_corrections = use_mu_corrections
-        self.use_Phh_model      = kwargs.get('use_Phh_model', False)
          
     #---------------------------------------------------------------------------
     # ATTRIBUTES
@@ -63,14 +58,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             self.max_mu = 6            
             
         return val
-        
-    @parameter
-    def use_Phh_model(self, val):
-        """
-        Whether to use a model for Phh
-        """
-        return val
-        
+
     @parameter
     def interpolate(self, val):
         """
@@ -123,34 +111,20 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return val
                 
-    # @parameter
-    # def Phm_model(self, val):
-    #     """
-    #     Attribute determining which (if any) Phm model to use.
-    #     """
-    #     allowable = ['residual', 'corrected_pt']
-    #     if isinstance(val, basestring):
-    #         if val not in allowable:
-    #             raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
-    #     else:
-    #         if not val is None:
-    #             raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
-    #     return val
-            
     @parameter
-    def stoch_model(self, val):
+    def Phm_model(self, val):
         """
-        Attribute determining the stochasticity model to use.
+        Attribute determining which (if any) Phm model to use.
         """
-        allowable = ['pade']
+        allowable = ['halo_zeldovich', 'gp', 'pt']
         if isinstance(val, basestring):
             if val not in allowable:
-                raise ValueError("`stoch_model` must be one of %s or a scalar float" %allowable)
+                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
         else:
-            if not np.isscalar(val):
-                raise ValueError("`stoch_model` must be one of %s or a scalar float" %allowable)
+            if not val is None:
+                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
         return val
-        
+                    
     @parameter
     def b1(self, val):
         """
@@ -304,14 +278,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return PhmResidualModelParams()
         
     @cached_property()
-    def Phm_corrPT_model_params(self):
-        return PhmCorrectedPTModelParams()
-        
-    @cached_property()
-    def Phh_model_params(self):
-        return PhhModelParams()
-        
-    @cached_property()
     def bias_to_sigma_relation(self):
         """
         The relationship between bias and velocity dispersion, using the 
@@ -363,13 +329,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 toret = 0.
                 
             return toret
-    
-    @parameter
-    def use_Phm_model(self, val):
-        """
-        Whether to use a model for Phh
-        """
-        return val
         
     #---------------------------------------------------------------------------
     # MU0 MODELING ATTRIBUTES
@@ -442,91 +401,44 @@ class BiasedSpectrum(DarkMatterSpectrum):
         params = self.Phm_model_params_dict_bar
         return model(self.k, **params) + self._ib1_bar*self.P00_model.zeldovich_power(self.k)
         
-    @cached_property("k", "_ib1", "z", "sigma8_z")
-    def Phm_corrPT_model(self):
-        
-        def transition(k, k_transition=0.4, b=0.05):
-            return 0.5 + 0.5*np.tanh((k-k_transition)/b)
-        
-        def model(k, A0=None, A1=None, b2_00=None, k_t=None):
-            switch = transition(k, k_t)
-            linear_corr = A0 + A1*k
-            term1 = self._ib1*self.P00_model(k)*(1. + switch*linear_corr) 
-            term2 = (1. - switch)*b2_00*self.K00(k)
-            return term1 + term2
-            
-        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self._ib1)
-        return model(self.k, **params)
-    
-    @cached_property("k", "_ib1_bar", "z", "sigma8_z")
-    def Phm_corrPT_model_bar(self):
-        def transition(k, k_transition=0.4, b=0.05):
-            return 0.5 + 0.5*np.tanh((k-k_transition)/b)
-        
-        def model(k, A0=None, A1=None, b2_00=None, k_t=None):
-            switch = transition(k, k_t)
-            linear_corr = A0 + A1*k
-            term1 = self._ib1_bar*self.P00_model(k)*(1. + switch*linear_corr) 
-            term2 = (1. - switch)*b2_00*self.K00(k)
-            return term1 + term2
-            
-        params = self.Phm_corrPT_model_params.to_dict(self.sigma8_z, self._ib1_bar)
-        return model(self.k, **params)
-    
-    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
-    def Phh_model(self):
-        mean_bias = (self._ib1*self._ib1_bar)**0.5
-        
-        def model(k, A1=None, A2=None, dP=None, R=None):
-            Phh_2halo = self.P00_model.zeldovich_power(k)
-            Phh_1halo = self.P00_model.broadband_power(k)
-            return A1**2*Phh_2halo + A2*Phh_1halo + dP/(1 + (k*R)**2)
-            
-        params = self.Phh_model_params.to_dict(self.sigma8_z, mean_bias)
-        return model(self.k, **params)
-    
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
     #---------------------------------------------------------------------------        
-    @cached_property("_ib1", "P00", "use_Phm_model", "sigma8_z")
+    @cached_property("_ib1", "P00", "Phm_model", "sigma8_z")
     def Phm(self):
         """
         The halo - matter cross correlation for the 1st tracer
         """
         Phm = PowerTerm()
         
-        if not self.use_Phm_model:
+        if self.Phm_model == 'analytic':
+            Phm.total.mu0 = self.Phm_model(self._ib1, self.k)
+        elif self.Phm_model == 'gp':
+            Phm.total.mu0 = self.Phm_residual_model
+        else:
             term1 = self._ib1*self.P00.total.mu0
             term2 = self.b2_00*self.K00(self.k)
             term3 = self.bs*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
-        else:
-            Phm.total.mu0 = self.Phm_model(self._ib1, self.k)
-            # if self.Phm_model == 'residual':
-            #     Phm.total.mu0 = self.Phm_residual_model
-            # elif self.Phm_model == 'corrected_pt':
-            #     Phm.total.mu0 = self.Phm_corrPT_model
             
         return Phm
         
-    @cached_property("_ib1_bar", "P00", "use_Phm_model", "sigma8_z")
+    @cached_property("_ib1_bar", "P00", "Phm_model", "sigma8_z")
     def Phm_bar(self):
         """
         The halo - matter cross correlation for the 2nd tracer
         """
         Phm = PowerTerm()
         
-        if not self.use_Phm_model:
+        if self.Phm_model == 'analytic':
+            Phm.total.mu0 = self.Phm_model(self._ib1_bar, self.k)
+        elif self.Phm_model == 'gp':
+            Phm.total.mu0 = self.Phm_residual_model_bar
+        else:
             term1 = self._ib1_bar*self.P00.total.mu0
             term2 = self.b2_00_bar*self.K00(self.k)
             term3 = self.bs_bar*self.K00s(self.k)
             Phm.total.mu0 = term1 + term2 + term3
-        else:
-            Phm.total.mu0 = self.Phm_model(self._ib1_bar, self.k)
-            # if self.Phm_model == 'residual':
-            #     Phm.total.mu0 = self.Phm_residual_model_bar
-            # elif self.Phm_model == 'corrected_pt':
-            #     Phm.total.mu0 = self.Phm_corrPT_model_bar
 
         return Phm
         
@@ -554,18 +466,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P00_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("P00", "Phm", "Phm_bar", "use_Phh_model")
+    @cached_property("P00", "Phm", "Phm_bar")
     def P00_ss_no_stoch(self):
         """
         The isotropic, halo-halo power spectrum, without any stochasticity term.
         """    
         P00_ss_no_stoch = PowerTerm()
-        if not self.use_Phh_model:
-            b1_k = self.Phm.total.mu0  / self.P00.total.mu0
-            b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
-            P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
-        else:
-            P00_ss_no_stoch.total.mu0 = self.Phh_model
+        b1_k = self.Phm.total.mu0  / self.P00.total.mu0
+        b1_bar_k = self.Phm_bar.total.mu0 / self.P00.total.mu0
+        P00_ss_no_stoch.total.mu0 = b1_k * b1_bar_k * self.P00.total.mu0
         	       
         return P00_ss_no_stoch
             

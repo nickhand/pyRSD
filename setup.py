@@ -1,10 +1,10 @@
 #! /usr/bin/env python
 from setuptools import setup, Command, find_packages
 from setuptools.command.install import install as Install
+from setuptools.command.install import install as Develop
 import os
 
 #-------------------------------------------------------------------------------
-# my own install class to make pygcl before installing
 class MyInstall(Install):
     
     def run(self):
@@ -23,6 +23,25 @@ class MyInstall(Install):
         
         # run the python setup
         Install.run(self)
+        
+class MyDevelop(Develop):
+    
+    def run(self):
+        # check that setup.config exists
+        if not os.path.isfile('setup.config'):
+            msg = "Installation requires 'setup.config' file in base directory."
+            if os.path.isfile('setup.config.example'):
+                msg += " Try copying over 'setup.config.example' with the appropriate edits."
+            raise OSError(msg)
+        
+        # make pygcl
+        install_path_args = self.install_libbase, self.config_vars['dist_name']
+        data_dir = "{}/{}/data/params".format(*install_path_args)
+        ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
+        if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
+        
+        # run the python setup
+        Develop.run(self)
 
 #-------------------------------------------------------------------------------        
 # my own command to do a clean of all necessary files      
@@ -56,7 +75,7 @@ VERSION             = '1.0'
 #-------------------------------------------------------------------------------   
 pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
             'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl.so']
-setup(  cmdclass={'install': MyInstall, 'clean' : MyClean},
+setup(  cmdclass={'install': MyInstall, 'develop':MyDevelop, 'clean' : MyClean},
         name=DISTNAME,
         description=DESCRIPTION,
         long_description=LONG_DESCRIPTION,

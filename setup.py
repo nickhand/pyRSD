@@ -1,7 +1,7 @@
 #! /usr/bin/env python
 from setuptools import setup, Command, find_packages
 from setuptools.command.install import install as Install
-from setuptools.command.install import install as Develop
+from setuptools.command.develop import develop as Develop
 import os
 
 #-------------------------------------------------------------------------------
@@ -35,7 +35,7 @@ class MyDevelop(Develop):
             raise OSError(msg)
         
         # make pygcl
-        install_path_args = self.install_libbase, self.config_vars['dist_name']
+        install_path_args = self.egg_path, self.config_vars['dist_name']
         data_dir = "{}/{}/data/params".format(*install_path_args)
         ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
         if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")

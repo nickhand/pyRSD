@@ -143,7 +143,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
     @cached_property()
-    def Phm_model(self):
+    def Phm_halo_zeldovich_model(self):
         """
         The class holding the Halo Zeldovich model for the Phm term
         """
@@ -411,8 +411,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         Phm = PowerTerm()
         
-        if self.Phm_model == 'analytic':
-            Phm.total.mu0 = self.Phm_model(self._ib1, self.k)
+        if self.Phm_model == 'halo_zeldovich':
+            Phm.total.mu0 = self.Phm_halo_zeldovich_model(self._ib1, self.k)
         elif self.Phm_model == 'gp':
             Phm.total.mu0 = self.Phm_residual_model
         else:
@@ -430,8 +430,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         Phm = PowerTerm()
         
-        if self.Phm_model == 'analytic':
-            Phm.total.mu0 = self.Phm_model(self._ib1_bar, self.k)
+        if self.Phm_model == 'halo_zeldovich':
+            Phm.total.mu0 = self.Phm_halo_zeldovich_model(self._ib1_bar, self.k)
         elif self.Phm_model == 'gp':
             Phm.total.mu0 = self.Phm_residual_model_bar
         else:

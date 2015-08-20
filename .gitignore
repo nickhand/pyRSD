@@ -1,3 +1,4 @@
+transfer_data.sh
 *.so
 build/
 setup.config

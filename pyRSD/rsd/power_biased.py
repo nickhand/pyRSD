@@ -442,16 +442,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("stoch_model", "stochasticity_model")
+    @cached_property("stochasticity_model")
     def stochasticity(self):
         """
         The isotropic (type B) stochasticity term due to the discreteness of the 
         halos, i.e., Poisson noise at 1st order.
         """
-        if not isinstance(self.stoch_model, basestring):
-            return self.k*0. + self.stoch_model
-        else:
-            return self.stochasticity_model
+        return self.stochasticity_model
                 
                 
     @cached_property("P00_ss_no_stoch", "stochasticity")

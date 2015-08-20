@@ -354,7 +354,7 @@ class PowerData(object):
             C = load_covariance(filename)            
             
             if isinstance(C, np.ndarray):
-                self.covariance = CovarianceMatrix(C, index=index)
+                self.covariance = CovarianceMatrix(C, index=index, verify=False)
             elif isinstance(C, CovarianceMatrix):
                 self.covariance = C
                 if self.params['index_rescaling'] is not None:

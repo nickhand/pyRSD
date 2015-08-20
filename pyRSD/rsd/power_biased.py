@@ -32,7 +32,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.b1                 = 2.
         if (self.__class__.__name__ != "HaloSpectrum"):
             self.b1_bar           = 2.
-        self.Phm_model          = Phm_mdoel
+        self.Phm_model          = Phm_model
         self.use_mu_corrections = use_mu_corrections
          
     #---------------------------------------------------------------------------

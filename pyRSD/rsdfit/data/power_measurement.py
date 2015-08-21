@@ -360,7 +360,7 @@ class PowerData(object):
         # rescale the inverse of the covariance matrix (if it's from mocks)
         rescale_inverse = self.params.get('rescale_inverse_covariance', False)
         if rescale_inverse:
-            if 'covariance_Nmocks' not in params:
+            if 'covariance_Nmocks' not in self.params:
                 raise ValueError("cannot rescale inverse covariance without `covariance_Nmocks`")
             
             Ns = self.params['covariance_Nmocks'].value

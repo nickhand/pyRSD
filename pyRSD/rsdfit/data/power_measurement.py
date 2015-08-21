@@ -1,11 +1,7 @@
 from ... import numpy as np
 from .. import logging
 from ..parameters import ParameterSet
-from . import CovarianceMatrix, load_covariance
-from . import PkmuCovarianceMatrix, PoleCovarianceMatrix
-
-import pickle
-
+from . import CovarianceMatrix
 
 logger = logging.getLogger('rsdfit.data')
 logger.addHandler(logging.NullHandler())
@@ -217,7 +213,6 @@ class PowerMeasurement(object):
         Builtin string representation
         """
         return self.__repr__()
-    #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 class PowerData(object):
@@ -238,9 +233,13 @@ class PowerData(object):
         # setup the measurements and covariances
         self._set_measurements()
         self._set_covariance()
+        self._apply_bounds()
         
     #---------------------------------------------------------------------------
     def read_data(self):
+        """
+        Read the data file
+        """
         with open(self.params['data_file'].value, 'r') as ff:
             shape = tuple(map(int, ff.readline().split()))
             columns = ff.readline().split()
@@ -258,7 +257,6 @@ class PowerData(object):
         self.params.to_file(filename, mode=mode, header_name='data params', 
                             footer=True, as_dict=False)
                                   
-    #---------------------------------------------------------------------------
     def __repr__(self):
         """
         Builtin representation method
@@ -272,14 +270,12 @@ class PowerData(object):
             toret += "\n\nusing full covariance matrix"
         return toret
             
-    #---------------------------------------------------------------------------
     def __str__(self):
         """
         Builtin string representation
         """
         return self.__repr__()
         
-    #---------------------------------------------------------------------------
     def __getitem__(self, key):
         """
         Integer access to the `measurements` attribute
@@ -291,7 +287,9 @@ class PowerData(object):
             raise KeyError("`PowerMeasurement` index out of range")
             
         return self.measurements[key]
-        
+
+    #---------------------------------------------------------------------------
+    # internal functions to setup
     #---------------------------------------------------------------------------
     def _set_measurements(self):
         """
@@ -329,39 +327,69 @@ class PowerData(object):
         #     msg = "All measurements read do not have same wavenumber array"
         #     logger.error(msg)
         #     raise ValueError(msg)
-        
         logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             
-    #---------------------------------------------------------------------------
+    def _apply_bounds(self):
+        """
+        Apply the k bounds, and trim both the measurements and the covariance matrix
+        """
+        # trim the measurements
+        inds = []
+        for d in self.measurements:
+            d.k_max = self.kmax
+            d.k_min = self.kmin
+            inds += list(d._k_trim_inds)
+        
+        # now trim and make the new covariance
+        if self.kmax is not None or self.kmin is not None:
+            C = self.covariance[inds]
+            self.covariance = CovarianceMatrix(C, verify=False)
+            logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
+        
+        # verify the covariance matrix
+        if len(self.combined_power) != self.covariance.N:
+            args = (len(self.combined_power), self.covariance.N)
+            logger.error("Combined power size {0}, covariance size {1}".format(*args))
+            raise ValueError("shape mismatch between covariance matrix and power data points")
+            
     def _set_covariance(self):
         """
         Setup the combined covariance matrix
         
         Note: at this point, no k bounds have been applied
         """
+        import pickle
+        pickle_load = lambda filename: pickle.load(open(filename, 'r'))
+        
         loaded = False
         index_ks = []
-        index_mus = []
-        for d in self.measurements:
-            if d.type == 'pkmu':
-                index_mus.append(np.mean(d.mu))
+        for d in self.measurements: 
             index_ks += list(d.k)
         
         # load the covariance from a pickle
         if self.params['covariance'].value is not None:
             
             filename = self.params['covariance'].value
-            C = load_covariance(filename)            
-            
+            readers = [CovarianceMatrix.from_pickle, CovarianceMatrix.from_plaintext, pickle_load]
+            for reader in readers:
+                try:
+                    C = reader(filename)
+                    break
+                except Exception as e:
+                    continue
+            else:
+                raise IOError("failure to load covariance from `%s`; tried pickle and plain text readers: %s" %(filename, str(e)))
+                      
             if isinstance(C, np.ndarray):
-                self.covariance = CovarianceMatrix(C, index=index, verify=False)
+                self.covariance = CovarianceMatrix(C, verify=False)
             elif isinstance(C, CovarianceMatrix):
                 self.covariance = C
-                if self.params['index_rescaling'] is not None:
-                    rescale = self.params['index_rescaling'].value
-                    C.index *= rescale
-                    logger.info("Rescaled index of covariance matrix by value = {val}".format(val=str(rescale)))
-            logger.info("Read covariance matrix from pickle file '{f}'".format(f=filename)) 
+            
+            if C.N != len(index_ks):
+                print index_ks
+                msg = "loaded %d data points; covariance size = %dx%d" %(len(index_ks), C.N, C.N)
+                raise ValueError("size mismatch between data and covariance; " + msg)
+            logger.info("Read covariance matrix successfully from file '{f}'".format(f=filename)) 
             loaded = True           
                         
         # use the diagonals
@@ -373,48 +401,32 @@ class PowerData(object):
                 
             errors = np.concatenate([d.error for d in self.measurements])
             variances = errors**2
-            self.covariance = PkmuCovarianceMatrix(variances, index_ks, index_mus, 'relative', 1.)
+            self.covariance = CovarianceMatrix(variances, verify=False)
             logger.info('Initialized diagonal covariance matrix from error columns')
         
         # rescale the covariance matrix
-        if self.params.get('covariance_rescaling', None) is not None:
-            rescale = self.params['covariance_rescaling'].value
-            logger.info("Rescaled covariance matrix by value = {val}".format(val=str(rescale)))
-            self.covariance *= rescale
+        rescaling = self.params.get('covariance_rescaling', 1.0)
+        self.covariance *= rescaling
+        if rescaling != 1.0:
+            logger.info("rescaled covariance matrix by value = {:s}".format(rescaling))
             
         # set errors for each indiv measurement to match any loaded covariance
-        if loaded:
-            self._set_errs_from_cov()
-            
-        # trim the covariance
-        if self.kmax is not None or self.kmin is not None:
-            self.covariance = self.covariance.trim_k(lower=self.kmin, upper=self.kmax)
-            logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
-
-        # trim the measurements
-        for d in self.measurements:
-            d.k_max = self.kmax
-            d.k_min = self.kmin
-                  
-        # verify the covariance matrix
-        if len(self.combined_power) != self.covariance.N:
-            args = (len(self.combined_power), self.covariance.N)
-            logger.error("Combined power size {0}, covariance size {1}".format(*args))
-            raise ValueError("Shape mismatch between covariance matrix and power data points")
+        if loaded: self._set_errs_from_cov()
                 
-    #---------------------------------------------------------------------------
     def _set_errs_from_cov(self):
         """
         Set the errors for each individual measurement to match the diagonals
         of the covariance matrix
         """
         # the variances
-        variances = self.covariance.diag()
+        variances = self.covariance.diag
         for i, m in enumerate(self.measurements):
             size = len(m._k_input)
             errs = (variances[size*i : size*(i+1)])**0.5
             m._error_input = errs
             
+    #---------------------------------------------------------------------------
+    # properties
     #---------------------------------------------------------------------------
     @property
     def size(self):
@@ -423,7 +435,6 @@ class PowerData(object):
         """
         return len(self.measurements)
     
-    #---------------------------------------------------------------------------
     @property
     def combined_k(self):
         """
@@ -436,7 +447,6 @@ class PowerData(object):
             self._combined_k = np.concatenate([d.k for d in self.measurements])
             return self._combined_k
             
-    #---------------------------------------------------------------------------
     @property
     def combined_power(self):
         """
@@ -449,7 +459,6 @@ class PowerData(object):
             self._combined_power = np.concatenate([d.power for d in self.measurements])
             return self._combined_power
             
-    #---------------------------------------------------------------------------   
     @property
     def diagonal_covariance(self):
         """
@@ -461,30 +470,4 @@ class PowerData(object):
             C = self.covariance.asarray()
             self._diagonal_covariance = np.array_equal(np.nonzero(C), np.diag_indices_from(C))
             return self._diagonal_covariance
-            
-    #---------------------------------------------------------------------------
-    @property
-    def k_min(self):
-        """
-        The minimum wavenumber [units: `h/Mpc`] of allowed data points
-        """
-        if 'fitting_range' in self.params:
-            return self.params['fitting_range'].value[0]
-        else:
-            return None
     
-    #---------------------------------------------------------------------------
-    @property
-    def k_max(self):
-        """
-        The maximum wavenumber [units: `h/Mpc`] of allowed data points
-        """
-        if 'fitting_range' in self.params:
-            return self.params['fitting_range'].value[1]
-        else:
-            return None
-    
-    #---------------------------------------------------------------------------
-#endclass PowerData
-
-#-------------------------------------------------------------------------------

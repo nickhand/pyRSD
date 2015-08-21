@@ -408,7 +408,7 @@ class PowerData(object):
         rescaling = self.params.get('covariance_rescaling', 1.0)
         self.covariance *= rescaling
         if rescaling != 1.0:
-            logger.info("rescaled covariance matrix by value = {:s}".format(rescaling))
+            logger.info("rescaled covariance matrix by value = {:s}".format(str(rescaling)))
             
         # set errors for each indiv measurement to match any loaded covariance
         if loaded: self._set_errs_from_cov()

@@ -234,6 +234,7 @@ class PowerData(object):
         self._set_measurements()
         self._set_covariance()
         self._apply_bounds()
+        self._rescale_inverse_covar()
         
     #---------------------------------------------------------------------------
     def read_data(self):
@@ -352,6 +353,23 @@ class PowerData(object):
             logger.error("Combined power size {0}, covariance size {1}".format(*args))
             raise ValueError("shape mismatch between covariance matrix and power data points")
             
+    def _rescale_inverse_covar(self):
+        """
+        Rescale the inverse of the covariance matrix in order to get an unbiased estimate
+        """
+        # rescale the inverse of the covariance matrix (if it's from mocks)
+        rescale_inverse = self.params.get('rescale_inverse_covariance', False)
+        if rescale_inverse:
+            if 'covariance_Nmocks' not in params:
+                raise ValueError("cannot rescale inverse covariance without `covariance_Nmocks`")
+            
+            Ns = self.params['covariance_Nmocks'].value
+            nb = len(self.combined_k)
+            rescaling = 1.*(Ns - nb - 2) / (Ns - 1)
+            self.covariance.inverse_rescaling = rescaling
+            logger.info("rescaling inverse of covariance matrix using Ns = %d, nb = %d" %(Ns, nb))
+            logger.info("   rescaling factor = %.3f" %rescaling)
+            
     def _set_covariance(self):
         """
         Setup the combined covariance matrix
@@ -409,7 +427,7 @@ class PowerData(object):
         self.covariance *= rescaling
         if rescaling != 1.0:
             logger.info("rescaled covariance matrix by value = {:s}".format(str(rescaling)))
-            
+                    
         # set errors for each indiv measurement to match any loaded covariance
         if loaded: self._set_errs_from_cov()
                 

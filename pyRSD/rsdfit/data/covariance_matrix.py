@@ -41,7 +41,8 @@ class CovarianceMatrix(Cache):
         
         # initialize the backend        
         self._setup(data, coords=coords, names=names)
-    
+        self.inverse_rescaling = 1.0
+        
     @parameter
     def _data(self, val):
         """
@@ -50,6 +51,13 @@ class CovarianceMatrix(Cache):
         """
         return val
     
+    @parameter
+    def inverse_rescaling(self, val):
+        """
+        Rescale the inverse of the covariance matrix by this factor
+        """
+        return val
+        
     def _get_contracted_index(self, i, j):
         """
         Given the matrix element (i, j) return the index of the corresponding
@@ -297,7 +305,7 @@ class CovarianceMatrix(Cache):
     @cached_property()
     def shape(self):
         return (self.N, self.N)
-    
+            
     @cached_property('_data')
     def diag(self):
         """
@@ -307,12 +315,12 @@ class CovarianceMatrix(Cache):
         self._diag = self._data[inds]
         return self._diag
 
-    @cached_property('_data')
+    @cached_property('_data', 'inverse_rescaling')
     def inverse(self):
         """
         The inverse of the covariance matrix, returned as a 2D ndarray
         """
-        return np.linalg.inv(self.full())
+        return np.linalg.inv(self.full()) * self.inverse_rescaling
     
     def full(self):
         """

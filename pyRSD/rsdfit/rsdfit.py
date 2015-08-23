@@ -4,6 +4,24 @@ from pyRSD import os, sys
 import tempfile
 
 def split_ranks(N_ranks, N_chunks):
+    """
+    Divide the ranks into N chunks, removing the master (0) rank
+    """
+    seq = range(N_ranks)
+    avg = int(N_ranks // N_chunks)
+    remainder = N_ranks % N_chunks
+
+    start = 0
+    end = avg
+    for i in range(N_chunks):
+        if remainder:
+            end += 1
+            remainder -= 1
+        yield i, seq[start:end]
+        start = end
+        end += avg
+        
+def split_ranks(N_ranks, N_chunks):
     seq = range(N_ranks)
     avg = N_ranks / float(N_chunks)
     last = 0.

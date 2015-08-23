@@ -404,7 +404,6 @@ class PowerData(object):
                 self.covariance = C
             
             if C.N != len(index_ks):
-                print index_ks
                 msg = "loaded %d data points; covariance size = %dx%d" %(len(index_ks), C.N, C.N)
                 raise ValueError("size mismatch between data and covariance; " + msg)
             logger.info("Read covariance matrix successfully from file '{f}'".format(f=filename)) 

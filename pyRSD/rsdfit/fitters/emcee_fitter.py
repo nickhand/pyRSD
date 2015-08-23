@@ -3,13 +3,146 @@ from .. import logging
 from ..results import EmceeResults
 from . import tools
 
+from mpi4py import MPI
 import emcee
 import time
+import signal
+import traceback
 
 logger = logging.getLogger('rsdfit.emcee_fitter')
 logger.addHandler(logging.NullHandler())
 
-#-------------------------------------------------------------------------------
+#------------------------------------------------------------------------------
+# context manager for running multiple chains
+#------------------------------------------------------------------------------
+class ChainManager(object):
+    """
+    Class to serve as context manager for running multiple chains, which
+    will handle exceptions (user-supplied or otherwise) and convergence
+    criteria from multiple chains
+    """
+    def __init__(self, sampler, niters, nwalkers, theory, comm):
+        """
+        Parameters
+        ----------
+        sampler : emcee.EnsembleSampler
+            the emcee sampler object
+        niter : int
+            the number of iterations to run
+        nwalkers : int
+            the number of walkers we are using
+        theory : theory.GalaxyPowerParameters
+            the set of parameters for the theoretical model
+        comm : MPI.Communicator
+            the communicator for the the multiple chains
+        """
+        self.sampler   = sampler
+        self.niters    = niters
+        self.nwalkers  = nwalkers
+        self.theory    = theory
+        self.comm      = comm
+        self.exception = False
+        
+        # register the signal handlers and tags
+        signal.signal(signal.SIGUSR1, initiate_exit)
+        signal.signal(signal.SIGUSR2, initiate_exit)
+        self.tags = enum('CONVERGED', 'EXIT', 'CTRL_C')
+        
+        # remember the start time
+        self.start    = time.time()
+    
+    def __enter__(self):
+        return self
+    
+    def update_progress(self, niter):
+        conditions = [niter < 10, niter < 50 and niter % 2 == 0,  niter < 500 and niter % 10 == 0, niter % 100 == 0]
+        if any(conditions):
+            update_progress(self.theory, self.sampler, self.niters, self.nwalkers)
+     
+    def check_status(self):
+        if self.comm is not None:
+            if self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=self.tags.EXIT):
+                raise ExitingException
+            if self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=self.tags.CONVERGED):
+                raise ConvergenceException
+            if self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=self.tags.CTRL_C):
+                raise KeyboardInterrupt
+    
+    def do_convergence(self, niter):
+        if niter < 500:
+            return False
+        elif niter < 1500 and niter % 200 == 0:
+            return True
+        elif niter >= 1500 and niter % 100 == 0:
+            return True
+        return False
+    
+    def check_convergence(self, niter, epsilon, start_iter, start_chain):
+        if self.comm is not None and self.do_convergence(start_iter+niter+1):
+            chain = sampler.chain if start_chain is None else np.concatenate([start_chain, sampler.chain],axis=1)
+        
+            self.comm.Barrier() # sync each chain to same number of iterations
+            chains = self.comm.gather(chain, root=0)
+            if self.comm.rank == 0:
+                converged = test_convergence(chains, start_iter+niter+1, epsilon)
+                if converged: raise ConvergenceException
+    
+    def sample(self, p0, lnprob0):
+        kwargs = {}
+        kwargs['lnprob0'] = lnprob0
+        kwargs['iterations'] = self.niters
+        kwargs['storechain'] = True
+        return enumerate(self.sampler.sample(p0, **kwargs))
+            
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        
+        if isinstance(exc_value, KeyboardInterrupt):
+            logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
+            tag = self.tags.CTRL_C
+        elif isinstance(exc_value, ConvergenceException):
+            logger.warning("EMCEE: convergence criteria satisfied -- exiting")
+            tag = self.tags.CONVERGED
+        elif exc_value is not None:
+            logger.warning("EMCEE: exception occurred - trying to save current state of chain")
+            trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
+            logger.warning("   traceback:\n%s" %trace)         
+            tag = self.tags.EXIT
+        
+        # convergence exception
+        if exc_value is not None:
+            self.exception = True
+            if self.comm is not None:
+                for r in range(0, self.comm.size):
+                    if r != self.comm.rank: 
+                        self.comm.send(None, dest=r, tag=tag)
+            
+        # print out some info and exit
+        stop = time.time()
+        logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(tools.hms_string(stop-self.start)))
+        logger.warning("EMCEE: mean acceptance fraction: {0:.3f}".format(np.mean(self.sampler.acceptance_fraction)))
+        try:
+            logger.warning("EMCEE: autocorrelation time: {}".format(self.sampler.get_autocorr_time()))
+        except:
+            pass
+        logger.warning("EMCEE: current parameters:\n %s" %str(self.theory.fit_params))
+        return True
+
+#------------------------------------------------------------------------------
+# tools setup
+#------------------------------------------------------------------------------
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    return type('Enum', (), enums)
+
+class ConvergenceException(Exception):
+    pass
+
+class ExitingException(Exception):
+    pass
+    
+def initiate_exit(signum, stack):
+    raise ExitingException
+    
 def update_progress(theory, sampler, niters, nwalkers, last=10):
     """
     Report the current status of the sampler.
@@ -24,7 +157,7 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     best_iter = np.argmax(logprobs.max(axis=0))
     best_walker = np.argmax(logprobs[:,best_iter])
     text = ["EMCEE Iteration {:>6d}/{:<6d}: {} walkers, {} parameters".format(k-1, niters, nwalkers, chain.shape[-1])]
-    text+= ["      best logp = {:.6g} (reached at iter {}, walker {})".format(logprobs.max(axis=0)[best_iter], best_iter, best_walker)]
+    text += ["      best logp = {:.6g} (reached at iter {}, walker {})".format(logprobs.max(axis=0)[best_iter], best_iter, best_walker)]
     try:
         acc_frac = sampler.acceptance_fraction
         acor = sampler.acor
@@ -35,24 +168,9 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
         pos = chain[:,-last:,i].ravel()
         text.append("  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g}) (autocorr: {:.3g})".format(par.name,
                                             np.median(pos), np.std(pos), chain[best_walker, best_iter, i], acor[i]))
-    
     text = "\n".join(text) +'\n'
     logger.warning(text)
-    
-    
-def do_convergence(niter):
-    """
-    Determine if we should check convergence at this iteration
-    """
-    if niter < 500:
-        return False
-    elif niter < 1500 and niter % 200 == 0:
-        return True
-    elif niter >= 1500 and niter % 100 == 0:
-        return True
-
-    return False
-    
+     
 def test_convergence(chains0, niter, epsilon):
     """
     Test convergence using the Gelman-Rubin diagnostic
@@ -92,11 +210,13 @@ def test_convergence(chains0, niter, epsilon):
     logger.warning("            scale-reduction = %s" %str(scalereduction))
     return np.all(converged)
     
-#-------------------------------------------------------------------------------
+
+#------------------------------------------------------------------------------
+# the main function to runs
+#------------------------------------------------------------------------------
 def run(params, theory, objective, pool=None, chains_comm=None, init_values=None):
     """
-    Perform MCMC sampling of the parameter space of a system using `emcee`.
-        
+    Perform MCMC sampling of the parameter space of a system using `emcee`
         
     Parameters
     ----------
@@ -199,65 +319,29 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
     sampler = emcee.EnsembleSampler(nwalkers, ndim, objective, pool=pool)
 
     # iterator interface allows us to tap ctrl+c and know where we are
-    exception = False
-    converged = False
     niters -= start_iter
     burnin = 0 if start_iter > 0 else params.get('burnin', 100)
-    try:                           
-        logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
-        start = time.time()    
-        generator = sampler.sample(p0, lnprob0=lnprob0, iterations=niters, storechain=True)
-     
-        # loop over all the steps
-        for niter, result in enumerate(generator):                            
-            if niter < 10:
-                update_progress(theory, sampler, niters, nwalkers)
-            elif niter < 50 and niter % 2 == 0:
-                update_progress(theory, sampler, niters, nwalkers)
-            elif niter < 500 and niter % 10 == 0:
-                update_progress(theory, sampler, niters, nwalkers)
-            elif niter % 100 == 0:
-                update_progress(theory, sampler, niters, nwalkers)
-                
-            # check convergence
-            if chains_comm is not None and test_conv and do_convergence(start_iter+niter+1):
-                chain = sampler.chain if start_chain is None else np.concatenate([start_chain, sampler.chain],axis=1)
-                
-                chains_comm.Barrier() # sync each chain to same number of iterations
-                chains = chains_comm.gather(chain, root=0)
-                if chains_comm.rank == 0:
-                    converged = test_convergence(chains, start_iter+niter+1, epsilon)
-                chains_comm.Barrier() # sync each chain to same number of iterations
-                converged = chains_comm.bcast(converged, root=0)
-                if converged: raise Exception
+    logger.warning("EMCEE: running {} iterations with {} free parameters...".format(niters, ndim))
 
-        stop = time.time()
-        logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(tools.hms_string(stop-start)))
-
-        # acceptance fraction should be between 0.2 and 0.5 (rule of thumb)
-        logger.warning("EMCEE: mean acceptance fraction: {0:.3f}".format(np.mean(sampler.acceptance_fraction)))
-        try:
-            logger.warning("EMCEE: autocorrelation time: {}".format(sampler.get_autocorr_time()))
-        except:
-            pass
-        
-    except KeyboardInterrupt:
-        logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
-    except Exception as e:
-        if not converged:
-            exception = True
-            logger.warning("EMCEE: exception occurred - trying to save current state of chain")
-            logger.warning("EMCEE: exception message: %s" %e)
-        else:
-            logger.warning("EMCEE: convergence criteria satisfied -- exiting")
-        logger.warning("EMCEE: current parameters:\n %s" %str(theory.fit_params))
-
-    #finally:
+    #---------------------------------------------------------------------------
+    # do the sampling
+    #---------------------------------------------------------------------------
+    with ChainManager(sampler, niters, nwalkers, theory, chains_comm) as manager:
+        for niter, result in manager.sample(p0, lnprob0):
+            
+            # check if we need to exit due to exception/convergence
+            manager.check_status()
+            
+            # update progress and test convergence
+            manager.update_progress(niter)
+            if test_conv:
+                manager.check_convergence(niter, epsilon, start_iter, start_chain)
+    
+    # make the results and return
     new_results = EmceeResults(sampler, theory.fit_params, burnin)
     if old_results is not None:
         new_results = old_results + new_results
-    
-    return new_results, exception
 
-#-------------------------------------------------------------------------------
+    return new_results, manager.exception
+
     

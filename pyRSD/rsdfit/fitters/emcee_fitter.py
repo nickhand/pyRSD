@@ -46,6 +46,8 @@ class ChainManager(object):
         # register the signal handlers and tags
         signal.signal(signal.SIGUSR1, initiate_exit)
         signal.signal(signal.SIGUSR2, initiate_exit)
+        signal.signal(signal.SIGINT, initiate_exit)
+        signal.signal(signal.SIGQUIT, initiate_exit)
         self.tags = enum('CONVERGED', 'EXIT', 'CTRL_C')
         
         # remember the start time

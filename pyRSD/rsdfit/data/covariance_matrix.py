@@ -213,7 +213,7 @@ class CovarianceMatrix(Cache):
         if len(coords):
             coords = [coords[:,i] for i in range(len(names))]
         
-        covar = cls(np.empty((N, N)), coords=coords, names=names)
+        covar = cls(np.empty((N, N)), coords=coords, names=names, verify=False)
         covar._data = data
         return covar
         

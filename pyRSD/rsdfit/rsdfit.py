@@ -2,7 +2,7 @@ from pyRSD.rsdfit.util import rsd_io, parse_command_line
 from pyRSD.rsdfit import FittingDriver, logging, params_filename, model_filename
 from pyRSD import os, sys
 import tempfile
-    
+
 def split_ranks(N_ranks, N_chunks):
     """
     Divide the ranks into N chunks, removing the master (0) rank
@@ -97,7 +97,7 @@ def run():
     """        
     from mpi4py import MPI
     from emcee.utils import MPIPool
-    
+
     # get the world MPI attributes
     world_comm = MPI.COMM_WORLD
     world_rank = world_comm.Get_rank()
@@ -220,14 +220,15 @@ def run():
             if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
                 os.remove(args.restart_file)
                 
-        # handle the MPI stuff
-        if world_rank == 0:
-            if pool is not None: pool.close()
-            if chains_group is not None: chains_group.Free()
-            if chains_comm is not None: chains_comm.Free()
+        # # handle the MPI stuff
+        if pool is not None:
+            if chains_comm.rank == 0: pool.close()
+        if chains_group is not None and chains_comm.rank == 0:
+            chains_group.Free()
+        if chains_comm is not None and chains_comm.rank == 0:
+            chains_comm.Free()
             
     
-        
 if __name__ == "__main__":
     run()
     

@@ -8,7 +8,6 @@ import emcee
 import time
 import signal
 import traceback
-import sys
 
 logger = logging.getLogger('rsdfit.emcee_fitter')
 logger.addHandler(logging.NullHandler())
@@ -99,13 +98,6 @@ class ChainManager(object):
             
     def __exit__(self, exc_type, exc_value, exc_traceback):
         
-        # close pool and tell the pool workers to exit
-        if self.sampler.pool is not None:
-            if not self.sampler.pool.is_master():
-                sys.exit(0)
-            else:
-                self.sampler.pool.close()
-        
         if isinstance(exc_value, KeyboardInterrupt):
             logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
             tag = self.tags.CTRL_C
@@ -125,7 +117,7 @@ class ChainManager(object):
                 for r in range(0, self.comm.size):
                     if r != self.comm.rank: 
                         self.comm.send(None, dest=r, tag=tag)
-            
+                            
         # print out some info and exit
         stop = time.time()
         logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(tools.hms_string(stop-self.start)))
@@ -135,6 +127,7 @@ class ChainManager(object):
         except:
             pass
         logger.warning("EMCEE: current parameters:\n %s" %str(self.theory.fit_params))
+
         return True
 
 #------------------------------------------------------------------------------
@@ -348,10 +341,10 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
                 manager.check_convergence(niter, epsilon, start_iter, start_chain)
     
     # make the results and return
-    new_results = EmceeResults(sampler, theory.fit_params, burnin)
+    new_results = EmceeResults(sampler, theory.fit_params, 0)
     if old_results is not None:
         new_results = old_results + new_results
-
+        
     return new_results, manager.exception
 
     

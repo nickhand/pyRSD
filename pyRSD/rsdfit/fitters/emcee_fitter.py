@@ -118,6 +118,10 @@ class ChainManager(object):
                     if r != self.comm.rank: 
                         self.comm.send(None, dest=r, tag=tag)
             
+        # close pool
+        if self.sampler.pool is not None:
+            self.sampler.pool.close()
+            
         # print out some info and exit
         stop = time.time()
         logger.warning("EMCEE: ...iterations finished. Time elapsed: {}".format(tools.hms_string(stop-self.start)))

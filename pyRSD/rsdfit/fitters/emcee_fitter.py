@@ -82,7 +82,7 @@ class ChainManager(object):
     
     def check_convergence(self, niter, epsilon, start_iter, start_chain):
         if self.comm is not None and self.do_convergence(start_iter+niter+1):
-            chain = sampler.chain if start_chain is None else np.concatenate([start_chain, sampler.chain],axis=1)
+            chain = self.sampler.chain if start_chain is None else np.concatenate([start_chain, self.sampler.chain],axis=1)
         
             self.comm.Barrier() # sync each chain to same number of iterations
             chains = self.comm.gather(chain, root=0)

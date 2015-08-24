@@ -2,12 +2,6 @@ from pyRSD.rsdfit.util import rsd_io, parse_command_line
 from pyRSD.rsdfit import FittingDriver, logging, params_filename, model_filename
 from pyRSD import os, sys
 import tempfile
-import signal
-
-def initiate_exit(signum, stack):
-    from mpi4py import MPI
-    print "rank = %d: not doing anything" %MPI.COMM_WORLD.rank
-    return True
     
 def split_ranks(N_ranks, N_chunks):
     """
@@ -103,11 +97,6 @@ def run():
     """        
     from mpi4py import MPI
     from emcee.utils import MPIPool
-    
-    signal.signal(signal.SIGUSR1, initiate_exit)
-    signal.signal(signal.SIGUSR2, initiate_exit)
-    signal.signal(signal.SIGINT, initiate_exit)
-    signal.signal(signal.SIGQUIT, initiate_exit)
     
     # get the world MPI attributes
     world_comm = MPI.COMM_WORLD

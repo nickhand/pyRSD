@@ -7,6 +7,7 @@ import signal
 def initiate_exit(signum, stack):
     from mpi4py import MPI
     print "rank = %d: not doing anything" %MPI.COMM_WORLD.rank
+    return True
     
 def split_ranks(N_ranks, N_chunks):
     """

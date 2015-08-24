@@ -8,6 +8,7 @@ import emcee
 import time
 import signal
 import traceback
+import sys
 
 logger = logging.getLogger('rsdfit.emcee_fitter')
 logger.addHandler(logging.NullHandler())
@@ -98,6 +99,13 @@ class ChainManager(object):
             
     def __exit__(self, exc_type, exc_value, exc_traceback):
         
+        # close pool and tell the pool workers to exit
+        if self.sampler.pool is not None:
+            if not self.sampler.pool.is_master():
+                sys.exit(0)
+            else:
+                self.sampler.pool.close()
+        
         if isinstance(exc_value, KeyboardInterrupt):
             logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
             tag = self.tags.CTRL_C
@@ -117,10 +125,6 @@ class ChainManager(object):
                 for r in range(0, self.comm.size):
                     if r != self.comm.rank: 
                         self.comm.send(None, dest=r, tag=tag)
-            
-        # close pool
-        if self.sampler.pool is not None:
-            self.sampler.pool.close()
             
         # print out some info and exit
         stop = time.time()

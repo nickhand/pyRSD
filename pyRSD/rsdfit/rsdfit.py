@@ -3,11 +3,10 @@ from pyRSD.rsdfit import FittingDriver, logging, params_filename, model_filename
 from pyRSD import os, sys
 import tempfile
 import signal
+
 def initiate_exit(signum, stack):
     from mpi4py import MPI
-    
-    print "HEY YOU THERE, rank = ", MPI.COMM_WORLD.rank
-    raise ExitingException
+    print "rank = %d: not doing anything" %MPI.COMM_WORLD.rank
     
 def split_ranks(N_ranks, N_chunks):
     """

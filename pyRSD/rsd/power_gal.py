@@ -64,10 +64,29 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.NsBsB         = 9e4
         self.N             = 0.
         
+        self.use_so_correction = use_so_correction
+        self.f_so = 0.
+        self.sigma_so = 0.
+        
      
     #---------------------------------------------------------------------------
     # PARAMETERS
-    #---------------------------------------------------------------------------        
+    #---------------------------------------------------------------------------  
+    @parameter
+    def f_so(self, val):
+        """
+        The fraction of satellites in SO halo finders compared to FOF
+        """
+        return val
+        
+    @parameter
+    def sigma_so(self, val):
+        """
+        The FOG velocity dispersion for type A centrals in Mpc/h, accounting
+        for FOG from SO/FOF differences around central type A galaxies
+        """
+        return val
+              
     @parameter
     def fog_model(self, val):
         """
@@ -270,11 +289,29 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         N = self.N
         self.N = 0
-        
-        PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
-        PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
-        PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
-        toret = PcAcA + PcAcB + PcBcB + N
+                
+        if self.use_so_correction:
+            sigma_c = self.sigma_c
+            self.sigma_c = 0
+            
+            PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
+            PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
+            PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
+            pk = PcAcA + PcAcB + PcBcB
+            
+            G = self.evaluate_fog(k, mu, sigma_c)
+            G2 = self.evaluate_fog(k, mu, self.sigma_so)
+            term1 = (1 - self.f_so)**2 * G**2 * pk
+            term2 = 2*self.f_so*(1-self.f_so)*G*G2*pk
+            term3 = self.f_so**2 * G2**2 * pk
+            term4 = 2*G*G2*self.f_so*self.fcB/(1-self.fcB)*self.NcBs
+            toret = term1 + term2 + term3 + term4 
+            self.sigma_c = sigma_c
+        else:
+            PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
+            PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
+            PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
+            toret = PcAcA + PcAcB + PcBcB + N
         
         self.N = N      
         return toret if not flatten else np.ravel(toret, order='F')

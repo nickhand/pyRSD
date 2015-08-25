@@ -105,11 +105,12 @@ class ChainManager(object):
             logger.warning("EMCEE: convergence criteria satisfied -- exiting")
             tag = self.tags.CONVERGED
         elif exc_value is not None:
-            self.exception = True
             logger.warning("EMCEE: exception occurred - trying to save current state of chain")
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
             logger.warning("   traceback:\n%s" %trace)         
             tag = self.tags.EXIT
+        
+        self.exception = not isinstance(exc_value, (KeyboardInterrupt, ConvergenceException, ExitingException))
         
         # convergence exception
         if exc_value is not None:
@@ -341,10 +342,11 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
                 manager.check_convergence(niter, epsilon, start_iter, start_chain)
     
     # make the results and return
-    new_results = EmceeResults(sampler, theory.fit_params, 0)
+    new_results = EmceeResults(sampler, theory.fit_params, burnin)
     if old_results is not None:
         new_results = old_results + new_results
         
+    logger.warning("EMCEE: exiting EMCEE fitter with exception = %s" %str(manager.exception))
     return new_results, manager.exception
 
     

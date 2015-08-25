@@ -294,11 +294,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             sigma_c = self.sigma_c
             self.sigma_c = 0
             
-            PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
-            PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
-            PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
-            pk = PcAcA + PcAcB + PcBcB
-            
+        PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
+        PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
+        PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
+        pk = PcAcA + PcAcB + PcBcB
+        
+        if self.use_so_correction:
             G = self.evaluate_fog(k, mu, sigma_c)
             G2 = self.evaluate_fog(k, mu, self.sigma_so)
             term1 = (1 - self.f_so)**2 * G**2 * pk
@@ -308,10 +309,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             toret = term1 + term2 + term3 + term4 
             self.sigma_c = sigma_c
         else:
-            PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
-            PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
-            PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
-            toret = PcAcA + PcAcB + PcBcB + N
+            toret = pk + N
         
         self.N = N      
         return toret if not flatten else np.ravel(toret, order='F')

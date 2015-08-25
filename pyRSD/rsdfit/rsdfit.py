@@ -196,6 +196,7 @@ def run():
         copy_kwargs['restart'] = restart_file
         kwargs['restart'] = restart_file
                     
+    exception = True
     try:
         # log to a temporary file (for now)
         temp_log = tempfile.NamedTemporaryFile(delete=False)
@@ -228,8 +229,8 @@ def run():
         if os.path.exists(temp_log_name):
             os.remove(temp_log_name)
         if world_rank == 0:
-            if args.subparser_name == 'restart' and os.path.exists(args.restart_file):
-                os.remove(args.restart_file)
+            if args.subparser_name == 'restart' and os.path.exists(restart_file):
+                os.remove(restart_file)
                 
         # # handle the MPI stuff
         if pool is not None:

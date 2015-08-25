@@ -110,8 +110,11 @@ class ChainManager(object):
             logger.warning("   traceback:\n%s" %trace)         
             tag = self.tags.EXIT
         
-        self.exception = not isinstance(exc_value, (KeyboardInterrupt, ConvergenceException, ExitingException))
-        
+        exceptions = (KeyboardInterrupt, ConvergenceException, ExitingException)
+        if exc_value is not None and not isinstance(exc_value, exceptions):
+            logger.warning("EMCEE: setting exception to true before exiting")
+            self.exception = True
+            
         # convergence exception
         if exc_value is not None:
             if self.comm is not None:

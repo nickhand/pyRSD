@@ -277,7 +277,7 @@ def parse_command_line():
         
         # if we are restarting, automatically use the same folder, 
         # and the driver.pickle
-        args.folder = os.path.sep.join(args.restart_file.split(os.path.sep)[:-1])
+        args.folder = os.path.sep.join(args.restart_files[0].split(os.path.sep)[:-1])
         args.params = os.path.join(args.folder, params_filename)
         args.model  = os.path.join(args.folder, model_filename)
         if not os.path.exists(args.params):
@@ -286,7 +286,7 @@ def parse_command_line():
         if not os.path.exists(args.model):
             raise rsd_io.ConfigurationError(
                     "Restarting but associated `%s` doesn't exist" %model_filename)
-        logger.warning("Restarting from %s and using associated params.dat" %args.restart_file)
+        logger.warning("Restarting from %s and using associated params.dat" %args.restart_files[0])
     
     ## run from new  
     elif args.subparser_name == "run":

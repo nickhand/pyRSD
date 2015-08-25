@@ -105,6 +105,7 @@ class ChainManager(object):
             logger.warning("EMCEE: convergence criteria satisfied -- exiting")
             tag = self.tags.CONVERGED
         elif exc_value is not None:
+            self.exception = True
             logger.warning("EMCEE: exception occurred - trying to save current state of chain")
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
             logger.warning("   traceback:\n%s" %trace)         
@@ -112,7 +113,6 @@ class ChainManager(object):
         
         # convergence exception
         if exc_value is not None:
-            self.exception = True
             if self.comm is not None:
                 for r in range(0, self.comm.size):
                     if r != self.comm.rank: 

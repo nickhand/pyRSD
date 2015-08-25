@@ -65,7 +65,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model', 'Phm_model', 'stochasticity_gp_model']
+        models = ['P00_model', 'P01_model', 'Phm_halo_zeldovich_model']
         self._update_models('interpolate', models, val)
         
         return val
@@ -79,7 +79,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'Phm_model', 'stochasticity_gp_model']
+                  'Phm_halo_zeldovich_model']
         self._update_models('sigma8', models, val)
 
         return val
@@ -91,7 +91,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'Phm_model', 'stochasticity_gp_model', 'bias_to_sigma_relation']
+                  'Phm_halo_zeldovich_model', 'bias_to_sigma_relation']
         self._update_models('z', models, val)
 
         return val

@@ -525,8 +525,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 if hasattr(self, k) and getattr(self, k) == v: 
                     continue
                 setattr(self, k, v)
-            except:
-                pass
+            except Exception as e:
+                raise RuntimeError("failure to set parameter `%s` to value %s" %(k, str(v)))
     
     #---------------------------------------------------------------------------
     def _update_models(self, name, models, val):

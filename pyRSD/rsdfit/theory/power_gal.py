@@ -289,9 +289,16 @@ class GalaxyPowerTheory(object):
         # try to update
         try:
             self.fit_params.update_values()
+        except Exception as e:
+            args = (str(e), str(self.fit_params))
+            msg = "error trying to update fit parameters; original message:\n%s\n\ncurrent parameters:\n%s" %args
+            raise RuntimeError(msg)
+        try:
             self.update_model()
-        except:
-            return False        
+        except Exception as e:
+            args = (str(e), str(self.fit_params))
+            msg = "error trying to update model; original message:\n%s\n\ncurrent parameters:\n%s" %args
+            raise RuntimeError(msg)   
         return True
         
     def model_callable(self, k, mu, **kwargs):

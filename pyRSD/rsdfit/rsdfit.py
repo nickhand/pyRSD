@@ -110,7 +110,7 @@ def run():
         if world_rank == 0:
             args = parse_command_line()
         args = world_comm.bcast(args, root=0)
-        
+                
     # analyze an existing chain
     if args.subparser_name == 'analyze':
         from pyRSD.rsdfit import analysis
@@ -118,6 +118,14 @@ def run():
         driver = analysis.AnalysisDriver(**vars(args))
         driver.run()
         return
+        
+    # set some restart variables
+    if args.subparser_name == 'restart':
+        args.nchains = len(args.restart_files)
+        
+    # too many chains requested?
+    if args.nchains > world_size:
+        raise ValueError("number of chains requested must be less than total processes")
         
     # split ranks
     chains_group, chains_comm, pool_comm, pool = [None]*4
@@ -175,15 +183,18 @@ def run():
     # restart from previous chain
     elif args.subparser_name == 'restart':
         
+        # determine the restart file based on chain number
+        restart_file = args.restart_files[chain_number]
+        
         # load the driver from param file, optionally reading model from file
         initialize_model = False if 'model' in args else True
-        driver = FittingDriver.from_restart(args.folder, args.restart_file, args.iterations, **mpi_kwargs)
+        driver = FittingDriver.from_restart(args.folder, restart_file, args.iterations, **mpi_kwargs)
         
         # set driver values from command line
         if args.burnin is not None:
             driver.params.add('burnin', value=args.burnin)
-        copy_kwargs['restart'] = args.restart_file
-        kwargs['restart'] = args.restart_file
+        copy_kwargs['restart'] = restart_file
+        kwargs['restart'] = restart_file
                     
     try:
         # log to a temporary file (for now)

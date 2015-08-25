@@ -104,7 +104,7 @@ def setup_restart_subparser(parent):
     
     # the general driver parameters (REQUIRED)
     h = 'the name of the existing results file to restart from'
-    subparser.add_argument('restart_file', type=existing_file, help=h)
+    subparser.add_argument('restart_files', type=existing_file, nargs="+", help=h)
     
     # number of iterations (REQUIRED)
     h = 'the number of additional steps to run using the old chain'
@@ -114,11 +114,7 @@ def setup_restart_subparser(parent):
     # number of iterations (REQUIRED)
     h = 'the number of steps to consider burnin'
     subparser.add_argument('-b', help=h, type=positive_int, dest='burnin')
-                                
-    # number of chains to run concurrently
-    h = 'number of chains to run concurrently'
-    subparser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
-    
+                                    
     # arbitrary numbering of an output chain (OPTIONAL)
     h = """An arbitrary number for the output chain. \n
            By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with

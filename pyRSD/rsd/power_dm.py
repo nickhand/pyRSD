@@ -34,7 +34,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                        kmax=0.5,
                        Nk=500,
                        z=0., 
-                       cosmo="planck1_WP.ini",
+                       cosmo_filename="planck1_WP.ini",
                        include_2loop=False,
                        transfer_fit="CLASS",
                        max_mu=4,
@@ -85,7 +85,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         # set the input parameters
         self.interpolate    = interpolate
         self.transfer_fit   = transfer_fit
-        self.cosmo_filename = cosmo
+        self.cosmo_filename = cosmo_filename
         self.max_mu         = max_mu
         self.include_2loop  = include_2loop
         self.z              = z 

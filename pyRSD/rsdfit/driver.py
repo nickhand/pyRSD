@@ -66,7 +66,7 @@ class FittingDriver(object):
         self.results = None
         
     @classmethod
-    def from_directory(cls, dirname, results_file=None, model_file=None, **kwargs):
+    def from_directory(cls, dirname, results_file=None, model_file=None, init_model=True, **kwargs):
         """
         Load a ``FittingDriver`` from a results directory, reading the 
         ``params.dat`` file, and optionally loading a pickled model and 

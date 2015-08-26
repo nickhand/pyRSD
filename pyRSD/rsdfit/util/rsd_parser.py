@@ -289,8 +289,7 @@ def parse_command_line():
         args.folder = os.path.sep.join(args.restart_files[0].split(os.path.sep)[:-1])
         args.params = os.path.join(args.folder, params_filename)
         if not os.path.exists(args.params):
-            raise rsd_io.ConfigurationError(
-                    "Restarting but associated `%s` doesn't exist" %params_filename)
+            raise rsd_io.ConfigurationError("Restarting but associated `%s` doesn't exist" %params_filename)
         if args.model is None:
             args.model = os.path.join(args.folder, model_filename)
             if not os.path.exists(args.model):

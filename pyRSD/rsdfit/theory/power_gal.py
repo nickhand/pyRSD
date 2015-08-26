@@ -174,8 +174,8 @@ class GalaxyPowerTheory(object):
         if self.kmax is not None: kwargs['kmax'] = self.kmax
         
         if filename is not None:
-            model = rsd_io.load_pickle(filename)
-            model.update(**kwargs)
+            self.model = rsd_io.load_pickle(filename)
+            self.model.update(**kwargs)
         else:
             self.model = rsd.GalaxySpectrum(**kwargs)
     

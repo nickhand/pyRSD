@@ -189,6 +189,10 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         allowed = [0, 2, 4, 6]
         if val not in allowed:
             raise ValueError("`max_mu` must be one of %s" %allowed)
+        mu6_corrs = getattr(self, 'use_mu_corrections', False)
+        if mu6_corrs and val < 6:
+            raise ValueError("trying to use mu6 corrections, but setting max mu less than 6")
+        
         return val
         
     @parameter
@@ -526,7 +530,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                     continue
                 setattr(self, k, v)
             except Exception as e:
-                raise RuntimeError("failure to set parameter `%s` to value %s" %(k, str(v)))
+                raise RuntimeError("failure to set parameter `%s` to value %s: %s" %(k, str(v), str(e)))
     
     #---------------------------------------------------------------------------
     def _update_models(self, name, models, val):

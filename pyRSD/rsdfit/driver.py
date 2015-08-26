@@ -90,8 +90,9 @@ class FittingDriver(object):
         params_path = os.path.join(dirname, params_filename)
         
         model_path = model_file
-        if model_path is not None and not os.path.exists(model_path):
-            raise rsd_io.ConfigurationError('provided model file `%s` does not exist' %model_path)
+        if model_path is not None:
+            if not os.path.exists(model_path):
+                raise rsd_io.ConfigurationError('provided model file `%s` does not exist' %model_path)
         else:
             model_path = os.path.join(dirname, model_filename)
         if not os.path.exists(params_path):

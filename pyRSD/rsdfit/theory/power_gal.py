@@ -153,14 +153,14 @@ class GalaxyPowerTheory(object):
         
         # store the kmin, kmax
         self.kmin, self.kmax = kmin, kmax
+                        
+        # set the model
+        self.set_model()
         
         # delete any empty parameters
         for k in self.fit_params:
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
-                
-        # set the model
-        self.set_model()
 
     def set_model(self, filename=None):
         """

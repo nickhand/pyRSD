@@ -130,7 +130,6 @@ class ChainManager(object):
             logger.warning("EMCEE: autocorrelation time: {}".format(self.sampler.get_autocorr_time()))
         except:
             pass
-        logger.warning("EMCEE: current parameters:\n %s" %str(self.theory.fit_params))
 
         return True
 

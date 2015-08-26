@@ -213,6 +213,10 @@ class FittingDriver(object):
         self.results, exception = solver(self.params, copy.deepcopy(self.theory), objective, **kwargs)
         logger.info("...fitting complete")
         
+        # if there was an exception, print out current parameters
+        if exception:
+            logger.warning("exception occurred: current parameters:\n %s" %str(self.theory.fit_params))
+        
         return exception
     
     def finalize_fit(self, exception, results_file):
@@ -400,7 +404,7 @@ class FittingDriver(object):
             good_model = self.theory.set_free_parameters(theta)
             if not good_model:
                 return -np.inf
-        
+                
         lp = self.lnprior()
         if not np.isfinite(lp):
             return -np.inf

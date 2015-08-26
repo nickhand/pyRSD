@@ -872,14 +872,12 @@ class CovarianceMatrix(Cache):
 #     #---------------------------------------------------------------------------
 # #endclass PowerCovarianceMatrix
 #
-# #-------------------------------------------------------------------------------
-# class PkmuCovarianceMatrix(PowerCovarianceMatrix):
+#-------------------------------------------------------------------------------
+# class PkmuCovarianceMatrix(CovarianceMatrix):
 #     """
-#     Class to hold a covariance matrix for P(k, mu)
+#     Class to hold a covariance matrix for P(k, mu).
 #     """
-#     _allowed_extra_info = ['modes', 'mean_power']
-#
-#     def __init__(self, data, ks, mus, units, h, **extra_info):
+#     def __init__(self, data, k_center, mu_center):
 #         """
 #         Parameters
 #         ----------
@@ -894,9 +892,7 @@ class CovarianceMatrix(Cache):
 #         mus : array_like
 #             The mu values where the measurements are defined
 #         """
-#         # set the defaults for keywords
-#         for k in self._allowed_extra_info:
-#             extra_info.setdefault(k, None)
+#
 #
 #         # initialize the base class
 #         super(PkmuCovarianceMatrix, self).__init__('mu', data, ks, mus, units, h, **extra_info)

@@ -228,13 +228,13 @@ def run():
         # if we made it this far, it's safe to delete the old results
         if os.path.exists(temp_log_name):
             os.remove(temp_log_name)
-        if world_rank == 0:
-            if args.subparser_name == 'restart' and os.path.exists(restart_file):
-                os.remove(restart_file)
+        if args.subparser_name == 'restart' and os.path.exists(restart_file):
+            os.remove(restart_file)
                 
         # # handle the MPI stuff
         if pool is not None:
-            if chains_comm.rank == 0: pool.close()
+            if chains_comm is None or chains_comm.rank == 0: 
+                pool.close()
         if chains_group is not None and chains_comm.rank == 0:
             chains_group.Free()
         if chains_comm is not None and chains_comm.rank == 0:

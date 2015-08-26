@@ -173,7 +173,7 @@ class GalaxyPowerTheory(object):
         if self.kmin is not None: kwargs['kmin'] = self.kmin
         if self.kmax is not None: kwargs['kmax'] = self.kmax
         
-        if filename is None:
+        if filename is not None:
             model = rsd_io.load_pickle(filename)
             model.update(**kwargs)
         else:

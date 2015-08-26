@@ -53,6 +53,11 @@ def setup_run_subparser(parent):
     """
     subparser = parent.add_parser('run', help="run the MCMC chains from scratch")
     
+    # the path to the model to read
+    h = 'file name holding the model path'
+    kwargs = {'dest':'model', 'type':existing_file, 'help':h}
+    subparser.add_argument('-m', '--model', **kwargs)
+    
     # the general driver parameters
     h = 'file name holding the driver, theory, and data parameters'
     kwargs = {'dest':'params', 'type':existing_file, 'help':h}
@@ -101,6 +106,11 @@ def setup_restart_subparser(parent):
     """
     h = "restart a MCMC fit from an existing chain"
     subparser = parent.add_parser('restart', help=h)
+    
+    # the path to the model to read
+    h = 'file name holding the model path'
+    kwargs = {'dest':'model', 'type':existing_file, 'help':h}
+    subparser.add_argument('-m', '--model', **kwargs)
     
     # the general driver parameters (REQUIRED)
     h = 'the name of the existing results file to restart from'
@@ -227,8 +237,7 @@ def setup_analyze_subparser(parent):
             analyze.to_plot=['name1','name2','newname3',...]
             analyze.new_scales={'name1':number1,'name2':number2,...}"""
     subparser.add_argument('--extra', help=h, dest='optional_plot_file', default='')
-
-                                
+               
 def initialize_parser():
     """
     Initialize the parser of command-line arguments. 
@@ -279,13 +288,13 @@ def parse_command_line():
         # and the driver.pickle
         args.folder = os.path.sep.join(args.restart_files[0].split(os.path.sep)[:-1])
         args.params = os.path.join(args.folder, params_filename)
-        args.model  = os.path.join(args.folder, model_filename)
         if not os.path.exists(args.params):
             raise rsd_io.ConfigurationError(
                     "Restarting but associated `%s` doesn't exist" %params_filename)
-        if not os.path.exists(args.model):
-            raise rsd_io.ConfigurationError(
-                    "Restarting but associated `%s` doesn't exist" %model_filename)
+        if args.model is None:
+            args.model = os.path.join(args.folder, model_filename)
+            if not os.path.exists(args.model):
+                raise rsd_io.ConfigurationError("Restarting but cannot find existing model file to read")
         logger.warning("Restarting from %s and using associated params.dat" %args.restart_files[0])
     
     ## run from new  
@@ -304,16 +313,17 @@ def parse_command_line():
                 if old_params is not None:
                     logger.warning("Appending to an existing folder: using the "
                                    "`%s` instead of %s" %(params_filename, old_params))
-                                   
-                # also check for existing model file now
-                if os.path.exists(model_path):
-                    args.model = model_path
             else:
                 if args.params is None:
                     raise rsd_io.ConfigurationError(
                         "The requested output folder seems empty. "
                         "You must then provide a parameter file (command"
                         " line option -p any.param)")
+                        
+            # also check for existing model file now
+            if os.path.exists(model_path):
+                if args.model is None:
+                    args.model = model_path
         else:
             if args.params is None:
                 raise rsd_io.ConfigurationError(

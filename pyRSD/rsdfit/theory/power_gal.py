@@ -151,20 +151,38 @@ class GalaxyPowerTheory(object):
             if param not in allowable_model_params:
                 del self.model_params[param] 
         
-        # initialize the galaxy power spectrum model
-        kwargs = {k:v() for k,v in self.model_params.iteritems()}
-        if kmin is not None: kwargs['kmin'] = kmin
-        if kmax is not None: kwargs['kmax'] = kmax
-        self.model = rsd.GalaxySpectrum(**kwargs)
-        
-        # update the constraints
-        self.update_constraints()
+        # store the kmin, kmax
+        self.kmin, self.kmax = kmin, kmax
         
         # delete any empty parameters
         for k in self.fit_params:
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
+                
+        # set the model
+        self.set_model()
 
+    def set_model(self, filename=None):
+        """
+        Set the model, possibly from a file, or initialize a new one
+        """
+        from ..util import rsd_io
+        
+        # model kwargs
+        kwargs = {k:v() for k,v in self.model_params.iteritems()}
+        if self.kmin is not None: kwargs['kmin'] = self.kmin
+        if self.kmax is not None: kwargs['kmax'] = self.kmax
+        
+        if filename is None:
+            model = rsd_io.load_pickle(filename)
+            model.update(**kwargs)
+        else:
+            self.model = rsd.GalaxySpectrum(**kwargs)
+    
+        # update the constraints
+        self.update_constraints()
+    
+    
     def to_file(self, filename, mode='w'):
         """
         Save the parameters of this theory in a file

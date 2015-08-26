@@ -66,11 +66,11 @@ class FittingDriver(object):
         self.results = None
         
     @classmethod
-    def from_directory(cls, dirname, results_file=None, init_model=True, **kwargs):
+    def from_directory(cls, dirname, results_file=None, model_file=None, **kwargs):
         """
         Load a ``FittingDriver`` from a results directory, reading the 
-        ``params.dat`` and ``model.pickle`` files, and optionally loading
-        a pickled results object
+        ``params.dat`` file, and optionally loading a pickled model and 
+        a results object
         
         Parameters
         ----------
@@ -78,6 +78,8 @@ class FittingDriver(object):
             the name of the directory holding the results
         results_file : str, optional
             the name of the file holding the results. Default is ``None``
+        model_file : str, optional
+            the name of the file holding the model to load. Default is ``None``
         init_model : bool, optional
             whether to initialize the RSD model upon loading. If a model
             file exists in the specified directory, the model is loaded and
@@ -86,7 +88,12 @@ class FittingDriver(object):
         if not os.path.isdir(dirname):
             raise rsd_io.ConfigurationError('`%s` is not a valid directory' %dirname)
         params_path = os.path.join(dirname, params_filename)
-        model_path = os.path.join(dirname, model_filename)
+        
+        model_path = model_file
+        if model_path is not None and not os.path.exists(model_path):
+            raise rsd_io.ConfigurationError('provided model file `%s` does not exist' %model_path)
+        else:
+            model_path = os.path.join(dirname, model_filename)
         if not os.path.exists(params_path):
             raise rsd_io.ConfigurationError('parameter file `%s` must exist to load driver' %params_path)
             
@@ -242,13 +249,9 @@ class FittingDriver(object):
         """
         Set the model, as read from a file
         """
-        # read in the model
-        model = rsd_io.load_pickle(filename)
-        
         # set it
         logger.info("Setting the theoretical model from file `%s`" %filename)
-        self.theory.model = model
-        self.theory.update_constraints()
+        self.theory.set_model(filename)
         
         # make the list of model callables
         self._get_model_callables()

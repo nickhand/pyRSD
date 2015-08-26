@@ -162,11 +162,16 @@ def run():
 
         # either load the driver if it exists already, or initialize it
         if os.path.isdir(args.folder) and os.path.exists(os.path.join(args.folder, params_filename)):            
-            driver = FittingDriver.from_directory(args.folder, **mpi_kwargs)
+            driver = FittingDriver.from_directory(args.folder, model_file=args.model, **mpi_kwargs)
         else:
-            driver = FittingDriver(args.params, extra_param_file=args.extra_params, **mpi_kwargs)
+            init_model = args.model is None
+            driver = FittingDriver(args.params, extra_param_file=args.extra_params, init_model=init_model, **mpi_kwargs)
+            if not init_model:
+                driver.set_model(args.model)
+            else:
+                model_dir = driver.params.get('model_dir', args.folder)
+                rsd_io.save_pickle(driver.theory.model, os.path.join(model_dir, model_filename))
             driver.to_file(os.path.join(args.folder, params_filename))
-            rsd_io.save_pickle(driver.theory.model, os.path.join(args.folder, model_filename))
                 
         # set driver values from command line
         solver = driver.params['fitter'].value
@@ -187,8 +192,7 @@ def run():
         restart_file = args.restart_files[chain_number]
         
         # load the driver from param file, optionally reading model from file
-        initialize_model = False if 'model' in args else True
-        driver = FittingDriver.from_restart(args.folder, restart_file, args.iterations, **mpi_kwargs)
+        driver = FittingDriver.from_restart(args.folder, restart_file, args.iterations, model_file=args.model, **mpi_kwargs)
         
         # set driver values from command line
         if args.burnin is not None:

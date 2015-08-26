@@ -505,7 +505,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             beta = 3.6492
             return A*(self.b1/2.)**alpha * (self.sigma8_z/0.8)**beta
         
-    @cached_property('z', 'b1', 'M', 'indep_var')
+    @cached_property('z', 'sigma8_z', 'b1', 'M', 'indep_var')
     def R1(self):
         """
         Returns the R1 radius parameter
@@ -518,12 +518,17 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             A = 4.837 
             return A * (1 + self.z)**alpha * (self.M/1e13)**beta
         else:
-            alpha = -0.40178 
-            beta = -0.64280
-            A = 3.07209 
-            return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+            # alpha = -0.40178
+            # beta = -0.64280
+            # A = 3.07209
+            # return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+            alpha = 0.5482
+            beta = -0.6438
+            A = 2.9813
+            return A * (self.sigma8_z/0.8)**alpha * (self.b1/2.)**beta
+            
         
-    @cached_property('z', 'b1', 'M', 'indep_var')
+    @cached_property('z', 'sigma8_z', 'b1', 'M', 'indep_var')
     def R1h(self):
         """
         Returns the R1h radius parameter
@@ -536,12 +541,16 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             A = 7.242 
             return A * (1 + self.z)**alpha * (self.M/1e13)**beta
         else:
-            alpha = -0.01459
-            beta = -0.88849
-            A = 3.74763 
-            return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+            # alpha = -0.01459
+            # beta = -0.88849
+            # A = 3.74763
+            # return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+            alpha = 0.01591489
+            beta = -0.88942626
+            A = 3.73986252
+            return A * (self.sigma8_z/0.8)**alpha * (self.b1/2.)**beta
     
-    @cached_property('z', 'b1', 'M', 'indep_var')
+    @cached_property('z', 'sigma8_z', 'b1', 'M', 'indep_var')
     def R2h(self):
         """
         Returns the R2h radius parameter
@@ -554,10 +563,14 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             A = 2.579 
             return A * (1 + self.z)**alpha * (self.M/1e13)**beta
         else:
-            alpha = 0.00188
-            beta = -1.15442 
-            A = 1.22377 
-            return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+            # alpha = 0.00188
+            # beta = -1.15442
+            # A = 1.22377
+            # return A * (1 + self.z)**alpha * (self.b1/2.)**beta
+            alpha = -0.00818052
+            beta = -1.15572913
+            A = 1.22260687
+            return A * (self.sigma8_z/0.8)**alpha * (self.b1/2.)**beta
         
     def __call__(self, b1, k):
         """

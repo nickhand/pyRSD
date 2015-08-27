@@ -241,7 +241,7 @@ class CovarianceMatrix(Cache):
         # verify the keywords are all valid coordinate names
         for k in kwargs:
             if k not in self.names:
-                raise IndexError("name `%s` is not a valid coordinate name")
+                raise IndexError("name `%s` is not a valid coordinate name" %k)
         
         # can't index on one coordinate, if it isn't unique
         if len(kwargs) == 1 and not self._unique[kwargs.keys()[0]]:
@@ -872,406 +872,464 @@ class CovarianceMatrix(Cache):
 #     #---------------------------------------------------------------------------
 # #endclass PowerCovarianceMatrix
 #
-#-------------------------------------------------------------------------------
-# class PkmuCovarianceMatrix(CovarianceMatrix):
-#     """
-#     Class to hold a covariance matrix for P(k, mu).
-#     """
-#     def __init__(self, data, k_center, mu_center):
-#         """
-#         Parameters
-#         ----------
-#         data : array_like
-#             The data representing the covariance matrix. If 1D, the input
-#             is interpreted as the diagonal elements, with all other elements
-#             zero
-#         ks : array_like
-#             The wavenumbers where the measurements are defined. For every `mu`
-#             measurement, it is assumed that the measurement is defined at
-#             the same k values. Units are given by the `units` keyword
-#         mus : array_like
-#             The mu values where the measurements are defined
-#         """
-#
-#
-#         # initialize the base class
-#         super(PkmuCovarianceMatrix, self).__init__('mu', data, ks, mus, units, h, **extra_info)
-#
-#     #---------------------------------------------------------------------------
-#     def _store_extra_info(self, **kwargs):
-#         """
-#         Store the extra information needed to compute analytic variances
-#         """
-#         info = {}
-#         for k in self._allowed_extra_info:
-#             if kwargs.get(k, None) is not None:
-#                 if len(kwargs[k]) != len(self.index):
-#                     msg = "size mismatch in PkmuCovarianceMatrix between index and %s info" %k
-#                     raise ValueError(msg)
-#                 info[k] = kwargs[k]
-#
-#         if len(info) > 0:
-#             self.extra_info = DataFrame(data=info, index=self.index)
-#         else:
-#             self.extra_info = None
-#
-#     #---------------------------------------------------------------------------
-#     def _update_extra_info_units(self, units, h):
-#         """
-#         Update the units store in the `extra_info` DataFrame
-#         """
-#         if self.extra_info is not None:
-#
-#             # update 'k' levels
-#             new_levels = []
-#             for i, name in enumerate(self.extra_info.index.names):
-#                 factor = 1.
-#                 if name == 'k':
-#                     factor = self._k_conversion_factor(units, h)
-#                 new_levels.append(self.extra_info.index.levels[i]*factor)
-#             self.extra_info.index = self.extra_info.index.set_levels(new_levels)
-#
-#             # multiply by the power values
-#             if hasattr(self.extra_info, 'mean_power'):
-#                 self.extra_info['mean_power'] *= self._power_conversion_factor(units, h)
-#
-#     #---------------------------------------------------------------------------
-#     @property
-#     def mus(self):
-#         """
-#         The `mu` values associated with the matrix; only unique `mu` values
-#         are returned
-#         """
-#         return self._xs
-#
-#     #---------------------------------------------------------------------------
-#     def mu_slice(self, mu1, mu2=None):
-#         """
-#         Return the sub matrix associated with the specified `mu1` and
-#         `mu2` values
-#
-#         Parameters
-#         ----------
-#         mu1 : {int, float}
-#             The value of `mu` specifying which rows to select of the full matrix
-#         mu2 : {int, float}, optional
-#             The value of `mu` specifying which columns to select of the full
-#             matrix. If `None`, the value is set to `mu1`
-#
-#         Returns
-#         -------
-#         slice : {PkmuCovarianceMatrix, DataFrame}
-#             If the sliced submatrix is not symmetric, a `DataFrame` is returned,
-#             else a `PkmuCovarianceMatrix` is returned
-#         """
-#         return self._x_slice(mu1, mu2)
-#
-#     #---------------------------------------------------------------------------
-#     def trim_mu(self, lower=None, upper=None):
-#         """
-#         Trim the covariance matrix to the specified minimum/maximum `mu` values
-#
-#         Parameters
-#         ----------
-#         lower : float
-#             Minimum `mu` value to include in the matrix
-#         upper : float
-#             Maximum `mu` value to include in the matrix
-#         """
-#         return self._trim_x(lower=lower, upper=upper)
-#
-#     #---------------------------------------------------------------------------
-#     # extra info
-#     #---------------------------------------------------------------------------
-#     def modes(self, k=None, mu=None):
-#         """
-#         The number of modes as a function of `k` and `mu`
-#         """
-#         if hasattr(self.extra_info, 'modes'):
-#             if k is None and mu is None:
-#                 return self.extra_info.modes
-#             else:
-#                 # slice at a certain mu
-#                 if mu is not None:
-#                     if isinstance(mu, int):
-#                         mu = self._convert_x_integer(mu)
-#                     modes = self.extra_info.modes.xs(mu, level='mu')
-#
-#                 # slice at specific k
-#                 if k is not None:
-#                     if isinstance(k, int):
-#                         k = self._convert_k_integer(k, mu)
-#                     modes = modes.loc[k]
-#                 return modes
-#         else:
-#             return None
-#
-#     #---------------------------------------------------------------------------
-#     def mean_power(self, k=None, mu=None):
-#         """
-#         The mean power as a function of `k` and `mu`, in the units specified
-#         by `self.h` and `self.units`
-#
-#         NOTE: this has the shot noise included in it
-#         """
-#         if hasattr(self.extra_info, 'mean_power'):
-#             if k is None and mu is None:
-#                 return self.extra_info.mean_power
-#
-#             else:
-#                 # slice at a certain mu
-#                 if mu is not None:
-#                     if isinstance(mu, int):
-#                         mu = self._convert_x_integer(mu)
-#                     P = self.extra_info.mean_power.xs(mu, level='mu')
-#
-#                 # slice at specific k
-#                 if k is not None:
-#                     if isinstance(k, int):
-#                         k = self._convert_k_integer(k, mu)
-#                     P = P.loc[k]
-#                 return P
-#         else:
-#             return None
-#
-#     #---------------------------------------------------------------------------
-#     def gaussian_covariance(self, k=None, mu=None):
-#         """
-#         Return the Gaussian prediction for the variance of the diagonal
-#         elements, given by:
-#
-#         :math: 2 / N_{modes}(k,\mu)) * [ P(k,\mu) + P_{shot}(k,\mu) ]**2
-#         """
-#         if k is not None and mu is None:
-#             msg = "`mu` must also be specified to compute Gaussian error at specific `k`"
-#             raise ValueError(msg)
-#
-#         modes = self.modes(k=k, mu=mu)
-#         if modes is None:
-#             raise ValueError("Cannot compute Gaussian sigma without `modes`")
-#
-#         mean_power = self.mean_power(k=k, mu=mu)
-#         if mean_power is None:
-#             raise ValueError("Cannot compute Gaussian sigma without `mean_power`")
-#
-#         return 2./modes * mean_power**2
-#
-#     #---------------------------------------------------------------------------
-#     # plotting
-#     #---------------------------------------------------------------------------
-#     def plot_diagonals(self, ax=None, mu=None, **options):
-#         """
-#         Plot the square-root of the diagonal elements for a specfic mu value
-#
-#         Parameters
-#         ---------------
-#         ax : plotify.Axes, optional
-#             Axes instance to plot to. If `None`, plot to the current axes
-#         mu : {float, int},
-#             If not `None`, only plot the diagonals for a single `mu` value, else
-#             plot for all `mu` values
-#         options : dict
-#             Dictionary of options with the following keywords:
-#                 show_gaussian : bool
-#                     Overplot the Gaussian prediction, i.e.,
-#                     :math: 2/N_{modes} * [P(k) + Pshot(k)]**2
-#                 norm_by_gaussian : bool
-#                     Normalize the diagonal elements by the Gaussian prediction
-#                 norm_by_power : bool
-#                     Normalize the diagonal elements by the mean power,
-#                     P(k) + Pshot(k)
-#                 subtract_gaussian : bool
-#                     Subtract out the Gaussian prediction
-#         """
-#         import plotify as pfy
-#         # get the current axes
-#         if ax is None: ax = pfy.gca()
-#
-#         # setup the default options
-#         options.setdefault('show_gaussian', False)
-#         options.setdefault('norm_by_gaussian', False)
-#         options.setdefault('norm_by_power', False)
-#         options.setdefault('subtract_gaussian', False)
-#
-#         # get the mus to plot
-#         if mu is None:
-#             mus = self.mus
-#         else:
-#             if isinstance(mu, int):
-#                 mu = self._convert_x_integer(mu)
-#             mus = [mu]
-#
-#         if options['show_gaussian']:
-#             ax.color_cycle = "Paired"
-#
-#         # loop over each mu
-#         for mu in mus:
-#
-#             # get sigma for this mu sub matrix
-#             this_mu = self.mu_slice(mu)
-#             sigma = np.diag(this_mu)**0.5
-#
-#             norm = 1.
-#             if options['subtract_gaussian']:
-#                 norm = sigma.copy()
-#                 sigma -= self.gaussian_covariance(mu=mu)**0.5
-#             elif options['norm_by_gaussian']:
-#                 norm = self.gaussian_covariance(mu=mu)**0.5
-#             elif options['norm_by_power']:
-#                 norm = self.mean_power(mu=mu)
-#
-#             # do the plotting
-#             label = r"$\mu = {}$".format(mu)
-#             pfy.plot(self.ks(mu=mu), sigma/norm, label=label)
-#             if options['show_gaussian']:
-#                 pfy.plot(self.ks(mu=mu), self.gaussian_covariance(mu=mu)**0.5/norm, ls='--')
-#
-#             if np.isscalar(norm):
-#                 ax.x_log_scale()
-#                 ax.y_log_scale()
-#
-#         # add the legend and axis labels
-#         ax.legend(loc=0, ncol=2)
-#         if self.units == 'relative':
-#             k_units = r"($h$/Mpc)"
-#             P_units = r"$(\mathrm{Mpc}/h)^3$"
-#         else:
-#             k_units = "(1/Mpc)"
-#             P_units = r"$(\mathrm{Mpc})^3$"
-#
-#         ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
-#         if options['norm_by_power']:
-#             ax.ylabel.update(r"$\sigma_P / P(k, \mu)$", fontsize=16)
-#
-#         elif options['norm_by_gaussian']:
-#             ax.ylabel.update(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
-#         else:
-#             if not options['subtract_gaussian']:
-#                 ax.ylabel.update(r"$\sigma_P$ %s" %P_units, fontsize=16)
-#             else:
-#                 ax.ylabel.update(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
-#
-#         return ax
-#
-#     #---------------------------------------------------------------------------
-#     def plot_off_diagonals(self, kbar, ax=None, mu=None, mubar=None, **options):
-#         """
-#         Plot the off diagonal elements, specifically:
-#
-#         :math: \sqrt(Cov(k, kbar) / P(k, mu) / P(kbar, mu))
-#
-#         Parameters
-#         ---------------
-#         kbar : {float, int}
-#             The specific value of k to plot the covariances at
-#         ax : plotify.Axes, optional
-#             Axes instance to plot to. If `None`, plot to the current axes
-#         mu : {float, int},
-#             If not `None`, only plot the diagonals for a single `mu` value, else
-#             plot for all `mu` values
-#         options : dict
-#             Dictionary of options with the following keywords:
-#                 show_diagonal : bool
-#                     If `True`, plot the diagonal value as a stem plot
-#                 show_binned : bool
-#                     If `True`, plot a smoothed spline interpolation
-#                 show_zero_line : bool
-#                     If `True`, plot a y=0 horizontal line
-#         """
-#         import plotify as pfy
-#         import scipy.stats
-#
-#         # get the current axes
-#         if ax is None: ax = pfy.gca()
-#
-#         # setup the default options
-#         options.setdefault('show_diagonal', True)
-#         options.setdefault('show_binned', False)
-#         options.setdefault('show_zero_line', False)
-#
-#         # determine the mus to plot
-#         if mu is None:
-#             mus = self.mus
-#             mubars = mus
-#         else:
-#             if isinstance(mu, int):
-#                 mu = self._convert_x_integer(mu)
-#             mus = [mu]
-#
-#             if mubar is not None:
-#                 if isinstance(mubar, int):
-#                     mubar = self._convert_x_integer(mubar)
-#                 mubars = [mubar]
-#             else:
-#                 mubars = mus
-#
-#         # get the k units
-#         if self.units == 'relative':
-#             k_units = r"$h$/Mpc"
-#         else:
-#             k_units = "1/Mpc"
-#
-#         # loop over each mu
-#         for mu, mubar in zip(mus, mubars):
-#
-#             # ks for this mu
-#             ks = self.ks(mu=mu)
-#             kbars = self.ks(mu=mubar)
-#
-#             # get the right kbar
-#             if isinstance(kbar, int):
-#                 kbar = self._convert_k_integer(kbar, mubar)
-#
-#             # get the closest value in the matrix
-#             if kbar not in kbars:
-#                 kbar = kbars[abs(kbars - kbar).argmin()]
-#
-#             # get sigma for this mu sub matrix
-#             this_slice = self.mu_slice(mu, mu2=mubar)
-#             cov = this_slice.xs(kbar, axis=1)
-#
-#             # the normalization
-#             P_k = self.mean_power(mu=mu)
-#             P_kbar = self.mean_power(k=kbar, mu=mubar)
-#             norm = P_k*P_kbar
-#
-#             # remove the diagonal element
-#             toplot = cov/norm
-#             diag_element = toplot[kbar]
-#             toplot = toplot.drop(kbar)
-#             ks = ks[ks != kbar]
-#
-#             # plot the fractional covariance
-#             if mu == mubar:
-#                 args = (mu, kbar, k_units)
-#                 label = r"$\mu = \bar{{\mu}} = {0}, \ \bar{{k}} = {1:.3f}$ {2}".format(*args)
-#             else:
-#                 args = (mu, mubar, kbar, k_units)
-#                 label = r"$\mu = {0}, \ \bar{{\mu}} = {1}, \ \bar{{k}} = {2:.3f}$ {3}".format(*args)
-#             pfy.plot(ks, toplot, label=label)
-#
-#             # get the color to use
-#             this_color = ax.last_color
-#
-#             # plot the diagonal element
-#             if options['show_diagonal']:
-#                 markerline, stemlines, baseline = ax.stem([kbar], [diag_element], linefmt=this_color)
-#                 pfy.plt.setp(markerline, 'markerfacecolor', this_color)
-#                 pfy.plt.setp(markerline, 'markeredgecolor', this_color)
-#
-#             # plot a smoothed spline
-#             if options['show_binned']:
-#                 nbins = tools.histogram_bins(toplot)
-#                 y, binedges, w = scipy.stats.binned_statistic(ks, toplot, bins=nbins)
-#                 pfy.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
-#
-#         if options['show_zero_line']:
-#             ax.axhline(y=0, c='k', ls='--', alpha=0.6)
-#
-#         # add the legend and axis labels
-#         ax.legend(loc=0, ncol=2)
-#         ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
-#         ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \mu) P(\bar{k}, \bar{\mu}))$", fontsize=16)
-#
-#         return ax
-#
+class PkmuCovarianceMatrix(CovarianceMatrix):
+    """
+    Class to hold a covariance matrix for P(k, mu).
+    """
+    def __init__(self, data, k_center, mu_center, **kwargs):
+        """
+        Parameters
+        ----------
+        data : array_like
+            The data representing the covariance matrix. If 1D, the input
+            is interpreted as the diagonal elements, with all other elements
+            zero
+        k_center : array_like, (Nk, Nmu)
+            The wavenumbers where the center of the measurement k-bins are defined. This
+            must be 2-dimensional with shape (`Nk`, `Nmu`), where `Nk` is the number
+            of k bins and `Nmu` is the number of mu bins. Also, if input data has
+            shape `N`, then :math: `N = Nk*Nmu` must hold
+        mu_center : array_like, (Nk, Nmu)
+            The mu values where the center of the measurement mu-bins are defined. 
+            Must have 2D shape
+        """
+        # check the input
+        if k_center.ndim != 2 or mu_center.ndim != 2:
+            raise ValueError("input k and mu index arrays must both have 2 dimensions")
+        if np.shape(k_center) != np.shape(mu_center):
+            raise ValueError("size mismatch between supplied k and mu index arrays")
+        N = np.shape(data)[0]
+        
+        # k index
+        for name, index in zip(['k_cen', 'mu_cen'], [k_center, mu_center]):
+            setattr(self, name, index)
+            flat = index.ravel(order='F')
+            flat = flat[np.isfinite(flat)]
+            setattr(self, name+"_flat", flat)
+
+        if len(self.k_cen_flat) != N or len(self.mu_cen_flat) != N:
+            raise ValueError("size mismatch between flattened k/mu index arrays and covariance matrix shape")
+        
+        # initialize the base class
+        names = ['k', 'mu']
+        coords = [self.k_cen_flat, self.mu_cen_flat]
+        super(PkmuCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
+
+    @classmethod 
+    def from_spectra_set(cls, power_set, kmin=None, kmax=None, **kwargs):
+        """
+        Return a PkmuCovarianceMatrix from a SpectraSet of P(k,mu) measurements
+        
+        Parameters
+        ----------
+        power_set : lsskit.specksis.SpectraSet
+            a set of P(k,mu) power spectrum classes
+        kmin : float or array_like, optional
+            minimum wavenumber to include in the covariance matrix; if an array is provided, 
+            it is intepreted as the minimum value for each mu bin
+        kmax : float or array_like, optional
+            maximum wavenumber to include in the covariance matrix; if an array is provided, 
+            it is intepreted as the minimum value for each mu bin 
+        """
+        from lsskit.data import tools
+        kw = {'kmin':kmin, 'kmax':kmax, 'return_extras':True}
+        C, k_cen, mu_cen, mean_power = tools.compute_pkmu_covariance(power_set, **kw)
+        
+        toret = cls(C, k_cen, mu_cen, **kwargs)
+        toret.mean_power = mean_power
+        return toret
+
+    #--------------------------------------------------------------------------
+    # internal utility functions
+    #--------------------------------------------------------------------------
+    def _slice(self, kind, val):
+        """
+        Return the indices matching the specified slice on `k` or `mu`
+        """
+        if kind == 'k':
+            index = self.k_cen
+            flat_index = self.k_cen_flat
+        elif kind == 'mu':
+            index = self.mu_cen
+            flat_index = self.mu_cen_flat
+        else:
+            raise RuntimeError("need either `k` or `mu` in _slice")
+        
+        if isinstance(val, int):
+            inds = np.zeros(index.shape, dtype=bool)
+            inds[:,val] = True
+            inds = inds.ravel(order='F')
+            inds = inds[np.isfinite(index.ravel(order='F'))]
+        else:
+            inds = np.isclose(flat_index, val)
+            if not inds.sum():
+                raise ValueError("%s = %s is not a valid index value" %(kind, str(val)))
+        return inds
+                
+    
+    #--------------------------------------------------------------------------
+    # main functions
+    #--------------------------------------------------------------------------
+    def sel_k(self, mu1, mu2=None):
+        """
+        Return the sub matrix associated with the specified `mu1` and
+        `mu2` values
+
+        Parameters
+        ----------
+        mu1 : {int, float}
+            The value of `mu` specifying which rows to select of the full matrix
+        mu2 : {int, float}, optional
+            The value of `mu` specifying which columns to select of the full
+            matrix. If `None`, the value is set to `mu1`
+
+        Returns
+        -------
+        slice : {PkmuCovarianceMatrix, DataFrame}
+            If the sliced submatrix is not symmetric, a `DataFrame` is returned,
+            else a `PkmuCovarianceMatrix` is returned
+        """
+        inds1 = self._slice('mu', mu1)
+        if mu2 is None:
+            inds2 = inds1
+        else:
+            inds2 = self._slice('mu', mu2)
+            
+        return self[inds1, inds2]
+        
+    def sel_mu(self, mu1, mu2=None):
+        """
+        Return the sub matrix associated with the specified `mu1` and
+        `mu2` values
+
+        Parameters
+        ----------
+        mu1 : {int, float}
+            The value of `mu` specifying which rows to select of the full matrix
+        mu2 : {int, float}, optional
+            The value of `mu` specifying which columns to select of the full
+            matrix. If `None`, the value is set to `mu1`
+
+        Returns
+        -------
+        slice : {PkmuCovarianceMatrix, DataFrame}
+            If the sliced submatrix is not symmetric, a `DataFrame` is returned,
+            else a `PkmuCovarianceMatrix` is returned
+        """
+        inds1 = self._slice('mu', mu1)
+        if mu2 is None:
+            inds2 = inds1
+        else:
+            inds2 = self._slice('mu', mu2)
+            
+        return self[inds1, inds2]
+    #
+    # #---------------------------------------------------------------------------
+    # def trim_mu(self, lower=None, upper=None):
+    #     """
+    #     Trim the covariance matrix to the specified minimum/maximum `mu` values
+    #
+    #     Parameters
+    #     ----------
+    #     lower : float
+    #         Minimum `mu` value to include in the matrix
+    #     upper : float
+    #         Maximum `mu` value to include in the matrix
+    #     """
+    #     return self._trim_x(lower=lower, upper=upper)
+    #
+    # #---------------------------------------------------------------------------
+    # # extra info
+    # #---------------------------------------------------------------------------
+    # def modes(self, k=None, mu=None):
+    #     """
+    #     The number of modes as a function of `k` and `mu`
+    #     """
+    #     if hasattr(self.extra_info, 'modes'):
+    #         if k is None and mu is None:
+    #             return self.extra_info.modes
+    #         else:
+    #             # slice at a certain mu
+    #             if mu is not None:
+    #                 if isinstance(mu, int):
+    #                     mu = self._convert_x_integer(mu)
+    #                 modes = self.extra_info.modes.xs(mu, level='mu')
+    #
+    #             # slice at specific k
+    #             if k is not None:
+    #                 if isinstance(k, int):
+    #                     k = self._convert_k_integer(k, mu)
+    #                 modes = modes.loc[k]
+    #             return modes
+    #     else:
+    #         return None
+    #
+    # #---------------------------------------------------------------------------
+    # def mean_power(self, k=None, mu=None):
+    #     """
+    #     The mean power as a function of `k` and `mu`, in the units specified
+    #     by `self.h` and `self.units`
+    #
+    #     NOTE: this has the shot noise included in it
+    #     """
+    #     if hasattr(self.extra_info, 'mean_power'):
+    #         if k is None and mu is None:
+    #             return self.extra_info.mean_power
+    #
+    #         else:
+    #             # slice at a certain mu
+    #             if mu is not None:
+    #                 if isinstance(mu, int):
+    #                     mu = self._convert_x_integer(mu)
+    #                 P = self.extra_info.mean_power.xs(mu, level='mu')
+    #
+    #             # slice at specific k
+    #             if k is not None:
+    #                 if isinstance(k, int):
+    #                     k = self._convert_k_integer(k, mu)
+    #                 P = P.loc[k]
+    #             return P
+    #     else:
+    #         return None
+    #
+    # #---------------------------------------------------------------------------
+    # def gaussian_covariance(self, k=None, mu=None):
+    #     """
+    #     Return the Gaussian prediction for the variance of the diagonal
+    #     elements, given by:
+    #
+    #     :math: 2 / N_{modes}(k,\mu)) * [ P(k,\mu) + P_{shot}(k,\mu) ]**2
+    #     """
+    #     if k is not None and mu is None:
+    #         msg = "`mu` must also be specified to compute Gaussian error at specific `k`"
+    #         raise ValueError(msg)
+    #
+    #     modes = self.modes(k=k, mu=mu)
+    #     if modes is None:
+    #         raise ValueError("Cannot compute Gaussian sigma without `modes`")
+    #
+    #     mean_power = self.mean_power(k=k, mu=mu)
+    #     if mean_power is None:
+    #         raise ValueError("Cannot compute Gaussian sigma without `mean_power`")
+    #
+    #     return 2./modes * mean_power**2
+    #
+    # #---------------------------------------------------------------------------
+    # # plotting
+    # #---------------------------------------------------------------------------
+    # def plot_diagonals(self, ax=None, mu=None, **options):
+    #     """
+    #     Plot the square-root of the diagonal elements for a specfic mu value
+    #
+    #     Parameters
+    #     ---------------
+    #     ax : plotify.Axes, optional
+    #         Axes instance to plot to. If `None`, plot to the current axes
+    #     mu : {float, int},
+    #         If not `None`, only plot the diagonals for a single `mu` value, else
+    #         plot for all `mu` values
+    #     options : dict
+    #         Dictionary of options with the following keywords:
+    #             show_gaussian : bool
+    #                 Overplot the Gaussian prediction, i.e.,
+    #                 :math: 2/N_{modes} * [P(k) + Pshot(k)]**2
+    #             norm_by_gaussian : bool
+    #                 Normalize the diagonal elements by the Gaussian prediction
+    #             norm_by_power : bool
+    #                 Normalize the diagonal elements by the mean power,
+    #                 P(k) + Pshot(k)
+    #             subtract_gaussian : bool
+    #                 Subtract out the Gaussian prediction
+    #     """
+    #     import plotify as pfy
+    #     # get the current axes
+    #     if ax is None: ax = pfy.gca()
+    #
+    #     # setup the default options
+    #     options.setdefault('show_gaussian', False)
+    #     options.setdefault('norm_by_gaussian', False)
+    #     options.setdefault('norm_by_power', False)
+    #     options.setdefault('subtract_gaussian', False)
+    #
+    #     # get the mus to plot
+    #     if mu is None:
+    #         mus = self.mus
+    #     else:
+    #         if isinstance(mu, int):
+    #             mu = self._convert_x_integer(mu)
+    #         mus = [mu]
+    #
+    #     if options['show_gaussian']:
+    #         ax.color_cycle = "Paired"
+    #
+    #     # loop over each mu
+    #     for mu in mus:
+    #
+    #         # get sigma for this mu sub matrix
+    #         this_mu = self.mu_slice(mu)
+    #         sigma = np.diag(this_mu)**0.5
+    #
+    #         norm = 1.
+    #         if options['subtract_gaussian']:
+    #             norm = sigma.copy()
+    #             sigma -= self.gaussian_covariance(mu=mu)**0.5
+    #         elif options['norm_by_gaussian']:
+    #             norm = self.gaussian_covariance(mu=mu)**0.5
+    #         elif options['norm_by_power']:
+    #             norm = self.mean_power(mu=mu)
+    #
+    #         # do the plotting
+    #         label = r"$\mu = {}$".format(mu)
+    #         pfy.plot(self.ks(mu=mu), sigma/norm, label=label)
+    #         if options['show_gaussian']:
+    #             pfy.plot(self.ks(mu=mu), self.gaussian_covariance(mu=mu)**0.5/norm, ls='--')
+    #
+    #         if np.isscalar(norm):
+    #             ax.x_log_scale()
+    #             ax.y_log_scale()
+    #
+    #     # add the legend and axis labels
+    #     ax.legend(loc=0, ncol=2)
+    #     if self.units == 'relative':
+    #         k_units = r"($h$/Mpc)"
+    #         P_units = r"$(\mathrm{Mpc}/h)^3$"
+    #     else:
+    #         k_units = "(1/Mpc)"
+    #         P_units = r"$(\mathrm{Mpc})^3$"
+    #
+    #     ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
+    #     if options['norm_by_power']:
+    #         ax.ylabel.update(r"$\sigma_P / P(k, \mu)$", fontsize=16)
+    #
+    #     elif options['norm_by_gaussian']:
+    #         ax.ylabel.update(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
+    #     else:
+    #         if not options['subtract_gaussian']:
+    #             ax.ylabel.update(r"$\sigma_P$ %s" %P_units, fontsize=16)
+    #         else:
+    #             ax.ylabel.update(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
+    #
+    #     return ax
+    #
+    # #---------------------------------------------------------------------------
+    # def plot_off_diagonals(self, kbar, ax=None, mu=None, mubar=None, **options):
+    #     """
+    #     Plot the off diagonal elements, specifically:
+    #
+    #     :math: \sqrt(Cov(k, kbar) / P(k, mu) / P(kbar, mu))
+    #
+    #     Parameters
+    #     ---------------
+    #     kbar : {float, int}
+    #         The specific value of k to plot the covariances at
+    #     ax : plotify.Axes, optional
+    #         Axes instance to plot to. If `None`, plot to the current axes
+    #     mu : {float, int},
+    #         If not `None`, only plot the diagonals for a single `mu` value, else
+    #         plot for all `mu` values
+    #     options : dict
+    #         Dictionary of options with the following keywords:
+    #             show_diagonal : bool
+    #                 If `True`, plot the diagonal value as a stem plot
+    #             show_binned : bool
+    #                 If `True`, plot a smoothed spline interpolation
+    #             show_zero_line : bool
+    #                 If `True`, plot a y=0 horizontal line
+    #     """
+    #     import plotify as pfy
+    #     import scipy.stats
+    #
+    #     # get the current axes
+    #     if ax is None: ax = pfy.gca()
+    #
+    #     # setup the default options
+    #     options.setdefault('show_diagonal', True)
+    #     options.setdefault('show_binned', False)
+    #     options.setdefault('show_zero_line', False)
+    #
+    #     # determine the mus to plot
+    #     if mu is None:
+    #         mus = self.mus
+    #         mubars = mus
+    #     else:
+    #         if isinstance(mu, int):
+    #             mu = self._convert_x_integer(mu)
+    #         mus = [mu]
+    #
+    #         if mubar is not None:
+    #             if isinstance(mubar, int):
+    #                 mubar = self._convert_x_integer(mubar)
+    #             mubars = [mubar]
+    #         else:
+    #             mubars = mus
+    #
+    #     # get the k units
+    #     if self.units == 'relative':
+    #         k_units = r"$h$/Mpc"
+    #     else:
+    #         k_units = "1/Mpc"
+    #
+    #     # loop over each mu
+    #     for mu, mubar in zip(mus, mubars):
+    #
+    #         # ks for this mu
+    #         ks = self.ks(mu=mu)
+    #         kbars = self.ks(mu=mubar)
+    #
+    #         # get the right kbar
+    #         if isinstance(kbar, int):
+    #             kbar = self._convert_k_integer(kbar, mubar)
+    #
+    #         # get the closest value in the matrix
+    #         if kbar not in kbars:
+    #             kbar = kbars[abs(kbars - kbar).argmin()]
+    #
+    #         # get sigma for this mu sub matrix
+    #         this_slice = self.mu_slice(mu, mu2=mubar)
+    #         cov = this_slice.xs(kbar, axis=1)
+    #
+    #         # the normalization
+    #         P_k = self.mean_power(mu=mu)
+    #         P_kbar = self.mean_power(k=kbar, mu=mubar)
+    #         norm = P_k*P_kbar
+    #
+    #         # remove the diagonal element
+    #         toplot = cov/norm
+    #         diag_element = toplot[kbar]
+    #         toplot = toplot.drop(kbar)
+    #         ks = ks[ks != kbar]
+    #
+    #         # plot the fractional covariance
+    #         if mu == mubar:
+    #             args = (mu, kbar, k_units)
+    #             label = r"$\mu = \bar{{\mu}} = {0}, \ \bar{{k}} = {1:.3f}$ {2}".format(*args)
+    #         else:
+    #             args = (mu, mubar, kbar, k_units)
+    #             label = r"$\mu = {0}, \ \bar{{\mu}} = {1}, \ \bar{{k}} = {2:.3f}$ {3}".format(*args)
+    #         pfy.plot(ks, toplot, label=label)
+    #
+    #         # get the color to use
+    #         this_color = ax.last_color
+    #
+    #         # plot the diagonal element
+    #         if options['show_diagonal']:
+    #             markerline, stemlines, baseline = ax.stem([kbar], [diag_element], linefmt=this_color)
+    #             pfy.plt.setp(markerline, 'markerfacecolor', this_color)
+    #             pfy.plt.setp(markerline, 'markeredgecolor', this_color)
+    #
+    #         # plot a smoothed spline
+    #         if options['show_binned']:
+    #             nbins = tools.histogram_bins(toplot)
+    #             y, binedges, w = scipy.stats.binned_statistic(ks, toplot, bins=nbins)
+    #             pfy.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
+    #
+    #     if options['show_zero_line']:
+    #         ax.axhline(y=0, c='k', ls='--', alpha=0.6)
+    #
+    #     # add the legend and axis labels
+    #     ax.legend(loc=0, ncol=2)
+    #     ax.xlabel.update(r'$k$ %s' %k_units, fontsize=16)
+    #     ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \mu) P(\bar{k}, \bar{\mu}))$", fontsize=16)
+    #
+    #     return ax
+    #

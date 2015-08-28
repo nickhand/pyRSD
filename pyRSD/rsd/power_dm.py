@@ -25,7 +25,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     
     # kwargs
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
-    allowable_kwargs = ['k', 'z', 'cosmo', 'include_2loop', 'transfer_fit', \
+    allowable_kwargs = ['k', 'z', 'cosmo_filename', 'include_2loop', 'transfer_fit', \
                         'max_mu', 'interpolate', 'load_dm_sims']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     

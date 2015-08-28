@@ -132,6 +132,8 @@ class HaloZeldovichPS(Cache):
         This dependes on the redshift stored in the `z` attribute and must be 
         recomputed whenever that quantity changes.
         """ 
+        original_s8 = self.sigma8
+        
         # the interpolation grid points
         sigma8s = self.interpolation_grid['sigma8']
         ks = self.interpolation_grid['k']
@@ -144,6 +146,7 @@ class HaloZeldovichPS(Cache):
         grid_vals = np.array(grid_vals).reshape((len(sigma8s), len(ks)))
         
         # return the interpolator
+        self.sigma8 = original_s8
         return RegularGridInterpolator((sigma8s, ks), grid_vals)
 
     #---------------------------------------------------------------------------

@@ -90,6 +90,14 @@ class GalaxyPowerParameters(ParameterSet):
         if 'b1' in self:
             self['b1'].expr = "(1 - fs)*b1_c + fs*b1_s"
         
+        # f*sigma8 at z
+        if 'f' in self and 'sigma8_z' in self:
+            self['fsigma8'].expr = "f*sigma8_z" 
+            
+        # b1*sigma8 at z
+        if 'b1' in self and 'sigma8_z' in self:
+            self['b1sigma8'].expr = "b1*sigma8_z"
+        
     def to_dict(self):
         """
         Return a dictionary of (name, value) for each name that is in 
@@ -213,8 +221,6 @@ class GalaxyPowerTheory(object):
         
         # now do the constraints
         self.fit_params.set_default_constraints()
-        self.fit_params['fsigma8'].expr = "f*sigma8*%s" %self.model.D
-        self.fit_params['b1sigma8'].expr = "b1*sigma8*%s" %self.model.D
         
         # update
         self.fit_params.prepare_params()

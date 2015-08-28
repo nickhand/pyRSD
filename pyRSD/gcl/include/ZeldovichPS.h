@@ -17,7 +17,7 @@ public:
        
     // constructors
     ZeldovichPS(const Cosmology& C, double z);
-    ZeldovichPS(const Cosmology& C, double z, double sigma8, double sigma_sq, const parray& X, const parray& Y);
+    ZeldovichPS(const Cosmology& C, double sigma8_z, double sigma_sq, const parray& X, const parray& Y);
     virtual ~ZeldovichPS();
     
     // evaluate
@@ -29,16 +29,14 @@ public:
         
     // get references to various attributes
     const Cosmology& GetCosmology() const { return C; }
-    const double& GetRedshift() const { return z; }
-    const double& GetSigma8() const { return sigma8; }
+    const double& GetSigma8AtZ() const { return sigma8_z; }
     parray GetXZel() const { return XX; }
     parray GetYZel() const { return YY; }
     const double& GetSigmaSq() const { return sigma_sq; }
              
     // set the redshift and sigma8
     // convenience tracking so we don't recompute XX, YY, sigma_sq if sigma8, z change
-    void SetRedshift(double z); 
-    void SetSigma8(double sigma8);
+    void SetSigma8AtZ(double sigma8_z);
          
 protected:
     
@@ -46,7 +44,7 @@ protected:
     const Cosmology& C;
     
     // keep track of redshift, sigma8 for easy scaling
-    double z, sigma8;
+    double sigma8_z;
     double nc, dlogr, logrc;
     
     // the integrals needed for the FFTLog integral

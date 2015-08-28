@@ -184,7 +184,7 @@ class BiasToMassRelation(Cache):
     """
     # define the interpolation grid
     interpolation_grid = {}
-    interpolation_grid['sigma8'] = np.linspace(0.5, 1.5, 50)
+    interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
     interpolation_grid['b1'] = np.linspace(0.9, 7., 50)
     
     #---------------------------------------------------------------------------
@@ -236,13 +236,6 @@ class BiasToMassRelation(Cache):
     def delta_halo(self, val):
         return val
             
-    #---------------------------------------------------------------------------
-    @cached_property("z")
-    def D(self):
-        """
-        The growth function at `z`, normalized to unity at z = 0
-        """
-        return self.cosmo.D_z(self.z)
             
     @cached_property("cosmo")
     def power_lin(self):
@@ -252,7 +245,7 @@ class BiasToMassRelation(Cache):
         return pygcl.LinearPS(self.cosmo, 0.)
         
     #---------------------------------------------------------------------------
-    @cached_property("z")
+    @cached_property()
     def interpolation_table(self):
         """
         Evaluate the bias to mass relation at the interpolation grid points
@@ -274,15 +267,15 @@ class BiasToMassRelation(Cache):
             return bias_Tinker(sigma) - bias
         
         # setup the grid points
-        sigma8s = self.interpolation_grid['sigma8']
+        sigma8s = self.interpolation_grid['sigma8_z']
         b1s = self.interpolation_grid['b1']
         pts = np.asarray(list(itertools.product(sigma8s, b1s)))
 
         grid_vals = []
-        for (s8, b1) in pts:
+        for (s8_z, b1) in pts:
             
             # get appropriate rescalings
-            rescaling = self.D * (s8 / s8_0)
+            rescaling = (s8_z / s8_0)
             
             # find the zero
             try:
@@ -300,27 +293,27 @@ class BiasToMassRelation(Cache):
         
     #---------------------------------------------------------------------------
     @unpacked
-    def __call__(self, sigma8, b1):
+    def __call__(self, sigma8_z, b1):
         """
         Return the mass [units: `M_sun/h`] associated with the desired 
         `b1` and `sigma8` values
         
         Parameters
         ----------
-        sigma8 : float
+        sigma8_z : float
             The sigma8 value
         b1 : float
             The linear bias
         """        
         if self.interpolated:
-            return self.interpolation_table([sigma8, b1])
+            return self.interpolation_table([sigma8_z, b1])
         else:
             
             # setup a few functions we need
             mean_dens = self.cosmo.rho_bar_z(0.)
             mass_norm = 1e13
             mass_to_radius = lambda M: (3.*M*mass_norm/(4.*np.pi*mean_dens))**(1./3.)
-            rescaling = self.D * (sigma8 / self.cosmo.sigma8())
+            rescaling = sigma8_z / self.cosmo.sigma8()
             
             # the objective function to minimize
             def objective(mass):
@@ -418,14 +411,14 @@ class BiasToSigmaRelation(BiasToMassRelation):
         
     #---------------------------------------------------------------------------
     @unpacked
-    def mass(self, sigma8, b1):
+    def mass(self, sigma8_z, b1):
         """
         Return the mass at this bias and sigma8 value
         """
-        return BiasToMassRelation.__call__(self, sigma8, b1)
+        return BiasToMassRelation.__call__(self, sigma8_z, b1)
         
     @unpacked
-    def __call__(self, sigma8, b1):
+    def __call__(self, sigma8_z, b1):
         """
         Return the velocity dispersion [units: `Mpc/h`] associated with the 
         desired `b1` and `sigma8` values
@@ -438,7 +431,7 @@ class BiasToSigmaRelation(BiasToMassRelation):
             The linear bias
         """
         # first get the halo mass
-        M = self.mass(sigma8, b1)
+        M = self.mass(sigma8_z, b1)
     
         # evrard relation
         if self.sigmav_0 is None or self.M_0 is None:

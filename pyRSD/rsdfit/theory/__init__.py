@@ -1,5 +1,5 @@
-base_model_params = {'sigma8': 'mass variance at r = 8 Mpc/h',
-                    'f': 'growth rate, f = dlnD/dlna', 
+base_model_params = {'sigma8_z': 'mass variance at r = 8 Mpc/h at z',
+                    'f': 'growth rate, f = dlnD/dlna at z', 
                     'alpha_perp': 'perpendicular Alcock-Paczynski effect parameter', 
                     'alpha_par': 'parallel Alcock-Paczynski effect parameter', 
                     'b1_sA': 'linear bias of sats w/o other sats in same halo',

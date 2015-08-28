@@ -95,7 +95,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self.Nk             = Nk
         
         # initialize the cosmology parameters and set defaults
-        self.sigma8            = self.cosmo.sigma8()
+        self.sigma8_z          = self.cosmo.Sigma8_z(self.z)
         self.f                 = self.cosmo.f_z(self.z)
         self.alpha_par         = 1.
         self.alpha_perp        = 1.
@@ -235,15 +235,15 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return val
     
     @parameter
-    def sigma8(self, val):
+    def sigma8_z(self, val):
         """
-        The value of Sigma8 (mass variances within 8 Mpc/h at z = 0) to compute 
+        The value of Sigma8(z) (mass variances within 8 Mpc/h at z) to compute 
         the power spectrum at, which gives the normalization of the 
         linear power spectrum
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model']
-        self._update_models('sigma8', models, val)
+        self._update_models('sigma8_z', models, val)
         
         return val
         
@@ -285,7 +285,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     @parameter
     def sigmav_input(self, val):
         """
-        The user-input velocity dispersion at z = 0. [units: Mpc/h]
+        The user-input velocity dispersion at z [units: Mpc/h]
         """
         return val
         
@@ -329,20 +329,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
         """
         return self.sigmav_input
-        
-    @cached_property('z', 'cosmo')
-    def _normalized_sigma8_z(self):
-        """
-        Return the normalized sigma8(z) from the input cosmology
-        """
-        return self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8()
-        
-    @cached_property("sigma8", "_normalized_sigma8_z")
-    def sigma8_z(self):
-        """
-        Return sigma8(z), normalized to the desired sigma8 at z = 0
-        """
-        return self.sigma8 * self._normalized_sigma8_z
             
     @cached_property("cosmo_filename", "transfer_fit")
     def cosmo(self):
@@ -376,13 +362,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             raise ValueError(msg)
 
         return np.logspace(np.log10(kmin), np.log10(kmax), self.Nk)
-    
-    @cached_property("z", "cosmo")
-    def D(self):
-        """
-        The growth function, normalized to unity at z = 0
-        """
-        return self.cosmo.D_z(self.z)
         
     @cached_property("z", "cosmo")
     def conformalH(self):
@@ -407,19 +386,20 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         cosmo = pygcl.Cosmology(self.cosmo_filename, pygcl.Cosmology.EH_NoWiggle)
         return pygcl.LinearPS(cosmo, 0.)
                 
-    @cached_property("sigma8", "cosmo")
+    @cached_property("sigma8_z", "cosmo")
     def _power_norm(self):
         """
         The factor needed to normalize the linear power spectrum 
-        in `power_lin` to the desired sigma_8, as specified by `sigma8`
+        in `power_lin` to the desired sigma_8, as specified by `sigma8_z`,
+        and the desired redshift `z`
         """
-        return (self.sigma8 / self.cosmo.sigma8())**2  
+        return (self.sigma8_z / self.cosmo.sigma8())**2  
         
     @cached_property("_power_norm", "_sigma_lin_unnormed")
     def sigma_lin(self):
         """
-        The dark matter velocity dispersion at z = 0, as evaluated in 
-        linear theory [units: Mpc/h]. Normalized to `self.sigma8`
+        The dark matter velocity dispersion at z, as evaluated in 
+        linear theory [units: Mpc/h]. Normalized to `sigma8_z`
         """
         return self._power_norm**0.5 * self._sigma_lin_unnormed
         
@@ -471,7 +451,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The class holding the Halo Zeldovich model for the P00 dark matter term
         """
-        return HaloZeldovichP00(self.cosmo, self.z, self.sigma8, self.interpolate)
+        return HaloZeldovichP00(self.cosmo, self.z, self.sigma8_z, self.interpolate)
     
     #---------------------------------------------------------------------------
     @cached_property("cosmo")
@@ -479,7 +459,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The class holding the Halo Zeldovich model for the P01 dark matter term
         """
-        return HaloZeldovichP01(self.cosmo, self.z, self.sigma8, self.f, self.interpolate)
+        return HaloZeldovichP01(self.cosmo, self.z, self.sigma8_z, self.f, self.interpolate)
     
     #---------------------------------------------------------------------------
     @cached_property("power_lin_nw")
@@ -487,7 +467,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The class holding the model for the P11 dark matter term
         """
-        return SimulationP11(self.power_lin_nw, self.z, self.sigma8, self.f)
+        return SimulationP11(self.power_lin_nw, self.z, self.sigma8_z, self.f)
 
     #---------------------------------------------------------------------------
     @cached_property("power_lin_nw")
@@ -495,7 +475,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The class holding the model for the Pdv dark matter term
         """
-        return SimulationPdv(self.power_lin_nw, self.z, self.sigma8, self.f)
+        return SimulationPdv(self.power_lin_nw, self.z, self.sigma8_z, self.f)
           
     #---------------------------------------------------------------------------
     # UTILITY FUNCTIONS
@@ -544,18 +524,18 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     #---------------------------------------------------------------------------    
     def normed_power_lin(self, k):
         """
-        The linear power evaluated at the specified `k` and at `self.z`, 
-        normalized to `self.sigma8`
+        The linear power evaluated at the specified `k` and at `z`, 
+        normalized to `sigma8_z`
         """
-        return self._power_norm * self.D**2 * self.power_lin(k)
+        return self._power_norm * self.power_lin(k)
 
     #---------------------------------------------------------------------------
     def normed_power_lin_nw(self, k):
         """
         The Eisenstein-Hu no-wiggle, linear power evaluated at the specified 
-        `k` and at `self.z`, normalized to `self.sigma8`
+        `k` and at `self.z`, normalized to `sigma8_z`
         """
-        return self._power_norm * self.D**2 * self.power_lin_nw(k)
+        return self._power_norm * self.power_lin_nw(k)
                 
             
     #---------------------------------------------------------------------------
@@ -602,16 +582,16 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return Pk
             
     #---------------------------------------------------------------------------
-    @cached_property("k", "z", "sigma8")
+    @cached_property("k", "z", "_power_norm")
     def Pdd(self):
         """
         The 1-loop auto-correlation of density.
         """
-        norm = self._power_norm*self.D**2
+        norm = self._power_norm
         return norm*(self.power_lin(self.k) + norm*self._Pdd_0(self.k))
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f", "z", "sigma8", "use_Pdv_model", "Pdv_loaded")
+    @cached_property("k", "f", "z", "_power_norm", "use_Pdv_model", "Pdv_loaded")
     def Pdv(self):
         """
         The 1-loop cross-correlation between dark matter density and velocity 
@@ -624,20 +604,20 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             if self.use_Pdv_model:
                 return self.Pdv_model(self.k)
             else:
-                norm = self._power_norm*self.D**2
+                norm = self._power_norm
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_0(self.k))
           
     #---------------------------------------------------------------------------
-    @cached_property("k", "f", "z", "sigma8")
+    @cached_property("k", "f", "z", "_power_norm")
     def Pvv(self):
         """
         The 1-loop auto-correlation of velocity divergence.
         """
-        norm = self._power_norm*self.D**2
+        norm = self._power_norm
         return self.f**2 * norm*(self.power_lin(self.k) + norm*self._Pvv_0(self.k))
     
     #---------------------------------------------------------------------------
-    @cached_property("k", "z", "sigma8", "use_P00_model", "power_lin", 
+    @cached_property("k", "z", "sigma8_z", "use_P00_model", "power_lin", 
                      "P00_mu0_loaded")
     def P00(self):
         """
@@ -668,7 +648,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return P00
             
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "use_P01_model", "power_lin", 
+    @cached_property("k", "f",  "z", "sigma8_z", "use_P01_model", "power_lin", 
                      "max_mu", "P01_mu2_loaded")
     def P01(self):
         """
@@ -698,7 +678,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return P01
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "use_P11_model", "power_lin", 
+    @cached_property("k", "f",  "z", "sigma8_z", "use_P11_model", "power_lin", 
                      "max_mu", "include_2loop", "P11_mu2_loaded", "P11_mu4_loaded")
     def P11(self):
         """
@@ -768,7 +748,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             return P11
             
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "power_lin", "max_mu", 
+    @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "P00")
     def P02(self):
         """
@@ -791,13 +771,13 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
             # the mu^2 terms depending on velocity (velocities in Mpc/h)
             sigma_lin = self.sigma_v
-            sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
+            sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH)
             sigsq_eff = sigma_lin**2 + sigma_02**2
 
             if self.include_2loop:
-                P02.with_velocity.mu2 = -(self.f*self.D*self.k)**2 * sigsq_eff*self.P00.total.mu0
+                P02.with_velocity.mu2 = -(self.f*self.k)**2 * sigsq_eff*self.P00.total.mu0
             else:
-                P02.with_velocity.mu2 = -(self.f*self.D*self.k)**2 * sigsq_eff*Plin
+                P02.with_velocity.mu2 = -(self.f*self.k)**2 * sigsq_eff*Plin
         
             # save the total mu^2 term
             P02.total.mu2 = P02.with_velocity.mu2 + P02.no_velocity.mu2
@@ -813,7 +793,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return P02
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "power_lin", "max_mu", 
+    @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "P01")
     def P12(self):
         """
@@ -838,13 +818,13 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
             # now do mu^4 terms depending on velocity (velocities in Mpc/h)
             sigma_lin = self.sigma_v  
-            sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_12**2
         
             if self.include_2loop:
-                P12.with_velocity.mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff*self.P01.total.mu2
+                P12.with_velocity.mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff*self.P01.total.mu2
             else:
-                P12.with_velocity.mu4 = -self.f*(self.f*self.D*self.k)**2 * sigsq_eff*Plin
+                P12.with_velocity.mu4 = -self.f*(self.f*self.k)**2 * sigsq_eff*Plin
         
             # total mu^4 is velocity + no velocity terms
             P12.total.mu4 = P12.with_velocity.mu4 + P12.no_velocity.mu4
@@ -863,7 +843,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return P12
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "power_lin", "max_mu", 
+    @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "P00", "P02")
     def P22(self):
         """
@@ -878,7 +858,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
             # velocities in units of Mpc/h
             sigma_lin = self.sigma_v
-            sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_22**2
             
             J02 = self.J02(self.k)
@@ -903,10 +883,10 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 extra_vv_mu4 = (self.f*self.k)**4 * Plin*J02**2
                 
                 # term from <v^2 | d v^2>
-                extra_vdv_mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
+                extra_vdv_mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
                 
                 # 1st term coming from <dv^2 | dv^2>
-                extra1_dvdv_mu4 = 0.25*(self.f*self.D*self.k)**4 * sigsq_eff**2 * self.P00.total.mu0
+                extra1_dvdv_mu4 = 0.25*(self.f*self.k)**4 * sigsq_eff**2 * self.P00.total.mu0
                                     
                 # 2nd term from <dv^2 | dv^2> is convolution of P22_bar and P00
                 extra2_dvdv_mu4 = 0.5*(self.f*self.k)**4 * self.P00.total.mu0*self.sigmasq_k(self.k)**2
@@ -932,7 +912,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 if self.include_2loop:
 
                     # term from <v^2 | d v^2>
-                    extra_vdv_mu6 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
+                    extra_vdv_mu6 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
                     
                     # one more 2-loop term for <v^2 | v^2>
                     extra_vv_mu6  = 2*(self.f*self.k)**4 * Plin*J02*J20
@@ -962,7 +942,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return P22
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "power_lin", "max_mu", 
+    @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_v2", "P01")
     def P03(self):
         """
@@ -977,21 +957,21 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
             # only terms depending on velocity here (velocities in Mpc/h)
             sigma_lin = self.sigma_v 
-            sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
+            sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH)
             sigsq_eff = sigma_lin**2 + sigma_03**2
 
             # either 1 or 2 loop quantities
             if self.include_2loop:
-                P03.with_velocity.mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P01.total.mu2
+                P03.with_velocity.mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P01.total.mu2
             else:
-                P03.with_velocity.mu4 = -self.f*(self.f*self.D*self.k)**2 *sigsq_eff*Plin
+                P03.with_velocity.mu4 = -self.f*(self.f*self.k)**2 *sigsq_eff*Plin
         
             P03.total.mu4 = P03.with_velocity.mu4
 
         return P03
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "power_lin", "max_mu", 
+    @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "sigma_v2", "P11")
     def P13(self):
         """
@@ -1003,11 +983,11 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         # compute velocity weighting in Mpc/h
         sigma_lin = self.sigma_v 
-        sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+        sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
         sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
         
         if self.include_2loop:
-            sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff_scalar = sigma_lin**2 + sigma_13_s**2
             
         # do mu^4 terms?
@@ -1016,7 +996,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             # mu^4 is only 2-loop
             if self.include_2loop:
 
-                A = -(self.f*self.D*self.k)**2
+                A = -(self.f*self.k)**2
                 P13_vel_mu4 = A*sigsq_eff_vector*self.P11.total.mu2
                 P13.total.mu4 = P13.with_velocity.mu4 = P13_vel_mu4
 
@@ -1027,17 +1007,17 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 
                 # mu^6 velocity terms at 1 or 2 loop
                 if self.include_2loop:
-                    A = -(self.f*self.D*self.k)**2
+                    A = -(self.f*self.k)**2
                     P13.with_velocity.mu6 = A*sigsq_eff_scalar*self.P11.total.mu4
                 else:
-                    P13.with_velocity.mu6 = -self.f**2 *(self.f*self.D*self.k)**2 * sigsq_eff_scalar*Plin
+                    P13.with_velocity.mu6 = -self.f**2 *(self.f*self.k)**2 * sigsq_eff_scalar*Plin
                     
                 P13.total.mu6 = P13.with_velocity.mu6
         
         return P13
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f",  "z", "sigma8", "power_lin", "max_mu", 
+    @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv4", "P02", "P00")
     def P04(self):
         """
@@ -1051,15 +1031,15 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
             # compute the relevant small-scale + linear velocities in Mpc/h
             sigma_lin = self.sigma_v 
-            sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_04**2
             
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
                 # do P04 mu^4 terms depending on velocity
-                P04_vel_mu4_1 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
-                P04_vel_mu4_2 = 0.25*(self.f*self.k)**4 * (self.D**2*sigsq_eff)**2 * self.P00.total.mu0
+                P04_vel_mu4_1 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
+                P04_vel_mu4_2 = 0.25*(self.f*self.k)**4 * sigsq_eff**2 * self.P00.total.mu0
                 P04.with_velocity.mu4 = P04_vel_mu4_1 + P04_vel_mu4_2
                 
                 # do P04 mu^4 terms without vel dependence
@@ -1072,7 +1052,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 if self.max_mu >= 6:
                     
                     # only terms depending on velocity
-                    P04.with_velocity.mu6 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
+                    P04.with_velocity.mu6 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
                     P04.total.mu6 = P04.with_velocity.mu6
                     
         return P04

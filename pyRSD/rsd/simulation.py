@@ -279,14 +279,14 @@ class InterpolatedSimulationData(Cache):
     """
     A base class for computing power moments from interpolated simulation data
     """
-    def __init__(self, power_lin, z, sigma8, f):
+    def __init__(self, power_lin, z, sigma8_z, f):
         
         # initialize the Cache base class
         Cache.__init__(self)
         
         # set the parameters
         self.z         = z
-        self.sigma8    = sigma8
+        self.sigma8_z  = sigma8_z
         self.f         = f
         self.power_lin = power_lin
         self.cosmo     = self.power_lin.GetCosmology()
@@ -331,22 +331,13 @@ class InterpolatedSimulationData(Cache):
 
     #---------------------------------------------------------------------------        
     @parameter
-    def sigma8(self, val):
+    def sigma8_z(self, val):
         """
         Sigma_8 at `z=0` to compute the spectrum at, which gives the 
         normalization of the linear power spectrum
         """
         return val
             
-    #---------------------------------------------------------------------------
-    @cached_property("z")
-    def D(self):
-        """
-        The growth function at `z`, normalized to unity at z = 0
-        """
-        return self.cosmo.D_z(self.z)
-    #---------------------------------------------------------------------------
-
 #-------------------------------------------------------------------------------
 class SimulationP11(InterpolatedSimulationData):
     """
@@ -354,7 +345,7 @@ class SimulationP11(InterpolatedSimulationData):
     simulation data as a function of (f*sigma8)^2
     """
     
-    def __init__(self, power_lin, z, sigma8, f):
+    def __init__(self, power_lin, z, sigma8_z, f):
         """
         Parameters
         ----------
@@ -368,7 +359,7 @@ class SimulationP11(InterpolatedSimulationData):
             Desired logarithmic growth rate value
         """
         # initialize the base class holding parameters
-        super(SimulationP11, self).__init__(power_lin, z, sigma8, f)
+        super(SimulationP11, self).__init__(power_lin, z, sigma8_z, f)
         
         # make sure power spectrum is no-wiggle
         if self.cosmo.GetTransferFit() != pygcl.Cosmology.EH_NoWiggle:
@@ -389,12 +380,12 @@ class SimulationP11(InterpolatedSimulationData):
         # the interpolation data
         redshifts = [0., 0.509, 0.989]
         data = [sim_data.P11_mu4_z_0_000(), sim_data.P11_mu4_z_0_509(), sim_data.P11_mu4_z_0_989()]
-        interp_vars = [(cosmo.f_z(z)*cosmo.sigma8())**2 for z in redshifts]
+        interp_vars = redshifts
       
         # make the data frame
         k = data[0][:,0]
         index_tups = list(itertools.product(interp_vars, k))
-        index = pd.MultiIndex.from_tuples(index_tups, names=['fs8_sq', 'k'])
+        index = pd.MultiIndex.from_tuples(index_tups, names=['z', 'k'])
         d = []
         for i, x in enumerate(data):
             d += list(x[:,1] / (cosmo.D_z(redshifts[i])**2 * Plin(x[:,0]) * cosmo.f_z(redshifts[i])**2))
@@ -402,7 +393,7 @@ class SimulationP11(InterpolatedSimulationData):
         # now store the results
         self.data = pd.DataFrame(data=d, index=index, columns=['P11'])
         self.interpolation_grid = {}
-        self.interpolation_grid['fs8_sq'] = self.data.index.get_level_values('fs8_sq').unique()
+        self.interpolation_grid['z'] = self.data.index.get_level_values('z').unique()
         self.interpolation_grid['k'] = self.data.index.get_level_values('k').unique()
       
     #---------------------------------------------------------------------------
@@ -413,17 +404,17 @@ class SimulationP11(InterpolatedSimulationData):
         power spectrum
         """
         # the interpolation grid points
-        fs8_sqs = self.interpolation_grid['fs8_sq']
+        zs = self.interpolation_grid['z']
         ks = self.interpolation_grid['k']
         
         # get the grid values
         grid_vals = []
-        for i, fs8_sq in enumerate(fs8_sqs):
-            grid_vals += list(self.data.xs(fs8_sq).P11)
-        grid_vals = np.array(grid_vals).reshape((len(fs8_sqs), len(ks)))
+        for i, z in enumerate(zs):
+            grid_vals += list(self.data.xs(z).P11)
+        grid_vals = np.array(grid_vals).reshape((len(zs), len(ks)))
         
         # return the interpolator
-        return RegularGridInterpolator((fs8_sqs, ks), grid_vals)
+        return RegularGridInterpolator((zs, ks), grid_vals)
 
     #---------------------------------------------------------------------------
     def _extrapolate(self, x, k):
@@ -432,14 +423,14 @@ class SimulationP11(InterpolatedSimulationData):
         the normalized power spectrum is the same, i.e., just rescaling
         by the low-k amplitude
         """
-        fs8_sqs = self.interpolation_grid['fs8_sq']
-        if x < np.amin(fs8_sqs):
-            val = np.amin(fs8_sqs)
+        zs = self.interpolation_grid['z']
+        if x < np.amin(zs):
+            val = np.amin(zs)
         else:
-            val = np.amax(fs8_sqs)
+            val = np.amax(zs)
         
         # get the renormalization factor
-        normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
         factor = x*normed_power
         
         # get the pts
@@ -455,22 +446,22 @@ class SimulationP11(InterpolatedSimulationData):
         """
         Evaluate P11 at the redshift `z` and the specified `k`
         """
-        fs8_sq = (self.f*self.sigma8)**2
+        fs8_sq = (self.f*self.sigma8_z)**2
         
         # extrapolate?
-        grid_pts = self.interpolation_grid['fs8_sq']
-        if fs8_sq < np.amin(grid_pts) or fs8_sq > np.amax(grid_pts):
-            return self._extrapolate(fs8_sq, k)
+        grid_pts = self.interpolation_grid['z']
+        if self.z < np.amin(grid_pts) or self.z > np.amax(grid_pts):
+            return self._extrapolate(self.z, k)
         
         # get the renormalization factor
-        normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
         factor = fs8_sq*normed_power
         
         # get the pts
         if np.isscalar(k):
-            pts = [val, k]
+            pts = [self.z, k]
         else:
-            pts = np.asarray(list(itertools.product([fs8_sq], k)))
+            pts = np.asarray(list(itertools.product([self.z], k)))
         return self.interpolation_table(pts)*factor
     #---------------------------------------------------------------------------
 
@@ -481,7 +472,7 @@ class SimulationPdv(InterpolatedSimulationData):
     Pdv, computed by interpolating simulation data as a function of f*sigma8^2
     """
     
-    def __init__(self, power_lin, z, sigma8, f):
+    def __init__(self, power_lin, z, sigma8_z, f):
         """
         Parameters
         ----------
@@ -489,13 +480,13 @@ class SimulationPdv(InterpolatedSimulationData):
             Linear power spectrum with Eisenstein-Hu no-wiggle transfer function
         z : float
             Redshift to compute the power spectrum at
-        sigma8 : float
-            Desired sigma8 value
+        sigma8_z : float
+            Desired sigma8 value at z
         f : float
             Desired logarithmic growth rate value
         """
         # initialize the base class holding parameters
-        super(SimulationPdv, self).__init__(power_lin, z, sigma8, f)
+        super(SimulationPdv, self).__init__(power_lin, z, sigma8_z, f)
         
         # make sure power spectrum is no-wiggle
         if self.cosmo.GetTransferFit() != pygcl.Cosmology.EH_NoWiggle:
@@ -516,12 +507,12 @@ class SimulationPdv(InterpolatedSimulationData):
         # the interpolation data
         redshifts = [0., 0.509, 0.989]
         data = [sim_data.Pdv_mu0_z_0_000(), sim_data.Pdv_mu0_z_0_509(), sim_data.Pdv_mu0_z_0_989()]
-        interp_vars = [cosmo.f_z(z)*cosmo.sigma8()**2 for z in redshifts]
+        interp_vars = redshifts
 
         # make the data frame
         k = data[0][:,0]
         index_tups = list(itertools.product(interp_vars, k))
-        index = pd.MultiIndex.from_tuples(index_tups, names=['fs8_sq', 'k'])
+        index = pd.MultiIndex.from_tuples(index_tups, names=['z', 'k'])
         d = []
         for i, x in enumerate(data):
             d += list(x[:,1] / (cosmo.D_z(redshifts[i])**2 * Plin(x[:,0]) * cosmo.f_z(redshifts[i])))
@@ -529,7 +520,7 @@ class SimulationPdv(InterpolatedSimulationData):
         # now store the results
         self.data = pd.DataFrame(data=d, index=index, columns=['Pdv'])
         self.interpolation_grid = {}
-        self.interpolation_grid['fs8_sq'] = self.data.index.get_level_values('fs8_sq').unique()
+        self.interpolation_grid['z'] = self.data.index.get_level_values('z').unique()
         self.interpolation_grid['k'] = self.data.index.get_level_values('k').unique()
 
     #---------------------------------------------------------------------------
@@ -540,17 +531,17 @@ class SimulationPdv(InterpolatedSimulationData):
         power spectrum
         """
         # the interpolation grid points
-        fs8_sqs = self.interpolation_grid['fs8_sq']
+        zs = self.interpolation_grid['z']
         ks = self.interpolation_grid['k']
         
         # get the grid values
         grid_vals = []
-        for i, fs8_sq in enumerate(fs8_sqs):
-            grid_vals += list(self.data.xs(fs8_sq).Pdv)
-        grid_vals = np.array(grid_vals).reshape((len(fs8_sqs), len(ks)))
+        for i, z in enumerate(zs):
+            grid_vals += list(self.data.xs(z).Pdv)
+        grid_vals = np.array(grid_vals).reshape((len(zs), len(ks)))
         
         # return the interpolator
-        return RegularGridInterpolator((fs8_sqs, ks), grid_vals)
+        return RegularGridInterpolator((zs, ks), grid_vals)
 
     #---------------------------------------------------------------------------
     def _extrapolate(self, x, k):
@@ -559,14 +550,14 @@ class SimulationPdv(InterpolatedSimulationData):
         the normalized power spectrum is the same, i.e., just rescaling
         by the low-k amplitude
         """
-        fs8_sqs = self.interpolation_grid['fs8_sq']
-        if x < np.amin(fs8_sqs):
-            val = np.amin(fs8_sqs)
+        zs = self.interpolation_grid['z']
+        if x < np.amin(zs):
+            val = np.amin(zs)
         else:
-            val = np.amax(fs8_sqs)
+            val = np.amax(zs)
         
         # get the renormalization factor
-        normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
         factor = x*normed_power
         
         # get the pts
@@ -582,22 +573,22 @@ class SimulationPdv(InterpolatedSimulationData):
         """
         Evaluate Pdv at the redshift `z` and the specified `k`
         """
-        fs8_sq = self.f*self.sigma8**2
+        fs8_sq = self.f*self.sigma8_z**2
         
         # extrapolate?
-        grid_pts = self.interpolation_grid['fs8_sq']
-        if fs8_sq < np.amin(grid_pts) or fs8_sq > np.amax(grid_pts):
-            return self._extrapolate(fs8_sq, k)
+        grid_pts = self.interpolation_grid['z']
+        if self.z < np.amin(grid_pts) or self.z > np.amax(grid_pts):
+            return self._extrapolate(self.z, k)
         
         # get the renormalization factor
-        normed_power = self.D**2 * self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
         factor = fs8_sq*normed_power
         
         # get the pts
         if np.isscalar(k):
-            pts = [val, k]
+            pts = [self.z, k]
         else:
-            pts = np.asarray(list(itertools.product([fs8_sq], k)))
+            pts = np.asarray(list(itertools.product([self.z], k)))
         return self.interpolation_table(pts)*factor
     #---------------------------------------------------------------------------
 

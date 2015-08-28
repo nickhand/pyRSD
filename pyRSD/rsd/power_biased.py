@@ -71,16 +71,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
         
     @parameter
-    def sigma8(self, val):
+    def sigma8_z(self, val):
         """
-        The value of Sigma8 (mass variances within 8 Mpc/h at z = 0) to compute 
+        The value of Sigma8 (mass variances within 8 Mpc/h at z) to compute 
         the power spectrum at, which gives the normalization of the 
         linear power spectrum
         """
         # update the dependencies
         models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
                   'Phm_halo_zeldovich_model']
-        self._update_models('sigma8', models, val)
+        self._update_models('sigma8_z', models, val)
 
         return val
     
@@ -147,7 +147,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The class holding the Halo Zeldovich model for the Phm term
         """
-        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8, self.interpolate)
+        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8_z, self.interpolate)
         
     @cached_property("use_mean_bias", "b1", "b1_bar")
     def _ib1(self):
@@ -296,17 +296,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
         mean_bias = np.sqrt(self._ib1*self._ib1_bar)
         return self.sigmav_fitter(mean_bias, self.z) / 0.807
         
-    @cached_property("_unnormed_sigmav_from_sims", "sigma8", "sigmav_from_sims", 
+    @cached_property("_unnormed_sigmav_from_sims", "sigma8_z", "sigmav_from_sims", 
                      "sigma_lin")
     def sigma_v(self):
         """
-        The velocity dispersion at z = 0. [units: Mpc/h]
+        The velocity dispersion at z. [units: Mpc/h]
         
         If not provided and ``sigmav_from_sims = False``, this defaults to 
         the linear theory prediction, which is independent of bias
         """
         if self.sigmav_from_sims:
-            return self._unnormed_sigmav_from_sims * self.sigma8
+            return self._unnormed_sigmav_from_sims * self.sigma8_z
         else:
             return self.sigma_lin
     
@@ -316,15 +316,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
         bias value
         """
         try:
-            return self.bias_to_sigma_relation(self.sigma8, bias)
+            return self.bias_to_sigma_relation(self.sigma8_z, bias)
         except Exception as e:
             msg = "Warning: error in computing sigmav from bias = %.2f; original msg = %s" %(bias, e)
             print msg
             b1s = self.bias_to_sigma_relation.interpolation_grid['b1']
             if bias < np.amin(b1s):
-                toret = self.bias_to_sigma_relation(self.sigma8, np.amin(b1s))
+                toret = self.bias_to_sigma_relation(self.sigma8_z, np.amin(b1s))
             elif bias > np.amax(b1s):
-                toret = self.bias_to_sigma_relation(self.sigma8, np.amax(b1s))
+                toret = self.bias_to_sigma_relation(self.sigma8_z, np.amax(b1s))
             else:
                 toret = 0.
                 
@@ -521,7 +521,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
             # the mu^2 terms depending on velocity (velocities in Mpc/h)
             sigma_lin = self.sigma_v
-            sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
+            sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH)
             sigsq_eff = sigma_lin**2 + sigma_02**2
             
             # get the integral attributes
@@ -529,7 +529,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             K20s_a = self.K20s_a(self.k)
             
             term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-            term2_mu2 =  -(self.f*self.D*self.k)**2 * sigsq_eff * self.P00_ss_no_stoch.total.mu0
+            term2_mu2 =  -(self.f*self.k)**2 * sigsq_eff * self.P00_ss_no_stoch.total.mu0
             term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
             P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
             
@@ -604,10 +604,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
             # optionally add small scale velocity
             sigma_lin = self.sigma_v 
-            sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D)
+            sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH)
             sigsq_eff = sigma_lin**2 + sigma_03**2
             
-            P03_ss.total.mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
+            P03_ss.total.mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
     
         return P03_ss
             
@@ -627,7 +627,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
             # now do mu^4 terms depending on velocity (velocities in Mpc/h)
             sigma_lin = self.sigma_v  
-            sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_12**2
             
             # get the integral attributes
@@ -636,7 +636,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             J02 = self.J02(self.k)
             
             term1_mu4 = self.f**3 * (I12 - 0.5*(b1 + b1_bar)*I03 + 2*self.k**2 * J02*Plin)
-            term2_mu4 = -0.5*(self.f*self.D*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
+            term2_mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
             P12_ss.total.mu4 = term1_mu4 + term2_mu4
             
             # do mu^6 terms?
@@ -662,11 +662,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         # vector small scale velocity additions
         sigma_lin = self.sigma_v 
-        sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+        sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
         sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
         
         # the amplitude
-        A = -(self.f*self.D*self.k)**2
+        A = -(self.f*self.k)**2
         
         # do mu^4 terms?
         if self.max_mu >= 4:
@@ -678,7 +678,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             if self.max_mu >= 6:
                 
                 # scalar small scale velocity additions
-                sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+                sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH) 
                 sigsq_eff_scalar = sigma_lin**2 + sigma_13_s**2
                 
                 # using P11_ss mu^4 terms
@@ -702,7 +702,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
             # velocities in units of Mpc/h
             sigma_lin = self.sigma_v
-            sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_22**2
         
             # 1-loop P22bar
@@ -712,10 +712,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.sigmasq_k(self.k)**2
             
             # b1 * P02_bar
-            term3 = -0.5*(self.k*self.f*self.D)**2 * sigsq_eff * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
+            term3 = -0.5*(self.k*self.f)**2 * sigsq_eff * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
             
             # sigma^4 x P00_ss
-            term4 = 0.25*(self.k*self.f*self.D)**4 * sigsq_eff**2 * self.P00_ss_no_stoch.total.mu0
+            term4 = 0.25*(self.k*self.f)**4 * sigsq_eff**2 * self.P00_ss_no_stoch.total.mu0
             
             P22_ss.total.mu4 = term1 + term2 + term3 + term4
             
@@ -723,7 +723,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             if self.max_mu >= 6:
                 
                 term1 = self.P22.no_velocity.mu6
-                term2 = -0.5*(self.k*self.f*self.D)**2 * sigsq_eff * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
+                term2 = -0.5*(self.k*self.f)**2 * sigsq_eff * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
                 P22_ss.total.mu6 = term1 + term2
             
                     
@@ -744,22 +744,21 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
             # compute the relevant small-scale + linear velocities in Mpc/h
             sigma_lin = self.sigma_v 
-            sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH*self.D) 
+            sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_04**2
             
             # contribution from P02[mu^2]
-            term1 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
+            term1 = -0.25*(b1 + b1_bar)*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
             
             # contribution here from P00_ss * vel^4
-            A = (1./12)*(self.f*self.D*self.k)**4 * self.P00_ss_no_stoch.total.mu0
-            vel_kurtosis = self.velocity_kurtosis / self.D**4
-            term2 = A*(3.*sigsq_eff**2 + vel_kurtosis)
+            A = (1./12)*(self.f*self.k)**4 * self.P00_ss_no_stoch.total.mu0
+            term2 = A*(3.*sigsq_eff**2 + self.velocity_kurtosis)
             
             P04_ss.total.mu4 = term1 + term2
         
             # do mu^6 terms?
             if self.max_mu >= 6:
-                P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.D*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
+                P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
             
         return P04_ss
             

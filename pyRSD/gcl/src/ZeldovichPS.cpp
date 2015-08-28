@@ -10,25 +10,25 @@ static const int NMAX = 30;
 
 /*----------------------------------------------------------------------------*/
 ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_) 
-    : C(C_), z(z_), sigma8(C_.sigma8())
+    : C(C_), sigma8_z(C_.Sigma8_z(z_))
 {    
     // initialize the R array
     InitializeR();
 
     // compute integrals at z = 0 first
     LinearPS P_L(C_, 0.);
-    double Dsq(pow2(C.D_z(z_)));
+    double norm = pow2(sigma8_z/C.sigma8());
     
     // the integrals we need
-    sigma_sq = Dsq*P_L.VelocityDispersion();    
-    XX = Dsq*P_L.X_Zel(r) + 2.*sigma_sq;
-    YY = Dsq*P_L.Y_Zel(r); 
+    sigma_sq = norm*P_L.VelocityDispersion();    
+    XX = norm*P_L.X_Zel(r) + 2.*sigma_sq;
+    YY = norm*P_L.Y_Zel(r); 
 }
 
 /*----------------------------------------------------------------------------*/
-ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_, double sigma8_, 
+ZeldovichPS::ZeldovichPS(const Cosmology& C_, double sigma8_z_, 
                          double sigmasq, const parray& X, const parray& Y) 
-: C(C_), z(z_), sigma8(sigma8_), sigma_sq(sigmasq), XX(X), YY(Y)
+: C(C_), sigma8_z(sigma8_z_), sigma_sq(sigmasq), XX(X), YY(Y)
 {
     InitializeR();     
 }
@@ -77,22 +77,6 @@ static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi
 }
 
 /*----------------------------------------------------------------------------*/
-void ZeldovichPS::SetRedshift(double new_z) {
-    
-    double old_Dz = C.D_z(z);
-    double new_Dz = C.D_z(new_z);
-    double ratio = pow2(new_Dz / old_Dz);
-    
-    // integrals are proportional to the square of the ratio of growth factors
-    XX *= ratio;
-    YY *= ratio;
-    sigma_sq *= ratio;
-    
-    // store the new redshift
-    z = new_z;
-}
-
-/*----------------------------------------------------------------------------*/
 parray ZeldovichPS::EvaluateMany(const parray& k) const {
     
     int n = (int)k.size();
@@ -104,16 +88,16 @@ parray ZeldovichPS::EvaluateMany(const parray& k) const {
 }
 
 /*----------------------------------------------------------------------------*/
-void ZeldovichPS::SetSigma8(double new_sigma8) {
+void ZeldovichPS::SetSigma8AtZ(double new_sigma8_z) {
      
-    double ratio = pow2(new_sigma8 / sigma8);
+    double ratio = pow2(new_sigma8_z / sigma8_z);
     // integrals are proportional to the square of the ratio of sigma8
     XX *= ratio;
     YY *= ratio;
     sigma_sq *= ratio;
     
-    // store the new redshift
-    sigma8 = new_sigma8;
+    // store the sigma8_z
+    sigma8_z = new_sigma8_z;
 }
 
 /*----------------------------------------------------------------------------*/

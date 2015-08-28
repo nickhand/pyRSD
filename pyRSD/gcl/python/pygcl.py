@@ -138,7 +138,7 @@ class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG):
         
     def __getstate__(self):
         args = self.args
-        args += (self.GetRedshift(), self.GetSigma8(), self.GetSigmaSq(), self.GetXZel(), self.GetYZel())
+        args += (self.GetSigma8AtZ(), self.GetSigmaSq(), self.GetXZel(), self.GetYZel())
         return {'args': args}
 
 #-------------------------------------------------------------------------------

@@ -11,7 +11,7 @@ def normalize_Jmn(f):
     Decorator to properly normalize Jmn integrals
     """     
     def wrapper(self, *args):
-        return (self._power_norm*self.D**2) * f(self, *args)
+        return self._power_norm * f(self, *args)
     return wrapper
 
 #-------------------------------------------------------------------------------
@@ -20,7 +20,7 @@ def normalize_Imn(f):
     Decorator to properly normalize Imn integrals
     """     
     def wrapper(self, *args):
-        return (self._power_norm*self.D**2)**2 * f(self, *args)
+        return self._power_norm**2 * f(self, *args)
     return wrapper
 
 #-------------------------------------------------------------------------------
@@ -29,7 +29,7 @@ def normalize_Kmn(f):
     Decorator to properly normalize Kmn integrals
     """     
     def wrapper(self, *args):
-        return (self._power_norm*self.D**2)**2 * f(self, *args)
+        return self._power_norm**2 * f(self, *args)
     return wrapper
     
 #-------------------------------------------------------------------------------
@@ -38,7 +38,7 @@ def normalize_ImnOneLoop(f):
     Decorator to properly normalize one loop Imn integrals
     """     
     def wrapper(self, *args):
-        norm = (self._power_norm*self.D**2)
+        norm = self._power_norm
         terms = f(self, *args) 
         return norm**2*terms[0] + norm**3*terms[1] + norm**4*terms[2]
     return wrapper
@@ -388,25 +388,24 @@ class Integrals(object):
         return I_lin, I_cross, I_1loop
         
     #---------------------------------------------------------------------------
-    @cached_property("_P22bar_0")
-    def _unnormalized_velocity_kurtosis(self):
+    @cached_property('_P22bar_0')
+    def _unnormed_velocity_kurtosis(self):
         """
         The unnormalized velocity kurtosis
         """
         return self._P22bar_0.VelocityKurtosis()
         
-    #---------------------------------------------------------------------------
-    @property
+    @cached_property('_unnormed_velocity_kurtosis', '_power_norm')
     def velocity_kurtosis(self):
         """
         The velocity kurtosis <v_parallel^4>, computed using the 1-loop divergence
         auto spectra Pvv, aka P22bar
         """
-        return (self._power_norm*self.D**2)**2 * self._unnormalized_velocity_kurtosis
+        return self._power_norm**2 * self._unnormed_velocity_kurtosis
             
     #---------------------------------------------------------------------------
     @normalize_Jmn
-    @interpolated_property("power_lin")
+    @interpolated_property("normed_power_lin")
     def sigmasq_k(self, k):
         """
         The dark matter velocity dispersion at z, as a function of k, 

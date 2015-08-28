@@ -13,17 +13,17 @@ class HaloZeldovichPS(Cache):
     """
     # define the interpolation grid for Zel'dovich power
     interpolation_grid = {}
-    interpolation_grid['sigma8'] = np.linspace(0.5, 1.5, 100)
+    interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
     interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
 
     #---------------------------------------------------------------------------
-    def __init__(self, z, sigma8, interpolated=False):
+    def __init__(self, z, sigma8_z, interpolated=False):
         """
         Parameters
         ----------
         z : float
             The desired redshift to compute the power at
-        sigma8 : float
+        sigma8_z : float
             The desired sigma8 to compute the power at
         interpolated : bool, optional
             Whether to return Zel'dovich power from the interpolation table
@@ -34,7 +34,7 @@ class HaloZeldovichPS(Cache):
         
         # the model parameters
         self.z            = z
-        self.sigma8       = sigma8
+        self.sigma8_z     = sigma8_z
         self.interpolated = interpolated
         
         self._A0_amp = 730.
@@ -93,15 +93,14 @@ class HaloZeldovichPS(Cache):
         """
         The redshift
         """
-        self.Pzel.SetRedshift(val)
         return val
         
     @parameter
-    def sigma8(self, val):
+    def sigma8_z(self, val):
         """
-        The sigma8 value
+        The sigma8 value at z
         """
-        self.Pzel.SetSigma8(val)
+        self.Pzel.SetSigma8AtZ(val)
         return val
         
     @parameter
@@ -114,48 +113,32 @@ class HaloZeldovichPS(Cache):
     #---------------------------------------------------------------------------
     # Cached properties
     #---------------------------------------------------------------------------
-    @cached_property('z', 'cosmo')
-    def _normalized_sigma8_z(self):
-        """
-        Return the normalized sigma8(z) from the input cosmology
-        """
-        return self.cosmo.Sigma8_z(self.z) / self.cosmo.sigma8()
-        
-    #---------------------------------------------------------------------------
-    @cached_property("z")
+    @cached_property()
     def interpolation_table(self):
         """
         Evaluate the Zeldovich power for storing in the interpolation table.
         
         Notes
         -----
-        This dependes on the redshift stored in the `z` attribute and must be 
-        recomputed whenever that quantity changes.
+        This does not depend on redshift, as we are interpolating as a function
+        of sigma8(z)
         """ 
-        original_s8 = self.sigma8
+        original_s8z = self.sigma8_z
         
         # the interpolation grid points
-        sigma8s = self.interpolation_grid['sigma8']
+        sigma8s = self.interpolation_grid['sigma8_z']
         ks = self.interpolation_grid['k']
         
         # get the grid values
         grid_vals = []
         for i, s8 in enumerate(sigma8s):
-            self.Pzel.SetSigma8(s8)
+            self.Pzel.SetSigma8AtZ(s8)
             grid_vals += list(self.zeldovich_power(ks, ignore_interpolated=True))
         grid_vals = np.array(grid_vals).reshape((len(sigma8s), len(ks)))
         
         # return the interpolator
-        self.sigma8 = original_s8
+        self.sigma8_z = original_s8z
         return RegularGridInterpolator((sigma8s, ks), grid_vals)
-
-    #---------------------------------------------------------------------------
-    @cached_property("sigma8", "_normalized_sigma8_z")
-    def sigma8_z(self):
-        """
-        Return sigma8(z), normalized to the desired sigma8 at z = 0
-        """
-        return self.sigma8 * self._normalized_sigma8_z
         
     #---------------------------------------------------------------------------
     # Model Parameters
@@ -228,6 +211,10 @@ class HaloZeldovichPS(Cache):
         Return the total power, equal to the Zeldovich power + broadband 
         correction
         """
+        # make sure sigma8 is set properly
+        if self.Pzel.GetSigma8AtZ() != self.sigma8_z:
+            self.Pzel.SetSigma8AtZ(self.sigma8_z)
+            
         return self.broadband_power(k) + self.zeldovich_power(k)
 
     #---------------------------------------------------------------------------
@@ -251,9 +238,9 @@ class HaloZeldovichPS(Cache):
         """
         if self.interpolated and not ignore_interpolated:
             if np.isscalar(k):
-                pts = [self.sigma8, k]
+                pts = [self.sigma8_z, k]
             else:
-                pts = np.vstack((np.repeat(self.sigma8, len(k)), k)).T
+                pts = np.vstack((np.repeat(self.sigma8_z, len(k)), k)).T
             return self.interpolation_table(pts)
         else:
             return self.Pzel(k)
@@ -264,7 +251,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
     """
     Halo Zel'dovich P00
     """ 
-    def __init__(self, cosmo, z, sigma8, interpolated=False):
+    def __init__(self, cosmo, z, sigma8_z, interpolated=False):
         """
         Parameters
         ----------
@@ -272,7 +259,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
             The cosmology object
         z : float
             The desired redshift to compute the power at
-        sigma8 : float
+        sigma8_z : float
             The desired sigma8 to compute the power at
         interpolated : bool, optional
             Whether to return Zel'dovich power from the interpolation table
@@ -282,7 +269,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
         self.Pzel = pygcl.ZeldovichP00(cosmo, z)
         
         # initialize the base class
-        super(HaloZeldovichP00, self).__init__(z, sigma8, interpolated)
+        super(HaloZeldovichP00, self).__init__(z, sigma8_z, interpolated)
         
         # save the cosmology too
         self.cosmo = cosmo
@@ -293,7 +280,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
     """
     Halo Zel'dovich P01
     """ 
-    def __init__(self, cosmo, z, sigma8, f, interpolated=False):
+    def __init__(self, cosmo, z, sigma8_z, f, interpolated=False):
         """
         Parameters
         ----------
@@ -301,7 +288,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
             The cosmology object
         z : float
             The desired redshift to compute the power at
-        sigma8 : float
+        sigma8_z : float
             The desired sigma8 to compute the power at
         f : float
             The desired logarithmic growth rate
@@ -313,7 +300,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
         self.Pzel = pygcl.ZeldovichP01(cosmo, z)
         
         # initialize the base class
-        super(HaloZeldovichP01, self).__init__(z, sigma8, interpolated)
+        super(HaloZeldovichP01, self).__init__(z, sigma8_z, interpolated)
          
         # set the parameters
         self.cosmo = cosmo
@@ -391,8 +378,8 @@ class HaloZeldovichP01(HaloZeldovichPS):
         `self.zeldovich_power`
         """
         # make sure sigma8 is set properly
-        if self.Pzel.GetSigma8() != self.sigma8:
-            self.Pzel.SetSigma8(self.sigma8)
+        if self.Pzel.GetSigma8AtZ() != self.sigma8_z:
+            self.Pzel.SetSigma8AtZ(self.sigma8_z)
         
         return self.broadband_power(k) + 2*self.f*self.zeldovich_power(k)
     #---------------------------------------------------------------------------
@@ -402,7 +389,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     """
     Halo Zel'dovich Phm
     """ 
-    def __init__(self, cosmo, z, sigma8, interpolated=False, indep_var='b1'):
+    def __init__(self, cosmo, z, sigma8_z, interpolated=False, indep_var='b1'):
         """
         Parameters
         ----------
@@ -410,7 +397,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             The cosmology object
         z : float
             The desired redshift to compute the power at
-        sigma8 : float
+        sigma8_z : float
             The desired sigma8 to compute the power at
         interpolated : bool, optional
             Whether to return Zel'dovich power from the interpolation table
@@ -425,7 +412,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         self.bias_to_mass = tools.BiasToMassRelation(z, cosmo, interpolated)
         
         # initialize the base class
-        super(HaloZeldovichPhm, self).__init__(z, sigma8, interpolated)
+        super(HaloZeldovichPhm, self).__init__(z, sigma8_z, interpolated)
         
         # save the cosmology too
         self.cosmo = cosmo
@@ -470,7 +457,6 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         """
         The redshift
         """
-        self.Pzel.SetRedshift(val)
         self.bias_to_mass.z = val
         return val
         
@@ -482,12 +468,12 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         """
         return self.cosmo.rho_bar_z(0.)
         
-    @cached_property('b1', 'sigma8')
+    @cached_property('b1', 'sigma8_z')
     def M(self):
         """
         The mass corresponding to the `b1` attribute in units of `M_sun/h`
         """
-        return self.bias_to_mass(self.sigma8, self.b1)
+        return self.bias_to_mass(self.sigma8_z, self.b1)
         
     @cached_property('sigma8_z', 'b1', 'M', 'indep_var')
     def A0(self):
@@ -587,6 +573,10 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         k : array_like
             the wavenumbers in `h/Mpc` to compute the power at
         """
+        # make sure sigma8 is set properly
+        if self.Pzel.GetSigma8AtZ() != self.sigma8_z:
+            self.Pzel.SetSigma8AtZ(self.sigma8_z)
+            
         self.b1 = b1
         return self.broadband_power(k) + b1*self.zeldovich_power(k)
     

@@ -25,8 +25,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     
     # kwargs
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
-    allowable_kwargs = ['k', 'z', 'cosmo_filename', 'include_2loop', 'transfer_fit', \
-                        'max_mu', 'interpolate', 'load_dm_sims']
+    allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', \
+                        'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
@@ -109,8 +109,12 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         # default is to use all models
         for model in self.allowable_models:
             name = 'use_%s_model' %model
-            val = kwargs.get(name, True)
+            val = kwargs.pop(name, True)
             setattr(self, name, val)
+            
+        if len(kwargs):
+            for k in kwargs:
+                print "warning: extra keyword `%s` is ignored" %k
         
         # initialize the integrals    
         Integrals.__init__(self)

@@ -82,7 +82,7 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
             exec "logger.info('%{0}s%-{1}s' % ('', basename))".format(
                 empty_length, total_length-empty_length)
 
-        local_min_minus_lkl = -result.lnprobs.mean(axis=0)
+        local_min_minus_lkl = -np.median(result.lnprobs, axis=0)
         inds = local_min_minus_lkl < info.min_minus_lkl + cutoff
         steps += len(inds)
         accepted_steps += inds.sum()

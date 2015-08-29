@@ -195,7 +195,7 @@ class AnalysisDriver(object):
         except AttributeError:
             if not hasattr(self, 'chains'):
                 raise AttributeError("trying to compute ``min_minus_lkl`` without the ``chains`` attribute")
-            self._min_minus_lkl = min([-result.lnprobs.mean(axis=0).max() for result in self.chains])
+            self._min_minus_lkl = min([-np.median(result.lnprobs, axis=0).max() for result in self.chains])
             return self._min_minus_lkl
             
     @property

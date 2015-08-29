@@ -185,7 +185,7 @@ class BiasToMassRelation(Cache):
     # define the interpolation grid
     interpolation_grid = {}
     interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
-    interpolation_grid['b1'] = np.linspace(0.9, 7., 50)
+    interpolation_grid['b1'] = np.linspace(0.9, 8., 70)
     
     #---------------------------------------------------------------------------
     def __init__(self, z, cosmo, interpolated=False):

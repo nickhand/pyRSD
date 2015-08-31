@@ -82,8 +82,13 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
             exec "logger.info('%{0}s%-{1}s' % ('', basename))".format(
                 empty_length, total_length-empty_length)
 
-        local_min_minus_lkl = -np.median(result.lnprobs, axis=0)
-        inds = local_min_minus_lkl < info.min_minus_lkl + cutoff
+        if info.burnin is None:
+            local_min_minus_lkl = -result.lnprobs.mean(axis=0)
+            inds = local_min_minus_lkl < info.min_minus_lkl + cutoff
+        else:
+            inds = np.zeros(result.iterations, dtype=bool)
+            burnin = int(info.burnin*result.iterations)
+            inds[burnin:] = True
         steps += len(inds)
         accepted_steps += inds.sum()
         if not inds.sum():
@@ -175,8 +180,7 @@ def prepare(info):
         logger.warning("unable to update fiducial values: %s" %str(e))
 
     # output paths for later use
-    info.v_info_path = os.path.join(folder, 'info', 'v_info.dat')
-    info.h_info_path = os.path.join(folder, 'info', 'h_info.dat')
+    info.info_path = os.path.join(folder, 'info', 'params.info')
     info.free_tex_path = os.path.join(folder, 'info', 'free_params.tex')
     info.constrained_tex_path = os.path.join(folder, 'info', 'constrained_params.tex')
     info.cov_path = os.path.join(folder, 'info', 'covmat.dat')

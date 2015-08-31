@@ -338,7 +338,21 @@ class FittingDriver(object):
         Return the degrees of freedom, equal to number of data points minus
         the number of free parameters
         """
-        return len(self.combined_model) - self.theory.ndim
+        return self.Nb - self.Np
+    
+    @property
+    def Nb(self):
+        """
+        Return number of data points
+        """
+        return len(self.combined_model) 
+        
+    @property
+    def Np(self):
+        """
+        Return the number of free parameters
+        """
+        return self.theory.ndim
         
     #---------------------------------------------------------------------------
     # Probability functions
@@ -475,7 +489,8 @@ class FittingDriver(object):
             residual = (data - model) / errs
             
             # make the plot
-            pfy.plot(k, residual, "o", label=self.data.measurements[i].label)
+            mu = np.mean(self.data.measurements[i].mu)
+            pfy.plot(k, residual, "o", label=r"$\mu = %.4f$" %mu)
 
         # make it look nice
         ax = pfy.gca()
@@ -538,6 +553,9 @@ class FittingDriver(object):
         ax.legend(loc=0, ncol=ncol)
         ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
         ax.ylabel.update(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
+        
+        args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
+        ax.title.update(r'$\mathrm{ln}p = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
 
 #------------------------------------------------------------------------------
         

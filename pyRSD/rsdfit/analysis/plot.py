@@ -309,6 +309,9 @@ def plot_2d_posteriors(info, tag, param_names, saved_subplots):
                          "'%s-%s' 2d-plot" % (info.ref_names[native_index],
                                                 info.ref_names[native_second_index]))
                                                 
+            axsub.axis([info.x_range[native_second_index][0], info.x_range[native_second_index][1], 
+                        info.x_range[native_index][0], info.x_range[native_index][1]])
+            
             # fiducial?
             if second_name in info.fiducial:
                 fid2 = info.fiducial[second_name]

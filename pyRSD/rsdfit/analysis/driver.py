@@ -51,7 +51,7 @@ def set_analysis_defaults(kwargs):
     kwargs.setdefault('save_output', True)
     kwargs.setdefault('show_fiducial', True)
     kwargs.setdefault('fiducial', {})
-    
+    kwargs.setdefault('burnin', None)
 
 class AnalysisDriver(object):
     """
@@ -127,6 +127,8 @@ class AnalysisDriver(object):
                 fiducial : dict, optional {`{}`}
                     a dictionary holding fidicual values to use, which will override
                     the original fiducial values
+                burnin : float, optional (`None`)
+                    the fraction of samples to consider burnin
         """
         add_console_logger()
         
@@ -195,7 +197,7 @@ class AnalysisDriver(object):
         except AttributeError:
             if not hasattr(self, 'chains'):
                 raise AttributeError("trying to compute ``min_minus_lkl`` without the ``chains`` attribute")
-            self._min_minus_lkl = min([-np.median(result.lnprobs, axis=0).max() for result in self.chains])
+            self._min_minus_lkl = min([-result.lnprobs.mean(axis=0).max() for result in self.chains])
             return self._min_minus_lkl
             
     @property
@@ -230,8 +232,14 @@ class AnalysisDriver(object):
         """
         Define the ticks
         """        
-        self.max_values = np.array([self.combined_result[name].flat_trace.max()/self.scales[i,i] for i,name in enumerate(self.ref_names)])
-        self.min_values = np.array([self.combined_result[name].flat_trace.min()/self.scales[i,i] for i,name in enumerate(self.ref_names)])
+        self.max_values = np.empty(len(self.ref_names))
+        self.min_values = np.empty(len(self.ref_names))
+        for i, name in enumerate(self.ref_names):
+            trace = self.combined_result[name].flat_trace
+            avg = trace.mean()
+            stddev = trace.std()
+            self.max_values[i] = (avg + 3.5*stddev) / self.scales[i,i]
+            self.min_values[i] = (avg - 3.5*stddev) / self.scales[i,i]
         self.span = (self.max_values-self.min_values)
         # Define the place of ticks, given the number of ticks desired, stored
         # in conf.ticknumber
@@ -284,55 +292,12 @@ class AnalysisDriver(object):
         self.write_tex(indices[:N_free], tex_names[:N_free], self.free_tex_path)
         self.write_tex(indices[N_free:], tex_names[N_free:], self.constrained_tex_path)
         
-        # Write down to the .h_info file all necessary information
-        self.write_h_info(indices, info_names)
+        # Write down to the .info file all necessary information
         self.write_v_info(indices, info_names)
-
-    def write_h_info(self, indices, info_names, filename=None):
-
-        filename = self.h_info_path if filename is None else filename
-        with open(filename, 'w') as h_info:
-            h_info.write(' param names\t:  ')
-            for name in info_names:
-                h_info.write("%-14s" % name)
-
-            tools.write_h(h_info, indices, 'R-1 values', '% .6f', self.R)
-            tools.write_h(h_info, indices, 'Best Fit  ', '% .6e', self.bestfit_params)
-            tools.write_h(h_info, indices, 'mean      ', '% .6e', self.mean)
-            tools.write_h(h_info, indices, 'sigma     ', '% .6e',
-                            (self.bounds[:, 0, 1]-self.bounds[:, 0, 0])/2.)
-            h_info.write('\n')
-            tools.write_h(h_info, indices, '1-sigma - ', '% .6e',
-                    self.bounds[:, 0, 0])
-            tools.write_h(h_info, indices, '1-sigma + ', '% .6e',
-                    self.bounds[:, 0, 1])
-            tools.write_h(h_info, indices, '2-sigma - ', '% .6e',
-                    self.bounds[:, 1, 0])
-            tools.write_h(h_info, indices, '2-sigma + ', '% .6e',
-                    self.bounds[:, 1, 1])
-            tools.write_h(h_info, indices, '3-sigma - ', '% .6e',
-                    self.bounds[:, 2, 0])
-            tools.write_h(h_info, indices, '3-sigma + ', '% .6e',
-                    self.bounds[:, 2, 1])
-
-            # bounds
-            h_info.write('\n')
-            tools.write_h(h_info, indices, '1-sigma > ', '% .6e',
-                    self.mean+self.bounds[:, 0, 0])
-            tools.write_h(h_info, indices, '1-sigma < ', '% .6e',
-                    self.mean+self.bounds[:, 0, 1])
-            tools.write_h(h_info, indices, '2-sigma > ', '% .6e',
-                    self.mean+self.bounds[:, 1, 0])
-            tools.write_h(h_info, indices, '2-sigma < ', '% .6e',
-                    self.mean+self.bounds[:, 1, 1])
-            tools.write_h(h_info, indices, '3-sigma > ', '% .6e',
-                    self.mean+self.bounds[:, 2, 0])
-            tools.write_h(h_info, indices, '3-sigma < ', '% .6e',
-                    self.mean+self.bounds[:, 2, 1])
 
     def write_v_info(self, indices, info_names, filename=None):
         
-        filename = self.v_info_path if filename is None else filename
+        filename = self.info_path if filename is None else filename
         with open(filename, 'w') as v_info:
             v_info.write('%-15s\t:  %-11s' % ('param names', 'R-1'))
             v_info.write(' '.join(['%-11s' % elem for elem in [
@@ -353,6 +318,9 @@ class AnalysisDriver(object):
 
     def write_tex(self, indices, tex_names, filename):
         
+        self.combined_result.set_fit_results()
+        chi2_red = self.combined_result.reduced_chi2()
+        
         with open(filename, 'w') as tex:
             tex.write("\\begin{tabular}{|l|c|c|c|c|} \n \\hline \n")
             tex.write("Param & best-fit & mean$\pm\sigma$ ")
@@ -369,6 +337,6 @@ class AnalysisDriver(object):
             tex.write("\\hline \n \\end{tabular} \\\\ \n")
             tex.write("$-\ln{\cal L}_\mathrm{min} =%.6g$, " % (
                 self.min_minus_lkl))
-            tex.write("minimum $\chi^2=%.4g$ \\\\ \n" % (
-                self.min_minus_lkl*2.))
+            tex.write("$\chi_\mathrm{red}^2=%.4g$ \\\\ \n" % (
+                chi2_red))
 

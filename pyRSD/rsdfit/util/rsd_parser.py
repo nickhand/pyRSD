@@ -181,6 +181,10 @@ def setup_analyze_subparser(parent):
     h = "don't include fiducial lines on 1D posterior plots"
     subparser.add_argument('--no-fiducial', help=h, dest='show_fiducial', 
                                 action='store_false')
+                                
+    # the fraction of samples to consider burnin
+    h = 'the fraction of samples to consider burnin'
+    subparser.add_argument('--burnin', '-b', type=float, help=h)
                             
     # when plotting 2d posterior distribution, use contours and not contours
     # filled (might be useful when comparing several folders)

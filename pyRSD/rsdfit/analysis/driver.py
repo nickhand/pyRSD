@@ -171,7 +171,6 @@ class AnalysisDriver(object):
         # compute the convariance matrix
         logger.info('computing covariance matrix')
         self.write_covariance()
-        self.write_median_file()
                          
         if not self.minimal:
             # Computing 1,2 and 3-sigma errors, and plot. This will create the
@@ -186,6 +185,9 @@ class AnalysisDriver(object):
         rsd_io.save_pickle(self.combined_result, bestfit_path)
         print self.combined_result
     
+    #--------------------------------------------------------------------------
+    # Properties
+    #--------------------------------------------------------------------------
     @property
     def min_minus_lkl(self):
         """
@@ -213,24 +215,75 @@ class AnalysisDriver(object):
             self._covar = np.cov(self.chain, rowvar=0)
             return self._covar
     
-    def write_covariance(self):
+    @property
+    def bounds(self):
         """
-        Write out the covariance matrix
+        The 1, 2, and 3-sigma bounds
         """
-        if self.save_output:
-            rsd_io.write_covariance_matrix(self.covar, self.ref_names, self.cov_path)
+        try:
+            return self._bounds
+        except AttributeError:
+            if not hasattr(self, 'combined_result'):
+                raise AttributeError("trying to compute ``bounds`` without the ``combined_result`` attribute")
+        bounds = np.zeros((len(self.ref_names), 3, 2))
+        
+        # bounds from the 1,2,3 sigma percentiles
+        for index, name in enumerate(self.ref_names):
+            par = self.combined_result[name]
+            this_bounds = np.array([par.one_sigma, par.two_sigma, par.three_sigma])
+            scale = 1.
+            if hasattr(self, 'scales'):
+                scale = self.scales[index, index]
+            bounds[index] = this_bounds / scale
+        self._bounds = bounds
+        return self._bounds
             
-    def write_median_file(self):
+    @property
+    def bestfit_params(self):
         """
-        Write out the file holding the parameter medians
+        Bestfit parameter set
         """
-        if self.save_output:
-            rsd_io.write_bestfit_file(self.combined_result, self.ref_names,
-                                         self.medians_path, scales=np.diag(self.scales))
-    
+        try:
+            return self._bestfit_params
+        except AttributeError:
+            from . import bestfit
+            names = self.free_names + self.constrained_names
+            indices = [self.ref_names.index(name) for name in names]
+            
+            data = []
+            best_idx = self.combined_result.lnprobs.argmax()
+            for i, name in zip(indices, names):
+                par = self.combined_result[name] 
+                best = par.flat_trace[best_idx] / self.scales[i,i]
+                median = par.median / self.scales[i, i]
+                d = [self.tex_names[name], 
+                        self.scales[i, i],
+                        self.R[i], 
+                        best, 
+                        median,
+                        0.5*(self.bounds[i, 0, 1]-self.bounds[i, 0, 0]),
+                        self.bounds[i, 0, 0], 
+                        self.bounds[i, 0, 1],
+                        self.bounds[i, 1, 0], 
+                        self.bounds[i, 1, 1],
+                        median+self.bounds[i, 0, 0],
+                        median+self.bounds[i, 0, 1],
+                        median+self.bounds[i, 1, 0],
+                        median+self.bounds[i, 1, 1], 
+                        name in self.free_names]
+                data.append(d)
+                
+            columns = ['tex_name', 'scale', 'R', 'best_fit', 'median', 'sigma', 'lower_1sigma', 'upper_1sigma',
+                        'lower_2sigma', 'upper_2sigma', 'gt_1sigma', 'lt_1sigma',
+                        'lt_2sigma', 'gt_2sigma', 'free']
+            self._bestfit_params = bestfit.BestfitParameterSet(data, index=names, columns=columns)
+            meta = {'min_minus_lkl' : self.min_minus_lkl, 'Np' : self.Np, 'Nb' : self.Nb}
+            self._bestfit_params.add_metadata(**meta)
+            return self._bestfit_params
+                
     def define_ticks(self):
         """
-        Define the ticks
+        Define the min and max x-range values and set the axis ticks accordingly
         """        
         self.max_values = np.empty(len(self.ref_names))
         self.min_values = np.empty(len(self.ref_names))
@@ -270,73 +323,32 @@ class AnalysisDriver(object):
                     self.x_range[i][-1] = bounds[-1]
                     
         self.ticks_defined = True
+        
+    def write_covariance(self):
+        """
+        Write out the covariance matrix
+        """
+        if self.save_output:
+            rsd_io.write_covariance_matrix(self.covar, self.ref_names, self.cov_path)
 
     def write_information_files(self):
-
+        """
+        Write out the best-fit info file and the latex tables
+        """
         if not self.prepared:
             self.prepare()
         
-        N_free = len(self.free_names)
-        info_names = self.free_names + self.constrained_names
-        indices = [self.ref_names.index(name) for name in info_names]
-        tex_names = [self.tex_names[name] for name in info_names]
-        info_names = [name.replace('$', '') for name in info_names]
-
-        # Define the bestfit array
-        self.bestfit_params = np.zeros(len(self.ref_names))
-        best_idx = self.combined_result.lnprobs.argmax()
-        for i, name in enumerate(self.ref_names):
-            self.bestfit_params[i] = self.combined_result[name].flat_trace[best_idx]
-                
-        # write out the free and constrained tables
-        self.write_tex(indices[:N_free], tex_names[:N_free], self.free_tex_path)
-        self.write_tex(indices[N_free:], tex_names[N_free:], self.constrained_tex_path)
+        # write down to the .info file all necessary information
+        self.bestfit_params.to_info(self.info_path)
         
-        # Write down to the .info file all necessary information
-        self.write_v_info(indices, info_names)
-
-    def write_v_info(self, indices, info_names, filename=None):
+        # write out the latex table for free parameters
+        free_params = self.bestfit_params.loc[self.free_names]
+        free_params.to_latex(self.free_tex_path)
         
-        filename = self.info_path if filename is None else filename
-        with open(filename, 'w') as v_info:
-            v_info.write('%-15s\t:  %-11s' % ('param names', 'R-1'))
-            v_info.write(' '.join(['%-11s' % elem for elem in [
-                'Best fit', 'mean', 'sigma', '1-sigma -', '1-sigma +',
-                '2-sigma -', '2-sigma +', '1-sigma >', '1-sigma <',
-                '2-sigma >', '2-sigma <']]))
-            for index, name in zip(indices, info_names):
-                v_info.write('\n%-15s\t: % .4e' % (name, self.R[index]))
-                v_info.write(' '.join(['% .4e' % elem for elem in [
-                    self.bestfit_params[index], self.mean[index],
-                    (self.bounds[index, 0, 1]-self.bounds[index, 0, 0])/2.,
-                    self.bounds[index, 0, 0], self.bounds[index, 0, 1],
-                    self.bounds[index, 1, 0], self.bounds[index, 1, 1],
-                    self.mean[index]+self.bounds[index, 0, 0],
-                    self.mean[index]+self.bounds[index, 0, 1],
-                    self.mean[index]+self.bounds[index, 1, 0],
-                    self.mean[index]+self.bounds[index, 1, 1]]]))
+        # write out the latex table for free parameters
+        constrained_params = self.bestfit_params.loc[self.constrained_names]
+        constrained_params.to_latex(self.constrained_tex_path)
 
-    def write_tex(self, indices, tex_names, filename):
-        
-        self.combined_result.set_fit_results()
-        chi2_red = self.combined_result.reduced_chi2()
-        
-        with open(filename, 'w') as tex:
-            tex.write("\\begin{tabular}{|l|c|c|c|c|} \n \\hline \n")
-            tex.write("Param & best-fit & mean$\pm\sigma$ ")
-            tex.write("& 95\% lower & 95\% upper \\\\ \\hline \n")
-            for index, name in zip(indices, tex_names):
-                tex.write("%s &" % name)
-                tex.write("$%.4g$ & $%.4g_{%.2g}^{+%.2g}$ " % (
-                    self.bestfit_params[index], self.mean[index],
-                    self.bounds[index, 0, 0], self.bounds[index, 0, 1]))
-                tex.write("& $%.4g$ & $%.4g$ \\\\ \n" % (
-                    self.mean[index]+self.bounds[index, 1, 0],
-                    self.mean[index]+self.bounds[index, 1, 1]))
 
-            tex.write("\\hline \n \\end{tabular} \\\\ \n")
-            tex.write("$-\ln{\cal L}_\mathrm{min} =%.6g$, " % (
-                self.min_minus_lkl))
-            tex.write("$\chi_\mathrm{red}^2=%.4g$ \\\\ \n" % (
-                chi2_red))
+
 

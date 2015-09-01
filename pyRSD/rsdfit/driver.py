@@ -555,7 +555,7 @@ class FittingDriver(object):
         ax.ylabel.update(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
         
         args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
-        ax.title.update(r'$\mathrm{ln}p = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
+        ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
 
 #------------------------------------------------------------------------------
         

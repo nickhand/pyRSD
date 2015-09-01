@@ -446,6 +446,13 @@ class PowerData(object):
     # properties
     #---------------------------------------------------------------------------
     @property
+    def ndim(self):
+        """
+        The number of data bins 
+        """
+        return len(self.combined_power)
+        
+    @property
     def size(self):
         """
         Return the number of measurements

@@ -60,7 +60,7 @@ def compute_and_plot_posteriors(info):
             plot_1d_posteriors(info, tag, param_names, saved_subplots)
         
     # plot the 2D posteriors second
-    if info.plot_2d:
+    if info.plot and info.plot_2d:
         saved_subplots = set()
         for tag, param_names in info.plot_params_2d.iteritems():
             plot_2d_posteriors(info, tag, param_names, saved_subplots)
@@ -122,16 +122,6 @@ def get_bounds(info, name):
     simply returning them if they already have been computed
     """
     index = info.ref_names.index(name)
-    if hasattr(info, 'bounds') and np.count_nonzero(info.bounds[index]):
-        return info.bounds[index]
-    elif not hasattr(info, 'bounds'):
-        info.bounds = np.zeros((len(info.ref_names), 3, 2))
-        
-    # bounds from the 1,2,3 sigma percentiles
-    par = info.combined_result[name]
-    bounds = np.array([par.one_sigma, par.two_sigma, par.three_sigma])
-    bounds /= info.scales[index, index]
-    info.bounds[index] = bounds
     return info.bounds[index]
 
 

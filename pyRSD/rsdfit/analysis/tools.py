@@ -2,6 +2,7 @@ from ... import os, numpy as np
 from .. import params_filename, logging
 from ..util import rsd_io
 from ..theory import GalaxyPowerTheory
+from ..data import PowerData
 from collections import defaultdict
 
 LOG_LKL_CUTOFF = 3
@@ -173,18 +174,23 @@ def prepare(info):
     if not os.path.exists(os.path.join(folder, params_filename)):
         raise rsd_io.AnalyzeError("no parameter file in directory to analyze")
     param_path = os.path.join(folder, params_filename)
-    info.param_set = GalaxyPowerTheory(param_path).fit_params
+    theory = GalaxyPowerTheory(param_path)
+    info.param_set = theory.fit_params
+    info.Np = theory.ndim
     try:
         info.param_set.update_fiducial()
     except Exception as e:
         logger.warning("unable to update fiducial values: %s" %str(e))
+        
+    # also load the data so we get can number of bins
+    data_params = PowerData(param_path)
+    info.Nb = data_params.ndim
 
     # output paths for later use
     info.info_path = os.path.join(folder, 'info', 'params.info')
     info.free_tex_path = os.path.join(folder, 'info', 'free_params.tex')
     info.constrained_tex_path = os.path.join(folder, 'info', 'constrained_params.tex')
     info.cov_path = os.path.join(folder, 'info', 'covmat.dat')
-    info.medians_path = os.path.join(folder, 'info', 'median_values.dat')
     
     # recover parameter names and scales, creating tex names, etc
     extract_parameter_names(info)
@@ -304,11 +310,11 @@ def extract_parameter_names(info):
         scales.append(scale)
 
         # given the scale, decide for the pretty tex name
-        if name in info.tex_names.iterkeys():
+        if name in info.tex_names:
             info.tex_names[name] = format_scaled_param(info.tex_names[name], 1./scale)
             tex_names.append(info.tex_names[name])
         else:
-            tex_names.append(format_scaled_param(name, 1./scale))
+            raise ValueError("please specify a proper tex name for `%s`" %name)
             
         if name in info.free_names:
             param_indices[name] = info.free_names.index(name)
@@ -329,10 +335,3 @@ def extract_parameter_names(info):
     info.plot_params_1d    = plot_params_1d
     info.plot_params_2d    = plot_params_2d
     
-def write_h(info_file, indices, name, string, quantity, modifiers=None):
-    """
-    Write one horizontal line of output
-    """
-    info_file.write('\n '+name+'\t: ')
-    for i in indices:
-        info_file.write(string % quantity[i]+'\t')

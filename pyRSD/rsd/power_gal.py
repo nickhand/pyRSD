@@ -79,14 +79,14 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The 1-halo so vs fof difference
         """
-        return N_so
+        return val
         
     @parameter
     def R_so(self, val):
         """
         The 1-halo difference
         """
-        return N_so
+        return val
            
     @parameter
     def f_so(self, val):

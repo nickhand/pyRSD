@@ -305,8 +305,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             term1 = (1 - self.f_so)**2 * G**2 * pk
             term2 = 2*self.f_so*(1-self.f_so)*G*G2*pk
             term3 = self.f_so**2 * G2**2 * pk
-            term4 = 2*G*G2*self.f_so*self.fcB/(1-self.fcB)*self.NcBs
-            toret = term1 + term2 + term3 + term4 
+            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs
+            toret = term1 + term2 + term3 + term4 + N
             self.sigma_c = sigma_c
         else:
             toret = pk + N

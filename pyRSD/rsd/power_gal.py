@@ -67,27 +67,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.use_so_correction = use_so_correction
         self.f_so = 0.
         self.sigma_so = 0.
-        self.R_so = 0
-        self.N_so = 0
         
      
     #---------------------------------------------------------------------------
     # PARAMETERS
     #---------------------------------------------------------------------------  
-    @parameter
-    def N_so(self, val):
-        """
-        The 1-halo so vs fof difference
-        """
-        return val
-        
-    @parameter
-    def R_so(self, val):
-        """
-        The 1-halo difference
-        """
-        return val
-           
     @parameter
     def f_so(self, val):
         """
@@ -490,9 +474,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(k, mu)
         Pss = self.fs**2 * self.Pgal_ss(k, mu)
         toret = Pcc + Pcs + Pss + N
-        
-        G = self.evaluate_fog(k, mu, self.sigma_so)
-        toret += G**2 * self.N_so * (1 - (k*self.R_so)**2)
         self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
         

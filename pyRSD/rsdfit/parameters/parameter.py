@@ -75,7 +75,8 @@ class Parameter(lmfit.Parameter, Cache):
         if value is None and kwargs.get('fiducial', None) is not None:
             value = kwargs['fiducial']
         lmfit.Parameter.__init__(self, name=name, value=value, vary=vary, min=min, max=max, expr=expr)
-    
+        self.value = self._val
+        
         # handle additional parameters
         self.description = kwargs.get('description', 'No description available')
         self.prior_name = kwargs.get('prior', None)
@@ -85,6 +86,12 @@ class Parameter(lmfit.Parameter, Cache):
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------
+    @parameter
+    def value(self, val):
+        self.user_value = val
+        self._val = val
+        return self._getval()
+
     @parameter
     def fiducial(self, val):
         """
@@ -149,7 +156,7 @@ class Parameter(lmfit.Parameter, Cache):
         elif self.prior_name == 'normal':
             return dists.Normal(self.mu, self.sigma)
         else:
-            raise NotImplementedError("only `uniform` and `normal` priors currently implemented")
+            raise NotImplementedError("only `uniform` and `normal` priors currently implemented")    
     
     @cached_property('prior')
     def has_prior(self):
@@ -166,8 +173,8 @@ class Parameter(lmfit.Parameter, Cache):
         if not self.bounded:
             return True
             
-        min_cond = True if self.min is None else self.value >= self.min
-        max_cond = True if self.max is None else self.value <= self.max
+        min_cond = True if self.min is None else self.user_value >= self.min
+        max_cond = True if self.max is None else self.user_value <= self.max
         return min_cond and max_cond
 
     @property

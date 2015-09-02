@@ -491,7 +491,7 @@ class PowerData(object):
         try:
             return self._diagonal_covariance
         except AttributeError:
-            C = self.covariance.asarray()
+            C = self.covariance.full()
             self._diagonal_covariance = np.array_equal(np.nonzero(C), np.diag_indices_from(C))
             return self._diagonal_covariance
     

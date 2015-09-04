@@ -804,7 +804,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         A = 1.
         if self.use_mu_corrections:
-            A = max(self.mu6_correction['A'],0.)
+            A = self.mu6_correction['A']
             
         return A*(self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k))
 

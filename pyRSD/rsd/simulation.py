@@ -431,7 +431,7 @@ class SimulationP11(InterpolatedSimulationData):
         
         # get the renormalization factor
         normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
-        factor = (self.f*self.sigma8_z)**2 * normed_power
+        factor = x*normed_power
         
         # get the pts
         if np.isscalar(k):
@@ -558,7 +558,7 @@ class SimulationPdv(InterpolatedSimulationData):
         
         # get the renormalization factor
         normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
-        factor = self.f*self.sigma8_z**2 * normed_power
+        factor = x*normed_power
         
         # get the pts
         if np.isscalar(k):

@@ -225,14 +225,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return Mu6CorrectionParams()
         
-    @cached_property('z', '_ib1', '_ib1_bar', 'sigma8_z')
+    @cached_property('z', '_ib1', '_ib1_bar')
     def mu6_correction(self):
         """
         Spline function giving the mu^6 amplitude correction as a function
         of linear bias
         """
         mean_bias = (self._ib1*self._ib1_bar)**0.5
-        return self.mu6_correction_params.to_dict(self.sigma8_z, mean_bias)
+        return self.mu6_correction_params.to_dict(self.z, mean_bias)
                 
     @cached_property()
     def nonlinear_bias_fitter(self):
@@ -804,7 +804,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         A = 1.
         if self.use_mu_corrections:
-            A = max(self.mu6_correction['A'], 0.)
+            A = max(self.mu6_correction['A'],0.)
             
         return A*(self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k))
 

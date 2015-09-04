@@ -360,7 +360,8 @@ def mu6_correction_params():
     Return the filename of a pickled Gaussian Process holding fits to 
     the parameters of the mu6 correction model
     """    
-    fname = _os.path.join(data_dir, 'simulation_fits/mu6_corrs_gp_bestfit_params.pickle')
+    fname = _os.path.join(data_dir, 'simulation_fits/mu6_corrs_gp_s8z_bestfit_params.pickle')
+    #fname = _os.path.join(data_dir, 'simulation_fits/mu6_corrs_gp_bestfit_params.pickle')
     return fname
     
     

@@ -46,6 +46,7 @@ class FittingDriver(object):
         """        
         # initialize the data too
         self.data = PowerData(param_file)
+        self.mode = self.data.mode # mode is either pkmu/poles
         
         # initialize the theory
         kwargs = {}
@@ -280,17 +281,24 @@ class FittingDriver(object):
         Compute the model callables
         """
         # get the mu/ell mappings
-        ks, mus = [], []
+        k, x = [], []
         for i, meas in enumerate(self.data.measurements):
-            ks.append(meas.k)
+            k.append(meas.k)
             if meas.type == 'pkmu':
-                mus.append(meas.mu)
+                x.append(meas.mu)
+            elif meas.type == 'pole':
+                x.append(meas.ell)
             else:
-                raise NotImplementedError("only pkmu supported right now")
+                raise NotImplementedError("only `pkmu` or `pole` supported right now")
+        
         self._ks = np.concatenate(ks)
-        self._mus = np.concatenate(mus)
-        self._model_callable = self.theory.model_callable(self._ks, self._mus)
-                        
+        if self.mode == 'pkmu':
+            self._mus = np.concatenate(x)
+            self._model_callable = self.theory.model_callable(self.mode, self._ks, mu=self._mus)
+        else:
+            self._ells = np.array(x)
+            self._model_callable = self.theory.model_callable(self.mode, self._ks, ell=self._ells, flatten=True)
+                    
     @property
     def results(self):
         """
@@ -510,12 +518,18 @@ class FittingDriver(object):
         results = self.data_model_pairs()
         
         # loop over each measurement
-        mus = []
+        mus, ells = [], []
         for i, m in enumerate(self.data.measurements):
-            mus.append(np.mean(m.mu))
+            if self.mode == 'pkmu':
+                mus.append(np.mean(m.mu))
+            elif self.mode == 'poles':
+                ells.append(m.ell)
 
         fig = pfy.figure()
-        self._plot_pkmu(fig, results, mus)
+        if self.mode == 'pkmu':
+            self._plot_pkmu(fig, results, mus)
+        elif self.mode == 'poles':
+            self._plot_poles(fig, results, ells)
 
     def _plot_pkmu(self, fig, results, mus):
         """
@@ -556,8 +570,48 @@ class FittingDriver(object):
         
         args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
         ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
+        
+    def _plot_poles(self, fig, results, ells):
+        """
+        Plot the model and data points for any multipole measurements
+        """
+        ax = fig.gca()
+        ax.color_cycle = 'Paired'
 
-#------------------------------------------------------------------------------
+        # set up the normalization
+        f = self.theory.fit_params['f'].value
+        b1 = self.theory.fit_params['b1'].value
+        beta = f/b1
+        mono_kaiser = lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * self.theory.model.normed_power_lin_nw(k)
+
+        for i, ell in enumerate(ells):
+            
+            # unpack the result
+            k_model, model, k_data, data, errs = results[i]
+            
+            # plot the model
+            norm = mono_kaiser(k_model)
+            pfy.plot(k_model, model/norm)
+            
+            # plot the measurement
+            if ell == 0:
+                label = "monopole"
+            elif ell == 2:
+                label = "quadrupole"
+            elif ell == 4:
+                label = 'hexadecapole'
+            else:
+                raise ValueError("Do not understand `ell` value for plotting purposes")
+            norm = mono_kaiser(k_data)
+            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
+
+        ell_str = ",".join(map(str, ells))
+        ax.legend(loc=0)
+        ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
+        ax.ylabel.update(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=%s} (k)$" %(ell_str, ell_str), fontsize=16)
+        
+        args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
+        ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
         
     
     

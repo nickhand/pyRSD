@@ -114,6 +114,7 @@ class GalaxyPowerTheory(object):
     evaluation of the model itself.
     """
     pkmu_callable = 'Pgal'
+    poles_callable = 'Pgal_poles'
     
     def __init__(self, param_file, extra_param_file=None, kmin=None, kmax=None):
         """        
@@ -150,8 +151,9 @@ class GalaxyPowerTheory(object):
         # read in the parameters again to get params that aren't fit params
         self.model_params = ParameterSet.from_file(param_file, tags='model')
         
-        # the callable for galaxy P(k,mu)
+        # the callables
         self.pkmu_callable = self.model_params.get('pkmu_callable', GalaxyPowerTheory.pkmu_callable)
+        self.poles_callable = self.model_params.get('poles_callable', GalaxyPowerTheory.poles_callable)
         
         # now setup the model parameters; only the valid model kwargs are read
         allowable_model_params = rsd.GalaxySpectrum.allowable_kwargs
@@ -209,6 +211,8 @@ class GalaxyPowerTheory(object):
         # now save the model params
         if self.pkmu_callable != GalaxyPowerTheory.pkmu_callable:
             self.model_params.add('pkmu_callable', value=self.pkmu_callable)
+        if self.poles_callable != GalaxyPowerTheory.poles_callable:
+            self.model_params.add('poles_callable', value=self.poles_callable)
         kwargs = {'mode':'a', 'header_name':'model params', 'footer':True, 'as_dict':False}     
         self.model_params.to_file(filename, **kwargs)
         
@@ -325,7 +329,7 @@ class GalaxyPowerTheory(object):
             raise RuntimeError(msg)   
         return True
         
-    def model_callable(self, k, mu, **kwargs):
+    def model_callable(self, mode, k, mu=None, ell=None, **kwargs):
         """
         Return the correct model function based on the type and identifier
         (from a PowerMeasurement)
@@ -335,12 +339,22 @@ class GalaxyPowerTheory(object):
         import functools
         
         # computing pkmu
-        try:
+        if mode == 'pkmu':
             if not hasattr(self.model, self.pkmu_callable):
                 raise ValueError("RSD model has no function `%s` to compute P(k,mu)" %self.pkmu_callable)
-                
+            if mu is None:
+                raise ValueError("need `mu` keyword to get P(k,mu) model callable")
             f = getattr(self.model, self.pkmu_callable)
             return functools.partial(f, k, mu, **kwargs)
+        elif mode == 'poles':
+            if not hasattr(self.model, self.poles_callable):
+                raise ValueError("RSD model has no function `%s` to compute multipoles" %self.poles_callable)
+            if ell is None:
+                raise ValueError("need `ell` keyword to get multipoles model callable")
+            f = getattr(self.model, self.poles_callable)
+            return functools.partial(f, k, ell, **kwargs)
+            
+            
             
         # all is lost...
         except Exception as e:        

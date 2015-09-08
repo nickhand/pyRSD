@@ -169,22 +169,7 @@ class PowerMeasurement(object):
             raise AttributeError("No `mu` attribute for `PowerMeasurement` of type `pole`")
         
         return self._identifier[self._k_trim_inds]
-        
-    #---------------------------------------------------------------------------
-    @property
-    def dmu(self):
-        """
-        If `type` == `pkmu`, then this returns the width of the mu bin associated
-        with this measurement
-        """
-        if self.type == 'pole':
-            raise AttributeError("No `dmu` attribute for `PowerMeasurement` of type `pole`")
-        
-        try:
-            return self._width
-        except:
-            return None
-            
+                    
     #---------------------------------------------------------------------------
     @property
     def ell(self):
@@ -224,11 +209,28 @@ class PowerData(object):
         """
         Initialize and setup up the measurements. 
         """
+        # read the params from file
         self.params = ParameterSet.from_file(param_file, tags='data')
-        self.kmin, self.kmax = self.params['fitting_range'].value
-            
-        # read the data file
+        self.mode = self.params.get('mode', 'pkmu')
+        
+        # read the data file, either pkmu or poles
         self.read_data()
+        
+        # determine kmin/kmax ranges
+        self._kmin = np.empty(self.data.shape[1])
+        self._kmax = np.empty(self.data.shape[1])
+        fit_range = self.params['fitting_range'].value
+        if len(fit_range) == 2:
+            self._kmin[:] = fit_range[0]
+            self._kmax[:] = fit_range[1]
+        else:
+            if len(fit_range) != self.data.shape[1]:
+                raise ValueError("mismatch between supplied fitting ranges and data read")
+            self._kmin[:], self._kmax[:] = zip(*fit_range)
+        
+        # global min/max
+        self.kmin = self._kmin.min()
+        self.kmax = self._kmax.max()
 
         # setup the measurements and covariances
         self._set_measurements()
@@ -248,7 +250,7 @@ class PowerData(object):
         dtype = [(col, 'f8') for col in columns]
         self.data = np.empty(shape, dtype=dtype)
         for i, col in enumerate(columns):
-            self.data[col] = data[...,i].reshape(shape)
+            self.data[col] = data[...,i].reshape(shape, order='F')
             
     def to_file(self, filename, mode='w'):
         """
@@ -312,22 +314,21 @@ class PowerData(object):
             if power_type not in ['pkmu', 'pole']:
                 logger.error("Measurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
                 raise ValueError("Measurement type must be either `pkmu` or `pole`")
-            if power_type == 'pole':
-                raise NotImplementedError("`pole` type not implemented currently")
                 
             # now make the PowerMeasurement object
-            k = self.data['k'][:,i]
-            mu = self.data['mu'][:,i]
-            power = self.data['power'][:,i]
-            error = self.data['error'][:,i]
-            self.measurements.append(PowerMeasurement(k, power, 'pkmu', mu, error=error))
+            if power_type == 'pkmu':
+                k = self.data['k'][:,i]
+                mu = self.data['mu'][:,i]
+                power = self.data['power'][:,i]
+                error = self.data['error'][:,i]
+                toadd = PowerMeasurement(k, power, 'pkmu', mu, error=error)
+            else:
+                k = self.data['k'][:,i]
+                power = self.data['power'][:,i]
+                error = self.data['error'][:,i]
+                toadd = PowerMeasurement(k, power, 'pole', int(value), error=error)
+            self.measurements.append(toadd)
             
-        # # make sure all the ks are the same
-        # tmp = self.measurements
-        # if not all(np.array_equal(tmp[i].k, tmp[i+1].k) for i in range(len(tmp)-1)):
-        #     msg = "All measurements read do not have same wavenumber array"
-        #     logger.error(msg)
-        #     raise ValueError(msg)
         logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             
     def _apply_bounds(self):
@@ -336,16 +337,15 @@ class PowerData(object):
         """
         # trim the measurements
         inds = []
-        for d in self.measurements:
-            d.k_max = self.kmax
-            d.k_min = self.kmin
+        for i, d in enumerate(self.measurements):
+            d.k_max = self._kmax[i]
+            d.k_min = self._kmin[i]
             inds += list(d._k_trim_inds)
         
         # now trim and make the new covariance
-        if self.kmax is not None or self.kmin is not None:
-            C = self.covariance[inds]
-            self.covariance = CovarianceMatrix(C, verify=False)
-            logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
+        C = self.covariance[inds]
+        self.covariance = CovarianceMatrix(C, verify=False)
+        logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
         
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:

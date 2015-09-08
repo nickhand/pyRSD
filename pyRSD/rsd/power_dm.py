@@ -479,7 +479,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
           
     #---------------------------------------------------------------------------
     # UTILITY FUNCTIONS
-    #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------        
     def k_true(self, k_obs, mu_obs):
         """
         Return the `true` k values, given an observed (k, mu)
@@ -1056,32 +1056,10 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                     P04.total.mu6 = P04.with_velocity.mu6
                     
         return P04
-    
+        
     #---------------------------------------------------------------------------
-    def _power_one_mu(self, k, mu_obs):
-        """
-        Internal function to evaluate P(k, mu) at a scalar mu value
-        """
-        # set the observed mu value
-        mu = self.mu_true(mu_obs)
-        k = self.k_true(k, mu_obs)
-        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
-                
-        if self.max_mu == 0:
-            P_out = self.P_mu0(k)
-        elif self.max_mu == 2:
-            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k)
-        elif self.max_mu == 4:
-            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k)
-        elif self.max_mu == 6:
-            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k) + mu**6*self.P_mu6(k)
-        elif self.max_mu == 8:
-            raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
-            
-        return np.nan_to_num(vol_scaling*P_out)
-    
-    #---------------------------------------------------------------------------
-    def power(self, k, mu, flatten=False):
+    @tools.broadcast_kmu
+    def power(self, k_obs, mu_obs, flatten=False):
         """
         Return the redshift space power spectrum at the specified value of mu, 
         including terms up to ``mu**self.max_mu``.
@@ -1102,13 +1080,27 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             model evaluated at different `mu` values. If `flatten = True`, then
             the returned array is raveled, with dimensions of `(N*len(self.k), )`
         """
-        verify_krange(k, self.kmin, self.kmax)
-        if np.isscalar(mu) or len(mu) == len(k):
-            return self._power_one_mu(k, mu)
-        else:
-            toret = np.vstack([self._power_one_mu(k, imu) for imu in mu]).T
-            if flatten: toret = np.ravel(toret, order='F')
-            return toret
+        verify_krange(k_obs, self.kmin, self.kmax)
+        
+        # set the observed mu value
+        mu = self.mu_true(mu_obs)
+        k = self.k_true(k_obs, mu_obs)
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+                
+        if self.max_mu == 0:
+            P_out = self.P_mu0(k)
+        elif self.max_mu == 2:
+            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k)
+        elif self.max_mu == 4:
+            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k)
+        elif self.max_mu == 6:
+            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k) + mu**6*self.P_mu6(k)
+        elif self.max_mu == 8:
+            raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
+        toret = np.nan_to_num(vol_scaling*P_out)
+        
+        if flatten: toret = np.ravel(toret, order='F')
+        return toret
     
     #---------------------------------------------------------------------------
     @tools.monopole

@@ -227,6 +227,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         k = 0.5*(self.kmin+self.kmax)
         return self.Pgal(k, 0.5)
             
+    @tools.broadcast_kmu
     def evaluate_fog(self, k_obs, mu_obs, sigma):
         """
         Compute the FOG damping, evaluating at `k` and `mu`. The 
@@ -234,11 +235,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """    
         k = self.k_true(k_obs, mu_obs)
         mu = self.mu_true(mu_obs)
-            
-        if np.isscalar(mu) or len(mu) == len(k):
-            return self.fog_model(k*mu*sigma)
-        else:
-            return np.vstack([self.fog_model(k*imu*sigma) for imu in mu]).T
+        return self.fog_model(k*mu*sigma)
     
     #---------------------------------------------------------------------------
     # Centrals power spectrum
@@ -470,7 +467,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         flatten : bool, optional    
             If `True`, flatten the return array, which will have a length of 
             `len(k) * len(mu)`
-        """        
+        """                
         N = self.N
         self.N = 0
         
@@ -508,18 +505,23 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         if not all(ell in [0,2,4] for ell in poles):
             raise ValueError("the only valid multipoles are ell = 0, 2, 4")
             
-        toret = ()
         mus = np.linspace(0., 1., 41)
         Pkmus = self.Pgal(k, mus)
-        for ell in poles:
-            kern = (2*ell+1.)*legendre(ell)(mus)
-            val = np.array([simps(kern*d, x=mus) for d in Pkmus])
-            toret += (val,)
-            
-        if scalar:
-            return toret[0]
+        
+        if len(poles) != len(k):
+            toret = ()
+            for ell in poles:
+                kern = (2*ell+1.)*legendre(ell)(mus)
+                val = np.array([simps(kern*d, x=mus) for d in Pkmus])
+                toret += (val,)
+                          
+            if scalar:
+                return toret[0]
+            else:
+                return toret if not flatten else np.ravel(toret)
         else:
-            return toret if not flatten else np.ravel(toret)
+            kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
+            return np.array([simps(d, x=mus) for d in kern*Pkmus])
 
     @tools.monopole
     def Pgal_mono(self, k, mu, **kwargs):

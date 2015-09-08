@@ -29,6 +29,22 @@ def unpacked(method):
     return _decorator
 
 #-------------------------------------------------------------------------------
+def broadcast_kmu(f):
+    """
+    Decorator to properly handle broadcasting of k, mu
+    """     
+    def wrapper(self, *args, **kwargs):
+        args = list(args)
+        k = args[0]
+        mu = args[1]
+        if not np.isscalar(mu) and not np.isscalar(k):
+            if len(mu) != len(k):
+                args[0] = k[:, np.newaxis]
+                args[1] = mu[np.newaxis, :]
+        return f(self, *args, **kwargs)
+        
+    return wrapper
+                
 def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function

@@ -346,6 +346,7 @@ class GalaxyPowerTheory(object):
                 raise ValueError("need `mu` keyword to get P(k,mu) model callable")
             f = getattr(self.model, self.pkmu_callable)
             return functools.partial(f, k, mu, **kwargs)
+        # computing multipoles
         elif mode == 'poles':
             if not hasattr(self.model, self.poles_callable):
                 raise ValueError("RSD model has no function `%s` to compute multipoles" %self.poles_callable)
@@ -353,14 +354,11 @@ class GalaxyPowerTheory(object):
                 raise ValueError("need `ell` keyword to get multipoles model callable")
             f = getattr(self.model, self.poles_callable)
             return functools.partial(f, k, ell, **kwargs)
-            
-            
-            
+        
         # all is lost...
-        except Exception as e:        
-            # something has gone horribly wrong...
-            msg = "failure trying to get model callable: " + str(e)
-            raise NotImplementedError(msg)
+        # something has gone horribly wrong...
+        msg = "failure trying to get model callable: " + str(e)
+        raise NotImplementedError(msg)
     
     def update_model(self):
         """

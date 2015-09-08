@@ -281,23 +281,22 @@ class FittingDriver(object):
         Compute the model callables
         """
         # get the mu/ell mappings
-        k, x = [], []
+        x = []
         for i, meas in enumerate(self.data.measurements):
-            k.append(meas.k)
             if meas.type == 'pkmu':
                 x.append(meas.mu)
             elif meas.type == 'pole':
-                x.append(meas.ell)
+                x.append([meas.ell]*len(meas.k))
             else:
                 raise NotImplementedError("only `pkmu` or `pole` supported right now")
         
-        self._ks = np.concatenate(ks)
+        self._ks = self.data.combined_k
         if self.mode == 'pkmu':
             self._mus = np.concatenate(x)
             self._model_callable = self.theory.model_callable(self.mode, self._ks, mu=self._mus)
         else:
-            self._ells = np.array(x)
-            self._model_callable = self.theory.model_callable(self.mode, self._ks, ell=self._ells, flatten=True)
+            self._ells = np.concatenate(x)
+            self._model_callable = self.theory.model_callable(self.mode, self._ks, ell=self._ells)
                     
     @property
     def results(self):
@@ -575,6 +574,7 @@ class FittingDriver(object):
         """
         Plot the model and data points for any multipole measurements
         """
+        import plotify as pfy
         ax = fig.gca()
         ax.color_cycle = 'Paired'
 

@@ -233,7 +233,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         Compute the FOG damping, evaluating at `k` and `mu`. The 
         `alpha_par` dependence here is just absorbed into the `sigma` parameter
         """    
-        return self.fog_model(k_obs*mu_obs*sigma)
+        k = self.k_true(k_obs, mu_obs)
+        mu = self.mu_true(mu_obs)
+        return self.fog_model(k*mu*sigma)
     
     #---------------------------------------------------------------------------
     # Centrals power spectrum
@@ -303,7 +305,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             term1 = (1 - self.f_so)**2 * G**2 * pk
             term2 = 2*self.f_so*(1-self.f_so)*G*G2*pk
             term3 = self.f_so**2 * G2**2 * pk
-            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs
+            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs/(self.alpha_perp**2 * self.alpha_par)
             toret = term1 + term2 + term3 + term4 + N
             self.sigma_c = sigma_c
         else:
@@ -342,7 +344,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G_s = self.evaluate_fog(k, mu, self.sigma_s)
         
         # return
-        toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs) + self.N
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+        toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs*vol_scaling) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
     def Pgal_cBs_2h(self, k, mu):
@@ -413,7 +416,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # the FOG damping terms
         G = self.evaluate_fog(k, mu, self.sigma_sB)
         
-        toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB) + self.N
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+        toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB*vol_scaling) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
     def Pgal_sBsB_2h(self, k, mu):

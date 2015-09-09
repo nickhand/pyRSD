@@ -225,7 +225,7 @@ class PowerData(object):
             self._kmin[:] = fit_range[0]
             self._kmax[:] = fit_range[1]
         else:
-            if len(fit_range) != len(stats)
+            if len(fit_range) != len(stats):
                 raise ValueError("mismatch between supplied fitting ranges and data read")
             self._kmin[:], self._kmax[:] = zip(*fit_range)
         

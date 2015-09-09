@@ -479,7 +479,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
         
-    def Pgal_poles(self, k, poles, flatten=False):
+    def Pgal_poles(self, k, poles, flatten=False, Nmu=41):
         """
         Return the multipole moments specified by `poles`, where `poles` is a
         list of integers, i.e., [0, 2, 4]
@@ -505,7 +505,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         if not all(ell in [0,2,4] for ell in poles):
             raise ValueError("the only valid multipoles are ell = 0, 2, 4")
             
-        mus = np.linspace(0., 1., 41)
+        mus = np.linspace(0., 1., Nmu)
         Pkmus = self.Pgal(k, mus)
         
         if len(poles) != len(k):

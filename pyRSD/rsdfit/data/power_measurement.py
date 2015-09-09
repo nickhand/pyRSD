@@ -217,14 +217,15 @@ class PowerData(object):
         self.read_data()
         
         # determine kmin/kmax ranges
-        self._kmin = np.empty(self.data.shape[1])
-        self._kmax = np.empty(self.data.shape[1])
+        stats = self.params['statistics'].value
+        self._kmin = np.empty(len(stats))
+        self._kmax = np.empty(len(stats))
         fit_range = self.params['fitting_range'].value
         if len(fit_range) == 2:
             self._kmin[:] = fit_range[0]
             self._kmax[:] = fit_range[1]
         else:
-            if len(fit_range) != self.data.shape[1]:
+            if len(fit_range) != len(stats)
                 raise ValueError("mismatch between supplied fitting ranges and data read")
             self._kmin[:], self._kmax[:] = zip(*fit_range)
         
@@ -302,10 +303,12 @@ class PowerData(object):
         if 'statistics' not in self.params:
             raise ValueError("Parameter `statistics` must be passed")
         stats = self.params['statistics'].value
+        columns = self.params.get('columns', range(len(stats)))
         
         # loop over each statistic
         self.measurements = []
         for i, stat_name in enumerate(stats):
+            col = columns[i]
             
             # parse the name
             power_type, value = stat_name.lower().split('_')
@@ -317,15 +320,15 @@ class PowerData(object):
                 
             # now make the PowerMeasurement object
             if power_type == 'pkmu':
-                k = self.data['k'][:,i]
-                mu = self.data['mu'][:,i]
-                power = self.data['power'][:,i]
-                error = self.data['error'][:,i]
+                k = self.data['k'][:,col]
+                mu = self.data['mu'][:,col]
+                power = self.data['power'][:,col]
+                error = self.data['error'][:,col]
                 toadd = PowerMeasurement(k, power, 'pkmu', mu, error=error)
             else:
-                k = self.data['k'][:,i]
-                power = self.data['power'][:,i]
-                error = self.data['error'][:,i]
+                k = self.data['k'][:,col]
+                power = self.data['power'][:,col]
+                error = self.data['error'][:,col]
                 toadd = PowerMeasurement(k, power, 'pole', int(value), error=error)
             self.measurements.append(toadd)
             

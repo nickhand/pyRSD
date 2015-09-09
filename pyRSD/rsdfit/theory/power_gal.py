@@ -309,7 +309,7 @@ class GalaxyPowerTheory(object):
         # set the parameters
         for val, name in zip(theta, self.free_names):
             self.fit_params[name].value = val
-           
+                   
         # only do this if the free params have finite priors
         if not np.isfinite(self.lnprior_free):
             return False

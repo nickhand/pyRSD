@@ -181,8 +181,8 @@ class AnalysisDriver(object):
             self.write_information_files()
             
         # save the combined output
-        bestfit_path = os.path.join(self.folder, 'info', 'combined_result.pickle')
-        rsd_io.save_pickle(self.combined_result, bestfit_path)
+        bestfit_path = os.path.join(self.folder, 'info', 'combined_result.npz')
+        self.combined_result.to_npz(bestfit_path)
         print self.combined_result
     
     #--------------------------------------------------------------------------

@@ -13,6 +13,7 @@ from .theory import GalaxyPowerTheory
 from .data import PowerData
 from .fitters import *
 from .util import rsd_io
+from .results import EmceeResults
 import functools
 import copy
 
@@ -111,7 +112,7 @@ class FittingDriver(object):
                     raise rsd_io.ConfigurationError('specified results file `%s` does not exist' %results_file)
                 else:
                     results_file = os.path.join(dirname, results_file)
-            driver.results = rsd_io.load_pickle(results_file)
+            driver.results = EmceeResults.from_npz(results_file)
     
         return driver
         
@@ -226,7 +227,7 @@ class FittingDriver(object):
         """                
         # save the results as a pickle
         logger.info('Saving the results to `%s`' %results_file)
-        rsd_io.save_pickle(self.results, results_file)
+        self.results.to_npz(results_file)
         
         if not exception:
             self.results.summarize_fit()

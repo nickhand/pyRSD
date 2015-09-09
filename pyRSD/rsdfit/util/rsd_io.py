@@ -73,16 +73,16 @@ def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0,
                     suffix = int(files.split('__')[-1].split('.')[0])
         suffix += 1
         while True:
-            fname = os.path.join(args.folder, outname_base)+str(suffix)+'.pickle'
+            fname = os.path.join(args.folder, outname_base)+str(suffix)+'.npz'
             if os.path.exists(fname):
                 suffix += 1
             else:
                 break
-        outfile_name = os.path.join(args.folder, outname_base)+str(suffix)+'.pickle'
+        outfile_name = os.path.join(args.folder, outname_base)+str(suffix)+'.npz'
         print 'Creating %s\n' %outfile_name
         
     else:
-        outfile_name = os.path.join(args.folder, outname_base)+args.chain_number+'.pickle'
+        outfile_name = os.path.join(args.folder, outname_base)+args.chain_number+'.npz'
         print 'Creating %s\n' %outfile_name
      
     # touch the file so it exists and then return

@@ -3,6 +3,7 @@ from .. import params_filename, logging
 from ..util import rsd_io
 from ..theory import GalaxyPowerTheory
 from ..data import PowerData
+from ..results import EmceeResults
 from collections import defaultdict
 
 LOG_LKL_CUTOFF = 3
@@ -230,7 +231,7 @@ def recover_folder_and_files(files):
                  and all([x in elem for x in substrings])]
     basename = os.path.basename(folder)
     
-    chains = [rsd_io.load_pickle(f) for f in files]
+    chains = [EmceeResults.from_npz(f) for f in files]
     return folder, files, basename, chains
 
 def extract_parameter_names(info):

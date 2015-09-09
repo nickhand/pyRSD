@@ -185,6 +185,7 @@ class EmceeResults(object):
     """
     Class to hold the fitting results from an `emcee` MCMC run
     """
+     
     def __init__(self, sampler, fit_params, burnin=None):
         """
         Initialize with the `emcee` sampler and the fitting parameters
@@ -222,6 +223,34 @@ class EmceeResults(object):
             burnin = int(max_autocorr) if not np.isnan(max_autocorr) else int(0.1*self.iterations) 
             logger.info("setting the burnin period to {} iterations".format(burnin))
         self.burnin = int(burnin)
+        
+    def to_npz(self, filename):
+        """
+        Save the relevant information of the class to a numpy ``npz`` file
+        """
+        atts = ['free_names', 'constrained_names', 'chain', 'lnprobs',
+                'acceptance_fraction', 'autocorr_times','constrained_chain',
+                'burnin']
+        d = {k:getattr(self, k) for k in atts}
+        np.savez(filename, **d)
+        
+    @classmethod
+    def from_npz(cls, filename):
+        """
+        Load a numpy ``npz`` file and return the corresponding ``EmceeResults`` object
+        """
+        toret = cls.__new__(cls)
+        with np.load(filename) as ff:
+            for k, v in ff.iteritems():
+                if k == 'burnin':
+                    continue
+                setattr(toret, k, v)
+        
+            toret._save_results()
+            toret.burnin = int(ff['burnin'])
+        toret.free_names = list(toret.free_names)
+        toret.constrained_names = list(toret.constrained_names)
+        return toret
         
     def __iter__(self):
         return iter(self.free_names + self.constrained_names)

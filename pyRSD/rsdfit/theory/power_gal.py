@@ -114,7 +114,7 @@ class GalaxyPowerTheory(object):
     evaluation of the model itself.
     """
     pkmu_callable = 'Pgal'
-    poles_callable = 'Pgal_poles'
+    poles_callable = 'Pgal_poles_discrete'
     
     def __init__(self, param_file, extra_param_file=None, kmin=None, kmax=None):
         """        
@@ -350,10 +350,11 @@ class GalaxyPowerTheory(object):
         elif mode == 'poles':
             if not hasattr(self.model, self.poles_callable):
                 raise ValueError("RSD model has no function `%s` to compute multipoles" %self.poles_callable)
-            if ell is None:
-                raise ValueError("need `ell` keyword to get multipoles model callable")
+            if ell is None or mu is None:
+                raise ValueError("need `ell` and `mu` keywords to get multipoles model callable")
+            weights = kwargs.pop('weights')
             f = getattr(self.model, self.poles_callable)
-            return functools.partial(f, k, ell, **kwargs)
+            return functools.partial(f, k, mu, ell, weights=weights, **kwargs)
         
         # all is lost...
         # something has gone horribly wrong...

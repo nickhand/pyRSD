@@ -244,14 +244,29 @@ class PowerData(object):
         """
         Read the data file
         """
-        with open(self.params['data_file'].value, 'r') as ff:
-            shape = tuple(map(int, ff.readline().split()))
-            columns = ff.readline().split()
-            data = np.loadtxt(ff)
+        # read the data first
+        lines = open(self.params['data_file'].value, 'r').readlines()
+        shape = tuple(map(int, lines[0].split()))
+        columns = lines[1].split()
+        N = np.prod(shape)
+        data = np.asarray([map(float, line.split()) for line in lines[2:N+2]])
+    
+        # return a structured array
         dtype = [(col, 'f8') for col in columns]
         self.data = np.empty(shape, dtype=dtype)
         for i, col in enumerate(columns):
             self.data[col] = data[...,i].reshape(shape, order='F')
+            
+        if self.mode == 'poles':
+            shape = tuple(map(int, lines[N+2].split()))
+            columns = lines[N+3].split()
+            N2 = np.prod(shape)
+            data2 = np.asarray([map(float, line.split()) for line in lines[N+4:N+4+N2]])
+            
+            dtype = [(col, 'f8') for col in columns]
+            self.pole_weights = np.empty(shape, dtype=dtype)
+            for i, col in enumerate(columns):
+                self.pole_weights[col] = data2[...,i].reshape(shape, order='F')
             
     def to_file(self, filename, mode='w'):
         """
@@ -355,6 +370,16 @@ class PowerData(object):
             args = (len(self.combined_power), self.covariance.N)
             logger.error("Combined power size {0}, covariance size {1}".format(*args))
             raise ValueError("shape mismatch between covariance matrix and power data points")
+            
+        # format ks for pole measurement
+        if self.mode == 'poles':
+            for i, d in enumerate(self.measurements):
+                inds = (d._k_input >= self.kmin) & (d._k_input <= self.kmax)
+                d._k_input = d._k_input[inds]
+                d.k_max = self._kmax[i]
+                d.k_min = self._kmin[i]
+            self.pole_weights = self.pole_weights[inds,:]
+            
             
     def _rescale_inverse_covar(self):
         """

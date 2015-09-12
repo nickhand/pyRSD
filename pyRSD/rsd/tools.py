@@ -38,9 +38,16 @@ def broadcast_kmu(f):
         k = args[0]
         mu = args[1]
         if not np.isscalar(mu) and not np.isscalar(k):
-            if len(mu) != len(k):
-                args[0] = k[:, np.newaxis]
-                args[1] = mu[np.newaxis, :]
+            mu_dim = np.ndim(mu) ; k_dim = np.ndim(k)
+            if mu_dim == 1 and k_dim == 1:
+                if len(mu) != len(k):
+                    args[0] = k[:, np.newaxis]
+                    args[1] = mu[np.newaxis, :]
+            else:
+                if k_dim > 1:
+                    args[1] =  mu[np.newaxis, :]
+                else:
+                    args[0] = k[:, np.newaxis]
         return f(self, *args, **kwargs)
         
     return wrapper

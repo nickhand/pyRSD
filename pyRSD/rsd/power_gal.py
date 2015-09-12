@@ -492,7 +492,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             The `ell` values of the multipole moments
         flatten : bool, optional    
             If `True`, flatten the return array, which will have a length of 
-            `len(k) * len(mu)`
+            `len(k) * len(poles)`
             
         Returns
         -------
@@ -518,10 +518,64 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             if scalar:
                 return toret[0]
             else:
-                return toret if not flatten else np.ravel(toret)
+                return toret if not flatten else np.ravel(toret, order='F')
         else:
             kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
             return np.array([simps(d, x=mus) for d in kern*Pkmus])
+            
+            
+    def Pgal_poles_discrete(self, k, mu, poles, weights=None, flatten=False):
+        """
+        Return the multipole moments specified by `poles`, where `poles` is a
+        list of integers, i.e., [0, 2, 4]. The multipoles are computed doing
+        a discrete sum of the provided `mu` values, possibly weighted by
+        `weights` in each k-bin (with the appropriate Legendre factor for
+        each multipole)
+        
+        Parameter
+        ---------
+        k : array_like
+            The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
+        mu : array_like
+            The mu value to evaluate the power spectrum at
+        poles : init, array_like
+            The `ell` values of the multipole moments
+        weights : array_like
+            the weights to use for summing over P(k,mu) in each bin
+        flatten : bool, optional    
+            If `True`, flatten the return array, which will have a length of 
+            `len(k) * len(poles)`
+            
+        Returns
+        -------
+        poles : array_like
+            returns array for each ell value in ``poles``
+        """
+        scalar = np.isscalar(poles)
+        if scalar: poles = [poles]
+        
+        if not all(ell in [0,2,4] for ell in poles):
+            raise ValueError("the only valid multipoles are ell = 0, 2, 4")
+            
+        # P(k,mu) to sum over 
+        Pkmu = self.Pgal(k, mu) # shape should be (Nk, Nmu)
+        
+        # legendre kernel, with shape (Nell, Nk, Nmu)
+        kern = np.asarray([(2*ell+1)*legendre(ell)(mu) for ell in poles])
+        
+        # make even weights if not provided
+        if weights is None:
+            weights = np.ones(mu.shape)
+            weights /= weights.sum(axis=-1)[:,None]
+            
+        # multiply and sum over mu -- shape is now (Nk, Nell)
+        poles = (kern*Pkmu*weights).sum(axis=-1).T
+        
+        # now return       
+        if scalar:
+            return poles[:, 0]
+        else:
+            return poles if not flatten else np.ravel(poles, order='F')
 
     @tools.monopole
     def Pgal_mono(self, k, mu, **kwargs):

@@ -287,7 +287,7 @@ class FittingDriver(object):
             if meas.type == 'pkmu':
                 x.append(meas.mu)
             elif meas.type == 'pole':
-                x.append([meas.ell]*len(meas.k))
+                x.append(meas.ell)
             else:
                 raise NotImplementedError("only `pkmu` or `pole` supported right now")
         
@@ -296,9 +296,12 @@ class FittingDriver(object):
             self._mus = np.concatenate(x)
             self._model_callable = self.theory.model_callable(self.mode, self._ks, mu=self._mus)
         else:
-            self._ells = np.concatenate(x)
-            self._model_callable = self.theory.model_callable(self.mode, self._ks, ell=self._ells)
-                    
+            self._ells = np.array(x)
+            kwargs = {'ell':self._ells, 'mu':self.data.pole_weights['mu'], 'weights':self.data.pole_weights['weights']}
+            f = self.theory.model_callable(self.mode, self.data.measurements[0].k, flatten=True, **kwargs)
+            sl = np.concatenate([d._k_trim_inds for d in self.data.measurements])
+            self._model_callable = lambda : f()[sl] 
+                        
     @property
     def results(self):
         """

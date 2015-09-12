@@ -298,9 +298,8 @@ class FittingDriver(object):
         else:
             self._ells = np.array(x)
             kwargs = {'ell':self._ells, 'mu':self.data.pole_weights['mu'], 'weights':self.data.pole_weights['weights']}
-            f = self.theory.model_callable(self.mode, self.data.measurements[0].k, flatten=True, **kwargs)
-            sl = np.concatenate([d._k_trim_inds for d in self.data.measurements])
-            self._model_callable = lambda : f()[sl] 
+            self._model_callable = self.theory.model_callable(self.mode, self.data.measurements[0].k, flatten=True, **kwargs)
+            self.pole_slice = np.concatenate([d._k_trim_inds for d in self.data.measurements])
                         
     @property
     def results(self):
@@ -332,8 +331,7 @@ class FittingDriver(object):
         `self.data.measurements`
         """
         N = len(self.data.measurements)
-        result = self._model_callable()
-        return result.reshape((N, -1)).T
+        return self.combined_model.reshape((N, -1)).T
     
     @property
     def combined_model(self):
@@ -341,7 +339,11 @@ class FittingDriver(object):
         Return the model values for each measurement concatenated into a single
         array
         """
-        return self.model.ravel(order='F')
+        result = self._model_callable()
+        if self.mode == 'poles':
+            return result[self.pole_slice]
+        else:
+            return result
         
     @property
     def dof(self):

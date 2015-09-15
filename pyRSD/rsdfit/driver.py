@@ -183,6 +183,8 @@ class FittingDriver(object):
         elif init_from == 'chain':
             free = self.theory.free_names
             start_chain = EmceeResults.from_npz(self.params['start_chain'].value)
+            if not all(k in start_chain.free_names+start_chain.constrained_names for k in free):
+                raise ValueError("not all free parameters present in startup chain")
             best_values = dict(zip(start_chain.free_names, start_chain.max_lnprob_values()))
             init_values = np.array([best_values[key] for key in free])
             
@@ -524,7 +526,7 @@ class FittingDriver(object):
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
         ax.legend(loc=0, ncol=2)
             
-    def plot(self):
+    def plot(self, show_data=True, ax=None):
         """
         Plot the model and data points for the measurements, plotting the 
         P(k, mu) and multipoles on separate figures
@@ -542,20 +544,24 @@ class FittingDriver(object):
             elif self.mode == 'poles':
                 ells.append(m.ell)
 
-        fig = pfy.figure()
+        if ax is None:
+            fig = pfy.figure()
+        else:
+            fig = ax.get_figure()
         if self.mode == 'pkmu':
-            self._plot_pkmu(fig, results, mus)
+            self._plot_pkmu(fig, results, mus, show_data=show_data)
         elif self.mode == 'poles':
-            self._plot_poles(fig, results, ells)
+            self._plot_poles(fig, results, ells, show_data=show_data)
 
-    def _plot_pkmu(self, fig, results, mus):
+    def _plot_pkmu(self, fig, results, mus, show_data=True):
         """
         Plot the model and data points for any P(k,mu) measurements
         """
         import plotify as pfy
         
         ax = fig.gca()
-        ax.color_cycle = 'Paired'
+        if ax.color_cycle != "Paired":
+            ax.color_cycle = 'Paired'
 
         # set up the normalization
         f = self.theory.fit_params['f'].value
@@ -577,8 +583,9 @@ class FittingDriver(object):
             pfy.plot(k_model, model/norm + offset*i)
             
             # plot the measurement
-            norm = Pnw_kaiser(k_data, mu)
-            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=label)
+            if show_data:
+                norm = Pnw_kaiser(k_data, mu)
+                pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=label)
 
         ncol = 1 if len(mus) < 4 else 2
         ax.legend(loc=0, ncol=ncol)
@@ -588,13 +595,14 @@ class FittingDriver(object):
         args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
         ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
         
-    def _plot_poles(self, fig, results, ells):
+    def _plot_poles(self, fig, results, ells, show_data=True):
         """
         Plot the model and data points for any multipole measurements
         """
         import plotify as pfy
         ax = fig.gca()
-        ax.color_cycle = 'Paired'
+        if ax.color_cycle != "Paired":
+            ax.color_cycle = 'Paired'
 
         # set up the normalization
         f = self.theory.fit_params['f'].value
@@ -620,8 +628,9 @@ class FittingDriver(object):
                 label = 'hexadecapole'
             else:
                 raise ValueError("Do not understand `ell` value for plotting purposes")
-            norm = mono_kaiser(k_data)
-            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
+            if show_data:
+                norm = mono_kaiser(k_data)
+                pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
 
         ell_str = ",".join(map(str, ells))
         ax.legend(loc=0)

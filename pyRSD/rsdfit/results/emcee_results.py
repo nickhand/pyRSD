@@ -608,9 +608,16 @@ class EmceeResults(object):
         
     def values(self):
         """
-        Convenience function to return the values for the free parameters
+        Convenience function to return the median values for the free parameters
         as an array
         """
-        return np.array([self[name].mean for name in self.free_names])
+        return np.array([self[name].median for name in self.free_names])
+        
+    def peak_values(self):
+        """
+        Convenience function to return the peak values for the free parameters
+        as an array
+        """
+        return np.array([self[name].peak for name in self.free_names])
 
     

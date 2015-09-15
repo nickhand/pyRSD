@@ -212,7 +212,7 @@ def recover_folder_and_files(files):
         
     # The following list defines the substring that a chain should contain for
     # the code to recognise it as a proper chain.
-    substrings = ['.pickle', '__']
+    substrings = ['.npz', '__']
     limit = 10
     if len(files) == 1 and os.path.isdir(files[0]):
             folder = os.path.normpath(files[0])

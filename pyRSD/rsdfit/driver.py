@@ -180,6 +180,11 @@ class FittingDriver(object):
                 raise ValueError("cannot initialize from fiducial values")
             else:
                 init_values = np.array(init_values)
+        elif init_from == 'chain':
+            free = self.theory.free_names
+            start_chain = EmceeResults.from_npz(self.params['start_chain'])
+            best_values = dict(zip(start_chain.free_names, start_chain.max_lnprob_values()))
+            init_values = np.array([best_values[key] for key in free])
             
         # get the solver function
         kwargs = {}
@@ -452,12 +457,19 @@ class FittingDriver(object):
             raise ValueError("Number of fiducial values not equal to number of free params")
         self.theory.set_free_parameters(theta)
 
-    def set_fit_results(self):
+    def set_fit_results(self, method='median'):
         """
         Set the free parameters from the results objects and update the model
         """
         if self.results is not None:
-            theta = self.results.values()
+            if method == 'median':
+                theta = self.results.values()
+            elif method == 'peak':
+                theta = self.results.peak_values()
+            elif method == 'max_lnprob':
+                theta = self.results.max_lnprob_values()
+            else:
+                raise ValueError("`method` keyword must be one of ['median', 'peak', 'max_lnprob']")
             self.theory.set_free_parameters(theta)
             
     def data_model_pairs(self):

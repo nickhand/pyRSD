@@ -56,7 +56,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_sA         = 2.6
         self.b1_sB         = 3.6
         self.sigma_c       = 1.
-        self.sigma_cA      = 0.
         self.sigma_s       = 5.
         self.sigma_sA      = 4.2
         self.sigma_sB      = 6.

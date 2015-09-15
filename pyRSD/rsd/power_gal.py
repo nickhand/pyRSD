@@ -62,6 +62,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.NcBs          = 3e4
         self.NsBsB         = 9e4
         self.N             = 0.
+        self.A_mu6         = 1.
         
         self.use_so_correction = use_so_correction
         self.f_so = 0.
@@ -71,6 +72,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # PARAMETERS
     #---------------------------------------------------------------------------  
+    @parameter
+    def A_mu6(self, val):
+        """
+        A_mu6 correction
+        """
+        return val
+        
     @parameter
     def f_so(self, val):
         """

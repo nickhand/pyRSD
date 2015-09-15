@@ -55,8 +55,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_cB         = 2.8
         self.b1_sA         = 2.6
         self.b1_sB         = 3.6
-        self.sigma_cA      = 1.
-        self.sigma_cB      = 1.
+        self.sigma_c       = 1.
+        self.sigma_cA      = 0.
         self.sigma_s       = 5.
         self.sigma_sA      = 4.2
         self.sigma_sB      = 6.
@@ -150,16 +150,9 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return val
     
     @parameter
-    def sigma_cA(self, val):
+    def sigma_c(self, val):
         """
-        The FOG velocity dispersion for type A centrals in Mpc/h
-        """
-        return val
-    
-    @parameter
-    def sigma_cB(self, val):
-        """
-        The FOG velocity dispersion for type B centrals in Mpc/h
+        The FOG velocity dispersion for centrals in Mpc/h
         """
         return val
                 
@@ -253,22 +246,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """    
         # set the linear biases first
         self.b1 = self.b1_bar = self.b1_cA
-                
+        
         # FOG damping
-        G = self.evaluate_fog(k, mu, self.sigma_cA)
-        pk = self.power(k, mu)
+        G = self.evaluate_fog(k, mu, self.sigma_c)
 
-        if self.use_so_correction:
-            G2 = self.evaluate_fog(k, mu, self.sigma_so)
-            term1 = (1 - self.f_so)**2 * G**2 * pk
-            term2 = 2*self.f_so*(1-self.f_so)*G*G2*pk
-            term3 = self.f_so**2 * G2**2 * pk
-            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs/(1-self.fcB)
-            toret = term1 + term2 + term3 + term4 + self.N
-        else:
-            toret = G**2*pk + self.N
-
-        # now return the power spectrum here  
+        # now return the power spectrum here
+        toret = G**2 * self.power(k, mu) + self.N        
         return toret if not flatten else np.ravel(toret, order='F')
     
     def Pgal_cAcB(self, k, mu, flatten=False):
@@ -280,11 +263,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
          self.b1_bar = self.b1_cB
 
          # FOG damping
-         G_cA = self.evaluate_fog(k, mu, self.sigma_cA)
-         G_cB = self.evaluate_fog(k, mu, self.sigma_cB)
+         G = self.evaluate_fog(k, mu, self.sigma_c)
 
          # now return the power spectrum here
-         toret = G_cA*G_cB * self.power(k, mu) + self.N
+         toret = G**2 * self.power(k, mu) + self.N
          return toret if not flatten else np.ravel(toret, order='F')
          
     def Pgal_cBcB(self, k, mu, flatten=False):
@@ -295,7 +277,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1 = self.b1_bar = self.b1_cB
 
         # FOG damping
-        G = self.evaluate_fog(k, mu, self.sigma_cB)
+        G = self.evaluate_fog(k, mu, self.sigma_c)
 
         # now return the power spectrum here
         toret = G**2*self.power(k, mu) + self.N
@@ -307,11 +289,27 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         N = self.N
         self.N = 0
-                            
+                
+        if self.use_so_correction:
+            sigma_c = self.sigma_c
+            self.sigma_c = 0
+            
         PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
         PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
         PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
-        toret = PcAcA + PcAcB + PcBcB + N        
+        pk = PcAcA + PcAcB + PcBcB
+        
+        if self.use_so_correction:
+            G = self.evaluate_fog(k, mu, sigma_c)
+            G2 = self.evaluate_fog(k, mu, self.sigma_so)
+            term1 = (1 - self.f_so)**2 * G**2 * pk
+            term2 = 2*self.f_so*(1-self.f_so)*G*G2*pk
+            term3 = self.f_so**2 * G2**2 * pk
+            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs/(self.alpha_perp**2 * self.alpha_par)
+            toret = term1 + term2 + term3 + term4 + N
+            self.sigma_c = sigma_c
+        else:
+            toret = pk + N
         
         self.N = N      
         return toret if not flatten else np.ravel(toret, order='F')
@@ -329,7 +327,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1_bar = self.b1_s
         
         # the FOG damping
-        G_c = self.evaluate_fog(k, mu, self.sigma_cA)
+        G_c = self.evaluate_fog(k, mu, self.sigma_c)
         G_s = self.evaluate_fog(k, mu, self.sigma_s)
         
         # now return the power spectrum here
@@ -342,11 +340,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         This has both a 1-halo and 2-halo term only.
         """
         # the FOG damping
-        G_c = self.evaluate_fog(k, mu, self.sigma_cB)
+        G_c = self.evaluate_fog(k, mu, self.sigma_c)
         G_s = self.evaluate_fog(k, mu, self.sigma_s)
         
         # return
-        toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs) + self.N
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+        toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs*vol_scaling) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
     def Pgal_cBs_2h(self, k, mu):
@@ -417,7 +416,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # the FOG damping terms
         G = self.evaluate_fog(k, mu, self.sigma_sB)
         
-        toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB) + self.N
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+        toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB*vol_scaling) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
     def Pgal_sBsB_2h(self, k, mu):

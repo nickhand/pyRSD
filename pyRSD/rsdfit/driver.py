@@ -182,7 +182,7 @@ class FittingDriver(object):
                 init_values = np.array(init_values)
         elif init_from == 'chain':
             free = self.theory.free_names
-            start_chain = EmceeResults.from_npz(self.params['start_chain'])
+            start_chain = EmceeResults.from_npz(self.params['start_chain'].value)
             best_values = dict(zip(start_chain.free_names, start_chain.max_lnprob_values()))
             init_values = np.array([best_values[key] for key in free])
             
@@ -198,7 +198,7 @@ class FittingDriver(object):
             # add some kwargs to pass too
             kwargs['pool'] = self.pool
             kwargs['chains_comm'] = self.chains_comm
-            if init_from in ['max-like', 'fiducial']: 
+            if init_from in ['max-like', 'fiducial', 'chain']: 
                 kwargs['init_values'] = init_values
             elif init_from == 'previous_run':
                 kwargs['init_values'] = self.results.copy()

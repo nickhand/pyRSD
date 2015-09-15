@@ -203,15 +203,15 @@ def run():
         kwargs['restart'] = restart_file
                     
     exception = True
-    #try:
-    # log to a temporary file (for now)
-    temp_log = tempfile.NamedTemporaryFile(delete=False)
-    temp_log_name = temp_log.name
-    temp_log.close()
-    add_file_logger(temp_log_name, chain_number)
+    try:
+        # log to a temporary file (for now)
+        temp_log = tempfile.NamedTemporaryFile(delete=False)
+        temp_log_name = temp_log.name
+        temp_log.close()
+        add_file_logger(temp_log_name, chain_number)
 
-    # run the fitting
-    exception = driver.run()
+        # run the fitting
+        exception = driver.run()
         
     except Exception as e:
         raise Exception(e)

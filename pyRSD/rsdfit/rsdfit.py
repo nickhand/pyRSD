@@ -213,38 +213,38 @@ def run():
     # run the fitting
     exception = driver.run()
         
-    #except Exception as e:
-    #    raise Exception(e)
-    #finally:
+    except Exception as e:
+        raise Exception(e)
+    finally:
                 
-        # # get the output and finalize
-        # if driver.results is not None:
-        #     kwargs['walkers'] = driver.results.walkers
-        #     kwargs['iterations'] =  driver.results.iterations
-        #     output_name = rsd_io.create_output_file(args, driver.params['fitter'].value, chain_number, **kwargs)
-        #     driver.finalize_fit(exception, output_name)
-        #
-        #     # now save the log to the logs dir
-        #     copy_log(temp_log_name, output_name, **copy_kwargs)
-        #
-        # # wait for all the processes, if we more than one
-        # if chains_comm is not None and chains_comm.size > 1:
-        #     chains_comm.Barrier()
-        #
-        # # if we made it this far, it's safe to delete the old results
-        # if os.path.exists(temp_log_name):
-        #     os.remove(temp_log_name)
-        # if args.subparser_name == 'restart' and os.path.exists(restart_file):
-        #     os.remove(restart_file)
-        #
-        # # # handle the MPI stuff
-        # if pool is not None:
-        #     if chains_comm is None or chains_comm.rank == 0:
-        #         pool.close()
-        # if chains_group is not None and chains_comm.rank == 0:
-        #     chains_group.Free()
-        # if chains_comm is not None and chains_comm.rank == 0:
-        #     chains_comm.Free()
+        # get the output and finalize
+        if driver.results is not None:
+            kwargs['walkers'] = driver.results.walkers
+            kwargs['iterations'] =  driver.results.iterations
+            output_name = rsd_io.create_output_file(args, driver.params['fitter'].value, chain_number, **kwargs)
+            driver.finalize_fit(exception, output_name)
+
+            # now save the log to the logs dir
+            copy_log(temp_log_name, output_name, **copy_kwargs)
+
+        # wait for all the processes, if we more than one
+        if chains_comm is not None and chains_comm.size > 1:
+            chains_comm.Barrier()
+
+        # if we made it this far, it's safe to delete the old results
+        if os.path.exists(temp_log_name):
+            os.remove(temp_log_name)
+        if args.subparser_name == 'restart' and os.path.exists(restart_file):
+            os.remove(restart_file)
+
+        # # handle the MPI stuff
+        if pool is not None:
+            if chains_comm is None or chains_comm.rank == 0:
+                pool.close()
+        if chains_group is not None and chains_comm.rank == 0:
+            chains_group.Free()
+        if chains_comm is not None and chains_comm.rank == 0:
+            chains_comm.Free()
             
     
 if __name__ == "__main__":

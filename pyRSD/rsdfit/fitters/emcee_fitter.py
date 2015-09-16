@@ -3,7 +3,6 @@ from .. import logging
 from ..results import EmceeResults
 from . import tools
 
-import emcee
 import time
 import signal
 import traceback
@@ -250,7 +249,9 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
         parameters
     *   Beware of a burn-in period. The most conservative you can get is making
         a histogram of only the final states of all walkers.
-    """        
+    """   
+    import emcee
+         
     # get params and/or defaults
     nwalkers  = params.get('walkers', 20)
     niters    = params.get('iterations', 500)

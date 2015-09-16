@@ -221,7 +221,7 @@ class ParameterSet(lmfit.Parameters):
                 f.write(header)
         
             output = []
-            for name, par in self.items():
+            for name, par in sorted(self.items()):
                 key = name if self.tag is None else "{}.{}".format(self.tag, name)
                 if as_dict:
                     par_dict = par.to_dict()

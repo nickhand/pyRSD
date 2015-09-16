@@ -3,7 +3,6 @@ from .. import logging
 from ..results import EmceeResults
 from . import tools
 
-from mpi4py import MPI
 import emcee
 import time
 import signal
@@ -62,6 +61,8 @@ class ChainManager(object):
             update_progress(self.theory, self.sampler, self.niters, self.nwalkers)
      
     def check_status(self):
+        from mpi4py import MPI
+        
         if self.comm is not None:
             if self.comm.Iprobe(source=MPI.ANY_SOURCE, tag=self.tags.EXIT):
                 raise ExitingException

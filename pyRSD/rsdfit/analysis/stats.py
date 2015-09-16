@@ -37,6 +37,10 @@ def convergence(info):
     if not info.prepared:
         tools.prepare(info)
         
+    # thin?
+    if info.thin != 1:
+        tools.thin_chains(info)
+        
     # Circle through all files to find the global maximum of likelihood
     logger.info('finding global maximum of likelihood')
     global_min_minus_lkl = info.min_minus_lkl

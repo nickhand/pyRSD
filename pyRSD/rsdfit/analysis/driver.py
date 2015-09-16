@@ -52,6 +52,7 @@ def set_analysis_defaults(kwargs):
     kwargs.setdefault('show_fiducial', True)
     kwargs.setdefault('fiducial', {})
     kwargs.setdefault('burnin', None)
+    kwargs.setdefault('thin', 1)
 
 class AnalysisDriver(object):
     """

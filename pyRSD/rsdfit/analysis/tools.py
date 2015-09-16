@@ -11,6 +11,17 @@ LOG_LKL_CUTOFF = 3
 logger = logging.getLogger('rsdfit.analyze')
 logger.addHandler(logging.NullHandler())
 
+def thin_chains(info):
+    """
+    Thin the chains
+    """
+    t = info.thin
+    for r in info.chains:
+        r.constrained_chain = r.constrained_chain[:,::t,:] 
+        r.chain = r.chain[:,::t,:]
+        r.lnprobs = r.lnprobs[:,::t]
+        r._save_results()
+
 def format_scaled_param(name, number):
     """
     Format the latex name of a parameter that has been scaled
@@ -94,7 +105,8 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
         steps += len(inds)
         accepted_steps += inds.sum()
         if not inds.sum():
-            raise rsd_io.AnalyzeError('no iterations left after removing burnin: chain not converged')
+            continue
+            #raise rsd_io.AnalyzeError('no iterations left after removing burnin: chain not converged')
         else:
             logger.info('removed {0}/{1} iterations when discarding burn-in'.format(len(inds)-inds.sum(), len(inds)))
 

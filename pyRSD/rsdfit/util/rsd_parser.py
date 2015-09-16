@@ -224,6 +224,10 @@ def setup_analyze_subparser(parent):
     # number of ticks that appear on the graph.
     h = "number of ticks on each axis"
     subparser.add_argument('--ticknumber', help=h, type=int, default=3)
+    
+    # thinning factor
+    h = 'the thinning factor to use'
+    subparser.add_argument('--thin', help=h, type=int, default=1)
                                 
     # possible plot file describing custom commands
     h = """ extra file to customize the output plots. You can actually

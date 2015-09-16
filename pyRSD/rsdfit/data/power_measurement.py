@@ -73,20 +73,28 @@ class PowerMeasurement(object):
         
     #---------------------------------------------------------------------------
     @property
+    def size(self):
+        """
+        The number of data points
+        """
+        return len(self.k)
+        
+    @property
     def label(self):
         """
         Return the label associated with this kind of measurement
         """
         if self.type == 'pkmu':
             return self.type + '_' + str(self.mu)
-        elif self.type == 'pkmu_diff':
-            return self.type + '_{}_{}'.format(*self.mu)
         else:
             if self.type == 'pole':
                 if self.ell == 0:
                     return 'monopole'
                 elif self.ell == 2:
                     return 'quadrupole'
+                elif self.ell == 4:
+                    return 'hexadecapole'
+                
         raise NotImplementedError("Confused about what label corresponds to this measurement")
         
     #---------------------------------------------------------------------------
@@ -187,11 +195,13 @@ class PowerMeasurement(object):
         """
         Builtin representation method
         """
-        kwargs = {'mu' : self.mu, 'N' : len(self.k), 'k_max' : np.amax(self.k)}
+        kwargs = {'N' : len(self.k), 'kmin': np.amin(self.k), 'kmax' : np.amax(self.k)}
         if self.type == 'pkmu':
-            return "<PowerMeasurement P(k, mu={mu}), k_max = {k_max:.3} h/Mpc, {N} data points>".format(**kwargs)
+            kwargs['mu'] = self.mu
+            return "<PowerMeasurement P(k, mu={mu}), ({kmin:.3} - {kmax:.3}) h/Mpc, {N} data points>".format(**kwargs)
         else:
-            return "<PowerMeasurement P_{{ell={ell}}}(k), k_max = {k_max:.3} h/Mpc, {N} data points>".format(**kwargs)
+            kwargs['ell'] = self.ell
+            return "<PowerMeasurement P_{{ell={ell}}}(k), ({kmin:.3} - {kmax:.3}) h/Mpc, {N} data points>".format(**kwargs)
     #---------------------------------------------------------------------------
     def __str__(self):
         """
@@ -218,14 +228,17 @@ class PowerData(object):
         
         # determine kmin/kmax ranges
         stats = self.params['statistics'].value
-        self._kmin = np.empty(len(stats))
-        self._kmax = np.empty(len(stats))
+        N = len(stats)
+        if self.params.get('usedata', None) is not None:
+            N = len(self.params['usedata'].value)
+        self._kmin = np.empty(N)
+        self._kmax = np.empty(N)
         fit_range = self.params['fitting_range'].value
-        if len(fit_range) == 2:
+        if isinstance(fit_range, tuple) and len(fit_range) == 2:
             self._kmin[:] = fit_range[0]
             self._kmax[:] = fit_range[1]
         else:
-            if len(fit_range) != len(stats):
+            if len(fit_range) != N:
                 raise ValueError("mismatch between supplied fitting ranges and data read")
             self._kmin[:], self._kmax[:] = zip(*fit_range)
         
@@ -237,6 +250,7 @@ class PowerData(object):
         self._set_measurements()
         self._set_covariance()
         self._apply_bounds()
+        self._slice_data()
         self._rescale_inverse_covar()
         
     #---------------------------------------------------------------------------
@@ -349,10 +363,33 @@ class PowerData(object):
             
         logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
             
+    
+    def _slice_data(self):
+        """
+        Slice the data measurements + covariance to only include certain statistics
+        """
+        usedata = self.params.get('usedata', None)
+        if usedata is None:
+            return
+            
+        inds = []
+        for imeas, meas in enumerate(self.measurements):
+            if imeas in usedata:
+                inds.append(np.ones(meas.size, dtype=bool))
+            else:
+                inds.append(np.zeros(meas.size, dtype=bool))
+        inds = np.concatenate(inds)
+        self.measurements = [meas for imeas, meas in enumerate(self.measurements) if imeas in usedata]
+        C = self.covariance[inds]
+        self.covariance = CovarianceMatrix(C, verify=False)
+        
     def _apply_bounds(self):
         """
         Apply the k bounds, and trim both the measurements and the covariance matrix
         """
+        # possibly slice the data, only keeping certain columns
+        self._slice_data()
+        
         # trim the measurements
         inds = []
         for i, d in enumerate(self.measurements):
@@ -364,7 +401,7 @@ class PowerData(object):
         C = self.covariance[inds]
         self.covariance = CovarianceMatrix(C, verify=False)
         logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
-        
+                
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:
             args = (len(self.combined_power), self.covariance.N)

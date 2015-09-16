@@ -27,7 +27,7 @@ def run(params, theory, objective, **kwargs):
     logger.info("LMFIT: Making `Parameter` objects for all free parameters")
     for name in theory.fit_params.free_names:
         par = theory.fit_params[name]
-        minimum, maximum = par.limits
+        minimum, maximum = par.min, par.max
         pars.add(name, value=par.value, min=minimum, max=maximum, vary=True)
         
     #---------------------------------------------------------------------------
@@ -62,7 +62,7 @@ def run(params, theory, objective, **kwargs):
         start = time.time()
         result = lmfit.minimize(model_eval, pars, method=method, **extra_kwargs)
         stop = time.time()
-        logger.info("LMFIT: ...minimization finished. Time elapsed: {}".format(tools.hms_string(stop-start)))    
+        logger.info("LMFIT: ...minimization finished. Time elapsed: {}".format(tools.hms_string(stop-start)))   
     except Exception as msg:
         raise RuntimeError(("Error in running lmfit. Perhaps the version "
             "is not right? (you have {} and should have >{}). Original "

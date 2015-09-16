@@ -390,7 +390,7 @@ class FittingDriver(object):
         if theta is not None:
             self.theory.set_free_parameters(theta)
         
-        norm = np.sqrt(self.data.covariance.diag())
+        norm = np.sqrt(self.data.covariance.diag)
         return  (self.combined_model - self.data.combined_power) / norm
 
     def chi2(self, theta=None):

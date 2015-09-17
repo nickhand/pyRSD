@@ -244,6 +244,8 @@ def recover_folder_and_files(files):
     basename = os.path.basename(folder)
     
     chains = [EmceeResults.from_npz(f) for f in files]
+    for i in range(1, len(chains)):
+        chains[i].verify_param_ordering(chains[0].free_names, chains[0].constrained_names)
     return folder, files, basename, chains
 
 def extract_parameter_names(info):

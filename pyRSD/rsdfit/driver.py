@@ -184,7 +184,15 @@ class FittingDriver(object):
             free = self.theory.free_names
             start_chain = EmceeResults.from_npz(self.params['start_chain'].value)
             best_values = dict(zip(start_chain.free_names, start_chain.max_lnprob_values()))
-            init_values = np.array([best_values[key] for key in free])
+            init_values = np.empty(len(free))
+            for i, key in enumerate(free):
+                if key in best_values:
+                    init_values[i] = best_values[key]
+                else:
+                    if self.theory.fit_params[key].fiducial is not None:
+                        init_values[i] = self.theory.fit_params[key].fiducial
+                    else:
+                        raise ValueError("cannot initiate from chain -- `%s` parameter missing" %key)
             
         # get the solver function
         kwargs = {}
@@ -564,6 +572,7 @@ class FittingDriver(object):
         Pnw_kaiser = lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * self.theory.model.normed_power_lin_nw(k)
 
         offset = -0.1
+        rescale = self.data.covariance.inverse_rescaling**(-0.5)
         for i in range(len(mus)):
             
             mu = mus[i]
@@ -578,7 +587,7 @@ class FittingDriver(object):
             
             # plot the measurement
             norm = Pnw_kaiser(k_data, mu)
-            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=label)
+            pfy.errorbar(k_data, data/norm + offset*i, errs*rescale/norm, zorder=2, label=label)
 
         ncol = 1 if len(mus) < 4 else 2
         ax.legend(loc=0, ncol=ncol)
@@ -602,6 +611,7 @@ class FittingDriver(object):
         beta = f/b1
         mono_kaiser = lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * self.theory.model.normed_power_lin_nw(k)
 
+        rescale = self.data.covariance.inverse_rescaling**(-0.5)
         for i, ell in enumerate(ells):
             
             # unpack the result
@@ -621,12 +631,12 @@ class FittingDriver(object):
             else:
                 raise ValueError("Do not understand `ell` value for plotting purposes")
             norm = mono_kaiser(k_data)
-            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
+            pfy.errorbar(k_data, data/norm, errs*rescale/norm, zorder=2, label=label)
 
         ell_str = ",".join(map(str, ells))
         ax.legend(loc=0)
         ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
-        ax.ylabel.update(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=%s} (k)$" %(ell_str, ell_str), fontsize=16)
+        ax.ylabel.update(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" %(ell_str), fontsize=16)
         
         args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
         ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)

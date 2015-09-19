@@ -377,6 +377,20 @@ class FittingDriver(object):
         """
         return self.theory.ndim
         
+    @property
+    def measurement_sizes(self):
+        """
+        Sizes of the various measurements
+        """
+        return np.array([len(m.k) for i, m in enumerate(self.data.measurements)])
+    
+    @property
+    def flat_idx(self):
+        """
+        Indices for slicing the flat results
+        """
+        return np.concatenate([[0], self.measurement_sizes.cumsum()])
+        
     #---------------------------------------------------------------------------
     # Probability functions
     #---------------------------------------------------------------------------
@@ -488,12 +502,9 @@ class FittingDriver(object):
             `self.data.measurements`
         """
         # get the model and data measurements
-        toret = []
-        Nks = np.array([len(m.k) for i, m in enumerate(self.data.measurements)])
-        inds = np.concatenate([[0], Nks.cumsum()])
-        
+        toret = []        
         for i, m in enumerate(self.data.measurements):          
-            model = self.combined_model[inds[i]:inds[i+1]]
+            model = self.combined_model[self.flat_idx[i]:self.flat_idx[i+1]]
             toret.append((m.k, model, m.k, m.power, m.error))
             
         return toret

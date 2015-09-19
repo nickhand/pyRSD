@@ -309,7 +309,7 @@ class FittingDriver(object):
             self._mus = np.concatenate(x)
             kwargs = {}
             kwargs['mu'] = self.data.weights['mu']
-            kwargs['weights'] = self.data.weights['weights']
+            kwargs['weights'] = self.data.weights['modes']
             kwargs['mu_edges'] = self.data.mu_edges
             self._model_callable = self.theory.model_callable(self.mode, self.data.weights['k'], **kwargs)
         else:
@@ -317,7 +317,7 @@ class FittingDriver(object):
             kwargs = {}
             kwargs['ell'] = self._ells
             kwargs['mu'] = self.data.weights['mu']
-            kwargs['weights'] = self.data.weights
+            kwargs['weights'] = self.data.weights['modes']
             self._model_callable = self.theory.model_callable(self.mode, self.data.weights['k'], **kwargs)
         
         self.data_slice = [d._k_trim_inds for d in self.data.measurements]

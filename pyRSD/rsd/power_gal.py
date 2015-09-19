@@ -547,24 +547,32 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         poles : array_like
             returns array for each ell value in ``poles``
         """
+        if np.ndim(k) != 2:
+            raise ValueError('`k` array must be 2D in `Pgal_discrete`')
+        if np.ndim(mu) != 2:
+            raise ValueError('`mu` array must be 2D in `Pgal_discrete`')
+            
+        # setup
         finite = np.isfinite(k)
         Nk = finite.shape[0]; Nmu = len(mu_edges)-1
         ndims = (Nk+2, Nmu+2)
         
+        # binning in mu
         dig_k = np.repeat(np.arange(Nk, dtype=int)[:,None], finite.shape[-1], axis=1) + 1
         dig_mu = np.digitize(mu[finite], mu_edges)
         multi_index = np.ravel_multi_index([dig_k[finite], dig_mu], ndims)
         
+        # compute P(k,mu)
         Pkmu = self.Pgal(k[finite], mu[finite])
         
         if weights is None:
             weights = np.ones(finite.shape)
-            weights /= weights.sum(axis=-1)[:,None]
-            
+        
+        # do the bin counts, weighting by `weights`, and properly normalizing
         minlength = np.prod(ndims)
         toret = np.bincount(multi_index, weights=Pkmu*weights[finite], minlength=minlength)
-        toret = toret.reshape(ndims)[1:-1,1:-1]
-        toret /= np.diff(mu_edges)
+        N = np.bincount(multi_index, weights=weights[finite], minlength=minlength)
+        toret = (toret/N).reshape(ndims)[1:-1,1:-1]
         toret = np.squeeze(toret)
         
         return toret if not flatten else np.ravel(toret, order='F')
@@ -619,9 +627,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         
         poles = np.empty(ndims+(3,))
         minlength = np.prod(ndims)
+        N = np.bincount(multi_index, weights=weights[finite], minlength=minlength)
         for i, ell in enumerate(ells):
             kern = (2*ell+1)*legendre(ell)(mu[finite])*Pkmu*weights[finite]
-            poles[...,i] = np.bincount(multi_index, weights=kern, minlength=minlength).reshape(ndims)
+            poles[...,i] = (np.bincount(multi_index, weights=kern, minlength=minlength)/N).reshape(ndims)
         poles = np.squeeze(poles[1:-1, 1:-1,:])
         
         return poles if not flatten else np.ravel(poles, order='F')

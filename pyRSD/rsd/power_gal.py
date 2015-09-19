@@ -522,8 +522,54 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
             return np.array([simps(d, x=mus) for d in kern*Pkmus])
             
+
+    def Pgal_discrete(self, k, mu, mu_edges, weights=None, flatten=False):
+        """
+        Return a discretized P(k,mu), which accounts for discrete binning
+        effects. 
+        
+        Parameter
+        ---------
+        k : array_like
+            The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
+        mu : array_like
+            The mu value to evaluate the power spectrum at
+        mu_edges : list
+            A list specifying the edges of the mu bins
+        weights : array_like, optional
+            the weights to use for summing over P(k,mu) in each bin
+        flatten : bool, optional    
+            If `True`, flatten the return array, which will have a length of 
+            `len(k) * len(poles)`
             
-    def Pgal_poles_discrete(self, k, mu, poles, weights=None, flatten=False):
+        Returns
+        -------
+        poles : array_like
+            returns array for each ell value in ``poles``
+        """
+        finite = np.isfinite(k)
+        Nk = finite.shape[0]; Nmu = len(mu_edges)-1
+        ndims = (Nk+2, Nmu+2)
+        
+        dig_k = np.repeat(np.arange(Nk, dtype=int)[:,None], finite.shape[-1], axis=1) + 1
+        dig_mu = np.digitize(mu[finite], mu_edges)
+        multi_index = np.ravel_multi_index([dig_k[finite], dig_mu], ndims)
+        
+        Pkmu = self.Pgal(k[finite], mu[finite])
+        
+        if weights is None:
+            weights = np.ones(finite.shape)
+            weights /= weights.sum(axis=-1)[:,None]
+            
+        minlength = np.prod(ndims)
+        toret = np.bincount(multi_index, weights=Pkmu*weights[finite], minlength=minlength)
+        toret = toret.reshape(ndims)[1:-1,1:-1]
+        toret /= np.diff(mu_edges)
+        toret = np.squeeze(toret)
+        
+        return toret if not flatten else np.ravel(toret, order='F')
+            
+    def Pgal_poles_discrete(self, k, mu, ells, weights=None, flatten=False):
         """
         Return the multipole moments specified by `poles`, where `poles` is a
         list of integers, i.e., [0, 2, 4]. The multipoles are computed doing
@@ -537,7 +583,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
         mu : array_like
             The mu value to evaluate the power spectrum at
-        poles : init, array_like
+        ells : init, array_like
             The `ell` values of the multipole moments
         weights : array_like
             the weights to use for summing over P(k,mu) in each bin
@@ -550,31 +596,35 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         poles : array_like
             returns array for each ell value in ``poles``
         """
-        scalar = np.isscalar(poles)
-        if scalar: poles = [poles]
+        if  np.isscalar(ells): ells = [ells]
         
-        if not all(ell in [0,2,4] for ell in poles):
+        if not all(ell in [0,2,4] for ell in ells):
             raise ValueError("the only valid multipoles are ell = 0, 2, 4")
-            
+        
+        mu_edges = np.linspace(0., 1., 2)
+        finite = np.isfinite(k)
+        Nk = finite.shape[0]; Nmu = len(mu_edges)-1
+        ndims = (Nk+2, Nmu+2)
+        
+        dig_k = np.repeat(np.arange(Nk, dtype=int)[:,None], finite.shape[-1], axis=1) + 1
+        dig_mu = np.digitize(mu[finite], mu_edges)
+        multi_index = np.ravel_multi_index([dig_k[finite], dig_mu], ndims)
+        
         # P(k,mu) to sum over 
-        Pkmu = self.Pgal(k, mu) # shape should be (Nk, Nmu)
+        Pkmu = self.Pgal(k[finite], mu[finite])
         
-        # legendre kernel, with shape (Nell, Nk, Nmu)
-        kern = np.asarray([(2*ell+1)*legendre(ell)(mu) for ell in poles])
-        
-        # make even weights if not provided
         if weights is None:
-            weights = np.ones(mu.shape)
+            weights = np.ones(finite.shape)
             weights /= weights.sum(axis=-1)[:,None]
-            
-        # multiply and sum over mu -- shape is now (Nk, Nell)
-        poles = (kern*Pkmu*weights).sum(axis=-1).T
         
-        # now return       
-        if scalar:
-            return poles[:, 0]
-        else:
-            return poles if not flatten else np.ravel(poles, order='F')
+        poles = np.empty(ndims+(3,))
+        minlength = np.prod(ndims)
+        for i, ell in enumerate(ells):
+            kern = (2*ell+1)*legendre(ell)(mu[finite])*Pkmu*weights[finite]
+            poles[...,i] = np.bincount(multi_index, weights=kern, minlength=minlength).reshape(ndims)
+        poles = np.squeeze(poles[1:-1, 1:-1,:])
+        
+        return poles if not flatten else np.ravel(poles, order='F')
 
     @tools.monopole
     def Pgal_mono(self, k, mu, **kwargs):

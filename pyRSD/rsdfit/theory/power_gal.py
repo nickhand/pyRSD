@@ -113,7 +113,7 @@ class GalaxyPowerTheory(object):
     spectrum. It handles the dependencies between model parameters and the 
     evaluation of the model itself.
     """
-    pkmu_callable = 'Pgal'
+    pkmu_callable = 'Pgal_discrete'
     poles_callable = 'Pgal_poles_discrete'
     
     def __init__(self, param_file, extra_param_file=None, kmin=None, kmax=None):
@@ -344,8 +344,13 @@ class GalaxyPowerTheory(object):
                 raise ValueError("RSD model has no function `%s` to compute P(k,mu)" %self.pkmu_callable)
             if mu is None:
                 raise ValueError("need `mu` keyword to get P(k,mu) model callable")
-            f = getattr(self.model, self.pkmu_callable)
-            return functools.partial(f, k, mu, **kwargs)
+            weights = kwargs.pop('weights', None)
+            if weights is not None:
+                muedges = kwargs.pop('mu_edges')
+                f = getattr(self.model, self.pkmu_callable)
+                return functools.partial(f, k, mu, muedges, weights=weights, **kwargs)
+            else:
+                return functools.partial(f, k, mu, **kwargs)
         # computing multipoles
         elif mode == 'poles':
             if not hasattr(self.model, self.poles_callable):

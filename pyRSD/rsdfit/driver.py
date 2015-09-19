@@ -307,12 +307,21 @@ class FittingDriver(object):
         self._ks = self.data.combined_k
         if self.mode == 'pkmu':
             self._mus = np.concatenate(x)
-            self._model_callable = self.theory.model_callable(self.mode, self._ks, mu=self._mus)
+            kwargs = {}
+            kwargs['mu'] = self.data.weights['mu']
+            kwargs['weights'] = self.data.weights['weights']
+            kwargs['mu_edges'] = self.data.mu_edges
+            self._model_callable = self.theory.model_callable(self.mode, self.data.weights['k'], **kwargs)
         else:
             self._ells = np.array(x)
-            kwargs = {'ell':self._ells, 'mu':self.data.pole_weights['mu'], 'weights':self.data.pole_weights['weights']}
-            self._model_callable = self.theory.model_callable(self.mode, self.data.measurements[0].k, flatten=True, **kwargs)
-            self.pole_slice = np.concatenate([d._k_trim_inds for d in self.data.measurements])
+            kwargs = {}
+            kwargs['ell'] = self._ells
+            kwargs['mu'] = self.data.weights['mu']
+            kwargs['weights'] = self.data.weights
+            self._model_callable = self.theory.model_callable(self.mode, self.data.weights['k'], **kwargs)
+        
+        self.data_slice = [d._k_trim_inds for d in self.data.measurements]
+        self.data_slice_flat = np.concatenate(self.data_slice)
                         
     @property
     def results(self):
@@ -338,25 +347,13 @@ class FittingDriver(object):
         self._results = val
         
     @property
-    def model(self):
-        """
-        A list of model values for each `PowerMeasurement` in 
-        `self.data.measurements`
-        """
-        N = len(self.data.measurements)
-        return self.combined_model.reshape((N, -1)).T
-    
-    @property
     def combined_model(self):
         """
         Return the model values for each measurement concatenated into a single
         array
         """
-        result = self._model_callable()
-        if self.mode == 'poles':
-            return result[self.pole_slice]
-        else:
-            return result
+        result = self._model_callable().ravel(order='F')
+        return result[self.data_slice_flat]
         
     @property
     def dof(self):
@@ -490,14 +487,14 @@ class FittingDriver(object):
             A list of (k_model, model, k_data, data, err) for each measurement in 
             `self.data.measurements`
         """
-        N = len(self.data.measurements)
-        ks = self._ks.reshape((N, -1)).T
-        model = self.model
-
         # get the model and data measurements
         toret = []
+        Nks = np.array([len(m.k) for i, m in enumerate(self.data.measurements)])
+        inds = np.concatenate([[0], Nks.cumsum()])
+        
         for i, m in enumerate(self.data.measurements):          
-            toret.append((ks[...,i], model[...,i], m.k, m.power, m.error))
+            model = self.combined_model[inds[i]:inds[i+1]]
+            toret.append((m.k, model, m.k, m.power, m.error))
             
         return toret
     

@@ -253,17 +253,20 @@ class PowerData(object):
         self._slice_data()
         self._rescale_inverse_covar()
         
+        self.mu_edges = self.params.get('mu_edges', np.linspace(0., 1.0, len(self.measurements)+1))
+        
     #---------------------------------------------------------------------------
     def read_data(self):
         """
         Read the data file
         """
         # read the data first
-        lines = open(self.params['data_file'].value, 'r').readlines()
-        shape = tuple(map(int, lines[0].split()))
-        columns = lines[1].split()
-        N = np.prod(shape)
-        data = np.asarray([map(float, line.split()) for line in lines[2:N+2]])
+        data_file = self.params['data_file'].value
+        with open(data_file, 'r') as ff:    
+            shape = tuple(map(int, ff.readline().split()))
+            columns = ff.readline().split()
+            N = np.prod(shape)
+            data = np.loadtxt(ff)
     
         # return a structured array
         dtype = [(col, 'f8') for col in columns]
@@ -271,16 +274,22 @@ class PowerData(object):
         for i, col in enumerate(columns):
             self.data[col] = data[...,i].reshape(shape, order='F')
             
-        if self.mode == 'poles':
-            shape = tuple(map(int, lines[N+2].split()))
-            columns = lines[N+3].split()
-            N2 = np.prod(shape)
-            data2 = np.asarray([map(float, line.split()) for line in lines[N+4:N+4+N2]])
+        self.weights = None
+        weight_file = self.params.get('weight_file', None)
+        if weight_file is not None:
+            with open(weight_file, 'r') as ff:
+                shape = tuple(map(int, ff.readline().split()))
+                columns = ff.readline().split()
+                N = np.prod(shape)
+                data = np.loadtxt(ff)
             
             dtype = [(col, 'f8') for col in columns]
-            self.pole_weights = np.empty(shape, dtype=dtype)
+            self.weights = np.empty(shape, dtype=dtype)
             for i, col in enumerate(columns):
-                self.pole_weights[col] = data2[...,i].reshape(shape, order='F')
+                self.weights[col] = data[...,i].reshape(shape, order='F')
+    
+            if self.weights.shape[0] != self.data.shape[0]:
+                raise ValueError("mismatch in first dimension size between data and weight arrays")
             
     def to_file(self, filename, mode='w'):
         """
@@ -395,29 +404,29 @@ class PowerData(object):
         for i, d in enumerate(self.measurements):
             d.k_max = self._kmax[i]
             d.k_min = self._kmin[i]
-            inds += list(d._k_trim_inds)
-        
+            inds.append(d._k_trim_inds)
+            
         # now trim and make the new covariance
-        C = self.covariance[inds]
+        concat_inds = np.concatenate(inds)
+        C = self.covariance[concat_inds]
         self.covariance = CovarianceMatrix(C, verify=False)
         logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
                 
+        # if we have weights, trim
+        if self.weights is not None:
+            for i, d in enumerate(self.measurements):
+                 inds = (d._k_input >= self.kmin) & (d._k_input <= self.kmax)
+                 d._k_input = d._k_input[inds]
+                 d.k_max = self._kmax[i]
+                 d.k_min = self._kmin[i]
+            self.weights = self.weights[inds,:]
+            
         # verify the covariance matrix
         if len(self.combined_power) != self.covariance.N:
             args = (len(self.combined_power), self.covariance.N)
             logger.error("Combined power size {0}, covariance size {1}".format(*args))
             raise ValueError("shape mismatch between covariance matrix and power data points")
-            
-        # format ks for pole measurement
-        if self.mode == 'poles':
-            for i, d in enumerate(self.measurements):
-                inds = (d._k_input >= self.kmin) & (d._k_input <= self.kmax)
-                d._k_input = d._k_input[inds]
-                d.k_max = self._kmax[i]
-                d.k_min = self._kmin[i]
-            self.pole_weights = self.pole_weights[inds,:]
-            
-            
+                        
     def _rescale_inverse_covar(self):
         """
         Rescale the inverse of the covariance matrix in order to get an unbiased estimate

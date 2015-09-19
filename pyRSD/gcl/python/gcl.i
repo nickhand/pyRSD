@@ -39,6 +39,7 @@ using std::string;
 %include "ImnOneLoop.i"
 %include "ZeldovichPS.i"
 %include "NonlinearPS.i"
+%include "MyFFTLog.i"
 
 
 

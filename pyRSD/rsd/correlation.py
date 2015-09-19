@@ -7,6 +7,7 @@
  contact: nhand@berkeley.edu
  creation date: 05/01/2014
 """
+from ._cache import Cache, parameter, interpolated_property, cached_property
 from .. import pygcl, numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.misc import derivative
@@ -14,13 +15,12 @@ from scipy.misc import derivative
 KMAX = 100.
 
 
-class ExtrapolatedMultipole(object):
+class ExtrapolatedMultipole(Cache):
     """
     Class to extrapolate the redshift space multipoles at low and high k, 
     using a power law at high k
     """
-    
-    def __init__(self, power, kcut=0.2, ell=0, linear=False):
+    def __init__(self, k, pole, ell, kcut=0.2, linear=False):
         
         """
         Parameters
@@ -38,21 +38,14 @@ class ExtrapolatedMultipole(object):
         linear : bool, optional
             Whether to do linear calculation
         """
-        self.power = power
-        self.kcut = kcut
-        self.linear = linear
-                
-        assert (ell in [0, 2]), "Multipole number must be 0 or 2"
-        self.ell = ell
-
-        if self.linear:
-            self.Pspec = self.kaiser(self.power.k)
-        else:
-            if (self.ell == 0):
-                self.Pspec = self.power.monopole()
-            else:
-                self.Pspec = self.power.quadrupole()
+        # initialize the Cache subclass first
+        Cache.__init__(self)
         
+        self.k = k
+        self.pole = pole
+        self.ell = ell                
+        self.kcut = kcut
+
         # check kmin value
         if self.kmin_model > 0.05: 
             raise ValueError("Power spectrum must be computed down to at least k = 0.05 h/Mpc.")
@@ -61,82 +54,105 @@ class ExtrapolatedMultipole(object):
         if (self.kcut > self.kmax_model and not self.linear):
             print "Warning: requested k_cut = %.2f is larger than maximum k for model, k = %.2f" %(self.kcut, self.kmax_model)
             self.kcut = self.kmax_model
-        
-    #end __init__
     
     #---------------------------------------------------------------------------
-    # Some attributes we need
+    # attributes
     #---------------------------------------------------------------------------
-    @property
-    def b1(self):
+    @parameter
+    def k(self, val):
+        """
+        The k values where the input multipole is defined
+        """
+        return val
+        
+    @parameter
+    def pole(self, val):
+        """
+        The input multipole values
+        """
+        return val
+        
+    @parameter
+    def ell(self, val):
+        """
+        The multipole number
+        """
+        return val
+    
+    @parameter
+    def b1(self, val):
         """
         The linear bias factor.
         """
-        return self.power.b1
-            
-    @b1.setter
-    def b1(self, val):
-        self.power.b1 = val
-                        
-        # delete the linear kaiser splines
-        for a in ['_kaiser_mono_spline', '_kaiser_quad_spline']:
-            if hasattr(self, a): delattr(self, a)
-    
-    #---------------------------------------------------------------------------
-    @property
-    def kmin_model(self):
-        return np.amin(self.power.k)
-    
-    #---------------------------------------------------------------------------
-    @property
-    def kmax_model(self):
-        return np.amax(self.power.k)
+        return val
+        
+    @parameter
+    def f(self, val):
+        """
+        The value of the log growth rate f
+        """
+        return val
+        
+    @parameter
+    def power_lin(self, val):
+        """
+        The linear power spectrum
+        """
+        return val
         
     #---------------------------------------------------------------------------
-    @property
+    # cached properties
+    #---------------------------------------------------------------------------
+    @cached_property("k")
+    def kmin_model(self):
+        """
+        The minimum value of the input k
+        """
+        return np.amin(self.k)
+    
+    @cached_property("k")
+    def kmax_model(self):
+        """
+        The maximum value of the input k
+        """
+        return np.amax(self.k)
+        
+    @cached_property("k", "pole")
     def model_spline(self):
-        try:
-            return self._model_spline
-        except AttributeError:
-            if (self.ell == 0):
-                self._model_spline = InterpolatedUnivariateSpline(self.power.k, self.Pspec)
-            elif (self.ell == 2):
-                self._model_spline = InterpolatedUnivariateSpline(self.power.k, self.Pspec)
-            return self._model_spline
+        """
+        Spline of the input (k, pole) values
+        """
+        return InterpolatedUnivariateSpline(self.k, self.pole)
+
             
-    #---------------------------------------------------------------------------
-    @property
+    @cached_property("pole", "k", "kcut")
     def powerlaw_slope(self):
-        try:
-            return self._powerlaw_slope
-        except AttributeError:
-            inds = np.where(self.Pspec > 0.)
-            logspline = InterpolatedUnivariateSpline(self.power.k[inds], np.log(self.Pspec[inds]))
-            self._powerlaw_slope = derivative(logspline, self.kcut, dx=1e-3)*self.kcut
-            return self._powerlaw_slope
-            
-    #---------------------------------------------------------------------------
+        """
+        The power law extrapolation slop used beyond ``kcut``
+        """
+        inds = np.where(self.pole > 0.)
+        logspline = InterpolatedUnivariateSpline(self.k[inds], np.log(self.pole[inds]))
+        return derivative(logspline, self.kcut, dx=1e-3)*self.kcut
+           
     def kaiser(self, k):
         """
         The linear, Kaiser power multipole, as specified by `self.ell`
         """
-        beta = self.power.f/self.b1
+        beta = self.f/self.b1
         if (self.ell == 0):
             prefactor = 1. + (2./3.)*beta + (1./5.)*beta**2;
         elif (self.ell == 2):
             prefactor = (4./3.)*beta + (4./7.)*beta**2;
-            
-        return prefactor * self.b1**2 * self.power.normed_power_lin(k)
-    #end kaiser
+
+        return prefactor * self.b1**2 * self.power_lin(k)
     
     #---------------------------------------------------------------------------
     def _evaluate(self, k):
-        
-        if self.linear:
-            return self.kaiser(k)
-        
+        """
+        Internal function to evaluate
+        """
         if (k < self.kmin_model):
-            return self.Pspec[0]*self.kaiser(k)/self.kaiser(self.kmin_model)
+            return self.pole[0]*self.kaiser(k)/self.kaiser(self.kmin_model)
         elif (k > self.kcut):
             return self.model_spline(self.kcut)*(k/self.kcut)**self.powerlaw_slope  
         else:
@@ -151,8 +167,6 @@ class ExtrapolatedMultipole(object):
         else:
             return np.array([self._evaluate(ki) for ki in k])
         
-#-------------------------------------------------------------------------------
-#endclass ExtrapolatedMultipole
 
 #-------------------------------------------------------------------------------
 

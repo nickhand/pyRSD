@@ -1,2 +1,2 @@
-from .covariance_matrix import CovarianceMatrix, PkmuCovarianceMatrix
+from .covariance_matrix import CovarianceMatrix, PkmuCovarianceMatrix, PoleCovarianceMatrix
 from .power_measurement import PowerData, PowerMeasurement

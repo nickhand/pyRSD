@@ -56,7 +56,7 @@ def slice_data(data, indexers, indexes, return_indices=False):
         key[axis] = valid
         
     # now use np.take to slice each axis
-    for axis, indices in enumerate(key):
+    for axis, indices in reversed(list(enumerate(key))):
         if indices is None: continue
         data = np.take(data, indices, axis=axis)
     if not return_indices:

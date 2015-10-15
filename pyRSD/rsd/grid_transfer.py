@@ -124,6 +124,17 @@ class PkmuGrid(object):
     @property
     def notnull(self):
         return (np.isfinite(self.modes))&(self.modes > 0)
+        
+    def __str__(self):
+        """
+        Builtin string representation
+        """
+        cls = self.__class__.__name__
+        args = (cls, self.Nk, self.Nmu, (1.-1.*self.notnull.sum()/np.prod(self.shape))*100.)
+        return "<%s: size (%dx%d), %.2f%% empty grid points>" %args
+    
+    def __repr__(self):
+        return self.__str__()
 
 
 class PkmuTransfer(Cache):

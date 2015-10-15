@@ -521,120 +521,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         else:
             kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
             return np.array([simps(d, x=mus) for d in kern*Pkmus])
-            
-
-    def Pgal_discrete(self, k, mu, mu_edges, weights=None, flatten=False):
-        """
-        Return a discretized P(k,mu), which accounts for discrete binning
-        effects. 
-        
-        Parameter
-        ---------
-        k : array_like
-            The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
-        mu : array_like
-            The mu value to evaluate the power spectrum at
-        mu_edges : list
-            A list specifying the edges of the mu bins
-        weights : array_like, optional
-            the weights to use for summing over P(k,mu) in each bin
-        flatten : bool, optional    
-            If `True`, flatten the return array, which will have a length of 
-            `len(k) * len(poles)`
-            
-        Returns
-        -------
-        poles : array_like
-            returns array for each ell value in ``poles``
-        """
-        if np.ndim(k) != 2:
-            raise ValueError('`k` array must be 2D in `Pgal_discrete`')
-        if np.ndim(mu) != 2:
-            raise ValueError('`mu` array must be 2D in `Pgal_discrete`')
-            
-        # setup
-        finite = np.isfinite(k)
-        Nk = finite.shape[0]; Nmu = len(mu_edges)-1
-        ndims = (Nk+2, Nmu+2)
-        
-        # binning in mu
-        dig_k = np.repeat(np.arange(Nk, dtype=int)[:,None], finite.shape[-1], axis=1) + 1
-        dig_mu = np.digitize(mu[finite], mu_edges)
-        multi_index = np.ravel_multi_index([dig_k[finite], dig_mu], ndims)
-        
-        # compute P(k,mu)
-        Pkmu = self.Pgal(k[finite], mu[finite])
-        
-        if weights is None:
-            weights = np.ones(finite.shape)
-        
-        # do the bin counts, weighting by `weights`, and properly normalizing
-        minlength = np.prod(ndims)
-        toret = np.bincount(multi_index, weights=Pkmu*weights[finite], minlength=minlength)
-        N = np.bincount(multi_index, weights=weights[finite], minlength=minlength)
-        toret = (toret/N).reshape(ndims)[1:-1,1:-1]
-        toret = np.squeeze(toret)
-        
-        return toret if not flatten else np.ravel(toret, order='F')
-            
-    def Pgal_poles_discrete(self, k, mu, ells, weights=None, flatten=False):
-        """
-        Return the multipole moments specified by `poles`, where `poles` is a
-        list of integers, i.e., [0, 2, 4]. The multipoles are computed doing
-        a discrete sum of the provided `mu` values, possibly weighted by
-        `weights` in each k-bin (with the appropriate Legendre factor for
-        each multipole)
-        
-        Parameter
-        ---------
-        k : array_like
-            The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
-        mu : array_like
-            The mu value to evaluate the power spectrum at
-        ells : init, array_like
-            The `ell` values of the multipole moments
-        weights : array_like
-            the weights to use for summing over P(k,mu) in each bin
-        flatten : bool, optional    
-            If `True`, flatten the return array, which will have a length of 
-            `len(k) * len(poles)`
-            
-        Returns
-        -------
-        poles : array_like
-            returns array for each ell value in ``poles``
-        """
-        if  np.isscalar(ells): ells = [ells]
-        
-        if not all(ell in [0,2,4] for ell in ells):
-            raise ValueError("the only valid multipoles are ell = 0, 2, 4")
-        
-        mu_edges = np.linspace(0., 1., 2)
-        finite = np.isfinite(k)
-        Nk = finite.shape[0]; Nmu = len(mu_edges)-1
-        ndims = (Nk+2, Nmu+2)
-        
-        dig_k = np.repeat(np.arange(Nk, dtype=int)[:,None], finite.shape[-1], axis=1) + 1
-        dig_mu = np.digitize(mu[finite], mu_edges)
-        multi_index = np.ravel_multi_index([dig_k[finite], dig_mu], ndims)
-        
-        # P(k,mu) to sum over 
-        Pkmu = self.Pgal(k[finite], mu[finite])
-        
-        if weights is None:
-            weights = np.ones(finite.shape)
-            weights /= weights.sum(axis=-1)[:,None]
-        
-        poles = np.empty(ndims+(3,))
-        minlength = np.prod(ndims)
-        N = np.bincount(multi_index, weights=weights[finite], minlength=minlength)
-        for i, ell in enumerate(ells):
-            kern = (2*ell+1)*legendre(ell)(mu[finite])*Pkmu*weights[finite]
-            poles[...,i] = (np.bincount(multi_index, weights=kern, minlength=minlength)/N).reshape(ndims)
-        poles = np.squeeze(poles[1:-1, 1:-1,:])
-        
-        return poles if not flatten else np.ravel(poles, order='F')
-
+                            
     @tools.monopole
     def Pgal_mono(self, k, mu, **kwargs):
         """
@@ -656,4 +543,24 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         return self.Pgal(k, mu, **kwargs)
         
+    def from_transfer(self, transfer, flatten=False):
+        """
+        Return the power (either P(k,mu) or multipoles), accounting for 
+        discrete binning effects using the input transfer function
+    
+        Parameter
+        ---------
+        transfer : PkmuTransfer or PolesTransfer
+            the transfer class which accounts for the discrete binning effects
+        flatten : bool, optional    
+            If `True`, flatten the return array, which will have a length of 
+            `Nk * Nmu` or `Nk * Nell`
+        """
+        # compute P(k,mu) on the grid and update the grid transfer
+        grid = transfer.grid
+        power = self.Pgal(grid.k[grid.notnull], grid.mu[grid.notnull])
+        transfer.power = power
+        
+        # call the transfer to evaluate P(k,mu) on the grid
+        return transfer(flatten=flatten)
     

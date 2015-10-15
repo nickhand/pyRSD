@@ -228,6 +228,10 @@ def setup_analyze_subparser(parent):
     # thinning factor
     h = 'the thinning factor to use'
     subparser.add_argument('--thin', help=h, type=int, default=1)
+    
+    # thinning factor
+    h = 'whether to rescale errors'
+    subparser.add_argument('--rescale-errors', help=h, action='store_true')
                                 
     # possible plot file describing custom commands
     h = """ extra file to customize the output plots. You can actually

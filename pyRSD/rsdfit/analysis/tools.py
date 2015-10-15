@@ -151,6 +151,10 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
         for r in new_results[1:]: info.combined_result += r
     info.combined_result.burnin = 0
     
+    if info.rescale_errors:
+        logger.info("rescaling error on parameters by %.3f" %info.error_rescaling)
+        info.combined_result.error_rescaling = info.error_rescaling
+    
     # compute the mean
     info.mean = np.array([info.combined_result[par].flat_trace.mean() for par in info.ref_names]) 
     
@@ -198,6 +202,7 @@ def prepare(info):
     # also load the data so we get can number of bins
     data_params = PowerData(param_path)
     info.Nb = data_params.ndim
+    info.Nmocks = data_params.params['covariance_Nmocks'].value
 
     # output paths for later use
     info.info_path = os.path.join(folder, 'info', 'params.info')

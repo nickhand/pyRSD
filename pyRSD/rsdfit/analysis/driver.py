@@ -53,6 +53,8 @@ def set_analysis_defaults(kwargs):
     kwargs.setdefault('fiducial', {})
     kwargs.setdefault('burnin', None)
     kwargs.setdefault('thin', 1)
+    kwargs.setdefault('rescale_errors', False)
+    
 
 class AnalysisDriver(object):
     """
@@ -189,6 +191,22 @@ class AnalysisDriver(object):
     #--------------------------------------------------------------------------
     # Properties
     #--------------------------------------------------------------------------
+    @property
+    def error_rescaling(self):
+        """
+        Scale the error on parameters due to covariance matrix from mocks
+        """
+        try:
+            return self._error_rescaling
+        except:
+            Nb = self.Nb*1.
+            Ns = self.Nmocks*1.
+            Np = self.Np*1.
+            A = 2. / (Ns - Nb - 1.) / (Ns - Nb - 4.)
+            B = (Ns - Nb - 2.) / (Ns - Nb - 1.) / (Ns - Nb - 4.)
+            self._error_rescaling = ((1 + B*(Nb-Np)) / (1 + A + B*(Np+1)))**0.5
+            return self._error_rescaling
+            
     @property
     def min_minus_lkl(self):
         """

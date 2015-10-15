@@ -51,6 +51,21 @@ class EmceeParameter(object):
     def burnin(self, val):
         self._burnin = val
         del self.median, self.one_sigma, self.two_sigma, self.three_sigma
+        
+    @property
+    def error_rescaling(self):
+        """
+        Rescale errors by this factor
+        """
+        try:
+            return self._error_rescaling
+        except:
+            return 1
+    
+    @error_rescaling.setter
+    def error_rescaling(self, val):
+        self._error_rescaling = val
+        del self.one_sigma, self.two_sigma, self.three_sigma
 
     @property
     def flat_trace(self):
@@ -115,7 +130,7 @@ class EmceeParameter(object):
             return self._one_sigma
         except AttributeError:
             percentiles = [50., 15.86555, 84.13445]
-            vals = np.percentile(self.flat_trace, percentiles)
+            vals = np.percentile(self.flat_trace, percentiles)*self.error_rescaling
             self._one_sigma = [-(vals[0] - vals[1]), vals[2] - vals[0]]
             return self._one_sigma
 
@@ -138,7 +153,7 @@ class EmceeParameter(object):
             return self._two_sigma
         except AttributeError:
             percentiles = [50, 2.2775, 97.7225]
-            vals = np.percentile(self.flat_trace, percentiles)
+            vals = np.percentile(self.flat_trace, percentiles)*self.error_rescaling
             self._two_sigma = [-(vals[0] - vals[1]), vals[2] - vals[0]]
             return self._two_sigma
         
@@ -161,7 +176,7 @@ class EmceeParameter(object):
             return self._three_sigma
         except AttributeError:
             percentiles = [50, 0.135, 99.865]
-            vals = np.percentile(self.flat_trace, percentiles)
+            vals = np.percentile(self.flat_trace, percentiles)*self.error_rescaling
             self._three_sigma = [-(vals[0] - vals[1]), vals[2] - vals[0]]
             return self._three_sigma
         
@@ -439,6 +454,23 @@ class EmceeResults(object):
         
         for param in self._results:
             self._results[param].burnin = val
+            
+    @property
+    def error_rescaling(self):
+        """
+        Rescale error on parameters due to covariance matrix from mocks
+        """
+        try:
+            return self._error_rescaling
+        except:
+            return 1.
+    
+    @error_rescaling.setter
+    def error_rescaling(self, val):
+        self._error_rescaling = val
+        
+        for param in self._results:
+            self._results[param].error_rescaling = val
     
     @property
     def max_lnprob(self):

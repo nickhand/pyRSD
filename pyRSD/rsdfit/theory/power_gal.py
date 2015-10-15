@@ -113,8 +113,6 @@ class GalaxyPowerTheory(object):
     spectrum. It handles the dependencies between model parameters and the 
     evaluation of the model itself.
     """
-    pkmu_callable = 'Pgal_discrete'
-    poles_callable = 'Pgal_poles_discrete'
     
     def __init__(self, param_file, extra_param_file=None, kmin=None, kmax=None):
         """        
@@ -150,11 +148,7 @@ class GalaxyPowerTheory(object):
 
         # read in the parameters again to get params that aren't fit params
         self.model_params = ParameterSet.from_file(param_file, tags='model')
-        
-        # the callables
-        self.pkmu_callable = self.model_params.get('pkmu_callable', GalaxyPowerTheory.pkmu_callable)
-        self.poles_callable = self.model_params.get('poles_callable', GalaxyPowerTheory.poles_callable)
-        
+
         # now setup the model parameters; only the valid model kwargs are read
         allowable_model_params = rsd.GalaxySpectrum.allowable_kwargs
         for param in self.model_params.keys():
@@ -209,10 +203,6 @@ class GalaxyPowerTheory(object):
             f.close()
         
         # now save the model params
-        if self.pkmu_callable != GalaxyPowerTheory.pkmu_callable:
-            self.model_params.add('pkmu_callable', value=self.pkmu_callable)
-        if self.poles_callable != GalaxyPowerTheory.poles_callable:
-            self.model_params.add('poles_callable', value=self.poles_callable)
         kwargs = {'mode':'a', 'header_name':'model params', 'footer':True, 'as_dict':False}     
         self.model_params.to_file(filename, **kwargs)
         
@@ -329,42 +319,32 @@ class GalaxyPowerTheory(object):
             raise RuntimeError(msg)   
         return True
         
-    def model_callable(self, mode, k, mu=None, ell=None, **kwargs):
+    def model_callable(self, data):
         """
-        Return the correct model function based on the type and identifier
-        (from a PowerMeasurement)
-        
-        Any keyword arguments supplied will be passed to the callables
+        Return the correct model function based on the `PowerData` 
         """
         import functools
         
-        # computing pkmu
-        if mode == 'pkmu':
-            if not hasattr(self.model, self.pkmu_callable):
-                raise ValueError("RSD model has no function `%s` to compute P(k,mu)" %self.pkmu_callable)
-            if mu is None:
-                raise ValueError("need `mu` keyword to get P(k,mu) model callable")
-            weights = kwargs.pop('weights', None)
-            if weights is not None:
-                muedges = kwargs.pop('mu_edges')
-                f = getattr(self.model, self.pkmu_callable)
-                return functools.partial(f, k, mu, muedges, weights=weights, **kwargs)
-            else:
-                return functools.partial(f, k, mu, **kwargs)
-        # computing multipoles
+        # if `data.transfer` is there, use it to evaluate power, accounting
+        # for binning effects
+        if data.transfer is not None: 
+            return functools.partial(self.model.from_transfer, data.transfer, flatten=True)
+        
+        # computing P(k,mu) with no binning effects
+        if data.mode == 'pkmu':
+            k = data.combined_k
+            mu = data.combined_mu
+            return functools.partial(self.model.Pgal, k, mu)
+
+        # computing P(k, ell) with no binning effects (i.e., integrating over P(k,mu))
         elif mode == 'poles':
-            if not hasattr(self.model, self.poles_callable):
-                raise ValueError("RSD model has no function `%s` to compute multipoles" %self.poles_callable)
-            if ell is None or mu is None:
-                raise ValueError("need `ell` and `mu` keywords to get multipoles model callable")
-            weights = kwargs.pop('weights')
-            f = getattr(self.model, self.poles_callable)
-            return functools.partial(f, k, mu, ell, weights=weights, **kwargs)
+            k = data.combined_k
+            ell = data.combined_ell
+            return functools.partial(self.model.Pgal_poles, k, ell)
         
         # all is lost...
         # something has gone horribly wrong...
-        msg = "failure trying to get model callable: " + str(e)
-        raise NotImplementedError(msg)
+        raise NotImplementedError("failure trying to get model callable... all is lost")
     
     def update_model(self):
         """

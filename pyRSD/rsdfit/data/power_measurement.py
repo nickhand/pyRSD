@@ -1,91 +1,195 @@
 from ... import numpy as np
+from ...rsd._cache import Cache, parameter, cached_property
+from ...rsd import PkmuTransfer, PolesTransfer, PkmuGrid
 from .. import logging
 from ..parameters import ParameterSet
-from . import CovarianceMatrix
+from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 
 logger = logging.getLogger('rsdfit.data')
 logger.addHandler(logging.NullHandler())
 
-#-------------------------------------------------------------------------------
-class PowerMeasurement(object):
+class PowerMeasurement(Cache):
     """
     Class representing a power spectrum measurement, either P(k, mu) or 
-    multipole moments
+    P(k, ell)
     """
-    def __init__(self,  
-                 k, 
-                 power,
-                 power_type, 
-                 identifier, 
-                 error=None,
-                 width=None, 
-                 k_min=None,
-                 k_max=None):
+    def __init__(self, kind, data, kmin=None, kmax=None):
         """
         Load the parameters and initialize
         
         Parameters
         ----------
-        filename : str
-            The name of the ASCII file holding the measurement 
-        k_col : int
-            The integer giving the column number for the wavenumber data. 
-            Wavenumbers should have units of `h/Mpc`
-        power_col : int
-            The integer giving the column number for the power data. 
-            Power data should have units of `(Mpc/h)^3`
-        power_type : {`pkmu`, `pole`}, str
-            The type of power measurement
-        identifier : float, int
-            The value identifying the power spectrum, either a `mu` value, in
-            which case a float should be passed, or `ell`, multipole number, in 
-            which case an int should be passed
-        err_col : int, optional
-            The integer giving the column number for the error data. 
-            Power data should have units of `(Mpc/h)^3`
-        width : float, optional
-            If `power_type` == `pkmu`, this provides the width of the
-            mu bin
-        k_min : float, optional
+        kind : str, {`pkmu`, `pole`}
+            the type of measurement, either P(k,mu) or P(k,ell)
+        data : dict
+            dictionary holding the relevant data fields
+        kmin : float, optional
             The minimum wavenumber (inclusive) in units of `h/Mpc`
-        k_max : float, optional
+        kmax : float, optional
             The maximum wavenumber (inclusive) in units of `h/Mpc`
-        """                       
-        # save the data
-        self._k_input = k
-        self._power_input = power
-        if error is not None:
-            self._error_input = error
+        """    
+        # initialize the base class
+        Cache.__init__(self)
+         
+        # the kind of measurement
+        self.type = kind
+
+        # set the data attributes
+        for field in ['k', 'power']:
+            setattr(self, '_%s_input' %field, data[field])
+        setattr(self, '_error_input', data['error'])
+        
+        # mu/ell
+        if self.type == 'pkmu': 
+            self._mu_input = data['mu']
+            self.ell = None
         else:
-            self._error_input = None
-            
-        if power_type not in ['pkmu', 'pole']:
-            logger.error("PowerMeasurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
-            raise ValueError("PowerMeasurement type must be either `pkmu` or `pole`")
-            
-        self.type = power_type
-        self._identifier = identifier
-        self._width = width
+            self._mu_input = None
+            self.ell = data['ell']
         
         # set the bounds
-        self.k_min = k_min
-        self.k_max = k_max
+        self.kmin = kmin
+        self.kmax = kmax
         
-    #---------------------------------------------------------------------------
-    @property
+    #--------------------------------------------------------------------------
+    # parameters
+    #--------------------------------------------------------------------------
+    @parameter
+    def type(self, val):
+        """
+        The type of measurement, either `pkmu` or `pole`
+        """
+        if val not in ['pkmu', 'pole']:
+            msg = "PowerMeasurement must be of type 'pkmu' or 'pole', not %s" %power_type
+            logger.error(msg)
+            raise ValueError(msg)
+        return val
+        
+    @parameter
+    def _k_input(self, val):
+        """
+        Internal variable to store input `k` values
+        """
+        return val
+    
+    @parameter
+    def _power_input(self, val):
+        """
+        Internal variable to store input `power` values
+        """
+        return val
+    
+    @parameter
+    def _error_input(self, val):
+        """
+        Internal variable to store input `error` values
+        """
+        return val
+        
+    @parameter
+    def _mu_input(self, val):
+        """
+        Internal variable to store input `mu` values
+        """
+        return val
+    
+    @parameter
+    def kmin(self, val):
+        """
+        Minimum k value to trim the results to in units of `h/Mpc`
+        """
+        if val is None:
+            val = -np.inf
+        return val
+        
+    @parameter
+    def kmax(self, val):
+        """
+        Maximum k value to trim the results to in units of `h/Mpc`
+        """
+        if val is None:
+            val = np.inf
+        return val
+                
+    @parameter
+    def ell(self, val):
+        """
+        Returns the multipole number for this P(k,ell) measurement
+        """
+        return val
+    
+    #--------------------------------------------------------------------------
+    # cached properties
+    #--------------------------------------------------------------------------
+    @cached_property("_k_input", "kmin", "kmax")
+    def _trim_idx(self):
+        """
+        The indices of the data points following between k_min and k_max
+        """
+        return (self._k_input >= self.kmin)&(self._k_input <= self.kmax)
+        
+    @cached_property("_k_input", "_trim_idx")
+    def k(self):
+        """
+        The wavenumbers of the measurement in units of `h/Mpc`
+        """
+        return self._k_input[self._trim_idx]
+        
+    @cached_property("_mu_input", "_trim_idx")
+    def mu(self):
+        """
+        Returns either a single or array of `mu` values associated with
+        this P(k,mu) measurement
+        """
+        if self._mu_input is None or np.isscalar(self._mu_input):
+            return self._mu_input
+        else: 
+            return self._mu_input[self._trim_idx]
+        
+    @cached_property("_power_input", "_trim_idx")
+    def power(self):
+        """
+        The power measurement in units of `(Mpc/h)^3`
+        """
+        return self._power_input[self._trim_idx]
+        
+    @cached_property("_error_input", "_trim_idx")
+    def error(self):
+        """
+        The error on the power measurement in units of `(Mpc/h)^3`
+        """
+        if np.isscalar(self._error_input):
+            return self._error_input
+        else:
+            return self._error_input[self._trim_idx]
+                
+    @cached_property("k")
     def size(self):
         """
         The number of data points
         """
         return len(self.k)
         
-    @property
+    @cached_property("type", "ell", "mu")
+    def identifier(self):
+        """
+        The `ell` or average `mu` value for this measurement
+        """
+        if self.type == 'pole':
+            return int(self.ell)
+        else:
+            if not np.isscalar(self.mu):
+                return np.round(np.mean(self.mu), 2)
+            else:
+                return np.round(self.mu, 2)
+    
+    @cached_property('type', 'identifier')
     def label(self):
         """
         Return the label associated with this kind of measurement
         """
         if self.type == 'pkmu':
-            return self.type + '_' + str(self.mu)
+            return self.type + '_' + str(self.identifier)
         else:
             if self.type == 'pole':
                 if self.ell == 0:
@@ -95,170 +199,153 @@ class PowerMeasurement(object):
                 elif self.ell == 4:
                     return 'hexadecapole'
                 
-        raise NotImplementedError("Confused about what label corresponds to this measurement")
+        raise NotImplementedError("confused about what label corresponds to this measurement")
         
-    #---------------------------------------------------------------------------
-    @property
-    def k_max(self):
-        """
-        Maximum k value to trim the results to in units of `h/Mpc`
-        """
-        return self._k_max
-        
-    @k_max.setter
-    def k_max(self, val):
-        if val is None:
-            self._k_max = np.amax(self._k_input)
-            self._k_max_inds = np.ones(len(self._k_input), dtype=bool)
-        else:
-            self._k_max = val
-            self._k_max_inds = self._k_input <= val
-            
-    #---------------------------------------------------------------------------
-    @property
-    def k_min(self):
-        """
-        Minimum k value to trim the results to in units of `h/Mpc`
-        """
-        return self._k_min
-        
-    @k_min.setter
-    def k_min(self, val):
-        if val is None:
-            self._k_min = np.amin(self._k_input)
-            self._k_min_inds = np.ones(len(self._k_input), dtype=bool)
-        else:
-            self._k_min = val
-            self._k_min_inds = self._k_input >= val
-            
-    #---------------------------------------------------------------------------
-    @property
-    def _k_trim_inds(self):
-        """
-        The indices of the data points following between k_min and k_max
-        """    
-        return self._k_min_inds & self._k_max_inds
-        
-    #---------------------------------------------------------------------------
-    @property
-    def k(self):
-        """
-        The wavenumbers of the measurement in units of `h/Mpc`
-        """
-        return self._k_input[self._k_trim_inds]
-        
-    #---------------------------------------------------------------------------
-    @property
-    def power(self):
-        """
-        The power measurement in units of `(Mpc/h)^3`
-        """
-        return self._power_input[self._k_trim_inds]
-        
-    #---------------------------------------------------------------------------
-    @property
-    def error(self):
-        """
-        The error on the power measurement in units of `(Mpc/h)^3`
-        """
-        if self._error_input is not None:
-            return self._error_input[self._k_trim_inds]
-        else:
-            return None 
-        
-    #---------------------------------------------------------------------------
-    @property
-    def mu(self):
-        """
-        If `type` == `pkmu`, then this returns the mu value associated with 
-        the measurement
-        """
-        if self.type == 'pole':
-            raise AttributeError("No `mu` attribute for `PowerMeasurement` of type `pole`")
-        
-        return self._identifier[self._k_trim_inds]
-                    
-    #---------------------------------------------------------------------------
-    @property
-    def ell(self):
-        """
-        If `type` == `pole`, then this returns the multipole number, ell (as
-        an integer), associated with the measurement
-        """
-        if self.type == 'pkmu':
-            raise AttributeError("No `ell` attribute for `PowerMeasurement` of type `pkmu`")
-        
-        return int(self._identifier)
-            
-    #---------------------------------------------------------------------------
     def __repr__(self):
         """
         Builtin representation method
         """
-        kwargs = {'N' : len(self.k), 'kmin': np.amin(self.k), 'kmax' : np.amax(self.k)}
         if self.type == 'pkmu':
-            kwargs['mu'] = self.mu
-            return "<PowerMeasurement P(k, mu={mu}), ({kmin:.3} - {kmax:.3}) h/Mpc, {N} data points>".format(**kwargs)
+            meas = "P(k, mu=%s)" %str(self.identifier) 
         else:
-            kwargs['ell'] = self.ell
-            return "<PowerMeasurement P_{{ell={ell}}}(k), ({kmin:.3} - {kmax:.3}) h/Mpc, {N} data points>".format(**kwargs)
-    #---------------------------------------------------------------------------
+            meas = "P(k, ell=%s)" %str(self.identifier)
+        bounds = "({kmin:.3} - {kmax:.3})".format(kmin=np.amin(self.k), kmax=np.amax(self.k))
+        return "<PowerMeasurement %s, %s h/Mpc, %d data points>" %(meas, bounds, self.size)
+
     def __str__(self):
         """
         Builtin string representation
         """
         return self.__repr__()
+        
 
-#-------------------------------------------------------------------------------
-class PowerData(object):
+class PowerData(Cache):
     """
     Class to hold several `PowerMeasurement` objects and combine the 
     associated covariance matrices
     """
     def __init__(self, param_file):
         """
-        Initialize and setup up the measurements. 
+        Initialize and setup up the measurements 
         """
+        Cache.__init__(self)
+        
         # read the params from file
         self.params = ParameterSet.from_file(param_file, tags='data')
-        self.mode = self.params.get('mode', 'pkmu')
+        self.mode = self.params.get('mode', 'pkmu') # either `pkmu` or `poles`
         
-        # read the data file, either pkmu or poles
+        # read the data file and (optional) grid for binning effects
         self.read_data()
         
-        # determine kmin/kmax ranges
-        stats = self.params['statistics'].value
-        N = len(stats)
-        if self.params.get('usedata', None) is not None:
-            N = len(self.params['usedata'].value)
-        self._kmin = np.empty(N)
-        self._kmax = np.empty(N)
-        fit_range = self.params['fitting_range'].value
-        if isinstance(fit_range, tuple) and len(fit_range) == 2:
-            self._kmin[:] = fit_range[0]
-            self._kmax[:] = fit_range[1]
-        else:
-            if len(fit_range) != N:
-                raise ValueError("mismatch between supplied fitting ranges and data read")
-            self._kmin[:], self._kmax[:] = zip(*fit_range)
-        
-        # global min/max
-        self.kmin = self._kmin.min()
-        self.kmax = self._kmax.max()
+        # create the measurements and covariances
+        self.set_all_measurements()
+        self.set_covariance()
 
-        # setup the measurements and covariances
-        self._set_measurements()
-        self._set_covariance()
-        self._apply_bounds()
-        self._slice_data()
-        self._rescale_inverse_covar()
-        
-        self.mu_edges = self.params.get('mu_edges', np.linspace(0., 1.0, len(self.measurements)+1))
+        # slice the data
+        self.slice_data()
+
+        # set the k-limits
+        self.set_k_limits()
+
+        # rescale inverse covar?
+        self.rescale_inverse_covar()
+
+        # finally, read and setup an (optional) grid for binnning effects
+        self.read_grid()
+
+        # and verify
+        self.verify()
         
     #---------------------------------------------------------------------------
+    # parameters
+    #---------------------------------------------------------------------------
+    @parameter
+    def mode(self, val):
+        """
+        The measurement mode, either `pkmu` or `poles`
+        """
+        if val not in ['pkmu', 'poles']:
+            raise ValueError("`PowerData` mode must be either `pkmu` or `poles`")
+        return val
+        
+    @parameter
+    def measurements(self, val):
+        """
+        List of `PowerMeasurement` objects
+        """
+        return val
+        
+    @parameter
+    def covariance(self, val):
+        """
+        Either a `PkmuCovarianceMatrix` or `PoleCovarianceMatrix` object
+        """
+        return val
+        
+    @parameter
+    def kmin(self, val):
+        """
+        The minimum allowed wavenumbers
+        """
+        toret = np.empty(self.size)
+        toret[:] = val
+        
+        # trim the measurements and covariance
+        for i, m in enumerate(self):
+            m.kmin = toret[i]
+        self.covariance = self.covariance.trim_k(kmin=toret)
+        
+        return toret
+        
+    @parameter
+    def kmax(self, val):
+        """
+        The maximum allowed wavenumbers
+        """
+        toret = np.empty(self.size)
+        toret[:] = val
+        
+        # trim the measurements and covariance
+        for i, m in enumerate(self):
+            m.kmax = toret[i]
+        self.covariance = self.covariance.trim_k(kmax=toret)
+        
+        return toret
+                
+    #---------------------------------------------------------------------------
+    # initialization and setup functions
+    #---------------------------------------------------------------------------
+    def verify(self):
+        """
+        Verify the data and covariance
+        """
+        # log the kmin/kmax
+        lims = ", ".join("(%.2f, %.2f)" %(x,y) for x,y in zip(self.kmin, self.kmax))
+        logger.info("trimmed the read covariance matrix to: [%s] h/Mpc" %lims)
+                           
+        # verify the covariance matrix
+        if self.ndim != self.covariance.N:
+            args = (self.ndim, self.covariance.N)
+            msg = "size mismatch: combined power size %d, covariance size %d" %args
+            logger.error(msg)
+            raise ValueError(msg)
+        
+        # verify the grid
+        if self.transfer is not None:
+            if self.transfer.size != self.covariance.N:
+                msg = "size mismatch between grid transfer function and covariance: "
+                args = (self.transfer.size, self.covariance.N)
+                raise ValueError(msg + "grid size =  %d, cov size = %d" %args)
+        
     def read_data(self):
         """
-        Read the data file
+        Read the data file, storing either the measured 
+        `P(k,mu)` or `P(k,ell)` data
+        
+        Notes
+        -----
+        *   sets `data` to be a structured array of shape
+            `(Nk, Nmu)` or `(Nk, Nell)`
         """
         # read the data first
         data_file = self.params['data_file'].value
@@ -274,23 +361,240 @@ class PowerData(object):
         for i, col in enumerate(columns):
             self.data[col] = data[...,i].reshape(shape, order='F')
             
-        self.weights = None
-        weight_file = self.params.get('weight_file', None)
-        if weight_file is not None:
-            with open(weight_file, 'r') as ff:
-                shape = tuple(map(int, ff.readline().split()))
-                columns = ff.readline().split()
-                N = np.prod(shape)
-                data = np.loadtxt(ff)
+    def read_grid(self):
+        """
+        If `grid_file` is present, initialize `PkmuGrid`, which
+        holds a finely-binned P(k,mu) grid to account for discrete
+        binning effects
+        
+        Notes
+        -----
+        *   sets `grid` to be `None` or an instance of `PkmuGrid`
+        *   sets `transfer` to be `None` or an instance of `PkmuTransfer`
+            or `PolesTransfer`
+        """
+        self.grid = None; self.transfer = None
+        
+        grid_file = self.params.get('grid_file', None)
+        if grid_file is not None:
             
-            dtype = [(col, 'f8') for col in columns]
-            self.weights = np.empty(shape, dtype=dtype)
-            for i, col in enumerate(columns):
-                self.weights[col] = data[...,i].reshape(shape, order='F')
+            # initialize the grid
+            self.grid = PkmuGrid.from_plaintext(grid_file)
+            
+            # set modes to zero outside k-ranges to avoid model failing
+            self.grid.modes[self.grid.k < self.global_kmin] = 0.
+            self.grid.modes[self.grid.k > self.global_kmax] = 0.
+
+            # initialize the transfer
+            if self.mode == 'pkmu':
+                x = self.params.get('mu_edges', None)
+                cls = PkmuTransfer
+                lab = 'mu_edges'; size = self.size+1
+            else:
+                x = self.params.get('ells', None)
+                cls = PolesTransfer
+                lab = 'ells'; size = self.size
+            
+            # verify and initialize    
+            if x is None:
+                raise ValueError("`%s` parameter must be defined if `grid_file` is supplied" %lab)
+            if len(x) != size:
+                raise ValueError("size mismatch between `%s` and number of measurements" %lab)
+            self.transfer = cls(self.grid, x, kmin=self.kmin, kmax=self.kmax)
+                    
+    def set_all_measurements(self):
+        """
+        Initialize a list of `PowerMeasurement` objects from the 
+        input data that has already been read
+        
+        Notes
+        -----
+        *   initializes `measurements`, which is a list of 
+            a `PowerMeasurement` for each column in `data`, with
+            no k limits applied
+        """    
+        # verify that the stats list has same length as data columns
+        stats = self.params['statistics'].value
+        if len(stats) != np.shape(self.data)[-1]:
+            args = (len(stats), np.shape(self.data)[-1])
+            raise ValueError("mismatch between number of data columns read and number of statistics")
+        
+        # loop over each statistic
+        self.measurements = []
+        for i, stat_name in enumerate(stats):
+                        
+            # parse the name
+            power_type, value = stat_name.lower().split('_')
+            value = float(value)
+            
+            if power_type not in ['pkmu', 'pole']:
+                logger.error("measurement must be of type 'pkmu' or 'pole', not '%s'" %power_type)
+                raise ValueError("measurement type must be either `pkmu` or `pole`")
+                
+            # get the relevant data for the PowerMeasurement
+            fields = ['k', 'mu', 'power', 'error']
+            data = {}
+            for field in fields:
+                if field in self.data.dtype.names:
+                    data[field] = self.data[field][:,i]
+            if power_type == 'pole': 
+                data['ell'] = value
+            
+            # add the power measurement, with no k limits (yet)
+            self.measurements.append(PowerMeasurement(power_type, data))
+        
+        # log the number of measurements read
+        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=stats))
     
-            if self.weights.shape[0] != self.data.shape[0]:
-                raise ValueError("mismatch in first dimension size between data and weight arrays")
+    def set_covariance(self):
+        """
+        Read and set the combined covariance matrix
+        
+        Note: at this point, no k bounds have been applied
+        """
+        loaded = False
+        N_data = sum(m.size for m in self)
+
+        # try to load the covariance file
+        cov_file = self.params.get('covariance', None)
+        if cov_file is not None:
             
+            # read either a PkmuCovariance or PoleCovarianceMatrix from
+            # a plaintext file
+            try:
+                if self.mode == 'pkmu':
+                    reader = 'PkmuCovarianceMatrix'
+                    self.covariance = PkmuCovarianceMatrix.from_plaintext(cov_file)
+                else:
+                    reader = 'PoleCovarianceMatrix'
+                    self.covariance = PoleCovarianceMatrix.from_plaintext(cov_file)
+            except Exception as e:
+                raise RuntimeError("failure to load %s from plaintext file: %s" %(reader, str(e)))
+  
+            # verify we have the right size, initially
+            if self.covariance.N != N_data:
+                N = self.covariance.N
+                msg = "have %d data points, but covariance size is %dx%d" %(N_data, N, N)
+                raise ValueError("size mismatch between read data and covariance -- " + msg)
+            logger.info("read covariance matrix successfully from file '{f}'".format(f=cov_file)) 
+            loaded = True           
+                        
+        # use the diagonals
+        else:
+            if any(isinstance(m.error, type(None)) for m in self):
+                msg = "if no covariance matrix provided, all measurements must have errors"
+                logger.error(msg)
+                raise ValueError(msg)
+                
+            # make the covariance matrix from diagonals
+            x = np.concatenate([m.k for m in self])
+            y = np.concatenate([np.repeat(m.identifier, m.size) for m in self])
+            errors = np.concatenate([m.error for m in self])
+            if self.mode == 'pkmu':
+                self.covariance = PkmuCovarianceMatrix(errors**2, x, y, verify=False)
+            else:
+                self.covariance = PoleCovarianceMatrix(errors**2, x, y, verify=False)
+            logger.info('initialized diagonal covariance matrix from error columns')
+        
+        # rescale the covariance matrix
+        rescaling = self.params.get('covariance_rescaling', 1.0)
+        self.covariance = self.covariance*rescaling
+        if rescaling != 1.0:
+            logger.info("rescaled covariance matrix by value = {:s}".format(str(rescaling)))
+                    
+        # set errors for each indiv measurement to match any loaded covariance
+        if loaded: self.set_errors_from_cov()
+    
+    def set_errors_from_cov(self):
+        """
+        Set the errors for each individual measurement to match the 
+        diagonals of the covariance matrix
+        """
+        # the variances
+        variances = self.covariance.diag
+        for i, m in enumerate(self):
+            m._error_input = (variances[m.size*i :m. size*(i+1)])**0.5
+            
+    def slice_data(self):
+        """
+        Slice the data measurements + covariance to only include 
+        certain statistics, corresponding to the column numbers in 
+        `usedata`
+        
+        Notes
+        -----
+        *   the values in `usedata` are interpreted as the column
+            numbers of `data` to use
+        *   trims `measurements` and `covariance` accordingly
+        """
+        usedata = self.params.get('usedata', None)
+        if usedata is None:
+            return
+        
+        # compute the correct indexers for the covariance
+        if self.mode == 'pkmu':
+            mus = self.covariance.mus()
+            trim = [mus[i] for i in usedata]
+            indexer = {'mu1':trim, 'mu2':trim}
+        else:
+            ells = self.covariance.ells()
+            trim = [ells[i] for i in usedata]
+            indexer = {'ell1':trim, 'ell2':trim}
+        self.covariance = self.covariance.sel(**indexer)
+        
+        # trim measurements
+        self.measurements = [m for idx, m in enumerate(self) if idx in usedata]
+
+    def set_k_limits(self):
+        """
+        Set the k-limits, reading from the parameter file
+        
+        Notes
+        -----
+        *   sets `N` to the number of statistics, i.e., either
+            number of mu-bins or multipoles, that will be 
+            included in the analysis 
+        *   sets `kmin` and `kmax` to arrays of length `N`
+            holding the minimum/maximum wavenumber values for
+            each statistic
+        *   sets `kmin` and `kmax` to the global kmin and kmax 
+            values
+        """        
+        fit_range = self.params['fitting_range'].value
+        if isinstance(fit_range, tuple) and len(fit_range) == 2:
+            self.kmin = fit_range[0]
+            self.kmax = fit_range[1]
+        else:
+            if len(fit_range) != self.size:
+                raise ValueError("mismatch between supplied fitting ranges and data read")
+            self.kmin, self.kmax = zip(*fit_range)
+                                
+    def rescale_inverse_covar(self):
+        """
+        Rescale the inverse of the covariance matrix in order to get an 
+        unbiased estimate
+        """
+        # rescale the inverse of the covariance matrix (if it's from mocks)
+        rescale_inverse = self.params.get('rescale_inverse_covariance', False)
+        if rescale_inverse:
+            if 'covariance_Nmocks' not in self.params:
+                raise ValueError("cannot rescale inverse covariance without `covariance_Nmocks`")
+            
+            # set the inverse rescaling
+            Ns = self.params['covariance_Nmocks'].value
+            nb = self.ndim
+            rescaling = 1.*(Ns - nb - 2) / (Ns - 1)
+            self.covariance.inverse_rescaling = rescaling
+            logger.info("rescaling inverse of covariance matrix using Ns = %d, nb = %d" %(Ns, nb))
+            logger.info("   rescaling factor = %.3f" %rescaling)
+            
+            # update the `error` attribute of each measurement
+            for m in self:
+                m._error_input = m._error_input*rescaling**(-0.5)
+            
+    #---------------------------------------------------------------------------
+    # some builtins
+    #---------------------------------------------------------------------------
     def to_file(self, filename, mode='w'):
         """
         Save the parameters of this data class to a file
@@ -329,243 +633,109 @@ class PowerData(object):
             raise KeyError("`PowerMeasurement` index out of range")
             
         return self.measurements[key]
-
-    #---------------------------------------------------------------------------
-    # internal functions to setup
-    #---------------------------------------------------------------------------
-    def _set_measurements(self):
-        """
-        Setup the measurements included in this `PowerData`
-        """
-        # measurement loading controlled by statistics parameter
-        if 'statistics' not in self.params:
-            raise ValueError("Parameter `statistics` must be passed")
-        stats = self.params['statistics'].value
-        columns = self.params.get('columns', range(len(stats)))
-        
-        # loop over each statistic
-        self.measurements = []
-        for i, stat_name in enumerate(stats):
-            col = columns[i]
-            
-            # parse the name
-            power_type, value = stat_name.lower().split('_')
-            value = float(value)
-            
-            if power_type not in ['pkmu', 'pole']:
-                logger.error("Measurement must be of type 'pkmu' or 'pole', not '{0}'".format(power_type))
-                raise ValueError("Measurement type must be either `pkmu` or `pole`")
-                
-            # now make the PowerMeasurement object
-            if power_type == 'pkmu':
-                k = self.data['k'][:,col]
-                mu = self.data['mu'][:,col]
-                power = self.data['power'][:,col]
-                error = self.data['error'][:,col]
-                toadd = PowerMeasurement(k, power, 'pkmu', mu, error=error)
-            else:
-                k = self.data['k'][:,col]
-                power = self.data['power'][:,col]
-                error = self.data['error'][:,col]
-                toadd = PowerMeasurement(k, power, 'pole', int(value), error=error)
-            self.measurements.append(toadd)
-            
-        logger.info("Read {N} measurements: {stats}".format(N=len(self.measurements), stats=stats))
-            
     
-    def _slice_data(self):
+    def __iter__(self):
         """
-        Slice the data measurements + covariance to only include certain statistics
+        Iterate over the ``measurements`` list
         """
-        usedata = self.params.get('usedata', None)
-        if usedata is None:
-            return
-            
-        inds = []
-        for imeas, meas in enumerate(self.measurements):
-            if imeas in usedata:
-                inds.append(np.ones(meas.size, dtype=bool))
-            else:
-                inds.append(np.zeros(meas.size, dtype=bool))
-        inds = np.concatenate(inds)
-        self.measurements = [meas for imeas, meas in enumerate(self.measurements) if imeas in usedata]
-        C = self.covariance[inds]
-        self.covariance = CovarianceMatrix(C, verify=False)
-        
-    def _apply_bounds(self):
-        """
-        Apply the k bounds, and trim both the measurements and the covariance matrix
-        """
-        # possibly slice the data, only keeping certain columns
-        self._slice_data()
-        
-        # trim the measurements
-        inds = []
-        for i, d in enumerate(self.measurements):
-            d.k_max = self._kmax[i]
-            d.k_min = self._kmin[i]
-            inds.append(d._k_trim_inds)
-            
-        # now trim and make the new covariance
-        concat_inds = np.concatenate(inds)
-        C = self.covariance[concat_inds]
-        self.covariance = CovarianceMatrix(C, verify=False)
-        logger.info("Trimmed read covariance matrix to [{}, {}] h/Mpc".format(self.kmin, self.kmax))
-                
-        # if we have weights, trim
-        if self.weights is not None:
-            for i, d in enumerate(self.measurements):
-                 inds = (d._k_input >= self.kmin) & (d._k_input <= self.kmax)
-                 d._k_input = d._k_input[inds]
-                 d.k_max = self._kmax[i]
-                 d.k_min = self._kmin[i]
-            self.weights = self.weights[inds,:]
-            
-        # verify the covariance matrix
-        if len(self.combined_power) != self.covariance.N:
-            args = (len(self.combined_power), self.covariance.N)
-            logger.error("Combined power size {0}, covariance size {1}".format(*args))
-            raise ValueError("shape mismatch between covariance matrix and power data points")
-                        
-    def _rescale_inverse_covar(self):
-        """
-        Rescale the inverse of the covariance matrix in order to get an unbiased estimate
-        """
-        # rescale the inverse of the covariance matrix (if it's from mocks)
-        rescale_inverse = self.params.get('rescale_inverse_covariance', False)
-        if rescale_inverse:
-            if 'covariance_Nmocks' not in self.params:
-                raise ValueError("cannot rescale inverse covariance without `covariance_Nmocks`")
-            
-            Ns = self.params['covariance_Nmocks'].value
-            nb = len(self.combined_k)
-            rescaling = 1.*(Ns - nb - 2) / (Ns - 1)
-            self.covariance.inverse_rescaling = rescaling
-            logger.info("rescaling inverse of covariance matrix using Ns = %d, nb = %d" %(Ns, nb))
-            logger.info("   rescaling factor = %.3f" %rescaling)
-            
-    def _set_covariance(self):
-        """
-        Setup the combined covariance matrix
-        
-        Note: at this point, no k bounds have been applied
-        """
-        import pickle
-        pickle_load = lambda filename: pickle.load(open(filename, 'r'))
-        
-        loaded = False
-        index_ks = []
-        for d in self.measurements: 
-            index_ks += list(d.k)
-        
-        # load the covariance from a pickle
-        if self.params['covariance'].value is not None:
-            
-            filename = self.params['covariance'].value
-            readers = [CovarianceMatrix.from_pickle, CovarianceMatrix.from_plaintext, pickle_load]
-            for reader in readers:
-                try:
-                    C = reader(filename)
-                    break
-                except Exception as e:
-                    continue
-            else:
-                raise IOError("failure to load covariance from `%s`; tried pickle and plain text readers: %s" %(filename, str(e)))
-                      
-            if isinstance(C, np.ndarray):
-                self.covariance = CovarianceMatrix(C, verify=False)
-            elif isinstance(C, CovarianceMatrix):
-                self.covariance = C
-            
-            if C.N != len(index_ks):
-                msg = "loaded %d data points; covariance size = %dx%d" %(len(index_ks), C.N, C.N)
-                raise ValueError("size mismatch between data and covariance; " + msg)
-            logger.info("Read covariance matrix successfully from file '{f}'".format(f=filename)) 
-            loaded = True           
-                        
-        # use the diagonals
-        else:
-            if any(isinstance(d.error, type(None)) for d in self.measurements):
-                msg = "If no covariance matrix provided, all measurements must have errors"
-                logger.error(msg)
-                raise ValueError(msg)
-                
-            errors = np.concatenate([d.error for d in self.measurements])
-            variances = errors**2
-            self.covariance = CovarianceMatrix(variances, verify=False)
-            logger.info('Initialized diagonal covariance matrix from error columns')
-        
-        # rescale the covariance matrix
-        rescaling = self.params.get('covariance_rescaling', 1.0)
-        self.covariance *= rescaling
-        if rescaling != 1.0:
-            logger.info("rescaled covariance matrix by value = {:s}".format(str(rescaling)))
-                    
-        # set errors for each indiv measurement to match any loaded covariance
-        if loaded: self._set_errs_from_cov()
-                
-    def _set_errs_from_cov(self):
-        """
-        Set the errors for each individual measurement to match the diagonals
-        of the covariance matrix
-        """
-        # the variances
-        variances = self.covariance.diag
-        for i, m in enumerate(self.measurements):
-            size = len(m._k_input)
-            errs = (variances[size*i : size*(i+1)])**0.5
-            m._error_input = errs
+        return iter(self.measurements)
             
     #---------------------------------------------------------------------------
-    # properties
+    # cached properties
     #---------------------------------------------------------------------------
-    @property
+    @cached_property('kmin')
+    def global_kmin(self):
+        """
+        The global mininum wavenumber
+        """
+        return self.kmin.min()
+        
+    @cached_property('kmax')
+    def global_kmax(self):
+        """
+        The global maximum wavenumber
+        """
+        return self.kmax.max()
+            
+    @cached_property('combined_power')
     def ndim(self):
         """
         The number of data bins 
         """
         return len(self.combined_power)
         
-    @property
+    @cached_property('measurements')
     def size(self):
         """
         Return the number of measurements
         """
         return len(self.measurements)
     
-    @property
+    @cached_property('measurements', 'kmin', 'kmax')
     def combined_k(self):
         """
-        The measurement k values, concatenated from each `PowerMeasurement`
-        in `self.measurement`
+        The measurement `k` values, concatenated from each 
+        `PowerMeasurement` in `measurements`
         """
-        try:
-            return self._combined_k
-        except AttributeError:
-            self._combined_k = np.concatenate([d.k for d in self.measurements])
-            return self._combined_k
-            
-    @property
+        return np.concatenate([m.k for m in self])
+        
+    @cached_property('measurements', 'kmin', 'kmax')
+    def combined_mu(self):
+        """
+        The measurement `mu` values, concatenated from each 
+        `PowerMeasurement` in `measurements`
+        """
+        tocat = []
+        for m in self:
+            if np.isscalar(m.mu):
+                tocat.append(np.repeat(m.mu, m.size))
+            else:
+                tocat.append(m.mu)
+        toret = np.concatenate(tocat)
+        assert len(toret) == len(self.combined_k) 
+        return toret
+        
+    @cached_property('measurements', 'kmin', 'kmax')
+    def combined_ell(self):
+        """
+        The measurement `ell` values, concatenated from each 
+        `PowerMeasurement` in `measurements`
+        """
+        return np.concatenate([np.repeat(m.ell, m.size) for m in self])
+   
+    @cached_property('measurements', 'kmin', 'kmax')
     def combined_power(self):
         """
         The measurement power values, concatenated from each `PowerMeasurement`
         in `self.measurement`
         """
-        try:
-            return self._combined_power
-        except AttributeError:
-            self._combined_power = np.concatenate([d.power for d in self.measurements])
-            return self._combined_power
+        return np.concatenate([m.power for m in self])
+        
+    @cached_property('measurements', 'kmin', 'kmax')
+    def combined_error(self):
+        """
+        The measurement `error` values, concatenated from each 
+        `PowerMeasurement` in `measurements`
+        """
+        return np.concatenate([m.error for m in self])
             
-    @property
+    @cached_property('measurements', 'kmin', 'kmax')
     def diagonal_covariance(self):
         """
         Return `True` if the covariance matrix is diagonal
         """
-        try:
-            return self._diagonal_covariance
-        except AttributeError:
-            C = self.covariance.full()
-            self._diagonal_covariance = np.array_equal(np.nonzero(C), np.diag_indices_from(C))
-            return self._diagonal_covariance
+        C = self.covariance.values
+        return np.array_equal(np.nonzero(C), np.diag_indices_from(C))
+    
+    @property
+    def flat_slices(self):
+        """
+        Return a list of length `size` that holds the slices needed
+        to extract the `i-th` measurement from the flattened list
+        of measurements
+        """    
+        idx = [0] + list(np.cumsum([m.size for m in self]))
+        return [slice(idx[i], idx[i+1]) for i in range(self.size)]
+    
+
     

@@ -27,7 +27,12 @@ class FittingDriver(object):
     """
     __metaclass__ = rsd_io.PickeableClass
     
-    def __init__(self, param_file, extra_param_file=None, pool=None, chains_comm=None, init_model=True):
+    def __init__(self,
+                    param_file, 
+                    extra_param_file=None, 
+                    pool=None, 
+                    chains_comm=None, 
+                    init_model=True):
         """
         Initialize the driver with the specified parameters
         
@@ -52,8 +57,8 @@ class FittingDriver(object):
         # initialize the theory
         kwargs = {}
         kwargs['extra_param_file'] = extra_param_file
-        kwargs['kmin'] = self.data.kmin
-        kwargs['kmax'] = self.data.kmax
+        kwargs['kmin'] = self.data.global_kmin
+        kwargs['kmax'] = self.data.global_kmax
         self.theory = GalaxyPowerTheory(param_file, **kwargs)
         
         # generic params
@@ -67,6 +72,9 @@ class FittingDriver(object):
         # results are None for now
         self.results = None
         
+    #---------------------------------------------------------------------------
+    # class methods to start from directory
+    #---------------------------------------------------------------------------
     @classmethod
     def from_directory(cls, dirname, results_file=None, model_file=None, init_model=True, **kwargs):
         """
@@ -265,6 +273,9 @@ class FittingDriver(object):
         del results
         return values
 
+    #---------------------------------------------------------------------------
+    # setup functions
+    #---------------------------------------------------------------------------
     def set_model(self, filename):
         """
         Set the model, as read from a file
@@ -273,8 +284,8 @@ class FittingDriver(object):
         logger.info("Setting the theoretical model from file `%s`" %filename)
         self.theory.set_model(filename)
         
-        # make the list of model callables
-        self._get_model_callables()
+        # model callable
+        self._model_callable = self.theory.model_callable(self.data)
         logger.info("...theoretical model successfully read")
 
     def _setup_for_data(self):
@@ -287,42 +298,9 @@ class FittingDriver(object):
         self.theory.model.initialize()
         logger.info("...theoretical model initialized")
         
-        # make the list of model callables
-        self._get_model_callables()
-                
-    def _get_model_callables(self):
-        """
-        Compute the model callables
-        """
-        # get the mu/ell mappings
-        x = []
-        for i, meas in enumerate(self.data.measurements):
-            if meas.type == 'pkmu':
-                x.append(meas.mu)
-            elif meas.type == 'pole':
-                x.append(meas.ell)
-            else:
-                raise NotImplementedError("only `pkmu` or `pole` supported right now")
-        
-        self._ks = self.data.combined_k
-        if self.mode == 'pkmu':
-            self._mus = np.concatenate(x)
-            kwargs = {}
-            kwargs['mu'] = self.data.weights['mu']
-            kwargs['weights'] = self.data.weights['modes']
-            kwargs['mu_edges'] = self.data.mu_edges
-            self._model_callable = self.theory.model_callable(self.mode, self.data.weights['k'], **kwargs)
-        else:
-            self._ells = np.array(x)
-            kwargs = {}
-            kwargs['ell'] = self._ells
-            kwargs['mu'] = self.data.weights['mu']
-            kwargs['weights'] = self.data.weights['modes']
-            self._model_callable = self.theory.model_callable(self.mode, self.data.weights['k'], **kwargs)
-        
-        self.data_slice = [d._k_trim_inds for d in self.data.measurements]
-        self.data_slice_flat = np.concatenate(self.data_slice)
-                        
+        # the model callable
+        self._model_callable = self.theory.model_callable(self.data)
+                                        
     @property
     def results(self):
         """
@@ -349,11 +327,15 @@ class FittingDriver(object):
     @property
     def combined_model(self):
         """
-        Return the model values for each measurement concatenated into a single
-        array
+        The model values for each measurement, flattened column-wise
+        into a single array
+        
+        Notes
+        -----
+        *   the model callable should already returned the flattened
+            `combined` values
         """
-        result = self._model_callable().ravel(order='F')
-        return result[self.data_slice_flat]
+        return self._model_callable()
         
     @property
     def dof(self):
@@ -376,23 +358,9 @@ class FittingDriver(object):
         Return the number of free parameters
         """
         return self.theory.ndim
-        
-    @property
-    def measurement_sizes(self):
-        """
-        Sizes of the various measurements
-        """
-        return np.array([len(m.k) for i, m in enumerate(self.data.measurements)])
-    
-    @property
-    def flat_idx(self):
-        """
-        Indices for slicing the flat results
-        """
-        return np.concatenate([[0], self.measurement_sizes.cumsum()])
-        
+                
     #---------------------------------------------------------------------------
-    # Probability functions
+    # probability functions
     #---------------------------------------------------------------------------
     def lnprior(self):
         """
@@ -498,19 +466,22 @@ class FittingDriver(object):
         Returns
         -------
         toret : list
-            A list of (k_model, model, k_data, data, err) for each measurement in 
-            `self.data.measurements`
+            A list of (k_data, data, err, model) for each measurement 
+            in ``data.measurements``
         """
+        # this tells you how to slice the flattened results
+        flat_slices = self.data.flat_slices
+        
         # get the model and data measurements
         toret = []        
-        for i, m in enumerate(self.data.measurements):          
-            model = self.combined_model[self.flat_idx[i]:self.flat_idx[i+1]]
-            toret.append((m.k, model, m.k, m.power, m.error))
+        for i, m in enumerate(self.data):          
+            model = self.combined_model[flat_slices[i]]
+            toret.append((m.k, m.power, m.error, model))
             
         return toret
     
     #---------------------------------------------------------------------------
-    # Plotting functions
+    # plotting functions
     #---------------------------------------------------------------------------
     def plot_residuals(self):
         """
@@ -526,12 +497,15 @@ class FittingDriver(object):
         for i, result in enumerate(results):
 
             # make the residual
-            k, model, _, data, errs = result
+            k, data, errs, model = result
             residual = (data - model) / errs
             
             # make the plot
-            mu = np.mean(self.data.measurements[i].mu)
-            pfy.plot(k, residual, "o", label=r"$\mu = %.4f$" %mu)
+            if self.mode == 'pkmu':
+                lab = r"$\mu = %.2f$" %(self.data[i].identifier)
+            else:
+                lab = r"$\ell = %d$" %(self.data[i].identifier)
+            pfy.plot(k, residual, "o", label=lab)
 
         # make it look nice
         ax = pfy.gca()
@@ -550,19 +524,11 @@ class FittingDriver(object):
         # get the data - model pairs (k, model, data, err)
         results = self.data_model_pairs()
         
-        # loop over each measurement
-        mus, ells = [], []
-        for i, m in enumerate(self.data.measurements):
-            if self.mode == 'pkmu':
-                mus.append(np.mean(m.mu))
-            elif self.mode == 'poles':
-                ells.append(m.ell)
-
         fig = pfy.figure()
         if self.mode == 'pkmu':
-            self._plot_pkmu(fig, results, mus)
+            self._plot_pkmu(fig, results, self.data.combined_mu)
         elif self.mode == 'poles':
-            self._plot_poles(fig, results, ells)
+            self._plot_poles(fig, results, self.data.combined_ell)
 
     def _plot_pkmu(self, fig, results, mus):
         """
@@ -580,24 +546,23 @@ class FittingDriver(object):
         Pnw_kaiser = lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * self.theory.model.normed_power_lin_nw(k)
 
         offset = -0.1
-        rescale = self.data.covariance.inverse_rescaling**(-0.5)
-        for i in range(len(mus)):
-            
-            mu = mus[i]
-            label=r"$\mu = %.4f$" %mu
+        flat_slices = self.data.flat_slices
+        for i, result in enumerate(results):
+            label=r"$\mu = %.2f$" %(self.data[i].identifier)
             
             # unpack the result
-            k_model, model, k_data, data, errs = results[i]
+            k_data, data, errs, model = result
+            mu = mus[flat_slices[i]]
             
             # plot the model
-            norm = Pnw_kaiser(k_model, mu)
-            pfy.plot(k_model, model/norm + offset*i)
+            norm = Pnw_kaiser(k_data, mu)
+            pfy.plot(k_data, model/norm + offset*i)
             
             # plot the measurement
             norm = Pnw_kaiser(k_data, mu)
-            pfy.errorbar(k_data, data/norm + offset*i, errs*rescale/norm, zorder=2, label=label)
+            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=label)
 
-        ncol = 1 if len(mus) < 4 else 2
+        ncol = 1 if self.data.size < 4 else 2
         ax.legend(loc=0, ncol=ncol)
         ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
         ax.ylabel.update(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
@@ -619,29 +584,21 @@ class FittingDriver(object):
         beta = f/b1
         mono_kaiser = lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * self.theory.model.normed_power_lin_nw(k)
 
-        rescale = self.data.covariance.inverse_rescaling**(-0.5)
-        for i, ell in enumerate(ells):
+        for i, result in enumerate(results):
             
             # unpack the result
-            k_model, model, k_data, data, errs = results[i]
+            k_data, data, errs, model = result
             
             # plot the model
-            norm = mono_kaiser(k_model)
-            pfy.plot(k_model, model/norm)
+            norm = mono_kaiser(k_data)
+            pfy.plot(k_data, model/norm)
             
             # plot the measurement
-            if ell == 0:
-                label = "monopole"
-            elif ell == 2:
-                label = "quadrupole"
-            elif ell == 4:
-                label = 'hexadecapole'
-            else:
-                raise ValueError("Do not understand `ell` value for plotting purposes")
+            label = self.data[i].label
             norm = mono_kaiser(k_data)
-            pfy.errorbar(k_data, data/norm, errs*rescale/norm, zorder=2, label=label)
+            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
 
-        ell_str = ",".join(map(str, ells))
+        ell_str = ",".join([str(m.identifier) for m in self.data])
         ax.legend(loc=0)
         ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
         ax.ylabel.update(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" %(ell_str), fontsize=16)

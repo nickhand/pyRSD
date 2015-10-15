@@ -5,7 +5,7 @@ from scipy.special import legendre
 #------------------------------------------------------------------------------
 # TOOLS
 #------------------------------------------------------------------------------
-def flatten(arr):
+def _flatten(arr):
     """
     Flatten and remove any null entries
     """
@@ -69,6 +69,15 @@ class PkmuGrid(object):
             d = np.dstack([self.k, self.mu, self.modes])
             np.savetxt(ff, d.reshape((-1, 3)))
             
+    @classmethod
+    def from_pkmuresult(cls, pkmu):
+        """
+        Convienence method to return a ``PkmuGrid`` from a 
+        ``nbodykit.PkmuResult`` instance
+        """
+        coords = [pkmu.k_center, pkmu.mu_center]
+        return cls(coords, pkmu['k'].data, pkmu['mu'].data, pkmu['modes'].data)
+    
     @classmethod
     def from_structured(cls, coords, data):
         """
@@ -212,6 +221,14 @@ class PkmuTransfer(Cache):
     # cached properties
     #--------------------------------------------------------------------------        
     @cached_property()
+    def size(self):
+        """
+        The size of the flattened (valid) grid points, i.e., the number of
+        (k,mu) or (k,ell) data points
+        """
+        return len(self.coords_flat[0])
+        
+    @cached_property()
     def N1(self):
         return self.grid.Nk
         
@@ -224,7 +241,7 @@ class PkmuTransfer(Cache):
         """
         List of the flattened coordinates, with NaNs removed
         """
-        return [flatten(x) for x in self.coords]
+        return [_flatten(x) for x in self.coords]
     
     @cached_property("mu_edges", "in_range_idx")
     def coords(self):
@@ -332,7 +349,7 @@ class PkmuTransfer(Cache):
             whether to flatten the return array (column-wise)
         """
         toret = self.restrict_k(self.average(self.power, self.grid.modes))
-        if flatten: toret = flatten(toret)
+        if flatten: toret = _flatten(toret)
         return toret
         
     def to_covariance(self, components=False):
@@ -457,7 +474,7 @@ class PolesTransfer(PkmuTransfer):
         tobin = self.legendre_weights*self.power
         toret = self.restrict_k(np.asarray([self.average(d, self.grid.modes) for d in tobin]).T)
 
-        if flatten: toret = self._flatten(toret)
+        if flatten: toret = _flatten(toret)
         return toret 
         
     def to_covariance(self, components=False):

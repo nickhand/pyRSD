@@ -9,7 +9,7 @@ def is_array_like(d, shape):
     
 def is_square(d):
     shape = np.shape(d)
-    return all(s == shape[0] for s in shape)
+    return np.ndim(d) == 2 and all(s == shape[0] for s in shape)
     
 def condensed_to_full(data, N):
     toret = np.empty((N, N))
@@ -339,9 +339,14 @@ class CovarianceMatrix(Cache):
             
             # and the dimension/coordinates
             dims = ff.readline().split()
-            dims = [dims[:2], dims[2:]]
+            dims = np.squeeze(np.hsplit(np.array(dims), 2))
+            if dims.ndim > 1:
+                dims = map(list, dims)
+            else:
+                dims = list(dims)
             coords = np.array([map(float, ff.readline().split()) for i in xrange(N)])
-            coords = [coords[:,:2].T.tolist(), coords[:,2:].T.tolist()]
+            coords = np.squeeze(np.hsplit(coords, 2))
+            coords = [y.T.tolist() for y in coords]
             
             # and the meta data
             attrs = cls.__read_attrs__(ff)
@@ -424,7 +429,7 @@ class CovarianceMatrix(Cache):
                 if idx is None:
                     icoords.append(c)
                 else:
-                    icoords.append(np.take(c, idx, axis=0))
+                    icoords.append(np.array(np.take(c, idx, axis=0), ndmin=1))
             coords.append(icoords)
         return coords
             
@@ -609,14 +614,17 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         super(PkmuCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
 
     @classmethod 
-    def from_spectra_set(cls, pkmu_set, kmin=None, kmax=None, **kwargs):
+    def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
         """
         Return a PkmuCovarianceMatrix from a SpectraSet of P(k,mu) measurements
         
         Parameters
         ----------
-        pkmu_set : lsskit.specksis.SpectraSet
-            a set of P(k,mu) power spectrum classes
+        data : lsskit.specksis.SpectraSet
+            the set of P(k, mu) measurements to compute the data covariance from
+        mean_pkmu : nbodykit.PkmuResult, optional
+            the mean P(k,mu) defined on a finely-binned grid to use to compute the 
+            Gaussian theory covariance from
         kmin : float or array_like, optional
             minimum wavenumber to include in the covariance matrix; if an array is provided, 
             it is intepreted as the minimum value for each mu bin
@@ -624,31 +632,27 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             maximum wavenumber to include in the covariance matrix; if an array is provided, 
             it is intepreted as the minimum value for each mu bin 
         """
-        from lsskit.specksis import covariance, tools
-        from pyRSD.rsd import PkmuTransfer
-        
+        from lsskit.specksis import covariance
+
         # data covariance
-        C = covariance.compute_pkmu_covariance(pkmu_set, kmin=kmin, kmax=kmax)
-                      
-        # compute the mean of the pkmu set
-        arr = np.asarray([x.data.data for x in pkmu_set])
-        data = tools.mean_structured(arr, axis=0)
-        
-        # initialize the grid transfer
-        pkmu_0 = pkmu_set[0].values
-        coords = [pkmu_0.k_center, pkmu_0.mu_center]
-        transfer = PkmuTransfer.from_structured(coords, data, pkmu_0.muedges, kmin=kmin, kmax=kmax, power=data['power'])
-        
+        C, coords, _ = covariance.compute_pkmu_covariance(data, kmin=kmin, kmax=kmax, extras=True, **kwargs)
+        k_cen, mu_cen = coords
+                  
         # construct
-        k_cen, mu_cen = transfer.coords_flat
         names = [['mu1', 'k1'], ['mu2', 'k2']]
         coords = [[mu_cen, k_cen], [mu_cen, k_cen]]
         toret = cls.__construct_direct__(C, coords=coords, names=names)
         
-        # add the Gaussian covariance components
-        mean_power, modes = transfer.to_covariance(components=True)
-        toret.attrs['mean_power'] = mean_power
-        toret.attrs['modes'] = modes
+        # compute the Gaussian theory covariance 
+        if mean_pkmu is not None:
+            
+            # the theory covariance, using the underlying finely-binned P(k,mu) grid
+            mu_edges = mean_pkmu.muedges
+            mean_power, modes = covariance.data_pkmu_gausscov(mean_pkmu, mu_edges, kmin=kmin, kmax=kmax, components=True)
+            
+            # store the mean power and modes
+            toret.attrs['mean_power'] = mean_power
+            toret.attrs['modes'] = modes
         
         return toret
     
@@ -975,15 +979,18 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         super(PoleCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
 
     @classmethod 
-    def from_spectra_set(cls, pole_set, pkmu_set, kmin=None, kmax=None, **kwargs):
+    def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
         """
         Return a PoleCovarianceMatrix from a SpectraSet of multipole measurements, 
         and a SpectraSet of P(k,mu), which are used to compute the mean power
         
         Parameters
         ----------
-        power_set : lsskit.specksis.SpectraSet
-            a set of multipole power spectrum classes
+        data : lsskit.specksis.SpectraSet
+            the set of multipole measurements to estimate the data covariance from
+        mean_pkmu : nbodykit.PkmuResult, optional
+            the mean P(k,mu) defined on a finely-binned grid to use to compute the 
+            Gaussian theory covariance from
         kmin : float or array_like, optional
             minimum wavenumber to include in the covariance matrix; if an array is provided, 
             it is intepreted as the minimum value for each mu bin
@@ -991,33 +998,28 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             maximum wavenumber to include in the covariance matrix; if an array is provided, 
             it is intepreted as the minimum value for each mu bin 
         """
-        from lsskit.specksis import covariance, tools
-        from pyRSD.rsd import PolesTransfer
+        from lsskit.specksis import covariance
         
         # data covariance
-        ells = pole_set['ell'].values
-        C = covariance.compute_pole_covariance(pole_set, ells, kmin=kmin, kmax=kmax)
-                      
-        # compute the mean of the pkmu set
-        arr = np.asarray([x.data.data for x in pkmu_set])
-        data = tools.mean_structured(arr, axis=0)
-        
-        # initialize the grid transfer
-        pkmu_0 = pkmu_set[0].values
-        coords = [pkmu_0.k_center, pkmu_0.mu_center]
-        transfer = PolesTransfer.from_structured(coords, data, ells, kmin=kmin, kmax=kmax, power=data['power'])
+        ells = kwargs.pop('ells', data['ell'].values)
+        C, coords, _ = covariance.compute_pole_covariance(data, ells, kmin=kmin, kmax=kmax, extras=True, **kwargs)
+        k_cen, ell_cen = coords
         
         # construct
-        k_cen, ell_cen = transfer.coords_flat
         names = [['ell1', 'k1'], ['ell2', 'k2']]
         coords = [[ell_cen, k_cen], [ell_cen, k_cen]]
         toret = cls.__construct_direct__(C, coords=coords, names=names)
         
-        # add the Gaussian covariance components
-        mean_power, modes = transfer.to_covariance(components=True)
-        toret.attrs['mean_power'] = mean_power
-        toret.attrs['modes'] = modes
-        
+        # add the Gaussian theory covariance
+        if mean_pkmu is not None:
+                    
+            # the theory covariance, using the underlying finely-binned P(k,mu) grid
+            mean_power, modes = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
+            
+            # store the mean power and modes
+            toret.attrs['mean_power'] = mean_power
+            toret.attrs['modes'] = modes
+                    
         return toret
     
     #--------------------------------------------------------------------------
@@ -1050,7 +1052,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         total = []
         for i, ell in enumerate(ells):
             k_slice = slice(kmin_[i], kmax_[i])
-            _, indices = self._indexer.sel(self.values, return_indices=True, ell1=mu, ell2=mu, k1=k_slice, k2=k_slice)
+            _, indices = self._indexer.sel(self.values, return_indices=True, ell1=ell, ell2=ell, k1=k_slice, k2=k_slice)
             total.append(indices)
             
         total = np.concatenate(total, axis=1).tolist()

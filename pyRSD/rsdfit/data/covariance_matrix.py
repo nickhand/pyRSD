@@ -648,7 +648,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
             mu_edges = mean_pkmu.muedges
-            mean_power, modes = covariance.data_pkmu_gausscov(mean_pkmu, mu_edges, kmin=kmin, kmax=kmax, components=True)
+            mean_power, modes, coords = covariance.data_pkmu_gausscov(mean_pkmu, mu_edges, kmin=kmin, kmax=kmax, components=True)
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
@@ -1014,7 +1014,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         if mean_pkmu is not None:
                     
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
-            mean_power, modes = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
+            mean_power, modes, coords = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power

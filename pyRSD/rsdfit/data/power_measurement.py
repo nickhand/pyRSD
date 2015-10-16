@@ -237,6 +237,10 @@ class PowerData(Cache):
         # read the data file and (optional) grid for binning effects
         self.read_data()
         
+        # mu_edges / ells
+        self._mu_edges = self.params.get('mu_edges', None)
+        self._ells = self.params.get('ells', None)
+        
         # create the measurements and covariances
         self.set_all_measurements()
         self.set_covariance()
@@ -387,11 +391,11 @@ class PowerData(Cache):
 
             # initialize the transfer
             if self.mode == 'pkmu':
-                x = self.params.get('mu_edges', None)
+                x = self._mu_edges
                 cls = PkmuTransfer
                 lab = 'mu_edges'; size = self.size+1
             else:
-                x = self.params.get('ells', None)
+                x = self._ells
                 cls = PolesTransfer
                 lab = 'ells'; size = self.size
             
@@ -541,6 +545,15 @@ class PowerData(Cache):
             trim = [ells[i] for i in usedata]
             indexer = {'ell1':trim, 'ell2':trim}
         self.covariance = self.covariance.sel(**indexer)
+
+        # handle mu_edges/ells slicing
+        for (key, size) in [('_mu_edges', self.size+1), ('_ells', self.size)]:
+            val = getattr(self, key)
+            if val is not None:
+                if len(val) == size:
+                    val = [val[i] for i in usedata]
+                setattr(self, key, val)
+                    
         
         # trim measurements
         self.measurements = [m for idx, m in enumerate(self) if idx in usedata]

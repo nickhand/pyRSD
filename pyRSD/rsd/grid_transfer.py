@@ -5,6 +5,9 @@ from scipy.special import legendre
 #------------------------------------------------------------------------------
 # TOOLS
 #------------------------------------------------------------------------------
+def non_decreasing(L):
+    return all(x<=y for x, y in zip(L, L[1:]))
+    
 def _flatten(arr):
     """
     Flatten and remove any null entries
@@ -142,14 +145,15 @@ class PkmuTransfer(Cache):
     Class to facilitate the manipulations of P(k,mu) measurements
     on a (k, mu) grid
     """
-    def __init__(self, grid, mu_edges, kmin=None, kmax=None, power=None):
+    def __init__(self, grid, mu_bounds, kmin=None, kmax=None, power=None):
         """
         Parameters
         ----------
         grid : PkmuGrid
             the grid instance defining the (k,mu) grid
-        mu_edges : array_like
-            the edges of the mu-bins for the 
+        mu_bounds : array_like
+            a list of tuples specifying (lower, upper) for each desired
+            mu bin, i.e., [(0., 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.0)]
         kmin : float, array_like
             the minimum allowed wavenumber
         kmax : float, array_like
@@ -161,20 +165,20 @@ class PkmuTransfer(Cache):
         """
         super(PkmuTransfer, self).__init__()
         
-        self.grid     = grid
-        self.mu_edges = mu_edges
-        self.kmin     = kmin
-        self.kmax     = kmax
-        self.power    = power
+        self.grid      = grid
+        self.mu_bounds = mu_bounds
+        self.kmin      = kmin
+        self.kmax      = kmax
+        self.power     = power
         
     @classmethod
-    def from_structured(cls, coords, data, mu_edges, **kwargs):
+    def from_structured(cls, coords, data, mu_bounds, **kwargs):
         """
         Convenience function to teturn a `PkmuTransfer` object 
         from the coords+data instead of a `PkmuGrid`
         """
         grid = PkmuGrid.from_structured(coords, data)
-        return cls(grid, mu_edges, **kwargs)
+        return cls(grid, mu_bounds, **kwargs)
         
     #--------------------------------------------------------------------------
     # parameters
@@ -200,9 +204,10 @@ class PkmuTransfer(Cache):
         return toret
         
     @parameter
-    def mu_edges(self, val):
+    def mu_bounds(self, val):
         """
-        The edges of the mu bins desired for output
+        A list of tuples specifying the lower and upper limits for each 
+        desired `mu` bin
         """
         return val
         
@@ -227,10 +232,20 @@ class PkmuTransfer(Cache):
         toret = np.empty(self.N2)
         toret[:] = val
         return toret
-          
+
     #--------------------------------------------------------------------------
     # cached properties
     #--------------------------------------------------------------------------        
+    @cached_property("mu_bounds")
+    def mu_edges(self):
+        """
+        The edges of the mu bins desired for output
+        """
+        toret = np.asarray(self.mu_bounds).ravel()
+        if not non_decreasing(toret):
+            raise ValueError("specified `mu` bounds are not monotonically increasing")
+        return toret
+            
     @cached_property()
     def size(self):
         """
@@ -245,7 +260,7 @@ class PkmuTransfer(Cache):
         
     @cached_property("mu_edges")
     def N2(self):
-        return len(self.mu_edges)-1
+        return len(self.mu_bounds)
         
     @cached_property("coords")
     def coords_flat(self):
@@ -262,7 +277,7 @@ class PkmuTransfer(Cache):
         # broadcast (k_cen, mu_cen) to the shape (N1, N2)
         idx = self.in_range_idx
         k_cen = np.ones((self.N1, self.N2)) * self.grid.k_cen[:,None]
-        mu_cen = 0.5*(self.mu_edges[1:] + self.mu_edges[:-1])
+        mu_cen = 0.5*(self.mu_edges[1:] + self.mu_edges[:-1])[::2]
         mu_cen = np.ones((self.N1, self.N2)) * mu_cen[None,:]
         
         # restrict the k-range and return
@@ -310,8 +325,7 @@ class PkmuTransfer(Cache):
         toret = np.zeros(self.ndims)
         minlength = np.prod(self.ndims)
         toret.flat = np.bincount(self.mu_indices, weights=d[self.grid.notnull], minlength=minlength)
-        toret[:,-2] += toret[:,-1]
-        return np.squeeze(toret.reshape(self.ndims)[1:-1, 1:-1])
+        return np.squeeze(toret.reshape(self.ndims)[1:-1, 1:-1][..., ::2])
         
     def average(self, d, w=None):
         """
@@ -417,8 +431,7 @@ class PolesTransfer(PkmuTransfer):
             as the values at all valid grid points
         """
         self._PolesTransfer__ells = np.array(ells)
-        mu_edges = np.linspace(0., 1., 2)
-        super(PolesTransfer, self).__init__(grid, mu_edges, kmin=kmin, kmax=kmax, power=power)
+        super(PolesTransfer, self).__init__(grid, [(0., 1.)], kmin=kmin, kmax=kmax, power=power)
         
     @classmethod
     def from_structured(cls, coords, data, ells, **kwargs):

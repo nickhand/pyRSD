@@ -237,8 +237,8 @@ class PowerData(Cache):
         # read the data file and (optional) grid for binning effects
         self.read_data()
         
-        # mu_edges / ells
-        self._mu_edges = self.params.get('mu_edges', None)
+        # mu_bounds / ells
+        self._mu_bounds = self.params.get('mu_bounds', None)
         self._ells = self.params.get('ells', None)
         
         # create the measurements and covariances
@@ -391,18 +391,16 @@ class PowerData(Cache):
 
             # initialize the transfer
             if self.mode == 'pkmu':
-                x = self._mu_edges
-                cls = PkmuTransfer
-                lab = 'mu_edges'; size = self.size+1
+                x = self._mu_bounds
+                cls = PkmuTransfer; lab = 'mu_bounds'
             else:
                 x = self._ells
-                cls = PolesTransfer
-                lab = 'ells'; size = self.size
+                cls = PolesTransfer; lab = 'ells'
             
             # verify and initialize    
             if x is None:
                 raise ValueError("`%s` parameter must be defined if `grid_file` is supplied" %lab)
-            if len(x) != size:
+            if len(x) != self.size:
                 raise ValueError("size mismatch between `%s` and number of measurements" %lab)
             self.transfer = cls(self.grid, x, kmin=self.kmin, kmax=self.kmax)
                     
@@ -546,11 +544,11 @@ class PowerData(Cache):
             indexer = {'ell1':trim, 'ell2':trim}
         self.covariance = self.covariance.sel(**indexer)
 
-        # handle mu_edges/ells slicing
-        for (key, size) in [('_mu_edges', self.size+1), ('_ells', self.size)]:
+        # handle mu_bounds/ells slicing
+        for key in ['_mu_bounds', '_ells']:
             val = getattr(self, key)
             if val is not None:
-                if len(val) == size:
+                if len(val) == self.size:
                     val = [val[i] for i in usedata]
                 setattr(self, key, val)
                     

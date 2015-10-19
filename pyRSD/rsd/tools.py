@@ -1,6 +1,7 @@
 from .. import pygcl, numpy as np
 from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
+from . import INTERP_KMIN, INTERP_KMAX
 
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.integrate import simps
@@ -13,8 +14,32 @@ import itertools
 warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
 
 #-------------------------------------------------------------------------------
-# DECORATORS
+# DECORATORS/CONTEXTS
 #-------------------------------------------------------------------------------  
+class LowKPowerMode():
+    from collections import OrderedDict
+    params = OrderedDict({'use_P00_model':False, 'use_P01_model':False, 
+                            'use_P11_model':False, 'use_Pdv_model':False, 
+                            'Phm_model':None})
+                
+    def __init__(self, model):
+        self.model = model
+        
+    def __enter__(self):
+        
+        # save the original state
+        self.state = {k:getattr(self.model, k) for k in self.params.keys()}
+        
+        # update the state to low-k mode
+        for k,v in self.params.iteritems():
+            setattr(self.model, k, v)
+            
+    def __exit__(self, type, value, traceback):
+        
+        # restore the original state
+        for k, v in self.state.iteritems():
+            setattr(self.model, k, v)
+
 def unpacked(method):
     """
     Decorator to avoid return lists/tuples of length 1
@@ -28,7 +53,6 @@ def unpacked(method):
             return result
     return _decorator
 
-#-------------------------------------------------------------------------------
 def broadcast_kmu(f):
     """
     Decorator to properly handle broadcasting of k, mu
@@ -37,18 +61,21 @@ def broadcast_kmu(f):
         args = list(args)
         k = args[0]
         mu = args[1]
-        if not np.isscalar(mu) and not np.isscalar(k):
-            mu_dim = np.ndim(mu) ; k_dim = np.ndim(k)
-            if mu_dim == 1 and k_dim == 1:
-                if len(mu) != len(k):
-                    args[0] = k[:, np.newaxis]
-                    args[1] = mu[np.newaxis, :]
+        if np.isscalar(k): k = np.array([k])
+        if np.isscalar(mu): mu = np.array([mu])
+        args[0] = k; args[1] = mu
+        
+        mu_dim = np.ndim(mu); k_dim = np.ndim(k)
+        if mu_dim == 1 and k_dim == 1:
+            if len(mu) != len(k):
+                args[0] = k[:, np.newaxis]
+                args[1] = mu[np.newaxis, :]
+        else:
+            if k_dim > 1:
+                args[1] =  mu[np.newaxis, :]
             else:
-                if k_dim > 1:
-                    args[1] =  mu[np.newaxis, :]
-                else:
-                    args[0] = k[:, np.newaxis]
-        return f(self, *args, **kwargs)
+                args[0] = k[:, np.newaxis]
+        return np.squeeze(f(self, *args, **kwargs))
         
     return wrapper
                 
@@ -63,7 +90,6 @@ def monopole(f):
         return np.array([simps(pk, x=mus) for pk in Pkmus])
     return wrapper
 
-#-------------------------------------------------------------------------------
 def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
@@ -76,7 +102,6 @@ def quadrupole(f):
         return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
     return wrapper
 
-#-------------------------------------------------------------------------------
 def hexadecapole(f):
     """
     Decorator to compute the hexadecapole from a `self.power` function

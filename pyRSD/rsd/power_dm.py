@@ -9,9 +9,9 @@ from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01
 
 def verify_krange(k, kmin, kmax):
     if np.amin(k) < kmin:
-        raise ValueError("cannot compute power spectrum for k < %.2f" %kmin)
+        raise ValueError("cannot compute power spectrum for k < %.2e" %kmin)
     if np.amax(k) > kmax:
-        raise ValueError("cannot compute power spectrum for k > %.2f" %kmax)
+        raise ValueError("cannot compute power spectrum for k > %.2e" %kmax)
 
 #-------------------------------------------------------------------------------
 class DarkMatterSpectrum(Cache, Integrals, SimLoader):
@@ -19,18 +19,18 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     The dark matter power spectrum in redshift space
     """
     # splines and interpolation variables
-    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 100)
+    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
     spline = tools.RSDSpline
     spline_kwargs = {'bounds_error' : True, 'fill_value' : 0}
     
     # kwargs
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
     allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', \
-                        'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims']
+                        'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims', 'k0_low']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
-    def __init__(self, kmin=0.01,
+    def __init__(self, kmin=1e-3,
                        kmax=0.5,
                        Nk=500,
                        z=0., 
@@ -40,6 +40,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                        max_mu=4,
                        interpolate=True,
                        load_dm_sims=None,
+                       k0_low=5e-3,
                        **kwargs):
         """
         Parameters
@@ -56,7 +57,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         z : float, optional
             The redshift to compute the power spectrum at. Default = 0.
             
-        cosmo : str
+        cosmo_filename : str
             The cosmological parameters to use, specified as the name
             of the file holding the `CLASS` parameter file. Default 
             is `planck1_WP.ini`.
@@ -75,6 +76,14 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         interpolate: bool, optional
             Whether to return interpolated results for underlying power moments
+            
+        load_dm_sims : str or `None`, optional
+            load the DM simulation measurements for a set of builtin simulations;
+            must be one of ``['teppei_lowz', 'teppei_midz', 'teppei_highz']``
+        
+        k0_low : float, optional (`5e-3`)
+            below this wavenumber, evaluate any power in "low-k mode", which
+            essentially just uses SPT at low-k
         """
         # initialize the Cache subclass first
         Cache.__init__(self)
@@ -93,6 +102,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self.kmin           = kmin
         self.kmax           = kmax
         self.Nk             = Nk
+        self.k0_low         = k0_low
         
         # initialize the cosmology parameters and set defaults
         self.sigma8_z          = self.cosmo.Sigma8_z(self.z)
@@ -213,6 +223,14 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         return val
 
+
+    @parameter
+    def k0_low(self, val):
+        """
+        Wavenumber to transition to use only SPT for lower wavenumber
+        """
+        return val
+        
     @parameter
     def kmin(self, val):
         """
@@ -344,8 +362,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         allowed values, given the desired `kmin` and `kmax` and the
         current values of the AP effect parameters, `alpha_perp` and `alpha_par`
         """
-        kmin = 0.95*min(self.k_true(self.kmin, 0.), self.k_true(self.kmin, 1.))
-        kmax = 1.05*max(self.k_true(self.kmax, 0.), self.k_true(self.kmax, 1.))
+        kmin = min(self.k_true(self.kmin, 0.), self.k_true(self.kmin, 1.))
+        kmax = max(self.k_true(self.kmax, 0.), self.k_true(self.kmax, 1.))
 
         if kmin < INTERP_KMIN:
             msg = "Minimum possible k value with this `kmin` and "
@@ -1082,23 +1100,41 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         verify_krange(k_obs, self.kmin, self.kmax)
         
-        # set the observed mu value
+        # determine the true k/mu values and broadcast them to final shape
         mu = self.mu_true(mu_obs)
         k = self.k_true(k_obs, mu_obs)
-        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
-                
-        if self.max_mu == 0:
-            P_out = self.P_mu0(k)
-        elif self.max_mu == 2:
-            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k)
-        elif self.max_mu == 4:
-            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k)
-        elif self.max_mu == 6:
-            P_out = self.P_mu0(k) + mu**2*self.P_mu2(k) + mu**4*self.P_mu4(k) + mu**6*self.P_mu6(k)
-        elif self.max_mu == 8:
-            raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
-        toret = np.nan_to_num(vol_scaling*P_out)
+        k, mu = np.broadcast_arrays(k, mu)
         
+        # volume scaling
+        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
+        
+        toret = np.zeros(k.shape)
+        idx = k >= self.k0_low
+        
+        def _power(_k, _mu):
+            if self.max_mu == 0:
+                P_out = self.P_mu0(_k)
+            elif self.max_mu == 2:
+                P_out = self.P_mu0(_k) + _mu**2*self.P_mu2(_k)
+            elif self.max_mu == 4:
+                P_out = self.P_mu0(_k) + _mu**2*self.P_mu2(_k) + _mu**4*self.P_mu4(_k)
+            elif self.max_mu == 6:
+                P_out = self.P_mu0(_k) + _mu**2*self.P_mu2(_k) + _mu**4*self.P_mu4(_k) + _mu**6*self.P_mu6(_k)
+            elif self.max_mu == 8:
+                raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
+            return np.nan_to_num(vol_scaling*P_out)
+        
+        # k >= k0_low
+        if idx.sum():
+            toret[idx] = _power(k[idx], mu[idx])
+            
+        # k < k0_low
+        if (~idx.sum()):
+            A = _power(self.k0_low, mu[~idx])
+            with tools.LowKPowerMode(self):
+                norm = A / _power(self.k0_low, mu[~idx])
+                toret[~idx] = _power(k[~idx], mu[~idx]) * norm
+
         if flatten: toret = np.ravel(toret, order='F')
         return toret
     

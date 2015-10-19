@@ -1,4 +1,4 @@
-INTERP_KMIN = 1e-3
+INTERP_KMIN = 1e-5
 INTERP_KMAX = 1.0
 
 from .power_dm import DarkMatterSpectrum

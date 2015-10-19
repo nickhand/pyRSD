@@ -1,7 +1,7 @@
 from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
 from .. import pygcl, numpy as np, data as sim_data
-from . import tools, INTERP_KMIN, INTERP_KMAX
+from . import tools
 from .mu0_modeling import GPModelParams 
 
 import itertools
@@ -177,10 +177,11 @@ class GaussianProcessSimulationData(Cache):
             The redshift to evaluate at
         """
         factor = 1. if not self.use_bias_ratio else b1
+        pt = np.array([z, b1])[None,:]
         if col is None:
-            return [(self.interpolation_table[col].predict([z, b1])*factor)[0] for col in self.param_names]
+            return [(self.interpolation_table[col].predict(pt)*factor)[0] for col in self.param_names]
         else:
-            return [(self.interpolation_table[col].predict([z, b1])*factor)[0]]
+            return [(self.interpolation_table[col].predict(pt)*factor)[0]]
         
     #---------------------------------------------------------------------------
 

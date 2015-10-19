@@ -60,13 +60,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
 
     @parameter
-    def interpolated(self, val):
+    def interpolate(self, val):
         """
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
         models = ['P00_model', 'P01_model', 'Phm_halo_zeldovich_model']
-        self._update_models('interpolated', models, val)
+        self._update_models('interpolate', models, val)
         
         return val
         

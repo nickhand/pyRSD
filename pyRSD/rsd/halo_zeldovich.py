@@ -14,10 +14,10 @@ class HaloZeldovichPS(Cache):
     # define the interpolation grid for Zel'dovich power
     interpolation_grid = {}
     interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
-    interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
+    interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 300)
 
     #---------------------------------------------------------------------------
-    def __init__(self, z, sigma8_z, interpolated=False):
+    def __init__(self, z, sigma8_z, interpolate=False):
         """
         Parameters
         ----------
@@ -35,7 +35,7 @@ class HaloZeldovichPS(Cache):
         # the model parameters
         self.z            = z
         self.sigma8_z     = sigma8_z
-        self.interpolated = interpolated
+        self.interpolate = interpolate
         
         self._A0_amp = 730.
         self._A0_slope = 3.75
@@ -82,7 +82,7 @@ class HaloZeldovichPS(Cache):
         return val
         
     @parameter
-    def interpolated(self, val):
+    def interpolate(self, val):
         """
         If `True`, return the Zel'dovich power term from an interpolation table
         """
@@ -236,7 +236,7 @@ class HaloZeldovichPS(Cache):
         """
         Return the Zel'dovich power at the specified `k`
         """
-        if self.interpolated and not ignore_interpolated:
+        if self.interpolate and not ignore_interpolated:
             if np.isscalar(k):
                 pts = [self.sigma8_z, k]
             else:
@@ -438,7 +438,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         return val
         
     @parameter
-    def interpolated(self, val):
+    def interpolate(self, val):
         """
         If `True`, return the Zel'dovich power term from an interpolation table
         """

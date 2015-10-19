@@ -1,41 +1,114 @@
 """
  write_spectra.py
- pyPT: write out power spectra measured from simulations
+ write out power spectra measured from simulations
  
  author: Nick Hand
  contact: nhand@berkeley.edu
  creation date: 03/18/2014
 """
 from pyRSD import rsd
+from utils import mpfit
 
 import scipy.interpolate as interp
 import numpy as np
 import matplotlib.pyplot as plt
 import argparse
 
-import sys
-sys.path.append('/Users/Nick/research/codes/utils/')
-from utils import mpfit
-
+#-------------------------------------------------------------------------------
+# tools
 #-------------------------------------------------------------------------------
 def transition(k, k_transition, b):
     return 0.5 + 0.5*np.tanh((k-k_transition)/b)
 
-#-------------------------------------------------------------------------------
-def model(k, p, PTmodel):
-    return np.exp(p[0]*k*k)*PTmodel
-#end model
+def transition_model(k, p, pt_model):
+    return np.exp(p[0]*k*k)*pt_model
 
-#-------------------------------------------------------------------------------
-def fitting_function(p, fjac=None, k=None, y=None, err=None, PTmodel=None):
-    m = model(k, p, PTmodel)
+def fitting_function(p, fjac=None, k=None, y=None, err=None, pt_model=None):
+    m = transition_model(k, p, pt_model)
     status = 0
     return ([status, (y-m)/err])
-#end fitting_function
 
 #-------------------------------------------------------------------------------
-def fit_P00(k_transition=0.1, plot=False, save=True):
+# SPT functions
+#-------------------------------------------------------------------------------
+def P00_spt(model, k, z):
+    """
+    Return P00(k,z) in SPT
+    """
+    model.z = z
+    model.sigma8_z = model.cosmo.Sigma8_z(z)
+    model.f = model.cosmo.f_z(z)
     
+    # the necessary integrals 
+    I00 = model.I00(k)
+    J00 = model.J00(k)
+
+    # evaluate
+    P11 = model.normed_power_lin(k)
+    P22 = 2*I00
+    P13 = 6*k**2*J00*P11
+    return P11 + P22 + P13
+
+
+def P01_spt(model, k, z):
+    """
+    Return P01(k,z) in SPT
+    """
+    model.z = z
+    model.sigma8_z = model.cosmo.Sigma8_z(z)
+    model.f = model.cosmo.f_z(z)
+    
+    # the necessary integrals 
+    I00 = model.I00(k)
+    J00 = model.J00(k)
+
+    Plin = model.normed_power_lin(k)
+    return 2*model.f*(Plin + 4.*(I00 + 3*k**2*J00*Plin))
+    
+def P11_spt(model, k, z):
+    """
+    Return P11(k,z) in SPT
+    """
+    model.z = z
+    model.sigma8_z = model.cosmo.Sigma8_z(z)
+    model.f = model.cosmo.f_z(z)
+    
+    # the necessary integrals 
+    I11 = model.I11(k)
+    I22 = model.I22(k)
+    I13 = model.I13(k)
+    J11 = model.J11(k)
+    J10 = model.J10(k)
+
+    Plin = model.normed_power_lin(k)
+    return model.f**2 * (Plin + 2*I11 + 4*I22 + I13 + 6*k**2 * (J11 + 2*J10)*Plin)
+    
+def Pdv_spt(model, k, z):
+    """
+    Return Pdv(k,z) in SPT
+    """
+    model.z = z
+    model.sigma8_z = model.cosmo.Sigma8_z(z)
+    model.f = model.cosmo.f_z(z)
+
+    # the necessary integrals 
+    I01 = model.I01(k)
+    J01 = model.J01(k)
+
+    # evaluate
+    P11 = model.normed_power_lin(k)
+    P22 = 2*I01
+    P13 = 6*k**2*J01*P11
+    return (-model.f) * (P11 + P22 + P13)
+    
+#-------------------------------------------------------------------------------
+# fitting functions
+#-------------------------------------------------------------------------------
+def fit_P00(model, k_transition=0.1, plot=False, save=True, tag=""):
+    """
+    Fit a smooth function to the measured P00 from simulations, extrapolating
+    using SPT at low-k
+    """
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
     for z, zlabel in zip(zs, zlabels):
@@ -49,39 +122,30 @@ def fit_P00(k_transition=0.1, plot=False, save=True):
         # find where k < 0.1
         inds = np.where(x < k_transition)
 
-        # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit='CLASS', include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
-        PTmodel = Pspec.P00.total.mu0
+        # initialize the PT model
+        pt_model = P00_spt(model, x[inds], float(z))
 
         # measure the exponential scale
         parinfo = [{'value':1.0, 'fixed':0, 'limited':[0,0], 'limits':[0.,0.]}]
-        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'PTmodel': PTmodel}
+        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'pt_model': pt_model}
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
         
-        # get final k
-        k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
-        
-        # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit='CLASS', include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
-        PTmodel = Pspec.P00.total.mu0
-        PTmodel   = Pspec.P00.total.mu0
-        pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
-        
-        # and the full sim model
+        # full k results
+        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        pt_full = P00_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
         
         # now transition nicely
         switch = transition(k_final, k_transition, 0.01)
-        P00 = (1-switch)*model(k_final, m.params, pt_spline(k_final)) + switch*sim_spline(k_final)
+        P00 = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
         
         if plot:
-            norm = Pspec.D**2*Pspec.power_lin.power
-                        
+            norm = model.normed_power_lin(k_final)
             plt.plot(k_final, P00/norm)
-            plt.plot(k_final, PTmodel/norm)
+            plt.plot(k_final, pt_full/norm)
             
-            norm_spline = interp.InterpolatedUnivariateSpline(k_final, norm)
-            plt.errorbar(x, y/norm_spline(x), err/norm_spline(x), c='k', marker='.', ls='')
+            norm = model.normed_power_lin(x)
+            plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
             plt.ylim(0.9, 2.0)
@@ -90,13 +154,15 @@ def fit_P00(k_transition=0.1, plot=False, save=True):
             plt.title(r"$\mathrm{P_{00} \ at \ z \ = \ %s}$" %z)
             plt.show()
         
-        if save:
-            np.savetxt("./pkmu_P00_mu0_z_%s.dat" %z, zip(k_final, P00))
-#end fit_P00
+        if save: 
+            t = "_"+tag if tag else ""
+            np.savetxt("./pkmu_P00_mu0_z_%s%s.dat" %(z, t), zip(k_final, P00))
 
-#-------------------------------------------------------------------------------
-def fit_P01(k_transition=0.1, plot=False, save=True):
-    
+def fit_P01(model, k_transition=0.1, plot=False, save=True, tag=""):
+    """
+    Fit a smooth function to the measured P01 from simulations, extrapolating
+    using SPT at low-k
+    """
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
     for z, zlabel in zip(zs, zlabels):
@@ -110,38 +176,30 @@ def fit_P01(k_transition=0.1, plot=False, save=True):
         # find where k < 0.1
         inds = np.where(x < k_transition)
 
-        # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
-        PTmodel = Pspec.P01.total.mu2
+        # initialize the PT model
+        pt_model = P01_spt(model, x[inds], float(z))
 
         # measure the exponential scale
         parinfo = [{'value':1.0, 'fixed':0, 'limited':[0,0], 'limits':[0.,0.]}]
-        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'PTmodel': PTmodel}
+        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'pt_model': pt_model}
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
         
-        # get final k
-        k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
-        
-        # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit='CLASS', include_2loop=False, cosmo="teppei_sims.ini", DM_model=None)
-        PTmodel    = Pspec.P01.total.mu2
-        pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
-        
-        # and the full sim model
+        # full k results
+        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        pt_full = P01_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
         
         # now transition nicely
         switch = transition(k_final, k_transition, 0.01)
-        P01 = (1-switch)*model(k_final, m.params, pt_spline(k_final)) + switch*sim_spline(k_final)
+        P01 = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
 
         if plot:
-            norm = 2*Pspec.f*Pspec.D**2*Pspec.power_lin.power
-        
+            norm = 2*model.f*model.normed_power_lin(k_final)
             plt.plot(k_final, P01/norm)
-            plt.plot(k_final, PTmodel/norm)
+            plt.plot(k_final, pt_full/norm)
             
-            norm_spline = interp.InterpolatedUnivariateSpline(k_final, norm)
-            plt.errorbar(x, y/norm_spline(x), err/norm_spline(x), c='k', marker='.', ls='')
+            norm = 2*model.f*model.normed_power_lin(x)
+            plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
             plt.ylim(0.9, 4.0)
@@ -151,13 +209,15 @@ def fit_P01(k_transition=0.1, plot=False, save=True):
             plt.show()
 
         if save:
-            np.savetxt("./pkmu_P01_mu2_z_%s.dat" %z, zip(k_final, P01))
-        
-#end fit_P01
+            t = "_"+tag if tag else ""
+            np.savetxt("./pkmu_P01_mu2_z_%s%s.dat" %(z, t), zip(k_final, P01))
 
-#-------------------------------------------------------------------------------
-def fit_P11(k_transition=0.1, plot=False, save=True):
-    
+
+def fit_P11(model, k_transition=0.1, plot=False, save=True, tag=""):
+    """
+    Fit a smooth function to the measured P11 from simulations, extrapolating
+    using SPT at low-k
+    """
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
     mu = 'mu4'
@@ -173,38 +233,30 @@ def fit_P11(k_transition=0.1, plot=False, save=True):
         # find where k < 0.1
         inds = np.where(x < k_transition)
 
-        # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=Non)
-        PTmodel = getattr(Pspec.P11.total, mu)
+        # initialize the PT model
+        pt_model = P11_spt(model, x[inds], float(z))
 
         # measure the exponential scale
         parinfo = [{'value':1.0, 'fixed':0, 'limited':[0,0], 'limits':[0.,0.]}]
-        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'PTmodel': PTmodel}
+        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'pt_model': pt_model}
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
 
-        # get final k
-        k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
-
-        # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=Non)
-        PTmodel   = getattr(Pspec.P11.total, mu)
-        pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
-
-        # and the full sim model
+        # full k results
+        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        pt_full = P11_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
 
         # now transition nicely
         switch = transition(k_final, k_transition, 0.01)
-        P11 = (1-switch)*model(k_final, m.params, pt_spline(k_final)) + switch*sim_spline(k_final)
+        P11 = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
         
         if plot:
-            norm = (Pspec.f*Pspec.D)**2*Pspec.power_lin.power
-            
+            norm = model.f**2*model.normed_power_lin(k_final)
             plt.plot(k_final, P11/norm)
-            plt.plot(k_final, PTmodel/norm)
+            plt.plot(k_final, pt_full/norm)
             
-            norm_spline = interp.InterpolatedUnivariateSpline(k_final, norm)
-            plt.errorbar(x, y/norm_spline(x), err/norm_spline(x), c='k', marker='.', ls='')
+            norm = model.f**2*model.normed_power_lin(x)
+            plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
             plt.ylim(0.9, 3.0)
@@ -214,12 +266,15 @@ def fit_P11(k_transition=0.1, plot=False, save=True):
             plt.show()
 
         if save:
-            np.savetxt("./pkmu_P11_%s_z_%s.dat" %(mu, z), zip(k_final, P11))
-#end fit_P11   
+            t = "_"+tag if tag else ""
+            np.savetxt("./pkmu_P11_%s_z_%s%s.dat" %(mu, z, t), zip(k_final, P11))
+ 
 
-#-------------------------------------------------------------------------------
-def fit_Pdv(k_transition=0.1, plot=False, save=True):
-    
+def fit_Pdv(model, k_transition=0.1, plot=False, save=True, tag=""):
+    """
+    Fit a smooth function to the measured Pdv from simulations, extrapolating
+    using SPT at low-k
+    """
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
     for z, zlabel in zip(zs, zlabels):
@@ -237,39 +292,30 @@ def fit_Pdv(k_transition=0.1, plot=False, save=True):
         # get the PT model
         k_lo = x[inds]
         
-        # get the PT model
-        Pspec = rsd.power_dm.DMSpectrum(k=x[inds], z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=None)
-        PTmodel = Pspec.Pdv
+        # initialize the PT model
+        pt_model = Pdv_spt(model, x[inds], float(z))
 
         # measure the exponential scale
         parinfo = [{'value':1.0, 'fixed':0, 'limited':[0,0], 'limits':[0.,0.]}]
-        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'PTmodel': PTmodel}
+        fa = {'k': x[inds], 'y': y[inds], 'err': err[inds], 'pt_model': pt_model}
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
 
-        # get final k
-        k_final = np.logspace(-4, np.log10(np.amax(x)), 500)
-
-        # get full model for PT
-        Pspec = rsd.power_dm.DMSpectrum(k=k_final, z=float(z), transfer_fit="CLASS", include_2loop=False, cosmo='teppei_sims.ini', DM_model=None)
-        PTmodel   = Pspec.Pdv
-        pt_spline = interp.InterpolatedUnivariateSpline(Pspec.k, PTmodel)
-
-        # and the full sim model
-        sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
+        # full k results
+        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        pt_full = Pdv_spt(model, k_final, float(z))
+        sim_spline = interp.UnivariateSpline(x, y, w=1/err)
 
         # now transition nicely
         switch = transition(k_final, k_transition, 0.01)
-        Pdv = (1-switch)*model(k_final, m.params, pt_spline(k_final)) + switch*sim_spline(k_final)
-        #Pdv = (k_final < k_transition)*(1-switch)*model(k_final, m.params, pt_spline(k_final)) + (k_final >= k_transition)*switch*sim_spline(k_final)
+        Pdv = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
         
         if plot:
-            norm = (-Pspec.f)*Pspec.D**2*Pspec.power_lin.power
-            
+            norm = -model.f*model.normed_power_lin(k_final)
             plt.plot(k_final, Pdv/norm)
-            plt.plot(k_final, PTmodel/norm)
+            plt.plot(k_final, pt_full/norm)
             
-            norm_spline = interp.InterpolatedUnivariateSpline(k_final, norm)
-            plt.errorbar(x, y/norm_spline(x), err/norm_spline(x), c='k', marker='.', ls='')
+            norm = -model.f*model.normed_power_lin(x)
+            plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
             plt.ylim(0.6, 2.0)
@@ -279,16 +325,28 @@ def fit_Pdv(k_transition=0.1, plot=False, save=True):
             plt.show()
         
         if save:
-            np.savetxt("./pkmu_Pdv_mu0_z_%s.dat" %z, zip(k_final, Pdv))
-#end fit_Pdv
+            t = "_"+tag if tag else ""
+            np.savetxt("./pkmu_Pdv_mu0_z_%s%s.dat" %(z, t), zip(k_final, Pdv))
 
-#-------------------------------------------------------------------------------
 def main(args):
-            
-    #fit_P00(k_transition=args.k_transition, plot=args.plot, save=args.save)
-    #fit_P01(k_transition=args.k_transition, plot=args.plot, save=args.save)
-    fit_P11(k_transition=args.k_transition, plot=args.plot, save=args.save)
-    #fit_Pdv(k_transition=args.k_transition, plot=args.plot, save=args.save)
+    """
+    The main function
+    """
+    
+    # initialize the DM model
+    model = rsd.DarkMatterSpectrum(cosmo_filename="teppei_sims.ini")
+        
+    # do the fitting  
+    for i, w in enumerate(args.which):
+        kwargs = {'k_transition':args.k0[i], 'plot':args.plot, 'save':args.save, 'tag':args.tag}
+        if w == 'P00':  
+            fit_P00(model, **kwargs)
+        elif w == 'P01':
+            fit_P01(model, **kwargs)
+        elif w == 'P11':
+            fit_P11(model, **kwargs)
+        elif w == 'Pdv':
+            fit_Pdv(model, **kwargs)
     
 #-------------------------------------------------------------------------------    
 if __name__ == '__main__':
@@ -297,8 +355,15 @@ if __name__ == '__main__':
     desc = "write out interpolated, simulation spectra"
     parser = argparse.ArgumentParser(description=desc)
     
+    choices = ['P00', 'P01', 'P11', 'Pdv']
+    h = 'which power spectra to compute results for'
+    parser.add_argument('which', nargs='+', choices=choices, help=h)
+    
     h = "the wavenumber of transition between PT and sims"
-    parser.add_argument('--k_transition', default=0.1, type=float, help=h)
+    parser.add_argument('--k0', default=[0.1], type=float, nargs='*', help=h)
+    
+    h = "a tag to append to the output file names"
+    parser.add_argument('--tag', default="", type=str, help=h)
     
     h = "whether to plot the results"
     parser.add_argument('--plot', action='store_true', default=False, help=h)
@@ -307,5 +372,10 @@ if __name__ == '__main__':
     parser.add_argument('--save', action='store_true', default=False, help=h)
     
     args = parser.parse_args()
+    
+    if len(args.k0) == 1:
+        args.k0 = [args.k0[0]]*len(args.which)
+    if len(args.k0) != len(args.which):
+        raise ValueError("mismatch between desired spectra and `k_transition` values")
     
     main(args)

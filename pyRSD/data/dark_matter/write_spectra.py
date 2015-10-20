@@ -131,7 +131,7 @@ def fit_P00(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
         
         # full k results
-        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
         pt_full = P00_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
         
@@ -185,7 +185,7 @@ def fit_P01(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
         
         # full k results
-        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
         pt_full = P01_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
         
@@ -242,7 +242,7 @@ def fit_P11(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
 
         # full k results
-        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
         pt_full = P11_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
 
@@ -301,7 +301,7 @@ def fit_Pdv(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
 
         # full k results
-        k_final = np.logspace(-5, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
         pt_full = Pdv_spt(model, k_final, float(z))
         sim_spline = interp.UnivariateSpline(x, y, w=1/err)
 

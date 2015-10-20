@@ -229,6 +229,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         Wavenumber to transition to use only SPT for lower wavenumber
         """
+        if val < 5e-4:
+            raise ValueError("`k0_low` must be greater than 5e-4 h/Mpc")
         return val
         
     @parameter
@@ -1129,7 +1131,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             toret[idx] = _power(k[idx], mu[idx])
             
         # k < k0_low
-        if (~idx.sum()):
+        if (~idx).sum():
             A = _power(self.k0_low, mu[~idx])
             with tools.LowKPowerMode(self):
                 norm = A / _power(self.k0_low, mu[~idx])

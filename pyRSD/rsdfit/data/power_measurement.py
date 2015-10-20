@@ -240,6 +240,8 @@ class PowerData(Cache):
         # mu_bounds / ells
         self._mu_bounds = self.params.get('mu_bounds', None)
         self._ells = self.params.get('ells', None)
+        if self._ells is not None: 
+            self._ells = np.asarray(self._ells, dtype=float)
         
         # create the measurements and covariances
         self.set_all_measurements()

@@ -243,7 +243,7 @@ class HaloZeldovichPS(Cache):
                 pts = np.vstack((np.repeat(self.sigma8_z, len(k)), k)).T
             return self.interpolation_table(pts)
         else:
-            return self.Pzel(k)
+            return np.nan_to_num(self.Pzel(k)) # set any NaNs to zero
     #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------

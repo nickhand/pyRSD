@@ -92,8 +92,8 @@ class ExtrapolatedPowerSpectrum(Cache):
         The wavenumber value, above which we will extrapolate the power
         spectrum with a power law of varying slope
         """
-        if val > self.model_kmax:
-            raise ValueError("`k_hi` cannot be greater than `model_kmax`")
+        if val > self.model_kmax*0.95:
+            raise ValueError("`k_hi` cannot be greater than `0.95*model_kmax`")
         return val
         
     @parameter
@@ -102,8 +102,8 @@ class ExtrapolatedPowerSpectrum(Cache):
         The wavenumber value, above which we will extrapolate the power
         spectrum with a power law of varying slope
         """
-        if val < self.model_kmin:
-            raise ValueError("`k_lo` cannot be less than `model_kmin`")
+        if val < self.model_kmin*1.05:
+            raise ValueError("`k_lo` cannot be less than `1.05*model_kmin`")
         return val
         
     @parameter
@@ -150,7 +150,7 @@ class ExtrapolatedPowerSpectrum(Cache):
         """
         Internal variable that defines wavenumbers on a grid for interpolating
         """
-        return np.logspace(np.log10(self.model_kmin), np.log10(self.model_kmax), 200)
+        return np.logspace(np.log10(self.model_kmin*1.05), np.log10(self.model_kmax*0.95), 200)
         
     @cached_property()
     def _mus(self):

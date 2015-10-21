@@ -12,6 +12,8 @@ double SphericalBesselJ1(double x);
 double SphericalBesselJ2(double x);
 double SphericalBesselJ3(double x);
 double SphericalBesselJ4(double x);
+double SphericalBesselJ6(double x);
+double SphericalBesselJ8(double x);
 
 /* Gamma function:
  *   \Gamma(a) = \int_0^\infty t^{a-1} e^{-t} dt */

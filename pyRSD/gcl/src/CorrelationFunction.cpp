@@ -27,13 +27,15 @@ parray SmoothedXiMultipole(Spline P, int l, const parray& r, int Nk, double kmin
 
     /* Choose appropriate spherical Bessel function */
     double (*sj)(double x);
-    if(l == 0)      sj = SphericalBesselJ0;
-    else if(l == 1) sj = SphericalBesselJ1;
-    else if(l == 2) sj = SphericalBesselJ2;
-    else if(l == 3) sj = SphericalBesselJ3;
-    else if(l == 4) sj = SphericalBesselJ4;
+    if (l == 0)      sj = SphericalBesselJ0;
+    else if (l == 1) sj = SphericalBesselJ1;
+    else if (l == 2) sj = SphericalBesselJ2;
+    else if (l == 3) sj = SphericalBesselJ3;
+    else if (l == 4) sj = SphericalBesselJ4;
+    else if (l == 6) sj = SphericalBesselJ6;
+    else if (l == 8) sj = SphericalBesselJ8;
     else {
-        error("ComputeXiLM: l = %d not supported\n", l);
+        error("SmoothedXiMultipole: l = %d not supported\n", l);
     }
 
     parray k = parray::linspace(kmin, kmax, Nk+1);
@@ -67,11 +69,13 @@ void ComputeXiLM(int l, int m, const PowerSpectrum& P,
 
     /* Choose appropriate spherical Bessel function */
     double (*sj)(double x);
-    if(l == 0)      sj = SphericalBesselJ0;
-    else if(l == 1) sj = SphericalBesselJ1;
-    else if(l == 2) sj = SphericalBesselJ2;
-    else if(l == 3) sj = SphericalBesselJ3;
-    else if(l == 4) sj = SphericalBesselJ4;
+    if (l == 0)      sj = SphericalBesselJ0;
+    else if (l == 1) sj = SphericalBesselJ1;
+    else if (l == 2) sj = SphericalBesselJ2;
+    else if (l == 3) sj = SphericalBesselJ3;
+    else if (l == 4) sj = SphericalBesselJ4;
+    else if (l == 6) sj = SphericalBesselJ6;
+    else if (l == 8) sj = SphericalBesselJ8;
     else {
         error("ComputeXiLM: l = %d not supported\n", l);
         return;

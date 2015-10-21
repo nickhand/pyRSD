@@ -47,6 +47,20 @@ double SphericalBesselJ4(double x) {
         return ((105 - 45*pow2(x) + pow4(x))*sin(x) - (105*x + 10*pow3(x))*cos(x))/pow5(x);
 }
 
+double SphericalBesselJ6(double x) {
+    if(fabs(x) < 1e-4)
+        return pow6(x)/135135 - pow8(x)/4054050;
+    else
+        return ((-pow6(x) + 210*pow4(x) - 4725*pow2(x) + 10395)*sin(x) - (21*x*(pow4(x) - 60*pow2(x) + 495))*cos(x))/pow7(x);
+}
+
+double SphericalBesselJ8(double x) {
+    if(fabs(x) < 1e-4)
+        return pow8(x)/34459425 - pow10(x)/1309458150;
+    else
+        return ((pow8(x) - 630*pow6(x) + 51975*pow4(x) - 945945*pow2(x) + 2027025)*sin(x) + (9*x*(4*pow6(x) - 770*pow4(x) + 30030*pow2(x) - 225225))*cos(x))/pow9(x);
+}
+
 #if 0
 /* Based on the Netlib routine (D)GAMMA by W. J. Cody and L. Stoltz.  Original
  * source and documentation available at

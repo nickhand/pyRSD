@@ -16,6 +16,8 @@
 %include "std_string.i"
 using std::string;
 
+%feature("kwargs");
+
 %include "parray.i"
 %include "Common.i"
 %include "Spline.i"

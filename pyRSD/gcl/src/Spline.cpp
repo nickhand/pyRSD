@@ -366,6 +366,15 @@ double Spline::Evaluate(double x) const {
         return impl->y(x);
 }
 
+parray Spline::EvaluateMany(const parray& x) const {
+    int n = (int)x.size();
+    parray toret(n);
+    #pragma omp parallel for
+    for(int i = 0; i < n; i++)
+        toret[i] = Evaluate(x[i]);
+    return toret;
+}
+
 double Spline::EvaluateDerivative(double x) const {
     if(!impl || x < impl->xmin || x > impl->xmax)
         return 0;

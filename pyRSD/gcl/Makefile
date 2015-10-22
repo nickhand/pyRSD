@@ -131,11 +131,6 @@ GCLTEST_COBJS = test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o \
 COBJS = $(EMU_COBJS) $(GCLTOOLS_COBJS) $(GCLSOURCE_COBJS)
 
 #-------------------------------------------------------------------------------
-# FFTLog sources
-#-------------------------------------------------------------------------------
-#FOBJS = fftlog.o cdgamma.o drfftb.o drffti.o drfftf.o
-
-#-------------------------------------------------------------------------------
 # Libraries
 #-------------------------------------------------------------------------------
 LIBRARY = libgcl.a
@@ -155,10 +150,6 @@ PY_LIBRARY = gcl
 .cpp.o:	 %.cpp .base
 	@echo Compiling $<
 	cd $(WRKDIR); $(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
-
-# .f.o:  %.f
-# 	@echo Compiling $<
-# 	cd $(WRKDIR); $(MCK_FC) $(MCK_FFLAGS) -c ../$< -o $*.o
 
 all: .base check_env $(LIBRARY)
     

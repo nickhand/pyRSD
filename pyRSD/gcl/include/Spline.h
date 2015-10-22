@@ -4,6 +4,7 @@
 #include <vector>
 using std::vector;
 
+#include "parray.h"
 #include "Common.h"
 
 class Spline;
@@ -41,9 +42,11 @@ public:
     ~Spline();
 
     double Evaluate(double x) const;
+    parray EvaluateMany(const parray& x) const;
     double EvaluateDerivative(double x) const;
 
     double operator()(double x) const { return Evaluate(x); }
+    parray operator()(const parray& x) const { return EvaluateMany(x); }
 
     /* Find a local maximum or minimum of the interpolated function */
     // double FindMaximum(double xguess, double* ymax = 0);

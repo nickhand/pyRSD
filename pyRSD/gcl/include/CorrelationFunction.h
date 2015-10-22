@@ -4,18 +4,31 @@
 #include "Common.h"
 #include "parray.h"
 
-/* Compute the quantity
- *   \xi_l^m(r) = \int_0^\infty \frac{dk}{2\pi^2} k^m j_l(kr) P(k)
- * using Simpson's rule.  The parameters Nk, kmin, and kmax determine the
- * accuracy of the integration.  Note that Nk must be even. */
-void ComputeXiLM(int l, int m, const PowerSpectrum& P,
-                 int Nr, const double r[], double xi[],
-                 int Nk = 32768, double kmin = 0., double kmax = 100.);
-parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, const parray& r, double smoothing=0.);
+/* Functions to compute the quantity
+      \xi_l^m(r) = \int_0^\infty \frac{dk}{2\pi^2} k^m j_l(kr) P(k) 
+*/
+// use Simpson's rule.
+parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, 
+                            const parray& r, double smoothing=0.);
+
+// use FFTLog -- k, Pk will be interpolated onto a log-spaced grid
+parray ComputeXiLM(int l, int m, const parray& k, const parray& pk, 
+                      const parray& r, double smoothing=0.);
+  
+// use FFTlog, given log-spaced input k, Pk -- fills r, xi 
+void ComputeXiLM_fftlog(int l, int m, int N, const double k[], const double pk[], 
+                          double r[], double xi[], double smoothing=0.);
+
+/*  Compute the correlation function xi(r) from a power spectrum P(k), this is 
+    just Xi_0^2 in the notation above*/
+parray pk_to_xi(const parray& k, const parray& pk, const parray& r, double smoothing=0.5);
+
+/* Compute the power spectrum P(k) from a correlation function xi(r), sampled
+ * at logarithmically spaced points r[i]. */
+parray xi_to_pk(const parray& r, const parray& xi, const parray& k, double smoothing=0.005);
 
 
-parray SmoothedXiMultipole(Spline P, int ell, const parray& r, int Nk=32768, double kmin=0, double kmax=100., double smoothing=0.);
-
+//-------------------------------------------------------------------------------------
 class CorrelationFunction {
 public:
     CorrelationFunction(const PowerSpectrum& P, double kmin = 1e-4, double kmax = 1e1);
@@ -27,6 +40,10 @@ public:
     parray operator()(const parray& r) const { return EvaluateMany(r); }
 
     const PowerSpectrum& GetPowerSpectrum() const { return P; }
+    double GetKmin() const { return kmin; }
+    void SetKmin(double kmin_) { kmin=kmin_; }
+    double GetKmax() const { return kmax; }
+    void SetKmax(double kmax_) { kmax=kmax_; }
 
 protected:
     const PowerSpectrum& P;

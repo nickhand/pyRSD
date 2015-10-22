@@ -16,8 +16,8 @@ public:
     parray P_ell(int ell, const parray& k) const;
 
     /* Multipoles of redshift-space correlation function */
-    double Xi_ell(int ell, double r, int Nk = 32768, double kmin = 0, double kmax = 100) const;
-    parray Xi_ell(int ell, const parray& r, int Nk = 32768, double kmin = 0, double kmax = 100) const;
+    double Xi_ell(int ell, double r, int Nk = 32768, double kmin = 1e-5, double kmax = 100) const;
+    parray Xi_ell(int ell, const parray& r, int Nk = 32768, double kmin = 1e-5, double kmax = 100) const;
     
     void SetGrowthRate(double f_);
     double GetGrowthRate() const;

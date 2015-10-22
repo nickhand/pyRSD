@@ -1,16 +1,18 @@
 import gcl
 from gcl import ClassCosmology
 from gcl import ClassParams
-from gcl import ComputeXiLM
-from gcl import Constants
-from gcl import CorrelationFunction
-from gcl import Cosmology
-from gcl import CubicSpline
 from gcl import Engine
+
+from gcl import Constants
+from gcl import Cosmology
+
 from gcl import CubicSpline
 from gcl import LinearSpline
-from gcl import SmoothedXiMultipole
 from gcl import Spline
+
+from gcl import xi_to_pk, pk_to_xi
+from gcl import ComputeXiLM, compute_xilm_fftlog as ComputeXiLM_fftlog
+
 
 class PickalableSWIG:
  
@@ -19,6 +21,19 @@ class PickalableSWIG:
  
     def __getstate__(self):
         return {'args': self.args}
+
+#-------------------------------------------------------------------------------
+# CorrelationFunction
+class CorrelationFunction(gcl.CorrelationFunction, PickalableSWIG):
+ 
+    def __init__(self, *args):
+        self.args = args
+        gcl.CorrelationFunction.__init__(self, *args)    
+        
+    def __getstate__(self):
+        args = self.args
+        if len(args) < 3: args = (args[0], self.GetKmin(), self.GetKmax())
+        return {'args': args}    
 
 #-------------------------------------------------------------------------------
 # Kaiser

@@ -4,26 +4,31 @@
 
 
 
+%apply (double* INPLACE_ARRAY1, int DIM1) {(const double k[], int ksize)}
+%apply (double* INPLACE_ARRAY1, int DIM1) {(const double pk[], int pksize)}
+%apply (double* INPLACE_ARRAY1, int DIM1) {(double r[], int rsize)}
 %apply (double* INPLACE_ARRAY1, int DIM1) {(double xi[], int xisize)}
 
+
 parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, const parray& r, double smoothing=0.);
-                  
-void ComputeXiLM(int l, int m, const PowerSpectrum& P,
-                 int Nr, const double r[], double xi[],
-                 int Nk = 32768, double kmin = 0., double kmax = 100.);
+parray ComputeXiLM(int l, int m, const parray& k, const parray& pk, const parray& r, double smoothing=0.);
+void ComputeXiLM_fftlog(int l, int m, int N, const double k[], const double pk[], double r[], double xi[], double smoothing=0.);
 
-/*  Wrapper for cos_doubles that massages the types */
-//%inline %{
-//    /*  takes as input two numpy arrays */
-//    void compute_discete_xilm(int l, int m, const parray& k, const parray& pk, const parray& r, double xi[], int xisize, double smoothing=0.) {
-//        /*  calls the original funcion, providing only the size of the first */
-//        ComputeDiscreteXiLM(l, m, k, pk, r, xi, smoothing);
-//    }
-//%}
+parray pk_to_xi(const parray& k, const parray& pk, const parray& r, double smoothing=0.5);
+parray xi_to_pk(const parray& r, const parray& xi, const parray& k, double smoothing=0.005);
 
 
-parray SmoothedXiMultipole(Spline P, int ell, const parray& r, int Nk=32768, double kmin=0, double kmax=100., double smoothing=0.);
-                 
+/*  Wrapper for ComputeXiLM_fftlog to massage types */
+%inline %{
+    /*  takes as input two numpy arrays */
+    void compute_xilm_fftlog(int l, int m, const double k[], int ksize, const double pk[], 
+                              int pksize, double r[], int rsize, double xi[], int xisize, double smoothing=0.)
+    {
+        /*  calls the original funcion, providing only the size of the first */
+        ComputeXiLM_fftlog(l, m, ksize, k, pk, r, xi, smoothing);
+   }
+%}
+               
 class CorrelationFunction {
 public:
 
@@ -36,5 +41,9 @@ public:
     parray operator()(const parray& r) const;
 
     const PowerSpectrum& GetPowerSpectrum() const;
+    double GetKmin() const;
+    void SetKmin(double kmin_);
+    double GetKmax() const;
+    void SetKmax(double kmax_);
 };
 

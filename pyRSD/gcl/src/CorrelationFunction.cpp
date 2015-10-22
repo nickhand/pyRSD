@@ -9,54 +9,63 @@
 #include "Quadrature.h"
 #include "SpecialFunctions.h"
 #include "Spline.h"
+#include "MyFFTLog.h"
 
 using std::bind;
 using std::cref;
 using namespace std::placeholders;
 using namespace Common;
 
-parray SmoothedXiMultipole(Spline P, int l, const parray& r, int Nk, double kmin, double kmax, double smoothing)
+
+
+void ComputeXiLM_fftlog(int l, int m, int N, const double k[], const double pk[], 
+                          double r[], double xi[], double smoothing) 
 {
+    // complex arrays for the FFT
+    dcomplex* a = new dcomplex[N];
+    dcomplex* b = new dcomplex[N];
     
-    int Nr = (int) r.size();
-    parray xi(Nr);
-    int m = 2;
+    // the fftlog magic
+    for(int i = 0; i < N; i++)
+        a[i] = pow(k[i], m - 0.5) * pk[i] * exp(-pow2(k[i]*smoothing));
+    fht(N, &k[0], a, r, b, l + 0.5);
+    for(int i = 0; i < N; i++)
+        xi[i] = std::real(pow(2*M_PI*r[i], -1.5) * b[i]);
     
-    assert(Nk > 0 && (Nk % 2) == 0);
-    const double dk = (kmax - kmin)/Nk;
+    // delete arrays
+    delete[] b;
+    delete[] a;
+}
 
-    /* Choose appropriate spherical Bessel function */
-    double (*sj)(double x);
-    if (l == 0)      sj = SphericalBesselJ0;
-    else if (l == 1) sj = SphericalBesselJ1;
-    else if (l == 2) sj = SphericalBesselJ2;
-    else if (l == 3) sj = SphericalBesselJ3;
-    else if (l == 4) sj = SphericalBesselJ4;
-    else if (l == 6) sj = SphericalBesselJ6;
-    else if (l == 8) sj = SphericalBesselJ8;
-    else {
-        error("SmoothedXiMultipole: l = %d not supported\n", l);
-    }
 
-    parray k = parray::linspace(kmin, kmax, Nk+1);
-    parray mult(Nk+1);
+parray ComputeXiLM(int l, int m, const parray& k_, const parray& pk_, const parray& r, double smoothing) {
+    
+    int N(k_.size());
+    double r_[N];
+    double xi_[N]; 
+    
+    // force log-spacing using a spline
+    parray k = parray::logspace(k_.min(), k_.max(), k_.size());
+    auto pk_spline = CubicSpline(k_, pk_);
+    auto pk = pk_spline(k);
+    
+    // call fftlog on the double[] arrays
+    ComputeXiLM_fftlog(l, m, N, &k[0], &pk[0], r_, xi_, smoothing);
+    
+    // return the result at desired domain values using a spline
+    auto spline = CubicSpline(N, r_, xi_);
+    return spline(r);
+}
 
-    #pragma omp parallel for
-    for(int j = 0; j <= Nk; j++) {
-        /* Multiplicative factor for Simpson's rule: either 1, 2, or 4 */
-        mult[j] = 2 + 2*(j % 2) - (j == 0) - (j == Nk);
-        /* All other purely k-dependent factors */
-        mult[j] *= exp(-pow2(k[j]*smoothing)) * P(k[j]) * pow(k[j], m) * (dk/3) / (2*M_PI*M_PI);
-    }
+parray pk_to_xi(const parray& k, const parray& pk, const parray& r, double smoothing) 
+{
+    return ComputeXiLM(0, 2, k, pk, r, smoothing);
+}
 
-    /* Integrate $P(k) k^m j_l(kr) dk$ over the interval $[kmin,kmax]$ using Simpson's rule */
-    #pragma omp parallel for
-    for(int i = 0; i < Nr; i++) {
-        xi[i] = 0;
-        for(int j = 0; j <= Nk; j++)
-            xi[i] += mult[j] * sj(k[j]*r[i]);
-    }
-    return xi;
+parray xi_to_pk(const parray& r, const parray& xi, const parray& k, double smoothing)
+{
+    static const double TwoPiCubed = 8*M_PI*M_PI*M_PI;
+    return TwoPiCubed * ComputeXiLM(0, 2, r, xi, k, smoothing);
 }
 
 
@@ -96,51 +105,11 @@ parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, cons
 }
 
 
-void ComputeXiLM(int l, int m, const PowerSpectrum& P,
-                 int Nr, const double r[], double xi[],
-                 int Nk, double kmin, double kmax)
-{
-    assert(Nk > 0 && (Nk % 2) == 0);
-    const double dk = (kmax - kmin)/Nk;
-
-    /* Choose appropriate spherical Bessel function */
-    double (*sj)(double x);
-    if (l == 0)      sj = SphericalBesselJ0;
-    else if (l == 1) sj = SphericalBesselJ1;
-    else if (l == 2) sj = SphericalBesselJ2;
-    else if (l == 3) sj = SphericalBesselJ3;
-    else if (l == 4) sj = SphericalBesselJ4;
-    else if (l == 6) sj = SphericalBesselJ6;
-    else if (l == 8) sj = SphericalBesselJ8;
-    else {
-        error("ComputeXiLM: l = %d not supported\n", l);
-        return;
-    }
-
-    parray k = parray::linspace(kmin, kmax, Nk+1);
-    parray mult(Nk+1);
-
-    #pragma omp parallel for
-    for(int j = 0; j <= Nk; j++) {
-        /* Multiplicative factor for Simpson's rule: either 1, 2, or 4 */
-        mult[j] = 2 + 2*(j % 2) - (j == 0) - (j == Nk);
-        /* All other purely k-dependent factors */
-        mult[j] *= P(k[j]) * pow(k[j], m) * (dk/3) / (2*M_PI*M_PI);
-    }
-
-    /* Integrate $P(k) k^m j_l(kr) dk$ over the interval $[kmin,kmax]$ using Simpson's rule */
-    #pragma omp parallel for
-    for(int i = 0; i < Nr; i++) {
-        xi[i] = 0;
-        for(int j = 0; j <= Nk; j++)
-            xi[i] += mult[j] * sj(k[j]*r[i]);
-    }
-}
-
-
 CorrelationFunction::CorrelationFunction(const PowerSpectrum& P_, double kmin_, double kmax_)
     : P(P_), kmin(kmin_), kmax(kmax_)
-{ }
+{
+     
+}
 
 static double f(const PowerSpectrum& P, double r, double k) {
     return k*sin(k*r)*P(k);

@@ -7,6 +7,7 @@
 #define QUADRATURE_H
 
 #include <cmath>
+#include "parray.h"
 
 /* General notes on integration routines:
  *  - The Function f can be any callable object, i.e. any object that defines
@@ -92,6 +93,10 @@ double Integrate(Function f, double* a, double* b, double epsrel = 1e-5, double 
  * with uniform spacing h.  Uses Simpson's rule for n odd, Hollingsworth and
  * Hunter's 3rd-order formula for n even. */
 double DiscreteIntegrate(int n, double* f, double h = 1);
+
+
+double SimpsIntegrate(const parray& x, const parray& y);
+double basic_simps(const parray& y, int start, int stop, const parray& x);
 
 #include "Quadrature.inl"
 

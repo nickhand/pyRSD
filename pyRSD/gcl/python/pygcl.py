@@ -9,7 +9,6 @@ from gcl import CubicSpline
 from gcl import Engine
 from gcl import CubicSpline
 from gcl import LinearSpline
-from gcl import ShiftedLinearSpline
 from gcl import SmoothedXiMultipole
 from gcl import Spline
 
@@ -20,8 +19,21 @@ class PickalableSWIG:
  
     def __getstate__(self):
         return {'args': self.args}
-#-------------------------------------------------------------------------------
 
+#-------------------------------------------------------------------------------
+# Kaiser
+class Kaiser(gcl.Kaiser, PickalableSWIG):
+ 
+    def __init__(self, *args):
+        self.args = args
+        gcl.Kaiser.__init__(self, *args)
+
+    def __getstate__(self):
+        args = self.args
+        if len(args) == 2: args += (self.GetLinearBias(),)
+        return {'args': args}
+        
+#-------------------------------------------------------------------------------
 # NonlinearPS
 class NonlinearPS(gcl.NonlinearPS, PickalableSWIG):
  

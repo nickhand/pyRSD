@@ -151,6 +151,40 @@ void parray::resize(size_type n0, size_type n1, size_type n2) {
 //void parray::transpose(int axis0, int axis1) {
 //}
 
+parray parray::slice(int start, int stop, int step) {
+    int N = size();
+    if (N == 0) return parray();
+
+    if (start < 0) start += N;
+    if (stop < 0) stop += N;
+    
+    // determine the new length
+    if (stop > N) stop = N;
+    size_type newlen = 1 + (stop-start-1)/step;
+
+    parray r(newlen);
+    for (size_type i = 0; i < newlen; i++)
+        r[i] = (*this)[start+step*i];
+    return r;   
+}
+
+parray parray::slice(int start, int stop, int step) const {
+    int N = size();
+    if (N == 0) return parray();
+
+    if (start < 0) start += N;
+    if (stop < 0) stop += N;
+
+    // determine the new length
+    if (stop > N) stop = N;
+    size_type newlen = 1 + (stop-start-1)/step;
+
+    parray r(newlen);
+    for (size_type i = 0; i < newlen; i++)
+        r[i] = (*this)[start+step*i];
+    return r;   
+}
+
 void parray::getshape(size_type* n0, size_type* n1, size_type* n2) const {
     if(n0) *n0 = n[0];
     if(n1) *n1 = n[1];
@@ -301,6 +335,12 @@ parray operator-(const parray& u, double s) {
     return w;
 }
 
+parray operator-(double s, const parray& u) {
+    parray w = u;
+    w -= s;
+    return -w;
+}
+
 parray operator*(const parray& u, double s) {
     parray w = u;
     w *= s;
@@ -318,6 +358,16 @@ parray operator/(const parray& u, double s) {
     w /= s;
     return w;
 }
+
+
+parray operator/(double s, const parray& u) {
+    parray::size_type N = u.size();
+    parray w(N);
+    for(parray::size_type i = 0; i < N; i++)
+        w[i] = s/u[i];
+    return w;
+}
+
 
 double min(const parray& v) {
     return v.min();

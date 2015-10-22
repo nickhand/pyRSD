@@ -76,9 +76,13 @@ public:
     double max() const;
     parray abs() const;
 
-    /* Standard flat accessors. */
-    const double& operator[](int i) const { return std::vector<double>::operator[](i); }
-    double& operator[](int i) { return std::vector<double>::operator[](i); }
+    /* Standard flat accessors. (allows for negative indexing!) */
+    const double& operator[](int i) const { if (i<0) i += size(); return std::vector<double>::operator[](i); }
+    double& operator[](int i) { if (i<0) i += size(); return std::vector<double>::operator[](i); }
+    
+    /* Slicing operators */
+    parray slice(int start, int stop, int step=1) const;
+    parray slice(int start, int stop, int step=1);
 
     /* Accessors for 1-D arrays */
     const double& operator()(int i0) const { return (*this)[i0]; }
@@ -129,9 +133,11 @@ parray operator/(const parray& u, const parray& v);
 parray operator+(const parray& u, double s);
 parray operator+(double s, const parray& u);
 parray operator-(const parray& u, double s);
+parray operator-(double s, const parray& u);
 parray operator*(const parray& u, double s);
 parray operator*(double s, const parray& u);
 parray operator/(const parray& u, double s);
+parray operator/(double s, const parray& u);
 
 double min(const parray& v);
 double max(const parray& v);

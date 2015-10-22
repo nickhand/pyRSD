@@ -34,7 +34,7 @@ public:
     parray GetYZel() const { return YY; }
     const double& GetSigmaSq() const { return sigma_sq; }
              
-    // set the redshift and sigma8
+    // set sigma8(z)
     // convenience tracking so we don't recompute XX, YY, sigma_sq if sigma8, z change
     void SetSigma8AtZ(double sigma8_z);
          

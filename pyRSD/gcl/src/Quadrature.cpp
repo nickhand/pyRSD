@@ -12,22 +12,12 @@ using namespace Common;
 
 double basic_simps(const parray& y, int start, int stop, const parray& x) {
 
-    info("hey 1\n");
     int step(2), N(y.size());
-    
-    int tmp = 1 + (stop-start-1)/step;
-    info("newlen = %d\n", tmp);
 
-
-    info("start = %d\n", start);
-    info("stop = %d\n", stop);
-    info("N = %d\n", N);
     // slice the arrays
     parray y0 = y.slice(start, stop, step);
     parray y1 = y.slice(start+1, stop+1, step);
     parray y2 = y.slice(start+2, stop+2, step);
-    
-    info("hey 2\n");
 
     // compute dx
     parray h = x.slice(1, N) - x.slice(0, -1);
@@ -37,22 +27,12 @@ double basic_simps(const parray& y, int start, int stop, const parray& x) {
     parray hsum = h0 + h1;
     parray hprod = h0 * h1; 
     parray h0divh1 = h0/h1;
-    info("hey 3\n");
-    info("hsum size = %d\n", hsum.size());
-    info("hprod size = %d\n", hprod.size());
-    info("h0divh1 size = %d\n", h0divh1.size());
-    info("y0 size = %d\n", y0.size());
-    info("y1 size = %d\n", y1.size());
-    info("y2 size = %d\n", y2.size());
-    
-    
+
     // sum    
     parray result = (1./6.)*hsum * (y0*(2. - 1./h0divh1) + y1*hsum*hsum/hprod + y2*(2. - h0divh1));
-    info("hey 4\n");
     double toret(0);
     for (double x : result) toret += x;
-    
-    info("hey 5\n");
+
     return toret;
 }
 
@@ -60,9 +40,6 @@ double SimpsIntegrate(const parray& x, const parray& y) {
     
     int N(y.size());
     double toret(0.);
-
-    info("N = %d\n", N);
-    info("N % 2 = %d\n", N%2);
     
     // straight simps requires even number of intervals
     if (N % 2 == 0) {

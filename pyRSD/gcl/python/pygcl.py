@@ -13,7 +13,6 @@ from gcl import ShiftedLinearSpline
 from gcl import SmoothedXiMultipole
 from gcl import Spline
 
-
 class PickalableSWIG:
  
     def __setstate__(self, state):

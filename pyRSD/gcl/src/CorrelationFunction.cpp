@@ -60,6 +60,42 @@ parray SmoothedXiMultipole(Spline P, int l, const parray& r, int Nk, double kmin
 }
 
 
+parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, const parray& r, double smoothing)
+{
+    // array sizes
+    int Nk(pk.size()), Nr(r.size());
+    parray xi(Nr);
+    
+    // choose appropriate spherical Bessel function
+    double (*sj)(double x);
+    if (l == 0)      sj = SphericalBesselJ0;
+    else if (l == 1) sj = SphericalBesselJ1;
+    else if (l == 2) sj = SphericalBesselJ2;
+    else if (l == 3) sj = SphericalBesselJ3;
+    else if (l == 4) sj = SphericalBesselJ4;
+    else if (l == 6) sj = SphericalBesselJ6;
+    else if (l == 8) sj = SphericalBesselJ8;
+    else {
+        error("ComputeDiscreteXiLM: l = %d not supported\n", l);
+        return xi;
+    }
+
+    // integrate $P(k) k^m j_l(kr) dk$ over the interval $[kmin,kmax]$ using Simpson's rule */
+    #pragma omp parallel for
+    for(int i = 0; i < Nr; i++) {
+        
+        // the integrand for this r
+        parray integrand(Nk);
+        for(int j = 0; j < Nk; j++) 
+            integrand[j] = exp(-pow2(k[j]*smoothing)) * pk[j] * pow(k[j], m) / (2*M_PI*M_PI) * sj(k[j]*r[i]);
+        
+        // integrate using simpson's rule
+        xi[i] = SimpsIntegrate(k, integrand);
+    }
+    return xi;
+}
+
+
 void ComputeXiLM(int l, int m, const PowerSpectrum& P,
                  int Nr, const double r[], double xi[],
                  int Nk, double kmin, double kmax)

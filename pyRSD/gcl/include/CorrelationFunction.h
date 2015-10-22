@@ -11,6 +11,7 @@
 void ComputeXiLM(int l, int m, const PowerSpectrum& P,
                  int Nr, const double r[], double xi[],
                  int Nk = 32768, double kmin = 0., double kmax = 100.);
+parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, const parray& r, double smoothing=0.);
 
 
 parray SmoothedXiMultipole(Spline P, int ell, const parray& r, int Nk=32768, double kmin=0, double kmax=100., double smoothing=0.);

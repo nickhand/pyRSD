@@ -29,13 +29,11 @@ double basic_simps(const parray& y, int start, int stop, const parray& x) {
 
 double TrapzIntegrate(const parray& x, const parray& y) {
     
-    int N(y.size());    
-    parray dx = x.slice(1, N) - x.slice(0, -1);
-    parray result = dx * 0.5 * (y.slice(1, N) + y.slice(0, -1)); 
+    // trapz is just dx * bincenters
+    double toret(0);    
+    for (int i = 0; i < y.size()-1; i++)
+        toret += (x[i+1] - x[i]) * 0.5 * (y[i+1] + y[i]);
     
-    // sum
-    double toret(0);
-    for (double x : result) toret += x;
     return toret;
 }
 

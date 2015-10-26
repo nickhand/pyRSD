@@ -1,22 +1,21 @@
 from .. import pygcl, numpy as np
 from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
-from . import INTERP_KMIN, INTERP_KMAX
 
 from scipy.interpolate import InterpolatedUnivariateSpline
-from scipy.integrate import simps
 from scipy.optimize import brentq
 
-import warnings
 import functools
 import itertools
-
-warnings.filterwarnings("ignore", category=DeprecationWarning,module="scipy")
 
 #-------------------------------------------------------------------------------
 # DECORATORS/CONTEXTS
 #-------------------------------------------------------------------------------  
 class LowKPowerMode():
+    """
+    Context for computing power in `low-k mode`, which sets (and then restores)
+    various parameters to use SPT below a default ``k`` value
+    """
     from collections import OrderedDict
     params = OrderedDict({'use_P00_model':False, 'use_P01_model':False, 
                             'use_P11_model':False, 'use_Pdv_model':False, 
@@ -151,7 +150,6 @@ class RSDSpline(InterpolatedUnivariateSpline):
         self.y = args[1]
         super(RSDSpline, self).__init__(*args, **kwargs)
 
-    #----------------------------------------------------------------------------
     def _check_bounds(self, x_new):
         """
         Check the inputs for being in the bounds of the interpolated data.
@@ -182,7 +180,6 @@ class RSDSpline(InterpolatedUnivariateSpline):
         out_of_bounds = np.logical_or(below_bounds, above_bounds)
         return out_of_bounds
             
-    #---------------------------------------------------------------------------
     def __call__(self, x_new):
         """
         Return the interpolated value
@@ -195,7 +192,6 @@ class RSDSpline(InterpolatedUnivariateSpline):
         else:
             return self._evaluate_spline(x_new)*1.
        
-    #--------------------------------------------------------------------------- 
     def _evaluate_spline(self, x_new):
         """
         Evaluate the spline
@@ -208,7 +204,6 @@ class RSDSpline(InterpolatedUnivariateSpline):
             y_new[out_of_bounds] = self.fill_value
             return y_new
     
-    #---------------------------------------------------------------------------
     def linear_extrap(self, x):
         """
         Do a linear extrapolation
@@ -220,10 +215,9 @@ class RSDSpline(InterpolatedUnivariateSpline):
         else:
             return self._evaluate_spline(x)
     
-    #---------------------------------------------------------------------------
     
 #-------------------------------------------------------------------------------
-# BIAS TO MASS RELATION
+# bias to mass relation
 #-------------------------------------------------------------------------------
 class BiasToMassRelation(Cache):
     """
@@ -235,7 +229,6 @@ class BiasToMassRelation(Cache):
     interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
     interpolation_grid['b1'] = np.linspace(0.9, 8., 70)
     
-    #---------------------------------------------------------------------------
     def __init__(self, z, cosmo, interpolated=False):
         """
         Parameters
@@ -339,7 +332,6 @@ class BiasToMassRelation(Cache):
         # return the interpolator
         return RegularGridInterpolator((sigma8s, b1s), grid_vals)
         
-    #---------------------------------------------------------------------------
     @unpacked
     def __call__(self, sigma8_z, b1):
         """
@@ -369,10 +361,9 @@ class BiasToMassRelation(Cache):
                 return bias_Tinker(sigma, delta_halo=self.delta_halo) - b1
 
             return brentq(objective, 1e-8, 1e3)*mass_norm
-    #---------------------------------------------------------------------------
             
 #-------------------------------------------------------------------------------
-# Sigma-Bias relation
+# bias to sigma relation
 #-------------------------------------------------------------------------------
 class BiasToSigmaRelation(BiasToMassRelation):
     """
@@ -396,8 +387,6 @@ class BiasToSigmaRelation(BiasToMassRelation):
         self.sigmav_0 = sigmav_0
         self.M_0 = M_0
         
-        
-    #---------------------------------------------------------------------------
     @parameter
     def sigmav_0(self, val):
         """
@@ -413,7 +402,7 @@ class BiasToSigmaRelation(BiasToMassRelation):
         return val
     
     #---------------------------------------------------------------------------
-    # Cached properties
+    # cached properties
     #---------------------------------------------------------------------------
     @cached_property("z", "cosmo")
     def Hz(self):
@@ -429,7 +418,6 @@ class BiasToSigmaRelation(BiasToMassRelation):
         """
         return self.cosmo.H_z(self.z) / self.cosmo.H0()
         
-    #---------------------------------------------------------------------------
     def evrard_sigmav(self, mass):
         """
         Return the line-of-sight velocity dispersion for dark matter using
@@ -456,8 +444,7 @@ class BiasToSigmaRelation(BiasToMassRelation):
         
         # put it into units of Mpc/h
         return sigmav * (1 + self.z)/self.Hz
-        
-    #---------------------------------------------------------------------------
+    
     @unpacked
     def mass(self, sigma8_z, b1):
         """
@@ -487,9 +474,10 @@ class BiasToSigmaRelation(BiasToMassRelation):
         else:
             return self.sigmav_0 * (M / self.M_0)**(1./3.)
         
-    #---------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------        
+   
+#-------------------------------------------------------------------------------
+# bias(M) tools
+#-------------------------------------------------------------------------------         
 def mass_from_bias(bias, z, linearPS):
     """
     Given an input bias, return the corresponding mass, using Tinker et al.
@@ -528,7 +516,6 @@ def mass_from_bias(bias, z, linearPS):
         
     return brentq(objective, 1e-5, 1e5)*mass_norm
 
-#-------------------------------------------------------------------------------
 def bias_Tinker(sigmas, delta_c=1.686, delta_halo=200):
     """
     Return the halo bias for the Tinker form.
@@ -549,7 +536,6 @@ def bias_Tinker(sigmas, delta_c=1.686, delta_halo=200):
     nu = delta_c / sigmas
     return 1. - A * (nu**a)/(nu**a + delta_c**a) + B*nu**b + C*nu**c
 
-#-------------------------------------------------------------------------------
 def sigma_from_bias(bias, z, linearPS):
     """
     Return sigma from bias
@@ -559,7 +545,103 @@ def sigma_from_bias(bias, z, linearPS):
     M0 = 5.4903e13 # in M_sun / h
     return sigma0 * (mass_from_bias(bias, z, linearPS) / M0)**(1./3)
     
+
 #-------------------------------------------------------------------------------
+# window convolution tools
+#-------------------------------------------------------------------------------     
+def window_convolved_xi(xi_data, W):
+    """
+    Compute the window-convolved configuration space multipoles, from
+    the ell = 0, 2, 4 unconvolved multipoles and the window
+    
+    Parameters
+    ----------
+    xi_data : array_like, (Ns, 3)
+        the unconvolved configuration space multipoles, with the three columns
+        being the ell = 0, 2, 4 multipoles, respectively
+    W : array_like, (Ns, Nl)
+        the even-ell configuration space window function multipoles, 
+        where Nl must be >= 5; the first column is the ell=0, second 
+        is ell=2, etc
+    """
+    ells = [0, 2, 4]
+    
+    # check the shape
+    shape = xi_data.shape
+    if shape[-1] != 3:
+        raise ValueError("do not understand shape of `xi_data` in `window_convolved_xi`")
+    if shape[0] != W.shape[0]:
+        raise ValueError("shape mismatch in first dimension between `xi_data` and window")
+    
+    # loop over each ell 
+    # each column in xi_data is a value in ells
+    toret = np.empty(shape)
+    for i, ell in enumerate(ells):
+        
+        # get the kernel for this ell
+        if ell == 0:    
+            kern = W[:,:3] * np.array([1., 1./5, 1./7])
+            
+        elif ell == 2:
+            k20 = W[:,1]
+            k22 = (W[:,:3] * np.array([1., 2./7, 2./7])).sum(axis=-1)
+            k24 = (W[:,1:4] * np.array([2./7, 100./693, 25./143])).sum(axis=-1)
+            kern = np.vstack([k20, k22, k24]).T
+    
+        elif ell == 4:
+            k40 = W[:,2]
+            k42 = (W[:,1:4] * np.array([18./35, 20./77, 45./143])).sum(axis=-1)
+            k44 = (W[:,:5] * np.array([1., 20./77, 162./1001, 20./143, 490./2431])).sum(axis=-1)
+            kern = np.vstack([k40, k42, k44]).T
+        
+        toret[:,i] = (xi_data*kern).sum(axis=-1)
+        
+    return toret
+    
+    
+def convolve_multipoles(k, Pell, window, k_out=None):
+    """
+    Convolve the input ell = 0, 2, 4 power multipoles, specified by `Pell`,
+    with the specified window function.
+    
+    Parameters
+    ----------
+    k : array_like, (Nk,)
+        the array of wavenumbers where `Pell` is defined -- to avoid convolution
+        errors, `k` should probably extend to higher values than the desired `k_out`
+    Pell : array_like, (Nk, 3)
+        the ell = 0, 2, 4 power multipoles, defined at `k`
+    window : array_like, (Ns, ...)
+        the window function to convolve with, where the first column is `s` and 
+        the other columns are the even `ell` configuration space window 
+        multipoles
+    k_out : array_like
+        the array of desired output k values
+    """ 
+    ells = [0, 2, 4]
+    s = window[:,0]
+    
+    # format the k_out
+    if k_out is None: k_out = k
+    if np.ndim(k_out) == 1:
+        k_out = np.repeat(k_out[:,None], 3, axis=1)
+    if k_out.shape[-1] != len(ells):
+        raise ValueError("input `k_out` must have 3 columns for ell=0,2,4 poles")
+    
+    # FT the power multipoles    
+    xi = np.empty((len(s), len(ells)))
+    for i, ell in enumerate(ells): 
+        xi[:,i] = pygcl.pk_to_xi(ell, k, Pell[:,i], s, smoothing=0., method=pygcl.IntegrationMethods.TRAPZ)
+    
+    # convolve the config space multipole
+    xi_conv = window_convolved_xi(xi, window[:,1:])
+    
+    # FT back to get convolved power pole
+    toret = np.empty((len(k_out), len(ells)))
+    for i, ell in enumerate(ells):
+        toret[:,i] = pygcl.xi_to_pk(ell, s, xi_conv[:,i], k_out[:,i], smoothing=0., method=pygcl.IntegrationMethods.TRAPZ)
+    
+    return toret
  
 
     

@@ -12,7 +12,7 @@ from gcl import Spline
 
 from gcl import xi_to_pk, pk_to_xi
 from gcl import ComputeXiLM, compute_xilm_fftlog as ComputeXiLM_fftlog
-
+from gcl import IntegrationMethods
 
 class PickalableSWIG:
  

@@ -44,7 +44,7 @@ double SphericalBesselJ4(double x) {
     if(fabs(x) < 1e-4)
         return pow4(x)/945 - pow6(x)/20790;
     else
-        return ((105 - 45*pow2(x) + pow4(x))*sin(x) - (105*x + 10*pow3(x))*cos(x))/pow5(x);
+        return 5.*(2.*pow2(x) - 21.)*cos(x)/pow4(x) + (pow4(x) - 45.*pow2(x) + 105.)*sin(x)/pow5(x);
 }
 
 double SphericalBesselJ6(double x) {

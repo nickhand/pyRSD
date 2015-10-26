@@ -118,7 +118,7 @@ endif
 # GCL sources
 #-------------------------------------------------------------------------------
 GCLTOOLS_COBJS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o \
-				 Quadrature.o Common.o Timer.o MyFFTLog.o
+				 Quadrature.o Common.o Timer.o MyFFTLog.o DiscreteQuad.o
 
 GCLSOURCE_COBJS = Engine.o ClassParams.o ClassCosmology.o Cosmology.o \
 				  PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o \

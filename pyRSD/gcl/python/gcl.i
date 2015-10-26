@@ -23,7 +23,7 @@ using std::string;
 %include "Spline.i"
 
 //%include "Datafile.i"
-//%include "Quadrature.i"
+%include "DiscreteQuad.i"
 //%include "Timer.i"
 
 %include "Engine.i"

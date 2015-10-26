@@ -9,6 +9,10 @@
 #include <cmath>
 #include "parray.h"
 
+double TrapzIntegrate(const parray& x, const parray& y);
+double SimpsIntegrate(const parray& x, const parray& y);
+double basic_simps(const parray& y, int start, int stop, const parray& x);
+
 /* General notes on integration routines:
  *  - The Function f can be any callable object, i.e. any object that defines
  *    the method  double operator()(double x).  This becomes especially
@@ -84,19 +88,6 @@ struct InverseSub { \
 template<int n, typename Function>
 double Integrate(Function f, double* a, double* b, double epsrel = 1e-5, double epsabs = 1e-10, double* abserr = 0, int* neval = 0);
 
-
-/**
- * \brief Integrate f(x) based on its values at n uniformly spaced points.
- *
- * Compute a weighted summation approximating the definite integral $\int f(x)
- * dx$ for a function f(x) that has already been evaluated at n discrete points
- * with uniform spacing h.  Uses Simpson's rule for n odd, Hollingsworth and
- * Hunter's 3rd-order formula for n even. */
-double DiscreteIntegrate(int n, double* f, double h = 1);
-
-
-double SimpsIntegrate(const parray& x, const parray& y);
-double basic_simps(const parray& y, int start, int stop, const parray& x);
 
 #include "Quadrature.inl"
 

@@ -7,6 +7,7 @@
 
 #include "PowerSpectrum.h"
 #include "Quadrature.h"
+#include "DiscreteQuad.h"
 #include "SpecialFunctions.h"
 #include "Spline.h"
 #include "MyFFTLog.h"
@@ -57,15 +58,15 @@ parray ComputeXiLM(int l, int m, const parray& k_, const parray& pk_, const parr
     return spline(r);
 }
 
-parray pk_to_xi(const parray& k, const parray& pk, const parray& r, double smoothing) 
+parray pk_to_xi(int ell, const parray& k, const parray& pk, const parray& r, double smoothing) 
 {
-    return ComputeXiLM(0, 2, k, pk, r, smoothing);
+    return pow(-1, ell/2)*ComputeXiLM(ell, 2, k, pk, r, smoothing);
 }
 
-parray xi_to_pk(const parray& r, const parray& xi, const parray& k, double smoothing)
+parray xi_to_pk(int ell, const parray& r, const parray& xi, const parray& k, double smoothing)
 {
     static const double TwoPiCubed = 8*M_PI*M_PI*M_PI;
-    return TwoPiCubed * ComputeXiLM(0, 2, r, xi, k, smoothing);
+    return pow(-1, ell/2) * TwoPiCubed * ComputeXiLM(ell, 2, r, xi, k, smoothing);
 }
 
 

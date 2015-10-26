@@ -21,11 +21,11 @@ void ComputeXiLM_fftlog(int l, int m, int N, const double k[], const double pk[]
 
 /*  Compute the correlation function xi(r) from a power spectrum P(k), this is 
     just Xi_0^2 in the notation above*/
-parray pk_to_xi(const parray& k, const parray& pk, const parray& r, double smoothing=0.5);
+parray pk_to_xi(int ell, const parray& k, const parray& pk, const parray& r, double smoothing=0.5);
 
 /* Compute the power spectrum P(k) from a correlation function xi(r), sampled
  * at logarithmically spaced points r[i]. */
-parray xi_to_pk(const parray& r, const parray& xi, const parray& k, double smoothing=0.005);
+parray xi_to_pk(int ell, const parray& r, const parray& xi, const parray& k, double smoothing=0.005);
 
 
 //-------------------------------------------------------------------------------------

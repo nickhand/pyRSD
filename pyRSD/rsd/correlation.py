@@ -60,9 +60,8 @@ def SmoothedXiMultipoles(power_model, r, ells, R=0., **kwargs):
     
     toret = []
     for i, ell in enumerate(ells):
-        spline = pygcl.CubicSpline(k_spline, poles[:,i])
-        xi = pygcl.SmoothedXiMultipole(spline, int(ell), r, 32768, 1e-5, KMAX, R)
-        toret.append(np.real(1j**int(ell)) * xi)
+        xi = pygcl.pk_to_xi(int(ell), k_spline, poles[:,i], r, smoothing=R)
+        toret.append(xi)
         
     toret = np.vstack(toret).T
     return np.squeeze(toret)

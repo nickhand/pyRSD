@@ -2,8 +2,6 @@
 #include "CorrelationFunction.h"
 %}
 
-
-
 %apply (double* INPLACE_ARRAY1, int DIM1) {(const double k[], int ksize)}
 %apply (double* INPLACE_ARRAY1, int DIM1) {(const double pk[], int pksize)}
 %apply (double* INPLACE_ARRAY1, int DIM1) {(double r[], int rsize)}
@@ -14,8 +12,8 @@ parray ComputeDiscreteXiLM(int l, int m, const parray& k, const parray& pk, cons
 parray ComputeXiLM(int l, int m, const parray& k, const parray& pk, const parray& r, double smoothing=0.);
 void ComputeXiLM_fftlog(int l, int m, int N, const double k[], const double pk[], double r[], double xi[], double smoothing=0.);
 
-parray pk_to_xi(const parray& k, const parray& pk, const parray& r, double smoothing=0.5);
-parray xi_to_pk(const parray& r, const parray& xi, const parray& k, double smoothing=0.005);
+parray pk_to_xi(int ell, const parray& k, const parray& pk, const parray& r, double smoothing=0.5);
+parray xi_to_pk(int ell, const parray& r, const parray& xi, const parray& k, double smoothing=0.005);
 
 
 /*  Wrapper for ComputeXiLM_fftlog to massage types */

@@ -1,4 +1,5 @@
 from .. import numpy as np
+from .tools import convolve_multipoles
 from _cache import Cache, parameter, cached_property
 from scipy.special import legendre
 
@@ -432,6 +433,7 @@ class PolesTransfer(PkmuTransfer):
         """
         self._PolesTransfer__ells = np.array(ells)
         super(PolesTransfer, self).__init__(grid, [(0., 1.)], kmin=kmin, kmax=kmax, power=power)
+        self.window = None
         
     @classmethod
     def from_structured(cls, coords, data, ells, **kwargs):
@@ -452,7 +454,33 @@ class PolesTransfer(PkmuTransfer):
         second axis (columns)
         """
         return val
-          
+        
+    @parameter
+    def window(self, val):
+        """
+        The array holding the window function to be convolved
+        with the `ell = 0,2,4` multipoles
+        """
+        if val is None: return val
+        
+        if not all(l in [0, 2, 4] for l in set(self.ells)):
+            raise NotImplementedError("window convolution only implemented for case of ell=0,2,4 multipoles")
+        return val
+        
+    @cached_property()
+    def k_mean(self):
+        """
+        The `k` values averaged over the `mu` dimension
+        """
+        return self.average(self.grid.k, self.grid.modes)
+        
+    @cached_property()
+    def _valid_k(self):
+        """
+        The non-null indices of the multipoles (after averaging over the grid)
+        """
+        return np.isfinite(self.k_mean)
+    
     @cached_property("ells")
     def N2(self):
         return len(self.ells)  
@@ -476,7 +504,7 @@ class PolesTransfer(PkmuTransfer):
         
         # restrict the k-range and return
         return self.restrict_k(k_cen), self.restrict_k(ells)
-        
+                
     #--------------------------------------------------------------------------
     # main functions
     #--------------------------------------------------------------------------
@@ -495,12 +523,36 @@ class PolesTransfer(PkmuTransfer):
         flatten : bool, optional (`False`)
             whether to flatten the return array (column-wise)
         """
+        # average over grid
         tobin = self.legendre_weights*self.power
-        toret = self.restrict_k(np.asarray([self.average(d, self.grid.modes) for d in tobin]).T)
-
+        toret = np.asarray([self.average(d, self.grid.modes) for d in tobin]).T
+        
+        # convolve with window?
+        if self.window is not None:
+            toret = self.convolve_window(toret)
+        
+        # restrict k range
+        toret = self.restrict_k(toret)
+        
+        # flatten and return
         if flatten: toret = _flatten(toret)
         return toret 
         
+    def convolve_window(self, poles):
+        """
+        Convolve the `ell = 0, 2, 4` multipoles with the window function specified
+        by `window`
+        
+        Notes
+        -----
+        *   this is still defined on the grid -- no `k` restrictions yet
+        """
+        idx = self._valid_k
+        toret = np.ones(poles.shape)*np.nan
+        toret[idx,...] = convolve_multipoles(self.k_mean[idx], poles[idx,...], self.window)
+        return toret
+        
+    
     def to_covariance(self, components=False):
         """
         Return the P(k,mu) covariance, which is diagonal and equal to

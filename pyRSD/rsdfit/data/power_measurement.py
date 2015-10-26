@@ -256,6 +256,12 @@ class PowerData(Cache):
         # rescale inverse covar?
         self.rescale_inverse_covar()
 
+        # read a window function?
+        self.window = None
+        window_file = self.params.get('window_file', None)
+        if window_file is not None: 
+            self.window = np.loadtxt(window_file)
+            
         # finally, read and setup an (optional) grid for binnning effects
         self.read_grid()
 
@@ -317,7 +323,14 @@ class PowerData(Cache):
         self.covariance = self.covariance.trim_k(kmax=toret)
         
         return toret
-                
+        
+    @parameter
+    def window(self, val):
+        """
+        The window function, default is `None`
+        """
+        return val
+                            
     #---------------------------------------------------------------------------
     # initialization and setup functions
     #---------------------------------------------------------------------------
@@ -405,6 +418,10 @@ class PowerData(Cache):
             if len(x) != self.size:
                 raise ValueError("size mismatch between `%s` and number of measurements" %lab)
             self.transfer = cls(self.grid, x, kmin=self.kmin, kmax=self.kmax)
+            
+            # set the window function
+            if self.mode == 'poles' and self.window is not None:
+                self.transfer.window = self.window
                     
     def set_all_measurements(self):
         """
@@ -656,6 +673,16 @@ class PowerData(Cache):
     #---------------------------------------------------------------------------
     # cached properties
     #---------------------------------------------------------------------------
+    @cached_property('window')
+    def window_kmax_boost(self):
+        """
+        The boost factor for the `global_kmax` parameter
+        """
+        if self.window is None:
+            return 1.
+        else:
+            return 1.5
+            
     @cached_property('kmin')
     def global_kmin(self):
         """
@@ -663,12 +690,12 @@ class PowerData(Cache):
         """
         return self.kmin.min()
         
-    @cached_property('kmax')
+    @cached_property('kmax', 'window_kmax_boost')
     def global_kmax(self):
         """
         The global maximum wavenumber
         """
-        return self.kmax.max()
+        return self.window_kmax_boost * self.kmax.max()
             
     @cached_property('combined_power')
     def ndim(self):

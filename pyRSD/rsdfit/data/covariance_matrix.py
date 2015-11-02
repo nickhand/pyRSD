@@ -303,6 +303,7 @@ class CovarianceMatrix(Cache):
         """
         Return a pickled CovarianceMatrix
         """
+        import pickle
         return pickle.load(open(filename, 'r'))
         
     def to_plaintext(self, filename):
@@ -648,7 +649,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
             mu_bounds = zip(mean_pkmu.muedges[:-1], mean_pkmu.muedges[1:])
-            mean_power, modes, coords = covariance.data_pkmu_gausscov(mean_pkmu, mu_bounds, kmin=kmin, kmax=kmax, components=True)
+            (mean_power, modes), coords = covariance.data_pkmu_gausscov(mean_pkmu, mu_bounds, kmin=kmin, kmax=kmax, components=True)
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
@@ -1014,7 +1015,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         if mean_pkmu is not None:
                     
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
-            mean_power, modes, coords = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
+            (mean_power, modes), coords = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
@@ -1140,6 +1141,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         options.setdefault('norm_by_gaussian', False)
         options.setdefault('norm_by_power', False)
         options.setdefault('subtract_gaussian', False)
+        options.setdefault('label', "")
 
         # get the ells to plot
         ells = self.ells()
@@ -1159,24 +1161,27 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             # get sigma for this mu sub matrix
             this_slice = self.sel(ell1=ell, ell2=ell_bar)
             sigma = this_slice.diag**0.5
-            gauss_cov = this_slice.gaussian_covariance()
             
             norm = 1.
             if options['subtract_gaussian']:
                 norm = sigma.copy()
+                gauss_cov = this_slice.gaussian_covariance()
                 sigma -= np.diag(gauss_cov)**0.5
             elif options['norm_by_gaussian']:
+                gauss_cov = this_slice.gaussian_covariance()
                 norm = np.diag(gauss_cov)**0.5
             elif options['norm_by_power']:
                 norm = np.diag(this_slice.attrs['mean_power'])
 
             # do the plotting
-            if ell == ell_bar:
+            label = options['label']
+            if not options['label'] and ell == ell_bar:
                 label = r"$\ell = \bar{\ell} = %d$" %ell
-            else:
+            elif not options['label']:
                 label = r"$\ell = %d, \ \bar{\ell} = %d$" %(ell, ell_bar)
             pfy.plot(this_slice.ks(), sigma/norm, label=label)
             if options['show_gaussian']:
+                gauss_cov = this_slice.gaussian_covariance()
                 pfy.plot(this_slice.ks(), np.diag(gauss_cov)**0.5/norm, ls='--')
 
             if np.isscalar(norm):
@@ -1234,6 +1239,8 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         options.setdefault('show_diagonal', True)
         options.setdefault('show_binned', False)
         options.setdefault('show_zero_line', False)
+        options.setdefault('label', "")
+        options.setdefault('norm_by_power', False)
 
         # get the ells to plot
         ells = self.ells()
@@ -1264,7 +1271,9 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             cov = this_slice.values[:,kbar_index]
 
             # the normalization
-            norm = np.diag(this_slice.attrs['mean_power'])**2
+            norm = 1.
+            if options['norm_by_power'] and 'mean_power' in this_slice.attrs:
+                norm = np.diag(this_slice.attrs['mean_power'])**2
 
             # remove the diagonal element
             toplot = cov/norm
@@ -1273,12 +1282,15 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             ks = ks[~np.isclose(ks, kbar)]
 
             # plot the fractional covariance
+            label = options['label']
             if ell == ell_bar:
                 args = (ell, kbar)
-                label = r"$\ell = \bar{{\ell}} = %d, \ \bar{{k}} = %.3f$ $h$/Mpc" %args
+                if not options['label']:
+                    label = r"$\ell = \bar{{\ell}} = %d, \ \bar{{k}} = %.3f$ $h$/Mpc" %args
             else:
                 args = (ell, ell_bar, kbar)
-                label = r"$\ell = %d, \ \bar{{\ell}} = %d, \ \bar{{k}} = %.3f$ $h$/Mpc" %args
+                if not options['label']:
+                    label = r"$\ell = %d, \ \bar{{\ell}} = %d, \ \bar{{k}} = %.3f$ $h$/Mpc" %args
             pfy.plot(ks, toplot, label=label)
 
             # get the color to use
@@ -1302,6 +1314,9 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         # add the legend and axis labels
         ax.legend(loc=0, ncol=2)
         ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
-        ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \ell) P(\bar{k}, \bar{\ell}))$", fontsize=16)
+        if options['norm_by_power'] and 'mean_power' in this_slice.attrs: 
+            ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \ell) P(\bar{k}, \bar{\ell}))$", fontsize=16)
+        else:
+            ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k})$  $(\mathrm{Mpc}/h)^3$", fontsize=16)
 
         return ax

@@ -36,7 +36,16 @@ __all__ = ['load',
            'Phm_correctedPT_params',
            'Phh_params',
            'stochB_cross_log_params',
-           'mu6_correction_params']
+           'mu6_correction_params', 
+           'hzpt_wiggles']
+
+
+def hzpt_wiggles():
+    """
+    Return the enhanced BAO wiggles power using the Hy1 model 
+    from arXiv:1509.02120, which enhances the wiggles of pure HZPT
+    """
+    return load('dark_matter/hzpt_wiggles+_Hy1.dat')
 
 #-------------------------------------------------------------------------------
 def load(f):

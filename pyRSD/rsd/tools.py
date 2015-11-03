@@ -229,7 +229,7 @@ class BiasToMassRelation(Cache):
     interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
     interpolation_grid['b1'] = np.linspace(0.9, 8., 70)
     
-    def __init__(self, z, cosmo, interpolated=False):
+    def __init__(self, z, cosmo, interpolate=False):
         """
         Parameters
         ----------
@@ -237,7 +237,7 @@ class BiasToMassRelation(Cache):
             The redshift to compute the relation at
         cosmo : pygcl.Cosmology
             The cosmology object
-        interpolated : bool, optional
+        interpolate : bool, optional
             Whether to return results from an interpolation table
         """
         # initialize the Cache base class
@@ -246,14 +246,14 @@ class BiasToMassRelation(Cache):
         # save the parameters
         self.z = z
         self.cosmo = cosmo
-        self.interpolated = interpolated
+        self.interpolate = interpolate
         self.delta_halo = 200
         
     #---------------------------------------------------------------------------
     # Parameters
     #---------------------------------------------------------------------------
     @parameter
-    def interpolated(self, val):
+    def interpolate(self, val):
         """
         If `True`, return the Zel'dovich power term from an interpolation table
         """
@@ -345,7 +345,7 @@ class BiasToMassRelation(Cache):
         b1 : float
             The linear bias
         """        
-        if self.interpolated:
+        if self.interpolate:
             return self.interpolation_table([sigma8_z, b1])
         else:
             
@@ -369,7 +369,7 @@ class BiasToSigmaRelation(BiasToMassRelation):
     """
     Class to represent the relation between velocity dispersion and halo bias
     """
-    def __init__(self, z, cosmo, interpolated=False, sigmav_0=None, M_0=None):
+    def __init__(self, z, cosmo, interpolate=False, sigmav_0=None, M_0=None):
         """
         Parameters
         ----------
@@ -377,11 +377,11 @@ class BiasToSigmaRelation(BiasToMassRelation):
             The redshift to compute the relation at
         cosmo : pygcl.Cosmology
             The cosmology object
-        interpolated : bool, optional
+        interpolate : bool, optional
             Whether to return results from an interpolation table
         """
         # initialize the base class
-        super(BiasToSigmaRelation, self).__init__(z, cosmo, interpolated)
+        super(BiasToSigmaRelation, self).__init__(z, cosmo, interpoalte=interpolate)
         
         # store the normalizations
         self.sigmav_0 = sigmav_0

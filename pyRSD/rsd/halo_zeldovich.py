@@ -26,7 +26,7 @@ class HaloZeldovichPS(Cache):
             The desired redshift to compute the power at
         sigma8_z : float
             The desired sigma8 to compute the power at
-        interpolated : bool, optional
+        interpolate : bool, optional
             Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         enhance_wiggles : bool, optional (`False`)
@@ -52,14 +52,10 @@ class HaloZeldovichPS(Cache):
         self._R2h_slope = 0.43  
         self._W0_slope  = 1.86     
         
-    def __getstate__(self):
-        return self.__dict__
-       
     def __setstate__(self, d):
         self.__dict__ = d
         
         # backwards compatibility for HZPTw+
-        self.enhance_wiggles = False
         self._W0_slope      = 1.86
        
     #---------------------------------------------------------------------------
@@ -314,7 +310,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
             The desired redshift to compute the power at
         sigma8_z : float
             The desired sigma8 to compute the power at
-        interpolated : bool, optional
+        interpolate : bool, optional
             Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         enhance_wiggles : bool, optional (`False`)
@@ -350,7 +346,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
             The desired sigma8 to compute the power at
         f : float
             The desired logarithmic growth rate
-        interpolated : bool, optional
+        interpolate : bool, optional
             Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         enhance_wiggles : bool, optional (`False`)
@@ -460,7 +456,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     """
     Halo Zel'dovich Phm
     """ 
-    def __init__(self, cosmo, z, sigma8_z, interpolated=False, indep_var='b1'):
+    def __init__(self, cosmo, z, sigma8_z, indep_var='b1', **kwargs):
         """
         Parameters
         ----------
@@ -470,7 +466,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             The desired redshift to compute the power at
         sigma8_z : float
             The desired sigma8 to compute the power at
-        interpolated : bool, optional
+        interpolate : bool, optional
             Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         indep_var : {`b1`, `M`}, optional (`b1`)
@@ -480,10 +476,11 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         self.Pzel = pygcl.ZeldovichP00(cosmo, z)
         
         # bias to mass relation
-        self.bias_to_mass = tools.BiasToMassRelation(z, cosmo, interpolated)
+        kw = {'interpolate' : kwargs.get('interpolate', False)}
+        self.bias_to_mass = tools.BiasToMassRelation(z, cosmo, **kw)
         
         # initialize the base class
-        super(HaloZeldovichPhm, self).__init__(z, sigma8_z, interpolated)
+        super(HaloZeldovichPhm, self).__init__(z, sigma8_z, **kwargs)
         
         # save the cosmology too
         self.cosmo = cosmo
@@ -513,7 +510,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         """
         If `True`, return the Zel'dovich power term from an interpolation table
         """
-        self.bias_to_mass.interpolated = val
+        self.bias_to_mass.interpolate = val
         return val
         
     @parameter

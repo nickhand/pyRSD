@@ -16,10 +16,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
                         ['sigmav_from_sims', 'use_tidal_bias',
                          'use_mu_corrections', 'use_mean_bias', 'Phm_model']  
 
-    #---------------------------------------------------------------------------
-    def __init__(self, sigmav_from_sims=True, use_tidal_bias=False, 
-                    use_mu_corrections=False, use_mean_bias=False, 
-                    Phm_model='halo_zeldovich', **kwargs):
+    def __init__(self,  sigmav_from_sims=True, 
+                        use_tidal_bias=False, 
+                        use_mu_corrections=False, 
+                        use_mean_bias=False, 
+                        Phm_model='halo_zeldovich', 
+                        **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -30,10 +32,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.use_tidal_bias     = use_tidal_bias
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
-        if (self.__class__.__name__ != "HaloSpectrum"):
-            self.b1_bar           = 2.
         self.Phm_model          = Phm_model
         self.use_mu_corrections = use_mu_corrections
+        
+        # set b1_bar, unless we are fixed
+        if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
          
     #---------------------------------------------------------------------------
     # ATTRIBUTES
@@ -67,6 +70,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
         # set the dependencies
         models = ['P00_model', 'P01_model', 'Phm_halo_zeldovich_model']
         self._update_models('interpolate', models, val)
+        
+        return val
+        
+    @parameter
+    def enhance_wiggles(self, val):
+        """
+        Whether to enhance the wiggles over the default HZPT model
+        """
+        # set the dependencies
+        models = ['P00_model', 'P01_model', 'Phm_halo_zeldovich_model']
+        self._update_models('enhance_wiggles', models, val)
         
         return val
         
@@ -147,7 +161,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The class holding the Halo Zeldovich model for the Phm term
         """
-        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8_z, self.interpolate)
+        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
+        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8_z, **kw)
         
     @cached_property("use_mean_bias", "b1", "b1_bar")
     def _ib1(self):
@@ -284,7 +299,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Tinker et al. relation for halo mass and bias, and the virial theorem
         scaling between mass and velocity dispersion
         """
-        return BiasToSigmaRelation(self.z, self.cosmo, interpolated=self.interpolate)
+        return BiasToSigmaRelation(self.z, self.cosmo, interpolate=self.interpolate)
              
     @cached_property("_ib1", "_ib1_bar", "z")
     def _unnormed_sigmav_from_sims(self):
@@ -763,6 +778,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P04_ss
             
     #---------------------------------------------------------------------------
+    # power as a function of mu
+    #---------------------------------------------------------------------------
     @interpolated_property("P00_ss", interp="k")
     def P_mu0(self, k):
         """
@@ -771,8 +788,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return self.P00_ss.total.mu0
 
-    
-    #---------------------------------------------------------------------------
     @interpolated_property("P01_ss", "P11_ss", "P02_ss", interp="k")
     def P_mu2(self, k):
         """
@@ -781,8 +796,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2
 
-
-    #---------------------------------------------------------------------------
     @interpolated_property("P11_ss", "P02_ss", "P12_ss", "P22_ss", "P03_ss",
                            "P13_ss", "P04_ss", interp="k")
     def P_mu4(self, k):
@@ -794,8 +807,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
                self.P22_ss.total.mu4 + self.P03_ss.total.mu4 + self.P13_ss.total.mu4 + \
                self.P04_ss.total.mu4
     
-            
-    #---------------------------------------------------------------------------
     @interpolated_property("P12_ss", "use_mu_corrections", interp="k")
     def P_mu6(self, k):
         """
@@ -808,7 +819,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return A*(self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k))
 
-    #---------------------------------------------------------------------------    
 #-------------------------------------------------------------------------------  
 
         

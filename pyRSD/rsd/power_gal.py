@@ -42,10 +42,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
         
-        # set the parameters
-        self.fog_model         = fog_model
-
         # set the defaults
+        self.fog_model     = fog_model
         self.include_2loop = False
         self.fs            = 0.10
         self.fcB           = 0.08
@@ -95,9 +93,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         allowable = ['modified_lorentzian', 'lorentzian', 'gaussian']
         if val not in allowable:
             raise ValueError("`fog_model` must be one of %s" %allowable)
-            
-        mod = sys.modules[__name__]
-        return getattr(mod, 'fog_'+val)
+        
+        return val
         
     @parameter
     def fs(self, val):
@@ -200,6 +197,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
+    @cached_property("fog_model")
+    def fog_function(self):
+        """
+        Return the FOG function
+        """
+        return getattr(sys.modules[__name__], 'fog_%s' %self.fog_model)
+        
     @cached_property('fcB', 'b1_cB', 'b1_cA')
     def b1_c(self):
         """
@@ -234,7 +238,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """    
         k = self.k_true(k_obs, mu_obs)
         mu = self.mu_true(mu_obs)
-        return self.fog_model(k*mu*sigma)
+        return self.fog_function(k*mu*sigma)
     
     #---------------------------------------------------------------------------
     # Centrals power spectrum

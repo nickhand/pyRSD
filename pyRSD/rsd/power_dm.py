@@ -25,8 +25,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     
     # kwargs
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
-    allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', \
-                        'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims', 'k0_low']
+    allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', 
+                        'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims', 
+                        'k0_low', 'enhance_wiggles']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
@@ -41,6 +42,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                        interpolate=True,
                        load_dm_sims=None,
                        k0_low=5e-3,
+                       enhance_wiggles=True,
                        **kwargs):
         """
         Parameters
@@ -84,6 +86,10 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         k0_low : float, optional (`5e-3`)
             below this wavenumber, evaluate any power in "low-k mode", which
             essentially just uses SPT at low-k
+            
+        enhance_wiggles : bool, optional (`True`)
+            using the Hy1 model from arXiv:1509.02120, enhance the wiggles
+            of pure HZPT
         """
         # initialize the Cache subclass first
         Cache.__init__(self)
@@ -92,17 +98,18 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         SimLoader.__init__(self)
         
         # set the input parameters
-        self.interpolate    = interpolate
-        self.transfer_fit   = transfer_fit
-        self.cosmo_filename = cosmo_filename
-        self.max_mu         = max_mu
-        self.include_2loop  = include_2loop
-        self.z              = z 
-        self.load_dm_sims   = load_dm_sims
-        self.kmin           = kmin
-        self.kmax           = kmax
-        self.Nk             = Nk
-        self.k0_low         = k0_low
+        self.interpolate     = interpolate
+        self.transfer_fit    = transfer_fit
+        self.cosmo_filename  = cosmo_filename
+        self.max_mu          = max_mu
+        self.include_2loop   = include_2loop
+        self.z               = z 
+        self.load_dm_sims    = load_dm_sims
+        self.kmin            = kmin
+        self.kmax            = kmax
+        self.Nk              = Nk
+        self.k0_low          = k0_low
+        self.enhance_wiggles = enhance_wiggles
         
         # initialize the cosmology parameters and set defaults
         self.sigma8_z          = self.cosmo.Sigma8_z(self.z)
@@ -128,6 +135,17 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         # initialize the integrals    
         Integrals.__init__(self)
+        
+    def __setstate__(self, d):
+        self.__dict__ = d
+        self.enhance_wiggles = True
+    
+    def to_dict(self):
+        """
+        Return a dictionary of the allowable parameters
+        """
+        allowed = self.__class__.allowable_kwargs
+        return {k:getattr(self, k) for k in allowed}
         
     #---------------------------------------------------------------------------
     # ATTRIBUTES
@@ -175,6 +193,17 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self._update_models('interpolate', models, val)
         
         return val
+        
+    @parameter
+    def enhance_wiggles(self, val):
+        """
+        Whether to enhance the wiggles over the default HZPT model
+        """
+        # set the dependencies
+        models = ['P00_model', 'P01_model']
+        self._update_models('enhance_wiggles', models, val)
+        
+        return val
     
     @parameter
     def transfer_fit(self, val):
@@ -182,10 +211,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         The transfer function fitting method
         """
         allowed = ['CLASS', 'EH', 'EH_NoWiggle', 'BBKS']
-        if val in allowed:
-            return getattr(pygcl.Cosmology, val)
-        else:
+        if val not in allowed:
             raise ValueError("`transfer_fit` must be one of %s" %allowed)
+        return val
 
     @parameter
     def cosmo_filename(self, val):
@@ -222,7 +250,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self._update_models('z', models, val)
         
         return val
-
 
     @parameter
     def k0_low(self, val):
@@ -342,6 +369,13 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
+    @cached_property("transfer_fit")
+    def transfer_fit_int(self):
+        """
+        The integer value representing the transfer function fitting method
+        """
+        return getattr(pygcl.Cosmology, self.transfer_fit)
+            
     @cached_property("sigmav_input")
     def sigma_v(self):
         """
@@ -355,7 +389,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         A `pygcl.Cosmology` object holding the cosmological parameters
         """
-        return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit)
+        return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit_int)
                       
     @cached_property("alpha_perp", "alpha_par", "kmin", "kmax", "Nk")
     def k(self):
@@ -471,7 +505,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The class holding the Halo Zeldovich model for the P00 dark matter term
         """
-        return HaloZeldovichP00(self.cosmo, self.z, self.sigma8_z, self.interpolate)
+        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
+        return HaloZeldovichP00(self.cosmo, self.z, self.sigma8_z, **kw)
     
     #---------------------------------------------------------------------------
     @cached_property("cosmo")
@@ -479,7 +514,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The class holding the Halo Zeldovich model for the P01 dark matter term
         """
-        return HaloZeldovichP01(self.cosmo, self.z, self.sigma8_z, self.f, self.interpolate)
+        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
+        return HaloZeldovichP01(self.cosmo, self.z, self.sigma8_z, self.f, **kw)
     
     #---------------------------------------------------------------------------
     @cached_property("power_lin_nw")
@@ -638,7 +674,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     
     #---------------------------------------------------------------------------
     @cached_property("k", "z", "sigma8_z", "use_P00_model", "power_lin", 
-                     "P00_mu0_loaded")
+                     "P00_mu0_loaded", "enhance_wiggles")
     def P00(self):
         """
         The isotropic, zero-order term in the power expansion, corresponding
@@ -669,7 +705,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
     #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "use_P01_model", "power_lin", 
-                     "max_mu", "P01_mu2_loaded")
+                     "max_mu", "P01_mu2_loaded", "enhance_wiggles")
     def P01(self):
         """
         The correlation of density and momentum density, which contributes

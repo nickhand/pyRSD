@@ -138,7 +138,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
     def __setstate__(self, d):
         self.__dict__ = d
-        self.enhance_wiggles = True
+        self.enhance_wiggles = False
     
     def to_dict(self):
         """

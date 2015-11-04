@@ -381,7 +381,7 @@ class BiasToSigmaRelation(BiasToMassRelation):
             Whether to return results from an interpolation table
         """
         # initialize the base class
-        super(BiasToSigmaRelation, self).__init__(z, cosmo, interpoalte=interpolate)
+        super(BiasToSigmaRelation, self).__init__(z, cosmo, interpolate=interpolate)
         
         # store the normalizations
         self.sigmav_0 = sigmav_0

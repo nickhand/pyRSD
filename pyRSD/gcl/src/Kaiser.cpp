@@ -41,14 +41,14 @@ double Kaiser::Xi_ell(int ell, double r, int Nk, double kmin, double kmax) const
   
     parray r_(1); r_[0] = r; 
     parray k = parray::logspace(kmin, kmax, Nk);
-    parray xi = ComputeXiLM(ell, 2, k, P(k), r_);
+    parray xi = ComputeXiLM(ell, 2, k, P(k), r_, 0.);
     return pow(-1, ell/2)*PowerPolePrefactor(ell)*xi[0];
 }
 
 parray Kaiser::Xi_ell(int ell, const parray& r, int Nk, double kmin, double kmax) const {
     
     parray k = parray::logspace(kmin, kmax, Nk);
-    parray xi = ComputeXiLM(ell, 2, k, P(k), r);
+    parray xi = ComputeXiLM(ell, 2, k, P(k), r, 0.);
     return pow(-1, ell/2)*PowerPolePrefactor(ell)*xi;
 }
 

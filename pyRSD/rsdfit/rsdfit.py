@@ -218,7 +218,7 @@ def run():
                 start_chain = find_start_chain(start_chain)
             
             if not os.path.exists(start_chain):
-                raise rsd_io.ConfigurationError("unable to set the `start_chain` parameter when initializing from `chain`")
+                raise rsd_io.ConfigurationError("`start_chain` parameter `%s` is not a valid path" %start_chain)
             driver.params.add('start_chain', value=start_chain)
             
                         

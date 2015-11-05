@@ -193,8 +193,8 @@ def run():
                 if chain_number == 0:
                     model_dir = driver.params.get('model_dir', args.folder)
                     rsd_io.save_pickle(driver.theory.model, os.path.join(model_dir, model_filename))
-            if chain_number == 0:
-                driver.to_file(os.path.join(args.folder, params_filename))
+        if chain_number == 0:
+            driver.to_file(os.path.join(args.folder, params_filename))
                 
         # set driver values from command line
         solver = driver.params['fitter'].value

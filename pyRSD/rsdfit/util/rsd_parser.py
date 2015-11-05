@@ -319,11 +319,9 @@ def parse_command_line():
             if os.path.exists(params_path):
                 # if the params.dat exists, and param files were given, 
                 # use the params.dat, and notify the user
-                old_params = args.params
-                args.params = params_path
-                if old_params is not None:
+                if args.params is not None:
                     logger.warning("Appending to an existing folder: using the "
-                                   "`%s` instead of %s" %(params_filename, old_params))
+                                   "`%s` instead of %s" %(args.params, params_filename))
             else:
                 if args.params is None:
                     raise rsd_io.ConfigurationError(

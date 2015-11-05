@@ -31,7 +31,7 @@ double TrapzIntegrate(const parray& x, const parray& y) {
     
     // trapz is just dx * bincenters
     double toret(0);    
-    for (int i = 0; i < y.size()-1; i++)
+    for (size_t i = 0; i < y.size()-1; i++)
         toret += (x[i+1] - x[i]) * 0.5 * (y[i+1] + y[i]);
     
     return toret;

@@ -166,7 +166,7 @@ class GalaxyPowerTheory(object):
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
 
-    def set_model(self, filename=None):
+    def set_model(self, *model):
         """
         Set the model, possibly from a file, or initialize a new one
         """
@@ -176,12 +176,19 @@ class GalaxyPowerTheory(object):
         kwargs = {k:v() for k,v in self.model_params.iteritems()}
         if self.kmin is not None: kwargs['kmin'] = self.kmin
         if self.kmax is not None: kwargs['kmax'] = self.kmax
-        
-        if filename is not None:
-            self.model = rsd_io.load_pickle(filename)
+    
+        if not len(model):
+            self.model = rsd.GalaxySpectrum(**kwargs)
+        elif isinstance(model[0], basestring):
+            if not os.path.exists(model[0]):
+                raise rsd_io.ConfigurationError('cannot set model from file `%s`' %model[0])
+            self.model = rsd_io.load_pickle(model[0])
+            self.model.update(**kwargs)
+        elif isinstance(model[0], rsd.GalaxySpectrum):
+            self.model = model[0]
             self.model.update(**kwargs)
         else:
-            self.model = rsd.GalaxySpectrum(**kwargs)
+            raise rsd_io.ConfigurationError("failure to set model in `GalaxyPowerTheory` from file or instance")
     
         # update the constraints
         self.update_constraints()

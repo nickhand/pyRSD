@@ -113,7 +113,7 @@ class FittingDriver(object):
         
         # set the model and results
         if os.path.exists(model_path):
-            driver.set_model(model_path)
+            driver.model = model_path
         if results_file is not None:
             if not os.path.exists(results_file):
                 if not os.path.join(dirname, results_file):
@@ -276,18 +276,6 @@ class FittingDriver(object):
     #---------------------------------------------------------------------------
     # setup functions
     #---------------------------------------------------------------------------
-    def set_model(self, filename):
-        """
-        Set the model, as read from a file
-        """
-        # set it
-        logger.info("Setting the theoretical model from file `%s`" %filename)
-        self.theory.set_model(filename)
-        
-        # model callable
-        self._model_callable = self.theory.model_callable(self.data)
-        logger.info("...theoretical model successfully read")
-
     def _setup_for_data(self):
         """
         Setup the model callables for this set of data
@@ -323,6 +311,29 @@ class FittingDriver(object):
             constrained_params = self.theory.constrained_names
             val.verify_param_ordering(free_params, constrained_params)            
         self._results = val
+        
+    @property
+    def results(self):
+        """
+        The `model` object which returns the P(k,mu) or multipoles theory
+        """
+        return self.theory.model
+        
+    @model.setter
+    def model(self, val):
+        """
+        Set the theoretical model
+        """
+        # set it
+        if isinstance(val, basestring):
+            logger.info("setting the theoretical model from file `%s`" %filename)
+        else:
+            logger.info("setting the theoretical model from existing instance")
+        self.theory.set_model(val)
+        
+        # model callable
+        self._model_callable = self.theory.model_callable(self.data)
+        logger.info("...theoretical model successfully read")
         
     @property
     def combined_model(self):

@@ -4,9 +4,6 @@
 #include "Common.h"
 #include "SpecialFunctions.h"
 
-using namespace Common;
-
-
 /* Use standard library implementations */
 double BesselJ0(double x) { return j0(x); }
 double BesselJ1(double x) { return j1(x); }
@@ -14,51 +11,51 @@ double BesselJn(int n, double x) { return jn(n, x); }
 
 double SphericalBesselJ0(double x) {
     if(fabs(x) < 1e-4)
-        return 1 - pow2(x)/6 + pow4(x)/120 - pow6(x)/5040;
+        return 1 - Common::pow2(x)/6 + Common::pow4(x)/120 - Common::pow6(x)/5040;
     else
         return sin(x)/x;
 }
 
 double SphericalBesselJ1(double x) {
     if(fabs(x) < 1e-4)
-        return x/3 - pow3(x)/30 + pow5(x)/840 - pow7(x)/45360;
+        return x/3 - Common::pow3(x)/30 + Common::pow5(x)/840 - Common::pow7(x)/45360;
     else
-        return (sin(x) - x*cos(x))/pow2(x);
+        return (sin(x) - x*cos(x))/Common::pow2(x);
 }
 
 double SphericalBesselJ2(double x) {
     if(fabs(x) < 1e-4)
-        return pow2(x)/15 - pow4(x)/210 + pow6(x)/7560;
+        return Common::pow2(x)/15 - Common::pow4(x)/210 + Common::pow6(x)/7560;
     else
-        return ((3 - pow2(x))*sin(x) - 3*x*cos(x))/pow3(x);
+        return ((3 - Common::pow2(x))*sin(x) - 3*x*cos(x))/Common::pow3(x);
 }
 
 double SphericalBesselJ3(double x) {
     if(fabs(x) < 1e-4)
-        return pow3(x)/105 - pow5(x)/1890 + pow7(x)/83160;
+        return Common::pow3(x)/105 - Common::pow5(x)/1890 + Common::pow7(x)/83160;
     else
-        return ((15 - 6*pow2(x))*sin(x) - (15*x - pow3(x))*cos(x))/pow4(x);
+        return ((15 - 6*Common::pow2(x))*sin(x) - (15*x - Common::pow3(x))*cos(x))/Common::pow4(x);
 }
 
 double SphericalBesselJ4(double x) {
     if(fabs(x) < 1e-4)
-        return pow4(x)/945 - pow6(x)/20790;
+        return Common::pow4(x)/945 - Common::pow6(x)/20790;
     else
-        return 5.*(2.*pow2(x) - 21.)*cos(x)/pow4(x) + (pow4(x) - 45.*pow2(x) + 105.)*sin(x)/pow5(x);
+        return 5.*(2.*Common::pow2(x) - 21.)*cos(x)/Common::pow4(x) + (Common::pow4(x) - 45.*Common::pow2(x) + 105.)*sin(x)/Common::pow5(x);
 }
 
 double SphericalBesselJ6(double x) {
     if(fabs(x) < 1e-4)
-        return pow6(x)/135135 - pow8(x)/4054050;
+        return Common::pow6(x)/135135 - Common::pow8(x)/4054050;
     else
-        return ((-pow6(x) + 210*pow4(x) - 4725*pow2(x) + 10395)*sin(x) - (21*x*(pow4(x) - 60*pow2(x) + 495))*cos(x))/pow7(x);
+        return ((-Common::pow6(x) + 210*Common::pow4(x) - 4725*Common::pow2(x) + 10395)*sin(x) - (21*x*(Common::pow4(x) - 60*Common::pow2(x) + 495))*cos(x))/Common::pow7(x);
 }
 
 double SphericalBesselJ8(double x) {
     if(fabs(x) < 1e-4)
-        return pow8(x)/34459425 - pow10(x)/1309458150;
+        return Common::pow8(x)/34459425 - Common::pow10(x)/1309458150;
     else
-        return ((pow8(x) - 630*pow6(x) + 51975*pow4(x) - 945945*pow2(x) + 2027025)*sin(x) + (9*x*(4*pow6(x) - 770*pow4(x) + 30030*pow2(x) - 225225))*cos(x))/pow9(x);
+        return ((Common::pow8(x) - 630*Common::pow6(x) + 51975*Common::pow4(x) - 945945*Common::pow2(x) + 2027025)*sin(x) + (9*x*(4*Common::pow6(x) - 770*Common::pow4(x) + 30030*Common::pow2(x) - 225225))*cos(x))/Common::pow9(x);
 }
 
 #if 0

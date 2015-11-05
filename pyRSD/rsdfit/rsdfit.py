@@ -82,6 +82,27 @@ def add_file_logger(filename, rank):
     f.setFormatter(formatter)
     logging.getLogger('').addHandler(f)
             
+
+def find_start_chain(val):
+    
+    if not os.path.exists(val):
+        raise rsd_io.ConfigurationError("cannot set `start_chain` -- path `%s` does not exist" %val)
+        
+    from glob import glob
+    from pyRSD.rsdfit.results import EmceeResults
+    import operator
+
+    pattern = os.path.join(val, "*.npz")
+    chains = glob(pattern)
+    if not len(chains):
+        raise rsd_io.ConfigurationError("did not find any chain (`.npz`) files matching pattern `%s`" %pattern)
+
+    # find the chain file which has the maximum log prob in it and use that
+    max_lnprobs = [EmceeResults.from_npz(f).max_lnprob for f in chains]
+    index, value = max(enumerate(max_lnprobs), key=operator.itemgetter(1))
+    return chains[index]
+
+                
 #-------------------------------------------------------------------------------
 def run():
     """
@@ -186,6 +207,20 @@ def run():
         # store some command line arguments
         driver.params.add('walkers', value=args.walkers)
         driver.params.add('iterations', value=args.iterations)
+        
+        # if initializing from previous run in 
+        init_from = driver.params.get('init_from', None)
+        if init_from == 'chain':
+            start_chain = driver.params.get('start_chain', None)
+            if start_chain is None:
+                start_chain = find_start_chain(args.folder)
+            elif os.path.isdir(start_chain):
+                start_chain = find_start_chain(start_chain)
+            
+            if not os.path.exists(start_chain):
+                raise rsd_io.ConfigurationError("unable to set the `start_chain` parameter when initializing from `chain`")
+            driver.params.add('start_chain', value=start_chain)
+            
                         
     # restart from previous chain
     elif args.subparser_name == 'restart':

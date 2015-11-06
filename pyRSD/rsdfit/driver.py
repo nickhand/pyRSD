@@ -313,7 +313,7 @@ class FittingDriver(object):
         self._results = val
         
     @property
-    def results(self):
+    def model(self):
         """
         The `model` object which returns the P(k,mu) or multipoles theory
         """

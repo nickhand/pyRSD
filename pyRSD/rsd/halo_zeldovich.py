@@ -628,7 +628,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             beta = -1.15572913
             A = 1.22260687
             return A * (self.sigma8_z/0.8)**alpha * (self.b1/2.)**beta
-        
+                
     def __call__(self, b1, k):
         """
         Return the total power, equal to the b1 * Zeldovich power + broadband 
@@ -646,5 +646,5 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             self.Pzel.SetSigma8AtZ(self.sigma8_z)
             
         self.b1 = b1
-        return self.broadband_power(k) + b1*self.zeldovich_power(k)
+        return self.broadband_power(k) + b1*self.zeldovich_power(k) + b1*self.wiggles_plus(k)
     

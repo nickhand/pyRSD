@@ -326,7 +326,7 @@ class FittingDriver(object):
         """
         # set it
         if isinstance(val, basestring):
-            logger.info("setting the theoretical model from file `%s`" %filename)
+            logger.info("setting the theoretical model from file `%s`" %val)
         else:
             logger.info("setting the theoretical model from existing instance")
         self.theory.set_model(val)

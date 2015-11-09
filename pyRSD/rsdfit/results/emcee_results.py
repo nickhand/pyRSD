@@ -481,11 +481,19 @@ class EmceeResults(object):
         
     def max_lnprob_values(self, *names):
         """
-        Return the value of the parameters at the iteration with the maximum
+        Return the value of the free parameters at the iteration with the maximum
         probability
         """
         nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
         return self.chain[nwalker, niter, :]
+        
+    def max_lnprob_constrained_values(self, *names):
+        """
+        Return the value of the constrained parameters at the iteration 
+        with the maximum probability
+        """
+        nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
+        return self.constrained_chain[nwalker, niter, :]
         
     def plot_timeline(self, *names, **kwargs):
         """

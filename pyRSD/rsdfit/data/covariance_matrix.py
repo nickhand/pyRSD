@@ -653,7 +653,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
-            toret.attrs['modes'] = modes
+            toret.attrs['modes'] = modes*len(data)
         
         return toret
     
@@ -1019,7 +1019,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
-            toret.attrs['modes'] = modes
+            toret.attrs['modes'] = modes*len(data)
                     
         return toret
     

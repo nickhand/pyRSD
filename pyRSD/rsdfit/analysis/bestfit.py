@@ -124,21 +124,22 @@ def transform_ipynb(df):
 #------------------------------------------------------------------------------
 # main class/functions
 #------------------------------------------------------------------------------ 
-def to_comparison_table(data, filename=None, params=None, fmt='latex'):
+def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
     """
     Write out a comparison table from multiple BestfitParameterSet instances
     """
     if len(data) < 2:
         raise ValueError("data length in ``to_comparison_table`` must be greater than 1")
-    
+    if len(names) != len(data):
+        raise ValueError("shape mismatch between specified column names and supplied data")
+        
     # the names of the columns in the table
-    names = data.keys()
     chi2_meta = ['min_minus_lkl', 'Np', 'Nb']
     
     # slice the data and add the columns
     red_chi2 = []
-    for i, name in enumerate(data):
-        df = data[name]
+    for i, name in enumerate(names):
+        df = data[i]
         if params == 'free':
             if not 'free' in df:
                 raise ValueError('cannot output only `free` parameters with no `free` column')

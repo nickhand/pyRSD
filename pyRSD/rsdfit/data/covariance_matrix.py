@@ -22,7 +22,16 @@ def condensed_to_full(data, N):
     i, j = np.tril_indices(N)
     toret[i, j] = toret[j, i]
     return toret
-    
+
+def flat_and_nonnull(arr):
+    """
+    Flatten the input array using `Fortran` format 
+    (i.e., col #1 then col #2, etc), and remove 
+    any NaNs along the way
+    """
+    flat = arr.ravel(order='F')
+    return flat[np.isfinite(flat)]
+        
 class CovarianceMatrix(Cache):
     """
     Class to represent a covariance matrix. The class has coordinates associated
@@ -104,7 +113,7 @@ class CovarianceMatrix(Cache):
     # Internal functions
     #--------------------------------------------------------------------------
     @classmethod
-    def __construct_direct__(cls, data, coords=None, names=None, attrs=OrderedDict()):
+    def __construct_direct__(cls, data, coords=[], names=[], attrs=None):
         """
         Shortcut around __init__ for internal use
         """
@@ -112,7 +121,10 @@ class CovarianceMatrix(Cache):
         Cache.__init__(obj)
         obj._setup(data, coords=coords, names=names)
         obj.inverse_rescaling = 1.0
-        obj.attrs = attrs
+        if attrs is None:
+            obj.attrs = OrderedDict()
+        else:
+            obj.attrs = attrs.copy()
 
         return obj
         
@@ -636,7 +648,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         from lsskit.specksis import covariance
 
         # data covariance
-        C, coords, _ = covariance.compute_pkmu_covariance(data, kmin=kmin, kmax=kmax, extras=True, **kwargs)
+        C, coords, extras = covariance.compute_pkmu_covariance(data, kmin=kmin, kmax=kmax, extras=True, **kwargs)
         k_cen, mu_cen = coords
                   
         # construct
@@ -648,12 +660,18 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         if mean_pkmu is not None:
             
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
-            mu_bounds = zip(mean_pkmu.muedges[:-1], mean_pkmu.muedges[1:])
+            x = data[0].values
+            mu_bounds = zip(x.muedges[:-1], x.muedges[1:])
             (mean_power, modes), coords = covariance.data_pkmu_gausscov(mean_pkmu, mu_bounds, kmin=kmin, kmax=kmax, components=True)
             
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
-            toret.attrs['modes'] = modes*len(data)
+            toret.attrs['modes'] = modes/len(data)
+            
+        else:            
+            P = extras['mean_power']
+            toret.attrs['mean_power'] = np.diag(flat_and_nonnull(P))
+
         
         return toret
     
@@ -736,7 +754,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         if 'modes' not in self.attrs:
             raise AttributeError("`modes` key must exist in `attrs` to compute gaussian covariance")
 
-        return 2./self.attrs['modes'] * self.attrs['mean_power']**2
+        return np.nan_to_num(2./self.attrs['modes'] * self.attrs['mean_power']**2)
 
     #---------------------------------------------------------------------------
     # plotting
@@ -784,7 +802,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             mus = [mu]
 
         if options['show_gaussian']:
-            ax.color_cycle = "Paired"
+            if ax.color_cycle != "Paired": ax.color_cycle = "Paired"
 
         # loop over each mu
         for mu in mus:
@@ -801,6 +819,8 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
                 norm = np.diag(this_mu.gaussian_covariance())**0.5
             elif options['norm_by_power']:
                 norm = np.diag(this_mu.attrs['mean_power'])
+                if not np.count_nonzero(norm):
+                    raise ValueError("cannot normalize by power -- all elements are zero")
 
             # do the plotting
             label = r"$\mu = {}$".format(mu)
@@ -1003,7 +1023,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         
         # data covariance
         ells = kwargs.pop('ells', data['ell'].values)
-        C, coords, _ = covariance.compute_pole_covariance(data, ells, kmin=kmin, kmax=kmax, extras=True, **kwargs)
+        C, coords, extras = covariance.compute_pole_covariance(data, ells, kmin=kmin, kmax=kmax, extras=True, **kwargs)
         k_cen, ell_cen = coords
         
         # construct
@@ -1016,11 +1036,15 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                     
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
             (mean_power, modes), coords = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
-            
+
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
-            toret.attrs['modes'] = modes*len(data)
-                    
+            toret.attrs['modes'] = modes/len(data)
+            
+        else:            
+            P = extras['mean_power']
+            toret.attrs['mean_power'] = np.diag(flat_and_nonnull(P))
+                   
         return toret
     
     #--------------------------------------------------------------------------
@@ -1153,7 +1177,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             ells = [(ell, ell_bar)]
 
         if options['show_gaussian']:
-            ax.color_cycle = "Paired"
+            if ax.color_cycle != "Paired": ax.color_cycle = "Paired"
 
         # loop over each ell pair
         for (ell, ell_bar) in ells:
@@ -1171,7 +1195,9 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                 gauss_cov = this_slice.gaussian_covariance()
                 norm = np.diag(gauss_cov)**0.5
             elif options['norm_by_power']:
-                norm = np.diag(this_slice.attrs['mean_power'])
+                norm = abs(np.diag(this_slice.attrs['mean_power']))
+                if not np.count_nonzero(norm):
+                    raise ValueError("cannot normalize by power -- all elements are zero")
 
             # do the plotting
             label = options['label']
@@ -1192,7 +1218,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         ax.legend(loc=0, ncol=2)
         ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
         if options['norm_by_power']:
-            ax.ylabel.update(r"$\sigma_P / P_\ell(k)$", fontsize=16)
+            ax.ylabel.update(r"$\sigma_P / |P_\ell(k)|$", fontsize=16)
 
         elif options['norm_by_gaussian']:
             ax.ylabel.update(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)

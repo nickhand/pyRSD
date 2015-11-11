@@ -210,6 +210,10 @@ class PkmuTransfer(Cache):
         A list of tuples specifying the lower and upper limits for each 
         desired `mu` bin
         """
+        # if mu = 1.0 is upper bound of bin, increase by epsilon to include edge
+        for i, (lo, hi) in enumerate(val):
+            if np.isclose(hi, 1.0): 
+                val[i] = (val[i][0], 1.005*val[i][1])
         return val
         
     @parameter

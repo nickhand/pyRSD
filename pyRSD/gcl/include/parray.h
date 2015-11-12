@@ -112,6 +112,7 @@ public:
     parray& operator-=(double s);        // subtract a constant from each element
     parray& operator*=(double s);        // multiplication by a constant
     parray& operator/=(double s);        // division by a constant
+    parray& pow(double s);
 
 protected:
     size_type n[3];     // shape of array

@@ -17,11 +17,40 @@ Cosmology::Cosmology() {}
 
 Cosmology::~Cosmology() {}
 
-Cosmology::Cosmology(const std::string& param_file,  TransferFit tf, const std::string& tkfile, const std::string& precision_file)
-: ClassCosmology(param_file, precision_file), sigma8_(0.), delta_H_(1.), 
-  transfer_fit_(tf), param_file_(param_file), transfer_file_(tkfile), precision_file_(precision_file)
+Cosmology::Cosmology(const std::string& param_file)
+  : ClassCosmology(param_file), sigma8_(0.), delta_H_(1.), 
+  transfer_fit_(CLASS), param_file_(param_file), transfer_file_("")
 {
-    InitializeTransferFunction(tf, tkfile);
+    InitializeTransferFunction();
+}
+
+Cosmology::Cosmology(const std::string& param_file,  TransferFit tf)
+  : ClassCosmology(param_file), sigma8_(0.), delta_H_(1.), 
+  transfer_fit_(tf), param_file_(param_file), transfer_file_("")
+{
+    InitializeTransferFunction();
+}
+
+Cosmology::Cosmology(const std::string& param_file, const std::string& tkfile)
+  : ClassCosmology(param_file), sigma8_(0.), delta_H_(1.), 
+  transfer_fit_(FromFile), param_file_(param_file), transfer_file_(tkfile)
+{
+    LoadTransferFunction(transfer_file_);
+    InitializeTransferFunction();
+}
+
+Cosmology* Cosmology::FromPower(const std::string& param_file, const std::string& pkfile)
+{
+    auto toret = new Cosmology(param_file);
+    toret->LoadTransferFunction(pkfile);
+    auto Pk = toret->Ti;
+    auto ki = toret->ki;
+    Pk = (Pk / ki.pow(toret->n_s())).pow(0.5);
+    toret->Ti = Pk/Pk.max();
+    toret->transfer_file_ = pkfile;
+    toret->transfer_fit_ = FromFile;
+    toret->InitializeTransferFunction();
+    return toret;
 }
 
 void Cosmology::LoadTransferFunction(const std::string& tkfile, int kcol, int tcol) {
@@ -37,11 +66,11 @@ void Cosmology::LoadTransferFunction(const std::string& tkfile, int kcol, int tc
     }
 
     if(!fp) {
-        error("Transfer: could not find transfer file '%s'\n  tried ./%s and %s/%s\n", \
+        error("Cosmology: could not find transfer file '%s'\n  tried ./%s and %s/%s\n", \
                 tkfile.c_str(), tkfile.c_str(), DATADIR, tkfile.c_str());
     }
 
-    verbose("Reading transfer function from %s\n", tkpath.c_str());
+    verbose("Cosmology: reading transfer function from %s\n", tkpath.c_str());
 
     Datafile data(fp);
     ki = data.GetColumn(kcol);
@@ -152,25 +181,23 @@ double Cosmology::GetBBKSTransfer(double k) const {
 }
 
 // initialize the transfer function 
-void Cosmology::InitializeTransferFunction(TransferFit tf, const std::string& tkfile) {
-
-    // set ki, Ti if from file or using Class
-    if (tf == FromFile) {
-        LoadTransferFunction(tkfile);
-    } else if (tf == CLASS) {
+void Cosmology::InitializeTransferFunction() 
+{
+    // set ki, Ti if using Class
+    if (transfer_fit_ == CLASS) {
         
-        verbose("Computing CLASS transfer function\n");
+        verbose("computing CLASS transfer function\n");
         ki = parray::logspace(1e-5, k_max(), 500);
         int ans = GetTk(0., ki, Ti);
         if (ans > 0) 
-            error("Error computing CLASS transfer spline in Cosmology\n");
+            error("error computing CLASS transfer spline in Cosmology\n");
     }
     
     // set EH params
     SetEisensteinHuParameters();
     
     // set the spline
-    if (tf == FromFile || tf == CLASS) {
+    if (transfer_fit_ == FromFile || transfer_fit_ == CLASS) {
         int N = ki.size();
         
         Tk = LinearSpline(ki, Ti);
@@ -192,7 +219,8 @@ void Cosmology::InitializeTransferFunction(TransferFit tf, const std::string& tk
 void Cosmology::SetTransferFunction(TransferFit tf, const std::string& tkfile) {
     
     transfer_fit_ = tf;
-    InitializeTransferFunction(tf, tkfile);
+    transfer_file_ = tkfile;
+    InitializeTransferFunction();
 }
 
 void Cosmology::SetEisensteinHuParameters() {

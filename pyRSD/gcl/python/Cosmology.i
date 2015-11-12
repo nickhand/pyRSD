@@ -5,9 +5,16 @@
 class Cosmology : public ClassCosmology {
 
 public:    
-    enum TransferFit {CLASS, EH, EH_NoWiggle, BBKS, FromFile};
+    enum TransferFit {CLASS, EH, EH_NoWiggle, BBKS};
     
-    Cosmology(const std::string& param_file, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
+    // defaults transfer fit to CLASS
+    Cosmology(const std::string& param_file);
+    // specify other transfer fit
+    Cosmology(const std::string& param_file, TransferFit tf);
+    // specify transfer file to read from
+    Cosmology(const std::string& param_file, const std::string& tkfile);
+    // from power spectrum file
+    static Cosmology* FromPower(const std::string& param_file, const std::string& pkfile);
     ~Cosmology();
 
     void SetTransferFunction(TransferFit tf, const std::string& tkfile = "");
@@ -23,7 +30,6 @@ public:
     TransferFit GetTransferFit() const;
     const std::string& GetParamFile() const;
     const std::string& GetTransferFile() const;
-    const std::string& GetPrecisionFile() const;
     
     double EvaluateTransfer(double k) const;
     
@@ -32,6 +38,14 @@ public:
 %extend Cosmology {
     %pythoncode {
         
+        @classmethod
+        def from_power(cls, param_file, pkfile):
+            return cls.FromPower(param_file, pkfile)
+            
+        @classmethod
+        def from_file(cls, param_file, tkfile):
+            return cls(param_file, tkfile)
+            
         def __getitem__(self, key):
             if hasattr(self, key):
                 f = getattr(self, key)

@@ -25,13 +25,18 @@ public:
                       EH,               /* Eisenstein & Hu 1998 (astro-ph/9709112) */
                       EH_NoWiggle,        
                       BBKS,             /* Bardeen, Bond, Kaiser, Szalay 1986*/
-                      FromFile          /* loaded from file */
+                      FromFile
     };
     
         
     Cosmology();
-    // construct directly from a parameter file
-    Cosmology(const std::string& param_file, TransferFit tf = CLASS, const std::string& tkfile = "", const std::string& precision_file = "");
+    Cosmology(const std::string& param_file);
+    // analytic transfer function
+    Cosmology(const std::string& param_file, TransferFit tf);
+    // transfer function from file
+    Cosmology(const std::string& param_file, const std::string& tkfile);
+    // construct from a linear power spectrum file
+    static Cosmology* FromPower(const std::string& param_file, const std::string& pkfile);
     
     ~Cosmology();
     
@@ -61,18 +66,16 @@ public:
     inline TransferFit GetTransferFit() const { return transfer_fit_; }
     inline const std::string& GetParamFile() const { return param_file_; }
     inline const std::string& GetTransferFile() const { return transfer_file_; }
-    inline const std::string& GetPrecisionFile() const { return precision_file_; }
     
     // evaluate at k in h/Moc
     double EvaluateTransfer(double k) const;
-    
-    
+      
 private:
         
     double sigma8_;      /* power spectrum variance smoothed at 8 Mpc/h */
     double delta_H_;     /* normalization of linear power spectrum at z = 0 */
     TransferFit transfer_fit_;   /* the transfer fit method */
-    std::string param_file_, transfer_file_, precision_file_;
+    std::string param_file_, transfer_file_;
     
     parray ki, Ti;
     double k0, T0, T0_nw;        // k and T(k) of left-most data point
@@ -88,7 +91,7 @@ private:
     double GetNoWiggleTransfer(double k) const;
     double GetBBKSTransfer(double k) const;
     double GetSplineTransfer(double k) const;
-    void InitializeTransferFunction(TransferFit tf, const std::string& tkfile);
+    void InitializeTransferFunction();
     void SetEisensteinHuParameters();
         
 };

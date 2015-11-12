@@ -14,7 +14,5 @@ import parameters
 import results
 import theory
 import util
-import analysis
-
 
 __all__ = []

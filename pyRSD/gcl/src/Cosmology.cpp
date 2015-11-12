@@ -46,7 +46,7 @@ Cosmology* Cosmology::FromPower(const std::string& param_file, const std::string
     auto Pk = toret->Ti;
     auto ki = toret->ki;
     Pk = (Pk / ki.pow(toret->n_s())).pow(0.5);
-    toret->Ti = Pk/Pk.max();
+    toret->Ti = Pk/Pk.max()*1e7; // amplitude should now roughly agree with CLASS's transfer
     toret->transfer_file_ = pkfile;
     toret->transfer_fit_ = FromFile;
     toret->InitializeTransferFunction();

@@ -494,8 +494,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         Whether to use Halo Zeldovich model for P00
         """
         return val
-
-    #---------------------------------------------------------------------------
+        
     @parameter
     def use_P01_model(self, val):
         """
@@ -503,7 +502,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return val
 
-    #---------------------------------------------------------------------------
     @parameter
     def use_Pdv_model(self, val):
         """
@@ -511,7 +509,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return val
 
-    #---------------------------------------------------------------------------
     @parameter
     def use_P11_model(self, val):
         """
@@ -519,7 +516,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return val
 
-    #---------------------------------------------------------------------------
     @cached_property("cosmo")
     def P00_model(self):
         """
@@ -528,7 +524,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
         return HaloZeldovichP00(self.cosmo, self.z, self.sigma8_z, **kw)
     
-    #---------------------------------------------------------------------------
     @cached_property("cosmo")
     def P01_model(self):
         """
@@ -537,21 +532,19 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
         return HaloZeldovichP01(self.cosmo, self.z, self.sigma8_z, self.f, **kw)
     
-    #---------------------------------------------------------------------------
     @cached_property("power_lin_nw")
     def P11_model(self):
         """
         The class holding the model for the P11 dark matter term
         """
-        return SimulationP11(self.power_lin_nw, self.z, self.sigma8_z, self.f)
+        return SimulationP11(self.power_lin, self.z, self.sigma8_z, self.f)
 
-    #---------------------------------------------------------------------------
-    @cached_property("power_lin_nw")
+    @cached_property("power_lin")
     def Pdv_model(self):
         """
         The class holding the model for the Pdv dark matter term
         """
-        return SimulationPdv(self.power_lin_nw, self.z, self.sigma8_z, self.f)
+        return SimulationPdv(self.power_lin, self.z, self.sigma8_z, self.f)
           
     #---------------------------------------------------------------------------
     # UTILITY FUNCTIONS

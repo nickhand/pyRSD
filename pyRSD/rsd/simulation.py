@@ -290,10 +290,9 @@ class InterpolatedSimulationData(Cache):
         self.sigma8_z  = sigma8_z
         self.f         = f
         self.power_lin = power_lin
-        self.cosmo     = self.power_lin.GetCosmology()
+        self._sigma8_0     = self.power_lin.GetCosmology().sigma8()
 
         # make sure power spectrum redshift is 0
-        msg = "input linear power spectrum must be defined at z = 0"
         assert self.power_lin.GetRedshift() == 0., msg
 
     #---------------------------------------------------------------------------
@@ -306,7 +305,6 @@ class InterpolatedSimulationData(Cache):
         """
         return val
 
-    #---------------------------------------------------------------------------
     @parameter
     def power_lin(self, val):
         """
@@ -314,23 +312,13 @@ class InterpolatedSimulationData(Cache):
         """
         return val
 
-    #---------------------------------------------------------------------------
-    @parameter
-    def cosmo(self, val):
-        """
-        The cosmology of the input linear power spectrum
-        """
-        return val
-
-    #---------------------------------------------------------------------------
     @parameter
     def z(self, val):
         """
         Desired redshift for the output power spectrum
         """
         return val
-
-    #---------------------------------------------------------------------------        
+       
     @parameter
     def sigma8_z(self, val):
         """
@@ -351,7 +339,7 @@ class SimulationP11(InterpolatedSimulationData):
         Parameters
         ----------
         power_lin : pygcl.LinearPS
-            Linear power spectrum with Eisenstein-Hu no-wiggle transfer function
+            Linear power spectrum
         z : float
             Redshift to compute the power spectrum at
         sigma8 : float
@@ -361,21 +349,16 @@ class SimulationP11(InterpolatedSimulationData):
         """
         # initialize the base class holding parameters
         super(SimulationP11, self).__init__(power_lin, z, sigma8_z, f)
-        
-        # make sure power spectrum is no-wiggle
-        if self.cosmo.GetTransferFit() != pygcl.Cosmology.EH_NoWiggle:
-            raise ValueError("Interpolated sim results require the no-wiggle power spectrum")
-        
+                
         # load the data
         self._load_data()
-          
-    #---------------------------------------------------------------------------
+         
     def _load_data(self):
         """
         Load the P11 simulation data
         """
         # cosmology and linear power spectrum for teppei's sims
-        cosmo = pygcl.Cosmology("teppei_sims.ini", pygcl.Cosmology.EH_NoWiggle)
+        cosmo = pygcl.Cosmology("teppei_sims.ini", pygcl.Cosmology.CLASS)
         Plin = pygcl.LinearPS(cosmo, 0.)
 
         # the interpolation data
@@ -397,7 +380,6 @@ class SimulationP11(InterpolatedSimulationData):
         self.interpolation_grid['z'] = self.data.index.get_level_values('z').unique()
         self.interpolation_grid['k'] = self.data.index.get_level_values('k').unique()
       
-    #---------------------------------------------------------------------------
     @cached_property()
     def interpolation_table(self):
         """
@@ -417,7 +399,6 @@ class SimulationP11(InterpolatedSimulationData):
         # return the interpolator
         return RegularGridInterpolator((zs, ks), grid_vals)
 
-    #---------------------------------------------------------------------------
     def _extrapolate(self, x, k):
         """
         Extrapolate out of the range of (f*sigma8)^2 by assuming the shape of
@@ -431,7 +412,7 @@ class SimulationP11(InterpolatedSimulationData):
             val = np.amax(zs)
         
         # get the renormalization factor
-        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self._sigma8_0**2
         factor = x*normed_power
         
         # get the pts
@@ -441,7 +422,6 @@ class SimulationP11(InterpolatedSimulationData):
             pts = np.asarray(list(itertools.product([val], k)))
         return self.interpolation_table(pts)*factor
             
-    #---------------------------------------------------------------------------
     @tools.unpacked
     def __call__(self, k):
         """
@@ -455,7 +435,7 @@ class SimulationP11(InterpolatedSimulationData):
             return self._extrapolate(self.z, k)
         
         # get the renormalization factor
-        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self._sigma8_0**2
         factor = fs8_sq*normed_power
         
         # get the pts
@@ -464,7 +444,6 @@ class SimulationP11(InterpolatedSimulationData):
         else:
             pts = np.asarray(list(itertools.product([self.z], k)))
         return self.interpolation_table(pts)*factor
-    #---------------------------------------------------------------------------
 
 #-------------------------------------------------------------------------------
 class SimulationPdv(InterpolatedSimulationData):
@@ -489,20 +468,15 @@ class SimulationPdv(InterpolatedSimulationData):
         # initialize the base class holding parameters
         super(SimulationPdv, self).__init__(power_lin, z, sigma8_z, f)
         
-        # make sure power spectrum is no-wiggle
-        if self.cosmo.GetTransferFit() != pygcl.Cosmology.EH_NoWiggle:
-            raise ValueError("Interpolated sim results require the no-wiggle power spectrum")
-        
         # load the data
         self._load_data()
 
-    #---------------------------------------------------------------------------
     def _load_data(self):
         """
         Load the simulation data
         """
         # cosmology and linear power spectrum for teppei's sims
-        cosmo = pygcl.Cosmology("teppei_sims.ini", pygcl.Cosmology.EH_NoWiggle)
+        cosmo = pygcl.Cosmology("teppei_sims.ini", pygcl.Cosmology.CLASS)
         Plin = pygcl.LinearPS(cosmo, 0.)
 
         # the interpolation data
@@ -524,7 +498,6 @@ class SimulationPdv(InterpolatedSimulationData):
         self.interpolation_grid['z'] = self.data.index.get_level_values('z').unique()
         self.interpolation_grid['k'] = self.data.index.get_level_values('k').unique()
 
-    #---------------------------------------------------------------------------
     @cached_property()
     def interpolation_table(self):
         """
@@ -544,7 +517,6 @@ class SimulationPdv(InterpolatedSimulationData):
         # return the interpolator
         return RegularGridInterpolator((zs, ks), grid_vals)
 
-    #---------------------------------------------------------------------------
     def _extrapolate(self, x, k):
         """
         Extrapolate out of the range of f*sigma8^2 by assuming the shape of
@@ -558,7 +530,7 @@ class SimulationPdv(InterpolatedSimulationData):
             val = np.amax(zs)
         
         # get the renormalization factor
-        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self._sigma8_0**2
         factor = x*normed_power
         
         # get the pts
@@ -568,7 +540,6 @@ class SimulationPdv(InterpolatedSimulationData):
             pts = np.asarray(list(itertools.product([val], k)))
         return self.interpolation_table(pts)*factor
             
-    #---------------------------------------------------------------------------
     @tools.unpacked
     def __call__(self, k):
         """
@@ -582,7 +553,7 @@ class SimulationPdv(InterpolatedSimulationData):
             return self._extrapolate(self.z, k)
         
         # get the renormalization factor
-        normed_power = self.power_lin(k) / self.cosmo.sigma8()**2
+        normed_power = self.power_lin(k) / self._sigma8_0**2
         factor = fs8_sq*normed_power
         
         # get the pts
@@ -591,9 +562,8 @@ class SimulationPdv(InterpolatedSimulationData):
         else:
             pts = np.asarray(list(itertools.product([self.z], k)))
         return self.interpolation_table(pts)*factor
-    #---------------------------------------------------------------------------
-
- #------------------------------------------------------------------------------
+    
+#------------------------------------------------------------------------------
 class Mu6CorrectionParams(GPModelParams):
     """
     The model parameters for the mu^6 correction 

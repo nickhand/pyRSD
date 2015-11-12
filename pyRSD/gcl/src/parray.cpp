@@ -281,6 +281,13 @@ parray& parray::operator/=(double s) {
     return *this;
 }
 
+parray& parray::pow(double s) {
+    size_type N = size();
+    for(size_type i = 0; i < N; i++)
+        (*this)[i] = std::pow((*this)[i], s);
+    return *this;
+}
+
 parray operator-(const parray& v) {
     parray::size_type N = v.size();
     parray w(v);

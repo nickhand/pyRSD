@@ -189,7 +189,7 @@ def run():
             init_model = args.model is None
             driver = FittingDriver(args.params, extra_param_file=args.extra_params, init_model=init_model, **mpi_kwargs)
             if not init_model:
-                driver.set_model(args.model)
+                driver.model = args.model
             else:
                 if chain_number == 0:
                     model_dir = driver.params.get('model_dir', args.folder)

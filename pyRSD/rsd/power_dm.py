@@ -1,6 +1,6 @@
 from ._cache import Cache, parameter, interpolated_property, cached_property
 from . import tools, INTERP_KMIN, INTERP_KMAX
-from .. import pygcl, numpy as np, data as sim_data
+from .. import pygcl, numpy as np, data as sim_data, os
 
 from ._integrals import Integrals
 from ._sim_loader import SimLoader
@@ -27,7 +27,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
     allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', 
                         'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims', 
-                        'k0_low', 'enhance_wiggles']
+                        'k0_low', 'enhance_wiggles', 'linear_power_file']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
@@ -43,6 +43,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                        load_dm_sims=None,
                        k0_low=5e-3,
                        enhance_wiggles=True,
+                       linear_power_file=None,
                        **kwargs):
         """
         Parameters
@@ -90,6 +91,11 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         enhance_wiggles : bool, optional (`True`)
             using the Hy1 model from arXiv:1509.02120, enhance the wiggles
             of pure HZPT
+            
+        linear_power_file : str, optional (`None`)
+            string specifying the name of a file which gives the linear 
+            power spectrum, from which the transfer function in ``cosmo``
+            will be initialized
         """
         # initialize the Cache subclass first
         Cache.__init__(self)
@@ -98,18 +104,19 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         SimLoader.__init__(self)
         
         # set the input parameters
-        self.interpolate     = interpolate
-        self.transfer_fit    = transfer_fit
-        self.cosmo_filename  = cosmo_filename
-        self.max_mu          = max_mu
-        self.include_2loop   = include_2loop
-        self.z               = z 
-        self.load_dm_sims    = load_dm_sims
-        self.kmin            = kmin
-        self.kmax            = kmax
-        self.Nk              = Nk
-        self.k0_low          = k0_low
-        self.enhance_wiggles = enhance_wiggles
+        self.interpolate       = interpolate
+        self.transfer_fit      = transfer_fit
+        self.cosmo_filename    = cosmo_filename
+        self.max_mu            = max_mu
+        self.include_2loop     = include_2loop
+        self.z                 = z 
+        self.load_dm_sims      = load_dm_sims
+        self.kmin              = kmin
+        self.kmax              = kmax
+        self.Nk                = Nk
+        self.k0_low            = k0_low
+        self.enhance_wiggles   = enhance_wiggles
+        self.linear_power_file = linear_power_file
         
         # initialize the cosmology parameters and set defaults
         self.sigma8_z          = self.cosmo.Sigma8_z(self.z)
@@ -220,6 +227,16 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         The name of the file holding the cosmological parameters
         """
+        return val
+        
+    @parameter
+    def linear_power_file(self, val):
+        """
+        The name of the file holding the cosmological parameters
+        """
+        if val is not None:
+            if not os.path.exists(val):
+                raise ValueError("the specified file `%s` for `linear_power_file` does not exist" %val)
         return val
         
     @parameter
@@ -384,12 +401,15 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return self.sigmav_input
             
-    @cached_property("cosmo_filename", "transfer_fit")
+    @cached_property("cosmo_filename", "transfer_fit", "linear_power_file")
     def cosmo(self):
         """
         A `pygcl.Cosmology` object holding the cosmological parameters
         """
-        return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit_int)
+        if self.linear_power_file is not None:
+            return pygcl.Cosmology.from_power(self.cosmo_filename, self.linear_power_file)
+        else:
+            return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit_int)
                       
     @cached_property("alpha_perp", "alpha_par", "kmin", "kmax", "Nk")
     def k(self):

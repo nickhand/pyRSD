@@ -35,29 +35,3 @@ public:
     
 };
 
-%extend Cosmology {
-    %pythoncode {
-        
-        @classmethod
-        def from_power(cls, param_file, pkfile):
-            return cls.FromPower(param_file, pkfile)
-            
-        @classmethod
-        def from_file(cls, param_file, tkfile):
-            return cls(param_file, tkfile)
-            
-        def __getitem__(self, key):
-            if hasattr(self, key):
-                f = getattr(self, key)
-                if callable(f):
-                    return f()
-            raise KeyError("Sorry, cannot return parameter '%s' in dict-like fashion" %key)
-        
-        def __setstate__(self, state):
-            self.__init__(*state['args'])
-
-        def __getstate__(self):
-            args = self.GetParamFile(), self.GetTransferFit(), self.GetTransferFile(), self.GetPrecisionFile()
-            return {'args': args}
-    }
-}

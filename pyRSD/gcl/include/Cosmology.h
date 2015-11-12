@@ -35,6 +35,8 @@ public:
     Cosmology(const std::string& param_file, TransferFit tf);
     // transfer function from file
     Cosmology(const std::string& param_file, const std::string& tkfile);
+    // construct given parrays for ki, Ti
+    Cosmology(const std::string& param_file, TransferFit tf, double sigma8, const std::string& tkfile, const parray& k, const parray& Tk);
     // construct from a linear power spectrum file
     static Cosmology* FromPower(const std::string& param_file, const std::string& pkfile);
     
@@ -66,6 +68,8 @@ public:
     inline TransferFit GetTransferFit() const { return transfer_fit_; }
     inline const std::string& GetParamFile() const { return param_file_; }
     inline const std::string& GetTransferFile() const { return transfer_file_; }
+    inline parray GetDiscreteK() const { return ki; }
+    inline parray GetDiscreteTk() const { return Ti; }
     
     // evaluate at k in h/Moc
     double EvaluateTransfer(double k) const;
@@ -91,7 +95,8 @@ private:
     double GetNoWiggleTransfer(double k) const;
     double GetBBKSTransfer(double k) const;
     double GetSplineTransfer(double k) const;
-    void InitializeTransferFunction();
+    void Initialize();
+    void ComputeCLASSTransferFunction();
     void SetEisensteinHuParameters();
         
 };

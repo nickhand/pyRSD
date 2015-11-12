@@ -26,41 +26,18 @@ class PickalableSWIG:
 #-------------------------------------------------------------------------------
 # Cosmology
 class Cosmology(gcl.Cosmology, PickalableSWIG):
-    
-    def __init__(self, *args):
-        self.args = args
-        self.args += ('__init__',)
-        gcl.Cosmology.__init__(self, *args)    
-        
+            
     def __getstate__(self):
-        args = self.args
+        args = (self.GetParamFile(), self.GetTransferFit(), self.sigma8(), self.GetTransferFile(), 
+                self.GetDiscreteK(), self.GetDiscreteTk())
         return {'args': args} 
     
-    def __setstate__(self, state):
-        args = state['args']
-        
-        # this is either __init__ or from_power
-        if args[-1] == '__init__':
-            cls = self.__init__
-        elif args[-1] == 'from_power':
-            cls = Cosmology.from_power
-        else:
-            raise ValueError("do not recognize constructor `%s` in __setstate__" %args[-1])
-        toret = cls(*args[:-1])
-        
-        # if initialized with from_power, copy the dict
-        if toret is not None:
-            self.__dict__ = toret.__dict__
-
     @classmethod
     def from_power(cls, param_file, pkfile):
         # class the underlying c++ method
         toret = cls.FromPower(param_file, pkfile)
-        
-        # do what __init__ and promote the class
+        # promote the class to pygcl.Cosmology
         toret.__class__ = Cosmology
-        toret.args = (param_file, pkfile)
-        toret.args += ('from_power',)
         return toret
         
     @classmethod
@@ -70,8 +47,7 @@ class Cosmology(gcl.Cosmology, PickalableSWIG):
     def __getitem__(self, key):
         if hasattr(self, key):
             f = getattr(self, key)
-            if callable(f):
-                return f()
+            if callable(f): return f()
         raise KeyError("Sorry, cannot return parameter '%s' in dict-like fashion" %key)
             
 #-------------------------------------------------------------------------------

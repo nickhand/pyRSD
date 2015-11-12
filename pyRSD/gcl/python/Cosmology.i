@@ -13,6 +13,8 @@ public:
     Cosmology(const std::string& param_file, TransferFit tf);
     // specify transfer file to read from
     Cosmology(const std::string& param_file, const std::string& tkfile);
+    Cosmology(const std::string& param_file, TransferFit tf, double sigma8, 
+                const std::string& tkfile, const parray& k, const parray& Tk);
     // from power spectrum file
     static Cosmology* FromPower(const std::string& param_file, const std::string& pkfile);
     ~Cosmology();
@@ -30,6 +32,8 @@ public:
     TransferFit GetTransferFit() const;
     const std::string& GetParamFile() const;
     const std::string& GetTransferFile() const;
+    parray GetDiscreteK() const;
+    parray GetDiscreteTk() const;
     
     double EvaluateTransfer(double k) const;
     

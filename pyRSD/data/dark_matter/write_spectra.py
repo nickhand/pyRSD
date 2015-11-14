@@ -65,9 +65,38 @@ def P01_spt(model, k, z):
     Plin = model.normed_power_lin(k)
     return 2*model.f*(Plin + 4.*(I00 + 3*k**2*J00*Plin))
     
-def P11_spt(model, k, z):
+
+def P11_mu2_spt(model, k, z):
     """
-    Return P11(k,z) in SPT
+    Return P11(k,z)[mu^2] in SPT
+    """
+    model.z = z
+    model.sigma8_z = model.cosmo.Sigma8_z(z)
+    model.f = model.cosmo.f_z(z)
+    
+    # the necessary integrals 
+    I11 = model.I11(k)
+    I22 = model.I22(k)
+    I13 = model.I13(k)
+    J11 = model.J11(k)
+    J10 = model.J10(k)
+
+    Plin = model.normed_power_lin(k)
+    return model.f**2 * (Plin + 2*I11 + 4*I22 + I13 + 6*k**2 * (J11 + 2*J10)*Plin)
+    
+def P11_mu2_spt(model, k, z):
+    """
+    Return P11(k,z)[mu^2] in SPT
+    """
+    model.z = z
+    model.sigma8_z = model.cosmo.Sigma8_z(z)
+    model.f = model.cosmo.f_z(z)
+
+    return model.f**2 * model.I31(k) 
+
+def P11_mu4_spt(model, k, z):
+    """
+    Return P11(k,z)[mu^4] in SPT
     """
     model.z = z
     model.sigma8_z = model.cosmo.Sigma8_z(z)
@@ -131,7 +160,7 @@ def fit_P00(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
         
         # full k results
-        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(np.log10(5e-6), np.log10(np.amax(x)), 500)
         pt_full = P00_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
         
@@ -140,15 +169,15 @@ def fit_P00(model, k_transition=0.1, plot=False, save=True, tag=""):
         P00 = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
         
         if plot:
-            norm = model.normed_power_lin(k_final)
+            norm = model.normed_power_lin_nw(k_final)
             plt.plot(k_final, P00/norm)
             plt.plot(k_final, pt_full/norm)
             
-            norm = model.normed_power_lin(x)
+            norm = model.normed_power_lin_nw(x)
             plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
-            plt.ylim(0.9, 2.0)
+            plt.ylim(0.7, 2.0)
             plt.xlabel(r"$\mathrm{k \ (h/Mpc)}$", fontsize=16)
             plt.ylabel(r"$P_{00} / (D^2 P_\mathrm{lin}(z=0))$", fontsize=16)
             plt.title(r"$\mathrm{P_{00} \ at \ z \ = \ %s}$" %z)
@@ -185,7 +214,7 @@ def fit_P01(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
         
         # full k results
-        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(np.log10(5e-6), np.log10(np.amax(x)), 500)
         pt_full = P01_spt(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
         
@@ -194,15 +223,15 @@ def fit_P01(model, k_transition=0.1, plot=False, save=True, tag=""):
         P01 = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
 
         if plot:
-            norm = 2*model.f*model.normed_power_lin(k_final)
+            norm = 2*model.f*model.normed_power_lin_nw(k_final)
             plt.plot(k_final, P01/norm)
             plt.plot(k_final, pt_full/norm)
             
-            norm = 2*model.f*model.normed_power_lin(x)
+            norm = 2*model.f*model.normed_power_lin_nw(x)
             plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
-            plt.ylim(0.9, 4.0)
+            plt.ylim(0.7, 4.0)
             plt.xlabel(r"$\mathrm{k \ (h/Mpc)}$", fontsize=16)
             plt.ylabel(r"$P_{01} / (2 f D^2 P_\mathrm{lin}(z=0))$", fontsize=16)
             plt.title(r"$\mathrm{P_{01} \ at \ z \ = \ %s}$" %z)
@@ -213,28 +242,39 @@ def fit_P01(model, k_transition=0.1, plot=False, save=True, tag=""):
             np.savetxt("./pkmu_P01_mu2_z_%s%s.dat" %(z, t), zip(k_final, P01))
 
 
-def fit_P11(model, k_transition=0.1, plot=False, save=True, tag=""):
+def fit_P11(model, mu, k_transition=0.1, plot=False, save=True, tag=""):
     """
     Fit a smooth function to the measured P11 from simulations, extrapolating
     using SPT at low-k
     """
     zs = ['0.000', '0.509','0.989']
     zlabels = ['007', '005', '004']
-    mu = 'mu4'
+    
+    if mu == 'mu4':
+        mu_lab = r'\mu^4'
+        model_callable = P11_mu4_spt
+    else:
+        mu_lab = r'\mu^2'
+        model_callable = P11_mu2_spt
+        
     for z, zlabel in zip(zs, zlabels):
         
         # read in the data
         data = np.loadtxt("./pkmu_chi_11_m_m_z%s_1-3_02-13binaaQ" %zlabel)
         
         x = data[:,0]
-        y = data[:,-3]*x*x
-        err = data[:,-1]*x*x
+        if mu == 'mu4':
+            y = data[:,-3]*x**2
+            err = data[:,-1]*x**2
+        else:
+            y = data[:,-4]*x**2
+            err = data[:,-2]*x**2
     
         # find where k < 0.1
         inds = np.where(x < k_transition)
 
         # initialize the PT model
-        pt_model = P11_spt(model, x[inds], float(z))
+        pt_model = model_callable(model, x[inds], float(z))
 
         # measure the exponential scale
         parinfo = [{'value':1.0, 'fixed':0, 'limited':[0,0], 'limits':[0.,0.]}]
@@ -242,8 +282,8 @@ def fit_P11(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
 
         # full k results
-        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
-        pt_full = P11_spt(model, k_final, float(z))
+        k_final = np.logspace(np.log10(5e-6), np.log10(np.amax(x)), 500)
+        pt_full = model_callable(model, k_final, float(z))
         sim_spline = interp.InterpolatedUnivariateSpline(x, y, w=1/err)
 
         # now transition nicely
@@ -251,18 +291,21 @@ def fit_P11(model, k_transition=0.1, plot=False, save=True, tag=""):
         P11 = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
         
         if plot:
-            norm = model.f**2*model.normed_power_lin(k_final)
+            norm = model.f**2*model.normed_power_lin_nw(k_final)
             plt.plot(k_final, P11/norm)
             plt.plot(k_final, pt_full/norm)
             
-            norm = model.f**2*model.normed_power_lin(x)
+            norm = model.f**2*model.normed_power_lin_nw(x)
             plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
-            plt.ylim(0.9, 3.0)
+            if mu == 'mu4':
+                plt.ylim(0.7, 5.0)
+            else:
+                plt.ylim(0., 5.0)
             plt.xlabel(r"$\mathrm{k \ (h/Mpc)}$", fontsize=16)
-            plt.ylabel(r"$P_{11}[\mu^4] / (f^2 D^2 P_\mathrm{lin}(z=0))$", fontsize=16)
-            plt.title(r"$\mathrm{P_{11}[\mu^4] \ at \ z \ = \ %s}$" %z)
+            plt.ylabel(r"$P_{11}[%s] / (f^2 D^2 P_\mathrm{lin}(z=0))$" %mu_lab, fontsize=16)
+            plt.title(r"$\mathrm{P_{11}[%s] \ at \ z \ = \ %s}$" %(mu_lab, z))
             plt.show()
 
         if save:
@@ -270,7 +313,7 @@ def fit_P11(model, k_transition=0.1, plot=False, save=True, tag=""):
             np.savetxt("./pkmu_P11_%s_z_%s%s.dat" %(mu, z, t), zip(k_final, P11))
  
 
-def fit_Pdv(model, k_transition=0.1, plot=False, save=True, tag=""):
+def fit_Pdv(model, k_transition=0.07, plot=False, save=True, tag=""):
     """
     Fit a smooth function to the measured Pdv from simulations, extrapolating
     using SPT at low-k
@@ -301,7 +344,7 @@ def fit_Pdv(model, k_transition=0.1, plot=False, save=True, tag=""):
         m = mpfit.mpfit(fitting_function, parinfo=parinfo, functkw=fa)
 
         # full k results
-        k_final = np.logspace(-6, np.log10(np.amax(x)), 500)
+        k_final = np.logspace(np.log10(5e-6), np.log10(np.amax(x)), 500)
         pt_full = Pdv_spt(model, k_final, float(z))
         sim_spline = interp.UnivariateSpline(x, y, w=1/err)
 
@@ -310,11 +353,11 @@ def fit_Pdv(model, k_transition=0.1, plot=False, save=True, tag=""):
         Pdv = (1-switch)*transition_model(k_final, m.params, pt_full) + switch*sim_spline(k_final)
         
         if plot:
-            norm = -model.f*model.normed_power_lin(k_final)
+            norm = -model.f*model.normed_power_lin_nw(k_final)
             plt.plot(k_final, Pdv/norm)
             plt.plot(k_final, pt_full/norm)
             
-            norm = -model.f*model.normed_power_lin(x)
+            norm = -model.f*model.normed_power_lin_nw(x)
             plt.errorbar(x, y/norm, err/norm, c='k', marker='.', ls='')
             
             plt.xlim(0., 0.4)
@@ -343,8 +386,10 @@ def main(args):
             fit_P00(model, **kwargs)
         elif w == 'P01':
             fit_P01(model, **kwargs)
-        elif w == 'P11':
-            fit_P11(model, **kwargs)
+        elif w == 'P11_mu2':
+            fit_P11(model, 'mu2', **kwargs)
+        elif w == 'P11_mu4':
+            fit_P11(model, 'mu4', **kwargs)
         elif w == 'Pdv':
             fit_Pdv(model, **kwargs)
     
@@ -355,7 +400,7 @@ if __name__ == '__main__':
     desc = "write out interpolated, simulation spectra"
     parser = argparse.ArgumentParser(description=desc)
     
-    choices = ['P00', 'P01', 'P11', 'Pdv']
+    choices = ['P00', 'P01', 'P11_mu2', 'P11_mu4', 'Pdv']
     h = 'which power spectra to compute results for'
     parser.add_argument('which', nargs='+', choices=choices, help=h)
     

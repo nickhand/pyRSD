@@ -21,14 +21,15 @@ ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_)
     
     // the integrals we need
     sigma_sq = norm*P_L.VelocityDispersion();    
-    XX = norm*P_L.X_Zel(r) + 2.*sigma_sq;
+    X0 = norm*P_L.X_Zel(r);
+    XX = X0 + 2.*sigma_sq;
     YY = norm*P_L.Y_Zel(r); 
 }
 
 /*----------------------------------------------------------------------------*/
 ZeldovichPS::ZeldovichPS(const Cosmology& C_, double sigma8_z_, 
-                         double sigmasq, const parray& X, const parray& Y) 
-: C(C_), sigma8_z(sigma8_z_), sigma_sq(sigmasq), XX(X), YY(Y)
+                         double sigmasq, const parray& X0_, const parray& XX_, const parray& YY_) 
+: C(C_), sigma8_z(sigma8_z_), sigma_sq(sigmasq), X0(X0_), XX(XX_), YY(YY_)
 {
     InitializeR();     
 }
@@ -57,6 +58,7 @@ void ZeldovichPS::SetSigma8AtZ(double new_sigma8_z) {
      
     double ratio = pow2(new_sigma8_z / sigma8_z);
     // integrals are proportional to the square of the ratio of sigma8
+    X0 *= ratio;
     XX *= ratio;
     YY *= ratio;
     sigma_sq *= ratio;
@@ -100,7 +102,7 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
           
         toadd = factor*sqrt(0.5*M_PI)*pow(k, -1.5)*spl(k);        
         this_Pk += toadd;
-        if (fabs(toadd/this_Pk) < 0.005) break;
+        //if (fabs(toadd/this_Pk) < 0.005) break;
     }
         
     return this_Pk;
@@ -157,16 +159,55 @@ double ZeldovichP01::Evaluate(double k) const {
 
 void ZeldovichP01::Fprim(dcomplex a[], const double r[], double k) const {
     
+    double k2 = pow2(k);
+    double term1;
+    
     for (int i = 0; i < NUM_PTS; i++) {
-        a[i] =  pow(r[i], 1.5)*pow2(k)*((XX[i] + YY[i])*exp(-0.5*pow2(k)*(XX[i] + YY[i])) - 2*sigma_sq*exp(-pow2(k)*sigma_sq));
+        term1 = exp(-0.5*k2*(XX[i] + YY[i])) - 2*sigma_sq*exp(-k2*sigma_sq);
+        a[i] =  pow(r[i], 1.5)*k2*(XX[i] + YY[i])*term1;
     }
     
 }
 
 void ZeldovichP01::Fsec(dcomplex a[], const double r[], double k, double n) const {
+      
+    for (int i = 0; i < NUM_PTS; i++) { 
+        a[i] = pow(r[i], 1.5-n)*pow(k*YY[i], n)*(pow2(k)*(XX[i] + YY[i]) - 2*n)*exp(-0.5*pow2(k)*(XX[i] + YY[i]));
+    }
+}
+
+/*----------------------------------------------------------------------------*/
+
+ZeldovichP11::ZeldovichP11(const Cosmology& C, double z) : ZeldovichPS(C, z) {}
+
+ZeldovichP11::ZeldovichP11(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) {}
+
+
+double ZeldovichP11::Evaluate(double k) const {
+    return fftlog_compute(k, M_PI);
+}
+
+void ZeldovichP11::Fprim(dcomplex a[], const double r[], double k) const 
+{
+    double k2 = pow2(k), k4 = pow4(k);
+    double term1, term2;
     
     for (int i = 0; i < NUM_PTS; i++) {
-        a[i] = pow(r[i], 1.5-n)*pow(k*YY[i], n)*(pow2(k)*(XX[i] + YY[i]) - 2*n)*exp(-0.5*pow2(k)*(XX[i] + YY[i]));
+        term1 = (k4*pow2(XX[i]) - 2*k2*X0[i] + 2*(k2*XX[i]-1)*k2*YY[i] + k4*pow2(YY[i]))*exp(-0.5*k2*(XX[i]+YY[i]));
+        term2 = -4*k4*pow2(sigma_sq)*exp(-k2*sigma_sq);
+        a[i] =  pow(r[i],1.5)*(term1 + term2);
+    }
+}
+
+void ZeldovichP11::Fsec(dcomplex a[], const double r[], double k, double n) const {
+    
+    double k2 = pow2(k), k4 = pow4(k);
+    double term1, term2;
+    
+    for (int i = 0; i < NUM_PTS; i++) {
+        term1 = k4*pow2(XX[i]) - 2*k2*X0[i] + 2*(k2*XX[i]-1)*(k2*YY[i]-2*n);
+        term2 = k4*pow2(YY[i]) - 4*k2*n*YY[i] + 4*n*(n-1);
+        a[i] = pow(r[i],1.5-n)*pow(k*YY[i],n) * (term1 + term2) * exp(-0.5*k2*(XX[i]+YY[i]));
     }
 }
 

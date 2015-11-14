@@ -192,7 +192,7 @@ class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG):
         
     def __getstate__(self):
         args = self.args
-        args += (self.GetSigma8AtZ(), self.GetSigmaSq(), self.GetXZel(), self.GetYZel())
+        args += (self.GetSigma8AtZ(), self.GetSigmaSq(), self.GetX0Zel(), self.GetXZel(), self.GetYZel())
         return {'args': args}
 
 #-------------------------------------------------------------------------------
@@ -214,4 +214,12 @@ class ZeldovichP01(gcl.ZeldovichP01, PickalableSWIG):
         gcl.ZeldovichP01.__init__(self, *args)
 
 #-------------------------------------------------------------------------------
-        
+
+# ZeldovichP11
+class ZeldovichP11(gcl.ZeldovichP11, PickalableSWIG):
+ 
+    def __init__(self, *args):
+        self.args = args
+        gcl.ZeldovichP11.__init__(self, *args)
+
+#-------------------------------------------------------------------------------        

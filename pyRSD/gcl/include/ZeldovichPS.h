@@ -17,7 +17,7 @@ public:
        
     // constructors
     ZeldovichPS(const Cosmology& C, double z);
-    ZeldovichPS(const Cosmology& C, double sigma8_z, double sigma_sq, const parray& X, const parray& Y);
+    ZeldovichPS(const Cosmology& C, double sigma8_z, double sigma_sq, const parray& X0, const parray& XX, const parray& YY);
     virtual ~ZeldovichPS();
     
     // evaluate
@@ -32,6 +32,7 @@ public:
     const double& GetSigma8AtZ() const { return sigma8_z; }
     parray GetXZel() const { return XX; }
     parray GetYZel() const { return YY; }
+    parray GetX0Zel() const { return X0; }
     const double& GetSigmaSq() const { return sigma_sq; }
              
     // set sigma8(z)
@@ -48,7 +49,7 @@ protected:
     
     // the integrals needed for the FFTLog integral
     double sigma_sq;
-    parray r, XX, YY; 
+    parray r, X0, XX, YY; 
     
     void InitializeR();
     double fftlog_compute(double k, const double factor = 1) const;
@@ -77,6 +78,21 @@ public:
     
     ZeldovichP01(const Cosmology& C, double z);
     ZeldovichP01(const ZeldovichPS& ZelPS);
+    
+    double Evaluate(double k) const; 
+    
+
+private:
+        
+    void Fprim(dcomplex a[], const double r[], double k) const;
+    void Fsec(dcomplex a[], const double r[], double k, double n) const;
+};
+
+class ZeldovichP11 : public ZeldovichPS {
+public:
+    
+    ZeldovichP11(const Cosmology& C, double z);
+    ZeldovichP11(const ZeldovichPS& ZelPS);
     
     double Evaluate(double k) const; 
     

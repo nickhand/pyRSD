@@ -20,6 +20,9 @@ __all__ = ['load',
            'P11_mu4_z_0_000',
            'P11_mu4_z_0_509',
            'P11_mu4_z_0_989', 
+           'P11_mu2_z_0_000',
+           'P11_mu2_z_0_509',
+           'P11_mu2_z_0_989',
            'Pcc_z_0_509',
            'PcAs_z_0_509',
            'PsAsA_z_0_509',
@@ -309,6 +312,25 @@ def P11_mu4_z_0_989():
     The P11 dark matter term with mu^4 angular dependence at z = 0.989
     """
     return load("dark_matter/pkmu_P11_mu4_z_0.989.dat")
+
+#-------------------------------------------------------------------------------
+def P11_mu2_z_0_000():
+    """
+    The P11 dark matter term with mu^2 angular dependence at z = 0.000
+    """
+    return load("dark_matter/pkmu_P11_mu2_z_0.000.dat")
+
+def P11_mu2_z_0_509():
+    """
+    The P11 dark matter term with mu^2 angular dependence at z = 0.509
+    """
+    return load("dark_matter/pkmu_P11_mu2_z_0.509.dat")
+    
+def P11_mu2_z_0_989():
+    """
+    The P11 dark matter term with mu^2 angular dependence at z = 0.989
+    """
+    return load("dark_matter/pkmu_P11_mu2_z_0.989.dat")
 
 #-------------------------------------------------------------------------------
 # SIMULATIONS

@@ -327,7 +327,7 @@ def fit_Pdv(model, k_transition=0.07, plot=False, save=True, tag=""):
         
         x = data[:,0]
         y = data[:,-2]*(-x)
-        err = data[:,-1]*(-x)
+        err = data[:,-1]*(x)
         
         # find where k < 0.1
         inds = np.where(x < k_transition)

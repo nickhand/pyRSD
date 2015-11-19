@@ -63,13 +63,10 @@ INCLUDES = -I../include -I$(FFTW_INC) -I$(CLASS_INC)
 LIBS = -L$(CLASS_LIB) -L$(FFTW_LIBDIR) $(FFTW_LIBS)
     
 # make the libraries and includes to pass to python bindings
-PY_INCLUDES0 = $(FFTW_INC) $(CLASS_INC) $(MDIR)/src $(MDIR)/include 
+PY_INCLUDES = $(FFTW_INC):$(CLASS_INC):$(MDIR)/src:$(MDIR)/include
 ifdef GSL_INC
-    PY_INCLUDES0 += $(GSL_INC)
+    PY_INCLUDES := $(PY_INCLUDES):$(GSL_INC)
 endif
-SPACE :=
-SPACE+=
-PY_INCLUDES = $(subst $(SPACE),:,$(PY_INCLUDES0))
 PY_LIBDIRS = $(FFTW_LIBDIR)
 PY_LIBS = -lgfortran -lgcl -lgomp $(FFTW_LIBS)
 
@@ -83,16 +80,12 @@ ifdef COMPILE_EMU
         
         # python flags
         PY_LIBS += $(GSL_LIBS)
-        PY_LIBDIRS = $(GSL_LIBDIR)
+        PY_LIBDIRS := $(PY_LIBDIRS):$(GSL_LIBDIR)
     endif
 endif
 
 # python library names
 PY_LIBNAMES = $(subst -l,, "$(PY_LIBS)")
-PY_LIBFLAG = 
-ifdef PY_LIBDIRS
-    PY_LIBFLAG = -L$(PY_LIBDIRS)
-endif
 
 #-------------------------------------------------------------------------------
 # CLASS sources
@@ -188,8 +181,8 @@ test_ImnOneLoop : test_ImnOneLoop.o $(COBJS) $(FOBJS)
 test_zeldovichPS : test_zeldovichPS.o $(COBJS) $(FOBJS)
 	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
 
-$(PY_LIBRARY): .base $(LIBRARY) python/*.i
-	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES) $(PY_LIBFLAG)
+$(PY_LIBRARY): .base check_env $(LIBRARY) python/*.i
+	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES) -L$(PY_LIBDIRS)
 
 clean: .base
 	rm -rf $(WRKDIR)

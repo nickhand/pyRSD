@@ -4,43 +4,33 @@ from setuptools.command.install import install as Install
 from setuptools.command.develop import develop as Develop
 import os
 
-#-------------------------------------------------------------------------------
+def make_pygcl(path, dist_name):
+    """
+    Make the ``pygcl`` package
+    """
+    # check that setup.config exists
+    if not os.path.isfile('setup.config'):
+        msg = "Installation requires 'setup.config' file in base directory."
+        if os.path.isfile('setup.config.example'):
+            msg += " Try copying over 'setup.config.example' with the appropriate edits."
+        raise OSError(msg)
+    
+    # make pygcl
+    install_path_args = path, dist_name
+    data_dir = "{}/{}/data/params".format(*install_path_args)
+    ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
+    if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
+    
 class MyInstall(Install):
     
     def run(self):
-        # check that setup.config exists
-        if not os.path.isfile('setup.config'):
-            msg = "Installation requires 'setup.config' file in base directory."
-            if os.path.isfile('setup.config.example'):
-                msg += " Try copying over 'setup.config.example' with the appropriate edits."
-            raise OSError(msg)
-        
-        # make pygcl
-        install_path_args = self.install_libbase, self.config_vars['dist_name']
-        data_dir = "{}/{}/data/params".format(*install_path_args)
-        ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
-        if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
-        
-        # run the python setup
+        make_pygcl(self.install_libbase, self.config_vars['dist_name'])
         Install.run(self)
         
 class MyDevelop(Develop):
     
-    def run(self):
-        # check that setup.config exists
-        if not os.path.isfile('setup.config'):
-            msg = "Installation requires 'setup.config' file in base directory."
-            if os.path.isfile('setup.config.example'):
-                msg += " Try copying over 'setup.config.example' with the appropriate edits."
-            raise OSError(msg)
-        
-        # make pygcl
-        install_path_args = self.egg_path, self.config_vars['dist_name']
-        data_dir = "{}/{}/data/params".format(*install_path_args)
-        ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
-        if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
-        
-        # run the python setup
+    def run(self):        
+        make_pygcl(self.egg_path, self.config_vars['dist_name'])
         Develop.run(self)
 
 #-------------------------------------------------------------------------------        

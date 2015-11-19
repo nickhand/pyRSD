@@ -159,21 +159,17 @@ double ZeldovichP01::Evaluate(double k) const {
 
 void ZeldovichP01::Fprim(dcomplex a[], const double r[], double k) const {
     
-    double k2 = pow2(k);
-    double term1;
-    
     for (int i = 0; i < NUM_PTS; i++) {
-        term1 = exp(-0.5*k2*(XX[i] + YY[i])) - 2*sigma_sq*exp(-k2*sigma_sq);
-        a[i] =  pow(r[i], 1.5)*k2*(XX[i] + YY[i])*term1;
+        a[i] =  pow(r[i], 1.5)*pow2(k)*((XX[i] + YY[i])*exp(-0.5*pow2(k)*(XX[i] + YY[i])) - 2*sigma_sq*exp(-pow2(k)*sigma_sq));
     }
     
 }
 
 void ZeldovichP01::Fsec(dcomplex a[], const double r[], double k, double n) const {
       
-    for (int i = 0; i < NUM_PTS; i++) { 
+    for (int i = 0; i < NUM_PTS; i++) {
         a[i] = pow(r[i], 1.5-n)*pow(k*YY[i], n)*(pow2(k)*(XX[i] + YY[i]) - 2*n)*exp(-0.5*pow2(k)*(XX[i] + YY[i]));
-    }
+      }
 }
 
 /*----------------------------------------------------------------------------*/

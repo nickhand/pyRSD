@@ -42,16 +42,16 @@ class HaloZeldovichPS(Cache):
         self.interpolate     = interpolate
         self.enhance_wiggles = enhance_wiggles
         
-        self._A0_amp    = 685. #730.
-        self._A0_alpha  = 3.83 #3.75
-        self._R_amp     = 33.2 #26.0
-        self._R_alpha   = 0.116 #0.15
-        self._R1_amp    = 2.27 #3.25
-        self._R1_alpha  = 0.39 #0.7
-        self._R1h_amp   = 2.77 #3.87
+        self._A0_amp    = 682.3 #730.
+        self._A0_alpha  = 3.85 #3.75
+        self._R_amp     = 33.8 #26.0
+        self._R_alpha   = 0.049 #0.15
+        self._R1_amp    = 2.18 #3.25
+        self._R1_alpha  = 0.38 #0.7
+        self._R1h_amp   = 2.66 #3.87
         self._R1h_alpha = -0.07 #0.29
-        self._R2h_amp   = 1.28 #1.69
-        self._R2h_alpha = 0.94 #0.43  
+        self._R2h_amp   = 1.25 #1.69
+        self._R2h_alpha = 0.97 #0.43  
         self._W0_alpha  = 1.86     
         
     def __setstate__(self, d):

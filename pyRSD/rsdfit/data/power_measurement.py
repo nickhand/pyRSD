@@ -37,7 +37,7 @@ class PowerMeasurement(Cache):
         # set the data attributes
         for field in ['k', 'power']:
             setattr(self, '_%s_input' %field, data[field])
-        if 'error' in data.dtype.names:
+        if 'error' in data:
             setattr(self, '_error_input', data['error'])
         
         # mu/ell

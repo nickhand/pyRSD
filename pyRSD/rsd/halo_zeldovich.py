@@ -42,21 +42,23 @@ class HaloZeldovichPS(Cache):
         self.interpolate     = interpolate
         self.enhance_wiggles = enhance_wiggles
         
-        self._A0_amp    = 730.
-        self._A0_slope  = 3.75
-        self._R1_amp    = 3.25
-        self._R1_slope  = 0.7
-        self._R1h_amp   = 3.87
-        self._R1h_slope = 0.29
-        self._R2h_amp   = 1.69
-        self._R2h_slope = 0.43  
-        self._W0_slope  = 1.86     
+        self._A0_amp    = 685. #730.
+        self._A0_alpha  = 3.83 #3.75
+        self._R_amp     = 33.2 #26.0
+        self._R_alpha   = 0.116 #0.15
+        self._R1_amp    = 2.27 #3.25
+        self._R1_alpha  = 0.39 #0.7
+        self._R1h_amp   = 2.77 #3.87
+        self._R1h_alpha = -0.07 #0.29
+        self._R2h_amp   = 1.28 #1.69
+        self._R2h_alpha = 0.94 #0.43  
+        self._W0_alpha  = 1.86     
         
     def __setstate__(self, d):
         self.__dict__ = d
         
         # backwards compatibility for HZPTw+
-        self._W0_slope      = 1.86
+        self._W0_alpha      = 1.86
        
     #---------------------------------------------------------------------------
     # PARAMETERS
@@ -66,15 +68,23 @@ class HaloZeldovichPS(Cache):
         return val
         
     @parameter
-    def _A0_slope(self, val):
+    def _A0_alpha(self, val):
         return val
         
+    @parameter
+    def _R_amp(self, val):
+        return val
+        
+    @parameter
+    def _R_alpha(self, val):
+        return val
+
     @parameter
     def _R1_amp(self, val):
         return val
         
     @parameter
-    def _R1_slope(self, val):
+    def _R1_alpha(self, val):
         return val
         
     @parameter
@@ -82,7 +92,7 @@ class HaloZeldovichPS(Cache):
         return val
         
     @parameter
-    def _R1h_slope(self, val):
+    def _R1h_alpha(self, val):
         return val
         
     @parameter
@@ -90,11 +100,11 @@ class HaloZeldovichPS(Cache):
         return val
         
     @parameter
-    def _R2h_slope(self, val):
+    def _R2h_alpha(self, val):
         return val
         
     @parameter
-    def _W0_slope(self, val):
+    def _W0_alpha(self, val):
         return val
         
     @parameter
@@ -181,63 +191,69 @@ class HaloZeldovichPS(Cache):
     #---------------------------------------------------------------------------
     # Model Parameters
     #---------------------------------------------------------------------------
-    @cached_property('sigma8_z', '_A0_amp', '_A0_slope')
+    @cached_property('sigma8_z', '_A0_amp', '_A0_alpha')
     def A0(self):
         """
         Returns the A0 radius parameter (see eqn 4 of arXiv:1501.07512)
 
         Note: the units are power [(h/Mpc)^3]
         """
-        return self._A0_amp*(self.sigma8_z/0.8)**self._A0_slope
+        return self._A0_amp*(self.sigma8_z/0.8)**self._A0_alpha
 
-    @cached_property('sigma8_z')
+    @cached_property('sigma8_z', '_R_amp', '_R_alpha')
     def R(self):
         """
         Returns the R radius parameter (see eqn 4 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return 26*(self.sigma8_z/0.8)**0.15
+        return self._R_amp*(self.sigma8_z/0.8)**self._R_alpha
 
-    @cached_property('sigma8_z', '_R1_amp', '_R1_slope')
+    @cached_property('sigma8_z', '_R1_amp', '_R1_alpha')
     def R1(self):
         """
         Returns the R1 radius parameter (see eqn 5 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return self._R1_amp*(self.sigma8_z/0.8)**self._R1_slope
+        return self._R1_amp*(self.sigma8_z/0.8)**self._R1_alpha
 
-    @cached_property('sigma8_z', '_R1h_amp', '_R1h_slope')
+    @cached_property('sigma8_z', '_R1h_amp', '_R1h_alpha')
     def R1h(self):
         """
         Returns the R1h radius parameter (see eqn 5 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return self._R1h_amp*(self.sigma8_z/0.8)**self._R1h_slope
+        return self._R1h_amp*(self.sigma8_z/0.8)**self._R1h_alpha
         
-    @cached_property('sigma8_z', '_W0_slope')
+    @cached_property('sigma8_z', '_W0_alpha')
     def W0(self):
         """
         Parameterize the ampltidue of the enhanced wiggles as a function of
         sigma8(z)
         """
-        return (self.sigma8_z/0.8)**self._W0_slope
+        return (self.sigma8_z/0.8)**self._W0_alpha
     
-    #---------------------------------------------------------------------------
-    @cached_property('sigma8_z', '_R2h_amp', '_R2h_slope')
+    @cached_property('sigma8_z', '_R2h_amp', '_R2h_alpha')
     def R2h(self):
         """
         Returns the R2h radius parameter (see eqn 5 of arXiv:1501.07512)
 
         Note: the units are length [Mpc/h]
         """
-        return self._R2h_amp*(self.sigma8_z/0.8)**self._R2h_slope
+        return self._R2h_amp*(self.sigma8_z/0.8)**self._R2h_alpha
 
     #---------------------------------------------------------------------------
     # function calls
     #---------------------------------------------------------------------------
+    def update(self, **kwargs):
+        """
+        Update any attributes with the specified values
+        """
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
+            
     def compensation(self, k):
         """
         The compensation function F(k) that causes the broadband power to go
@@ -376,7 +392,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
     #---------------------------------------------------------------------------
     @cached_property('f', 'A0')
     def dA0_dlna(self):
-        return self.f * self._A0_slope * self.A0
+        return self.f * self._A0_alpha * self.A0
 
     @cached_property('f', 'R')
     def dR_dlna(self):
@@ -384,19 +400,19 @@ class HaloZeldovichP01(HaloZeldovichPS):
         
     @cached_property('f', 'R1')
     def dR1_dlna(self):
-        return self.f * self._R1_slope * self.R1
+        return self.f * self._R1_alpha * self.R1
 
     @cached_property('f', 'R1h')
     def dR1h_dlna(self):
-        return self.f * self._R1h_slope * self.R1h
+        return self.f * self._R1h_alpha * self.R1h
 
     @cached_property('f', 'R2h')
     def dR2h_dlna(self):
-        return self.f * self._R2h_slope * self.R2h
+        return self.f * self._R2h_alpha * self.R2h
         
     @cached_property('f', 'W0')
     def dW0_dlna(self):
-        return self.f * self._W0_slope * self.W0
+        return self.f * self._W0_alpha * self.W0
             
     #---------------------------------------------------------------------------
     # main functions
@@ -640,14 +656,7 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         
     #---------------------------------------------------------------------------
     # main functions
-    #---------------------------------------------------------------------------
-    def update(self, **kwargs):
-        """
-        Update any attributes with the specified values
-        """
-        for k, v in kwargs.iteritems():
-            setattr(self, k, v)
-        
+    #---------------------------------------------------------------------------        
     def _power_law(self, A, alpha, beta):
         """
         Return a power law as a linear bias and sigma8(z) with the specified 

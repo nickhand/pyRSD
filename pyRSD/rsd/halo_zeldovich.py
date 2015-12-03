@@ -52,13 +52,7 @@ class HaloZeldovichPS(Cache):
         self._R1h_alpha = -0.07 #0.29
         self._R2h_amp   = 1.25 #1.69
         self._R2h_alpha = 0.97 #0.43  
-        self._W0_alpha  = 1.86     
-        
-    def __setstate__(self, d):
-        self.__dict__ = d
-        
-        # backwards compatibility for HZPTw+
-        self._W0_alpha      = 1.86
+        self._W0_alpha  = 1.86
        
     #---------------------------------------------------------------------------
     # PARAMETERS

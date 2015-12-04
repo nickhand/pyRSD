@@ -576,11 +576,12 @@ def window_convolved_xi(xi_data, W):
     # loop over each ell 
     # each column in xi_data is a value in ells
     toret = np.empty(shape)
+    
     for i, ell in enumerate(ells):
         
         # get the kernel for this ell
         if ell == 0:    
-            kern = W[:,:3] * np.array([1., 1./5, 1./7])
+            kern = W[:,:3] * np.array([1., 1./5, 1./9])
             
         elif ell == 2:
             k20 = W[:,1]

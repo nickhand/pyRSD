@@ -111,7 +111,8 @@ endif
 # GCL sources
 #-------------------------------------------------------------------------------
 GCLTOOLS_COBJS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o \
-				 Quadrature.o Common.o Timer.o MyFFTLog.o DiscreteQuad.o
+				 Quadrature.o Common.o Timer.o MyFFTLog.o DiscreteQuad.o \
+				 FortranFFTLog.o
 
 GCLSOURCE_COBJS = Engine.o ClassParams.o ClassCosmology.o Cosmology.o \
 				  PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o \
@@ -122,6 +123,11 @@ GCLTEST_COBJS = test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o \
 				test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o
 
 COBJS = $(EMU_COBJS) $(GCLTOOLS_COBJS) $(GCLSOURCE_COBJS)
+
+ #-------------------------------------------------------------------------------
+ # FFTLog sources
+ #-------------------------------------------------------------------------------
+FOBJS = fftlog.o cdgamma.o drfftb.o drffti.o drfftf.o
 
 #-------------------------------------------------------------------------------
 # Libraries
@@ -144,6 +150,10 @@ PY_LIBRARY = gcl
 	@echo Compiling $<
 	cd $(WRKDIR); $(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -c ../$< -o $*.o
 
+.f.o:  %.f 
+	@echo Compiling $<
+	cd $(WRKDIR); $(MCK_FC) $(MCK_FFLAGS) -c ../$< -o $*.o
+
 all: .base check_env $(LIBRARY)
     
 check_env:    
@@ -155,31 +165,31 @@ check_env:
         endif
     endif
 
-$(LIBRARY): $(COBJS)
-	$(AR_EXEC) $(AR_FLAGS) $@  $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+$(LIBRARY): $(COBJS) $(FOBJS)
+	$(AR_EXEC) $(AR_FLAGS) $@  $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
 
 test : .base $(basename $(GCLTEST_COBJS))
 
 test_linearPS : test_linearPS.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
     
 test_Imn : test_Imn.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
     
 test_Jmn : test_Jmn.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
     
 test_Kmn : test_Kmn.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
     
 test_oneloopPS : test_oneloopPS.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
     
 test_ImnOneLoop : test_ImnOneLoop.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
     
 test_zeldovichPS : test_zeldovichPS.o $(COBJS) $(FOBJS)
-	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS)) $(CLASS_COBJS)
+	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
 
 $(PY_LIBRARY): .base check_env $(LIBRARY) python/*.i
 	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES) -L$(PY_LIBDIRS)

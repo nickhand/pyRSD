@@ -293,7 +293,8 @@ class InterpolatedSimulationData(Cache):
         self._sigma8_0     = self.power_lin.GetCosmology().sigma8()
 
         # make sure power spectrum redshift is 0
-        assert self.power_lin.GetRedshift() == 0., msg
+        if self.power_lin.GetRedshift() != 0.:
+            raise ValueError("linear power spectrum should be at z=0")
 
     #---------------------------------------------------------------------------
     # Parameters

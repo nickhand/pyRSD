@@ -5,7 +5,7 @@ from .. import pygcl, numpy as np, data as sim_data, os
 from ._integrals import Integrals
 from ._sim_loader import SimLoader
 from .simulation import SimulationPdv, SimulationP11
-from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01
+from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11
 
 def verify_krange(k, kmin, kmax):
     if np.amin(k) < kmin:
@@ -263,7 +263,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         Redshift to evaluate power spectrum at
         """
         # update the dependencies
-        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model']
+        models = ['P11_sim_model', 'Pdv_sim_model']
         self._update_models('z', models, val)
         
         return val
@@ -306,7 +306,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         linear power spectrum
         """
         # update the dependencies
-        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 
+                    'P11_sim_model', 'Pdv_sim_model']
         self._update_models('sigma8_z', models, val)
         
         return val
@@ -317,7 +318,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         The growth rate, defined as the `dlnD/dlna`.
         """
         # update the dependencies
-        models = ['P01_model', 'Pdv_model', 'P11_model']
+        models = ['P01_hzpt_model', 'P11_hzpt_model', 'Pdv_sim_model', 'P11_sim_model']
         self._update_models('f', models, val)
         
         return val
@@ -486,22 +487,29 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return np.sqrt(self.power_lin.VelocityDispersion())
      
     #---------------------------------------------------------------------------
-    # MODELS TO USE
+    # models to use
     #---------------------------------------------------------------------------
     @parameter
     def use_P00_model(self, val):
         """
-        Whether to use Halo Zeldovich model for P00
+        If `True`, use the `HZPT` model for P00
         """
         return val
         
     @parameter
     def use_P01_model(self, val):
         """
-        Whether to use Halo Zeldovich model for P01
+        If `True`, use the `HZPT` model for P01
         """
         return val
 
+    @parameter
+    def use_P11_model(self, val):
+        """
+        If `True`, use the `HZPT` model for P11
+        """
+        return val
+    
     @parameter
     def use_Pdv_model(self, val):
         """
@@ -509,45 +517,48 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return val
 
-    @parameter
-    def use_P11_model(self, val):
-        """
-        Whether to use interpolated sim results for P11
-        """
-        return val
-
     @cached_property("cosmo")
-    def P00_model(self):
+    def P00_hzpt_model(self):
         """
-        The class holding the Halo Zeldovich model for the P00 dark matter term
+        The class holding the HZPT model for the P00 dark matter term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP00(self.cosmo, self.z, self.sigma8_z, **kw)
+        return HaloZeldovichP00(self.cosmo, self.sigma8_z, **kw)
     
     @cached_property("cosmo")
-    def P01_model(self):
+    def P01_hzpt_model(self):
         """
-        The class holding the Halo Zeldovich model for the P01 dark matter term
+        The class holding the HZPT model for the P01 dark matter term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP01(self.cosmo, self.z, self.sigma8_z, self.f, **kw)
+        return HaloZeldovichP01(self.cosmo, self.sigma8_z, self.f, **kw)
     
-    @cached_property("power_lin_nw")
-    def P11_model(self):
+    @cached_property("cosmo")
+    def P11_hzpt_model(self):
         """
-        The class holding the model for the P11 dark matter term
+        The class holding the HZPT model for the P11 dark matter term
+        """
+        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
+        return HaloZeldovichP11(self.cosmo, self.sigma8_z, self.f, **kw)
+    
+    @cached_property("power_lin")
+    def P11_sim_model(self):
+        """
+        The class holding the model for the P11 dark matter term, based
+        on interpolating simulations
         """
         return SimulationP11(self.power_lin, self.z, self.sigma8_z, self.f)
-
+        
     @cached_property("power_lin")
-    def Pdv_model(self):
+    def Pdv_sim_model(self):
         """
-        The class holding the model for the Pdv dark matter term
+        The class holding the model for the Pdv dark matter term, based
+        on interpolating simulations
         """
         return SimulationPdv(self.power_lin, self.z, self.sigma8_z, self.f)
           
     #---------------------------------------------------------------------------
-    # UTILITY FUNCTIONS
+    # utility functions
     #---------------------------------------------------------------------------        
     def k_true(self, k_obs, mu_obs):
         """
@@ -671,7 +682,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             return self.get_loaded_data('Pdv', self.k)
         else:
             if self.use_Pdv_model:
-                return self.Pdv_model(self.k)
+                return self.Pdv_sim_model(self.k)
             else:
                 norm = self._power_norm
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_0(self.k))
@@ -702,7 +713,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 
             # use the DM model
             if self.use_P00_model:
-                P00.total.mu0 = self.P00_model(self.k)
+                P00.total.mu0 = self.P00_hzpt_model(self.k)
             # use pure PT
             else:
                 # the necessary integrals 
@@ -734,7 +745,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
                 # use the DM model
                 if self.use_P01_model:
-                    P01.total.mu2 = self.P01_model(self.k)
+                    P01.total.mu2 = self.P01_hzpt_model(self.k)
                 # use pure PT
                 else:                
                     # the necessary integrals 
@@ -788,9 +799,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                     P11.total.mu4 = self.get_loaded_data('P11_mu4', self.k)
                 else:
                     
-                    # use the DM model
+                    # use HZPT?
                     if self.use_P11_model:
-                        P11.total.mu4 = self.P11_model(self.k)
+                        P11.total.mu4 = self.P11_hzpt_model(self.k) - self.f**2 * self.I31(self.k)
                     else:
                         # compute the scalar mu^4 contribution
                         if self.include_2loop:

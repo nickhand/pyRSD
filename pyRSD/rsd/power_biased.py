@@ -11,16 +11,15 @@ from .halo_zeldovich import HaloZeldovichPhm
 #-------------------------------------------------------------------------------
 class BiasedSpectrum(DarkMatterSpectrum):
     
-    allowable_models = DarkMatterSpectrum.allowable_models
+    allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
                         ['sigmav_from_sims', 'use_tidal_bias',
-                         'use_mu_corrections', 'use_mean_bias', 'Phm_model']  
+                         'use_mu_corrections', 'use_mean_bias']  
 
     def __init__(self,  sigmav_from_sims=True, 
                         use_tidal_bias=False, 
                         use_mu_corrections=False, 
                         use_mean_bias=False, 
-                        Phm_model='halo_zeldovich', 
                         **kwargs):
         
         # initalize the dark matter power spectrum
@@ -32,7 +31,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.use_tidal_bias     = use_tidal_bias
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
-        self.Phm_model          = Phm_model
         self.use_mu_corrections = use_mu_corrections
         
         # set b1_bar, unless we are fixed
@@ -68,7 +66,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model', 'Phm_halo_zeldovich_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 'Phm_hzpt_model']
         self._update_models('interpolate', models, val)
         
         return val
@@ -79,7 +77,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether to enhance the wiggles over the default HZPT model
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model', 'Phm_halo_zeldovich_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model', 'Phm_hzpt_model']
         self._update_models('enhance_wiggles', models, val)
         
         return val
@@ -92,8 +90,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         linear power spectrum
         """
         # update the dependencies
-        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'Phm_halo_zeldovich_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 
+                    'P11_sim_model', 'Pdv_sim_model', 'Phm_hzpt_model']
         self._update_models('sigma8_z', models, val)
 
         return val
@@ -104,8 +102,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Redshift to evaluate power spectrum at
         """
         # update the dependencies
-        models = ['P00_model', 'P01_model', 'Pdv_model', 'P11_model', \
-                  'Phm_halo_zeldovich_model', 'bias_to_sigma_relation']
+        models = ['P11_sim_model', 'Pdv_sim_model', 'bias_to_sigma_relation']
         self._update_models('z', models, val)
 
         return val
@@ -126,17 +123,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
                 
     @parameter
-    def Phm_model(self, val):
+    def use_Phm_model(self, val):
         """
-        Attribute determining which (if any) Phm model to use.
+        If `True`, use the `HZPT` model for Phm
         """
-        allowable = ['halo_zeldovich', 'gp', 'pt']
-        if isinstance(val, basestring):
-            if val not in allowable:
-                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
-        else:
-            if not val is None:
-                raise ValueError("`Phm_model` must be one of %s or `None`" %allowable)
         return val
                     
     @parameter
@@ -156,13 +146,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
-    @cached_property()
-    def Phm_halo_zeldovich_model(self):
+    @cached_property("cosmo")
+    def Phm_hzpt_model(self):
         """
         The class holding the Halo Zeldovich model for the Phm term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8_z, **kw)
+        return HaloZeldovichPhm(self.cosmo, self.sigma8_z, **kw)
         
     @cached_property("use_mean_bias", "b1", "b1_bar")
     def _ib1(self):
@@ -387,49 +377,19 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 return pade_model(self.k, **params)
             else:
                 return log_model(self.k, **params)
-        
-    @cached_property("_ib1", "z", "sigma8_z")
-    def Phm_model_params_dict(self):
-        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self._ib1)
-    
-    @cached_property("_ib1_bar", "z", "sigma8_z")
-    def Phm_model_params_dict_bar(self):
-        return self.Phm_residual_model_params.to_dict(self.sigma8_z, self._ib1_bar)
-        
-    @cached_property("k", "_ib1", "z", "sigma8_z")
-    def Phm_residual_model(self):
-        R = 26. * (self.sigma8_z/0.8)**0.15
-        def model(k, A0=None, R1=None, R1h=None, R2h=None):
-            F = 1. - 1./(1. + (k*R)**2)
-            return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
-            
-        params = self.Phm_model_params_dict
-        return model(self.k, **params) + self._ib1*self.P00_model.zeldovich_power(self.k)
-    
-    @cached_property("k", "_ib1_bar", "z", "sigma8_z")
-    def Phm_residual_model_bar(self):
-        R = 26. * (self.sigma8_z/0.8)**0.15
-        def model(k, A0=None, R1=None, R1h=None, R2h=None):
-            F = 1. - 1./(1. + (k*R)**2)
-            return A0 * (1 + (k*R1)**2) / (1. + (k*R1h)**2 + (k*R2h)**4) * F
-            
-        params = self.Phm_model_params_dict_bar
-        return model(self.k, **params) + self._ib1_bar*self.P00_model.zeldovich_power(self.k)
-        
+                
     #---------------------------------------------------------------------------
     # POWER TERM ATTRIBUTES
     #---------------------------------------------------------------------------        
-    @cached_property("_ib1", "P00", "Phm_model", "sigma8_z")
+    @cached_property("_ib1", "P00", "use_Phm_model", "sigma8_z")
     def Phm(self):
         """
         The halo - matter cross correlation for the 1st tracer
         """
         Phm = PowerTerm()
         
-        if self.Phm_model == 'halo_zeldovich':
-            Phm.total.mu0 = self.Phm_halo_zeldovich_model(self._ib1, self.k)
-        elif self.Phm_model == 'gp':
-            Phm.total.mu0 = self.Phm_residual_model
+        if self.use_Phm_model:
+            Phm.total.mu0 = self.Phm_hzpt_model(self._ib1, self.k)
         else:
             term1 = self._ib1*self.P00.total.mu0
             term2 = self.b2_00*self.K00(self.k)
@@ -438,17 +398,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return Phm
         
-    @cached_property("_ib1_bar", "P00", "Phm_model", "sigma8_z")
+    @cached_property("_ib1_bar", "P00", "use_Phm_model", "sigma8_z")
     def Phm_bar(self):
         """
         The halo - matter cross correlation for the 2nd tracer
         """
         Phm = PowerTerm()
         
-        if self.Phm_model == 'halo_zeldovich':
-            Phm.total.mu0 = self.Phm_halo_zeldovich_model(self._ib1_bar, self.k)
-        elif self.Phm_model == 'gp':
-            Phm.total.mu0 = self.Phm_residual_model_bar
+        if self.use_Phm_model:
+            Phm.total.mu0 = self.Phm_hzpt_model(self._ib1_bar, self.k)
         else:
             term1 = self._ib1_bar*self.P00.total.mu0
             term2 = self.b2_00_bar*self.K00(self.k)

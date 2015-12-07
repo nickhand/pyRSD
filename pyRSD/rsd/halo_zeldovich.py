@@ -302,7 +302,7 @@ class HaloZeldovichP00(HaloZeldovichPS):
             of pure HZPT
         """   
         # initialize the Pzel object
-        self.Pzel = pygcl.ZeldovichP00(cosmo, z)
+        self.Pzel = pygcl.ZeldovichP00(cosmo, 0)
         
         # initialize the base class
         kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}

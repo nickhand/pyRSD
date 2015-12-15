@@ -126,3 +126,21 @@ parray PowerSpectrum::Y_Zel(const parray& k) const {
     return out;
 }
 
+static double Q3_integrand(const PowerSpectrum& P, double q) {
+    double Pq = P(q);
+    return Pq*Pq/q/q;
+}
+
+double PowerSpectrum::Q3_Zel(double k) const {
+    return 1/(10*M_PI*M_PI) * pow4(k) * Integrate(bind(Q3_integrand, cref(*this), _1), 1e-5, 1e2, 1e-4, 1e-10);
+}
+
+parray PowerSpectrum::Q3_Zel(const parray& k) const {
+    int n = (int)k.size();
+    parray out(n);
+    #pragma omp parallel for
+    for(int i = 0; i < n; i++)
+        out[i] = Q3_Zel(k[i]);
+    return out;
+}
+

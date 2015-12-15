@@ -36,5 +36,8 @@ public:
     
     parray Y_Zel(const parray& k) const;
     double Y_Zel(const double k) const;
+    
+    parray Q3_Zel(const parray& k) const;
+    double Q3_Zel(const double k) const;
 };
 

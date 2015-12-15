@@ -349,8 +349,7 @@ class HaloZeldovichCF00(HaloZeldovichPS):
         Return the total correlation
         """
         return self.__broadband__(k) + self.__zeldovich__(k)
-   
-   
+     
 class HaloZeldovichP01(HaloZeldovichPS):
     """
     The dark matter density - radial momentum cross correlation P01 using HZPT
@@ -605,7 +604,8 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             of pure HZPT
         """   
         # initialize the Pzel object
-        self.Pzel = pygcl.ZeldovichP00(cosmo, 0.)
+        if not hasattr(self, 'Pzel'):
+            self.Pzel = pygcl.ZeldovichP00(cosmo, 0.)
                 
         # initialize the base class
         kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
@@ -801,3 +801,51 @@ class HaloZeldovichPhm(HaloZeldovichPS):
             
         self.b1 = b1
         return self.__broadband__(k) + b1*self.__zeldovich__(k) + b1*self.__wiggles__(k)
+        
+class HaloZeldovichCFhm(HaloZeldovichPhm):
+    """
+    The dark matter - halo correlation function using Halo-Zel'dovich Perturbation Theory
+    """ 
+    def __init__(self, cosmo, sigma8_z):
+        """
+        Parameters
+        ----------
+        cosmo : pygcl.Cosmology
+            The cosmology object
+        sigma8_z : float
+            The desired sigma8 to compute the power at
+        """   
+        # initialize the Pzel object
+        self.Pzel = pygcl.ZeldovichCF(cosmo, 0)
+        
+        # initialize the base class
+        kwargs = {'interpolate':False, 'enhance_wiggles':False}
+        super(HaloZeldovichCFhm, self).__init__(cosmo, sigma8_z, **kwargs)
+                       
+    def __broadband__(self, r):
+        """
+        The broadband power correction as given by Eq. 7 in arXiv:1501.07512.
+        """
+        A = -self.A0 * np.exp(-r/self.R) / (4*np.pi*r*self.R**2)
+        return A * (1. - (self.R/self.R1h)**2 * np.exp(-r*(self.R + self.R1h)/(self.R*self.R1h)))
+
+    @tools.unpacked
+    def __zeldovich__(self, r, ignore_interpolated=False):
+        """
+        Return the Zel'dovich correlation at the specified `r`
+        """
+        return np.nan_to_num(self.Pzel(r)) # set any NaNs to zero
+            
+    def __call__(self, b1, r):
+        """
+        Return the total correlation
+        
+        Parameters
+        ----------
+        b1 : float
+            the linear bias to compute correlation at
+        r : array_like
+            the separations in `Mpc/h` to correlation at
+        """
+        self.b1 = b1
+        return self.__broadband__(r) + b1*self.__zeldovich__(r)

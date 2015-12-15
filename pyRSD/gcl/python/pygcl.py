@@ -91,6 +91,14 @@ class LinearPS(gcl.LinearPS, PickalableSWIG):
     def __init__(self, *args):
         self.args = args
         gcl.LinearPS.__init__(self, *args)
+        
+    def __setstate__(self, state):
+        self.__init__(*state['args'][:2])
+        self.SetSigma8AtZ(state['args'][2])
+ 
+    def __getstate__(self):
+        args = self.args + (self.GetSigma8AtZ(),)
+        return {'args': args}
 
 #-------------------------------------------------------------------------------
 

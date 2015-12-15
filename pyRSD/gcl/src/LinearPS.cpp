@@ -3,12 +3,16 @@
 using namespace Common;
 
 LinearPS::LinearPS(const Cosmology& C_, double z_)
-    : C(C_), z(z_) {}
+    : C(C_), z(z_), sigma8_z(C.Sigma8_z(z))
+{
+  
+}
 
 double LinearPS::Evaluate(double k) const {
     
     double Dz = C.D_z(z);
     double A = pow2(C.delta_H()) * pow2(Dz);
+    double norm = pow2(sigma8_z / C.sigma8());
     
-    return A * pow(k, C.n_s())*(pow2(C.EvaluateTransfer(k)));
+    return A * norm * pow(k, C.n_s())*(pow2(C.EvaluateTransfer(k)));
 }

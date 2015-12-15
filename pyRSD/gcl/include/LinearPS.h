@@ -21,16 +21,19 @@ public:
     // evaluate for single k
     double Evaluate(double k) const;
     
-    // redshift accessor
+    // accessors
     const double& GetRedshift() const { return z; }
-    
-    // cosmology accessor
+    const double& GetSigma8AtZ() const { return sigma8_z; }
     const Cosmology& GetCosmology() const { return C; }
+    
+    // convenience to rescale
+    void SetSigma8AtZ(double sigma8_z_) { sigma8_z=sigma8_z_; }
 
 private:
     
     const Cosmology& C;
     double z;
+    double sigma8_z;
 
 };
 

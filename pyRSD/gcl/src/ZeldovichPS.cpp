@@ -8,9 +8,12 @@ static const double RMIN = 1e-2;
 static const double RMAX = 1e5;
 static const int NMAX = 15;
 
+
 /*----------------------------------------------------------------------------*/
-ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_) 
-    : C(C_), sigma8_z(C_.Sigma8_z(z_))
+/* Zeldovich base class */
+/*----------------------------------------------------------------------------*/
+ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_, bool approx_lowk_) 
+    : C(C_), sigma8_z(C_.Sigma8_z(z_)), Plin(C_, z_), approx_lowk(approx_lowk_), k0_low(5e-3)
 {    
     // initialize the R array
     InitializeR();
@@ -26,16 +29,18 @@ ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_)
     YY = norm*P_L.Y_Zel(r); 
 }
 
-/*----------------------------------------------------------------------------*/
-ZeldovichPS::ZeldovichPS(const Cosmology& C_, double sigma8_z_, 
+
+ZeldovichPS::ZeldovichPS(const Cosmology& C_, bool approx_lowk_, double sigma8_z_, double k0_low_,
                          double sigmasq, const parray& X0_, const parray& XX_, const parray& YY_) 
-: C(C_), sigma8_z(sigma8_z_), sigma_sq(sigmasq), X0(X0_), XX(XX_), YY(YY_)
+                        : C(C_), sigma8_z(sigma8_z_), Plin(C_, 0.), approx_lowk(approx_lowk_), 
+                         k0_low(k0_low_), sigma_sq(sigmasq), X0(X0_), XX(XX_), YY(YY_)
 {
-    InitializeR();     
+    InitializeR();
+    Plin.SetSigma8AtZ(sigma8_z);      
 }
 
-/*----------------------------------------------------------------------------*/
-void ZeldovichPS::InitializeR() {
+void ZeldovichPS::InitializeR() 
+{
     
     r = parray(NUM_PTS);
     nc = 0.5*double(NUM_PTS+1);
@@ -48,10 +53,11 @@ void ZeldovichPS::InitializeR() {
         r[i-1] = pow(10., (logrc+(i-nc)*dlogr));
 }
 
-/*----------------------------------------------------------------------------*/
+
 ZeldovichPS::~ZeldovichPS() {}
 
-static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi, double *yi) {
+static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi, double *yi) 
+{
     double d, d2;
     int i, j, k, l;
     
@@ -76,11 +82,8 @@ static void nearest_interp_1d(int nd, double *xd, double *yd, int ni, double *xi
     }
 }
 
-/*----------------------------------------------------------------------------*/
-
-/*----------------------------------------------------------------------------*/
-parray ZeldovichPS::EvaluateMany(const parray& k) const {
-    
+parray ZeldovichPS::EvaluateMany(const parray& k) const 
+{    
     int n = (int)k.size();
     parray pk(n);
     #pragma omp parallel for
@@ -90,9 +93,8 @@ parray ZeldovichPS::EvaluateMany(const parray& k) const {
     return pk;
 }
 
-/*----------------------------------------------------------------------------*/
-void ZeldovichPS::SetSigma8AtZ(double new_sigma8_z) {
-     
+void ZeldovichPS::SetSigma8AtZ(double new_sigma8_z) 
+{     
     double ratio = pow2(new_sigma8_z / sigma8_z);
     // integrals are proportional to the square of the ratio of sigma8
     X0 *= ratio;
@@ -102,11 +104,14 @@ void ZeldovichPS::SetSigma8AtZ(double new_sigma8_z) {
     
     // store the sigma8_z
     sigma8_z = new_sigma8_z;
+    
+    // set the Plin
+    Plin.SetSigma8AtZ(sigma8_z);
 }
 
-/*----------------------------------------------------------------------------*/
-double ZeldovichPS::fftlog_compute(double k, double factor) const {
-    
+
+double ZeldovichPS::fftlog_compute(double k, double factor) const 
+{    
     double q = 0; // unbiased
     double mu;
     
@@ -150,53 +155,83 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const {
     return this_Pk;
 }
 
-/*----------------------------------------------------------------------------*/
-void ZeldovichPS::Fprim(parray&, const parray&, double) const {
+void ZeldovichPS::Fprim(parray&, const parray&, double) const 
+{
     error("In ZeldovichPS::Fprim; something has gone horribly wrong\n");
 }
 
-void ZeldovichPS::Fsec(parray&, const parray&, double, double) const {
+void ZeldovichPS::Fsec(parray&, const parray&, double, double) const 
+{
     error("In ZeldovichPS::Fsec; something has gone horribly wrong\n");
 }
 
-double ZeldovichPS::Evaluate(double k) const {
+double ZeldovichPS::Evaluate(double k) const 
+{
     return fftlog_compute(k);
 }
 
 /*----------------------------------------------------------------------------*/
-ZeldovichP00::ZeldovichP00(const Cosmology& C, double z) : ZeldovichPS(C, z) {}
-
-ZeldovichP00::ZeldovichP00(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) {}
-
-
-double ZeldovichP00::Evaluate(double k) const {
-    return fftlog_compute(k, 4*M_PI);
+/* Zeldovich P00 */
+/*----------------------------------------------------------------------------*/
+ZeldovichP00::ZeldovichP00(const Cosmology& C, double z, bool approx_lowk) 
+                            : ZeldovichPS(C, z, approx_lowk) 
+{
+    
 }
 
-void ZeldovichP00::Fprim(parray& a, const parray& r, double k) const {
+ZeldovichP00::ZeldovichP00(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) 
+{
     
+}
+
+double ZeldovichP00::Evaluate(double k) const 
+{
+    if (k >= k0_low || !approx_lowk)
+        return fftlog_compute(k, 4*M_PI);
+    else
+        return LowKApprox(k);
+}
+
+void ZeldovichP00::Fprim(parray& a, const parray& r, double k) const 
+{    
     for (int i = 0; i < NUM_PTS; i++) {
         a[i] = pow(r[i], 1.5) * (exp(-0.5*pow2(k)*(XX[i] + YY[i])) - exp(-pow2(k)*sigma_sq));
     }
     
 }
 
-void ZeldovichP00::Fsec(parray& a, const parray& r, double k, double n) const {
-    
+void ZeldovichP00::Fsec(parray& a, const parray& r, double k, double n) const 
+{    
     for (int i = 0; i < NUM_PTS; i++) {
         a[i] = pow(r[i], 1.5-n)*pow(k*YY[i], n)*exp(-0.5*pow2(k)*(XX[i] + YY[i]));
     }
 }
 
+double ZeldovichP00::LowKApprox(double k) const 
+{    
+    return (1 - pow2(k)*sigma_sq + 0.5*pow4(k)*pow2(sigma_sq))*Plin(k) + 0.5*Plin.Q3_Zel(k);
+}
+
 /*----------------------------------------------------------------------------*/
+/* Zeldovich P01 */
+/*----------------------------------------------------------------------------*/
+ZeldovichP01::ZeldovichP01(const Cosmology& C, double z,  bool approx_lowk) 
+                            : ZeldovichPS(C, z, approx_lowk) 
+{
+    
+}
 
-ZeldovichP01::ZeldovichP01(const Cosmology& C, double z) : ZeldovichPS(C, z) {}
-
-ZeldovichP01::ZeldovichP01(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) {}
+ZeldovichP01::ZeldovichP01(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) 
+{
+    
+}
 
 
 double ZeldovichP01::Evaluate(double k) const {
-    return fftlog_compute(k, -2*M_PI);
+    if (k >= k0_low || !approx_lowk)
+        return fftlog_compute(k, -2*M_PI);
+    else
+        return LowKApprox(k);
 }
 
 void ZeldovichP01::Fprim(parray& a, const parray& r, double k) const {
@@ -204,7 +239,6 @@ void ZeldovichP01::Fprim(parray& a, const parray& r, double k) const {
     for (int i = 0; i < NUM_PTS; i++) {
         a[i] =  pow(r[i], 1.5)*pow2(k)*((XX[i] + YY[i])*exp(-0.5*pow2(k)*(XX[i] + YY[i])) - 2*sigma_sq*exp(-pow2(k)*sigma_sq));
     }
-    
 }
 
 void ZeldovichP01::Fsec(parray& a, const parray& r, double k, double n) const {
@@ -215,14 +249,25 @@ void ZeldovichP01::Fsec(parray& a, const parray& r, double k, double n) const {
 }
 
 /*----------------------------------------------------------------------------*/
+/* Zeldovich P11 */
+/*----------------------------------------------------------------------------*/
+ZeldovichP11::ZeldovichP11(const Cosmology& C, double z,  bool approx_lowk) 
+                            : ZeldovichPS(C, z, approx_lowk) 
+{
+    
+}
 
-ZeldovichP11::ZeldovichP11(const Cosmology& C, double z) : ZeldovichPS(C, z) {}
-
-ZeldovichP11::ZeldovichP11(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) {}
-
+ZeldovichP11::ZeldovichP11(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS) 
+{
+    
+}
 
 double ZeldovichP11::Evaluate(double k) const {
-    return fftlog_compute(k, M_PI);
+    
+    if (k >= k0_low || !approx_lowk)
+        return fftlog_compute(k, M_PI);
+    else
+        return LowKApprox(k);
 }
 
 void ZeldovichP11::Fprim(parray& a, const parray& r, double k) const 

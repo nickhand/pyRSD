@@ -4,6 +4,7 @@
 #include "Cosmology.h"
 #include "PowerSpectrum.h"
 #include "FortranFFTLog.h"
+#include "LinearPS.h"
 
 /*------------------------------------------------------------------------------
     ZeldovichPS
@@ -16,8 +17,9 @@ class ZeldovichPS  {
 public:
        
     // constructors
-    ZeldovichPS(const Cosmology& C, double z);
-    ZeldovichPS(const Cosmology& C, double sigma8_z, double sigma_sq, const parray& X0, const parray& XX, const parray& YY);
+    ZeldovichPS(const Cosmology& C, double z, bool approx_lowk=false);
+    ZeldovichPS(const Cosmology& C, bool approx_lowk, double sigma8_z, double k0_low,
+                  double sigma_sq, const parray& X0, const parray& XX, const parray& YY);
     virtual ~ZeldovichPS();
     
     // evaluate
@@ -27,9 +29,16 @@ public:
     parray EvaluateMany(const parray& k) const;
     parray operator()(const parray& k) const { return EvaluateMany(k); }
         
+    // functions for doing low-k approximation
+    void SetLowKApprox(bool approx_lowk_=true) { approx_lowk=approx_lowk_; }
+    void SetLowKTransition(double k0) { k0_low = k0; }  
+    virtual double LowKApprox(double k) const { return Evaluate(k); }  
+        
     // get references to various attributes
     const Cosmology& GetCosmology() const { return C; }
     const double& GetSigma8AtZ() const { return sigma8_z; }
+    const bool& GetApproxLowKFlag() const { return approx_lowk; }
+    const double& GetK0Low() const { return k0_low; }
     parray GetXZel() const { return XX; }
     parray GetYZel() const { return YY; }
     parray GetX0Zel() const { return X0; }
@@ -46,6 +55,15 @@ protected:
     
     // keep track of redshift, sigma8 for easy scaling
     double sigma8_z;
+    
+    // linear power spectrum
+    LinearPS Plin;
+    
+    // low k approximation 
+    bool approx_lowk;
+    double k0_low;
+    
+    
     double nc, dlogr, logrc;
     
     // the integrals needed for the FFTLog integral
@@ -63,10 +81,11 @@ protected:
 class ZeldovichP00 : public ZeldovichPS {
 public:
     
-    ZeldovichP00(const Cosmology& C, double z);
+    ZeldovichP00(const Cosmology& C, double z, bool approx_lowk=false);
     ZeldovichP00(const ZeldovichPS& ZelPS);
     
     double Evaluate(double k) const; 
+    double LowKApprox(double k) const;
 
 private:
     
@@ -77,7 +96,7 @@ private:
 class ZeldovichP01 : public ZeldovichPS {
 public:
     
-    ZeldovichP01(const Cosmology& C, double z);
+    ZeldovichP01(const Cosmology& C, double z, bool approx_lowk=false);
     ZeldovichP01(const ZeldovichPS& ZelPS);
     
     double Evaluate(double k) const; 
@@ -92,7 +111,7 @@ private:
 class ZeldovichP11 : public ZeldovichPS {
 public:
     
-    ZeldovichP11(const Cosmology& C, double z);
+    ZeldovichP11(const Cosmology& C, double z, bool approx_lowk=false);
     ZeldovichP11(const ZeldovichPS& ZelPS);
     
     double Evaluate(double k) const; 

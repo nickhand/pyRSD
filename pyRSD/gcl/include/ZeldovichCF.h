@@ -14,7 +14,7 @@ class ZeldovichCF  {
 public:
        
 public:
-    ZeldovichCF(const Cosmology& C, double z, double kmin = 1e-5, double kmax = 1.0);
+    ZeldovichCF(const Cosmology& C, double z, double kmin = 1e-5, double kmax = 10.0);
 
     double Evaluate(double r, double smoothing=0.) const;
     double operator()(double r, double smoothing=0.) const { return Evaluate(r, smoothing); }
@@ -22,13 +22,14 @@ public:
     parray EvaluateMany(const parray& r, double smoothing=0.) const;
     parray operator()(const parray& r, double smoothing=0.) const { return EvaluateMany(r, smoothing); }
 
+    void SetSigma8AtZ(double sigma8_z);
 
 private:
     
     const Cosmology& C;
     double z;
-    const ZeldovichP00 Pzel;
-    const LinearPS Plin;
+    ZeldovichP00 Pzel;
+    LinearPS Plin;
     double sigma8_z; 
     
     double kmin, kmax;

@@ -26,3 +26,17 @@ parray ZeldovichCF::EvaluateMany(const parray& r, double smoothing) const
 {
     return  pk_to_xi(0, k_grid, Pzel_grid, r, smoothing);
 }
+
+void ZeldovichCF::SetSigma8AtZ(double new_sigma8_z) 
+{     
+    
+    // store the sigma8_z
+    sigma8_z = new_sigma8_z;
+    
+    // set the Plin
+    Plin.SetSigma8AtZ(sigma8_z);
+    
+    // set the Pzel
+    Pzel.SetSigma8AtZ(sigma8_z);
+    Pzel_grid = Pzel(k_grid);
+}

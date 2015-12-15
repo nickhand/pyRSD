@@ -117,7 +117,7 @@ GCLTOOLS_COBJS = Spline.o SpecialFunctions.o pstring.o Datafile.o parray.o \
 GCLSOURCE_COBJS = Engine.o ClassParams.o ClassCosmology.o Cosmology.o \
 				  PowerSpectrum.o  LinearPS.o Imn.o Jmn.o Kmn.o OneLoopPS.o \
 				  ImnOneLoop.o	CorrelationFunction.o Kaiser.o ZeldovichPS.o \
-				  NonlinearPS.o
+				  NonlinearPS.o ZeldovichCF.o
 
 GCLTEST_COBJS = test_linearPS.o test_Imn.o test_Jmn.o test_Kmn.o \
 				test_oneloopPS.o test_ImnOneLoop.o test_zeldovichPS.o

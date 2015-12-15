@@ -42,6 +42,7 @@ using std::string;
 %include "ZeldovichPS.i"
 %include "NonlinearPS.i"
 %include "MyFFTLog.i"
+%include "ZeldovichCF.i"
 
 
 

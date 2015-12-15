@@ -233,4 +233,10 @@ class ZeldovichP11(gcl.ZeldovichP11, PickalableSWIG):
         self.args = args
         gcl.ZeldovichP11.__init__(self, *args)
 
-#-------------------------------------------------------------------------------        
+#-------------------------------------------------------------------------------    
+# ZeldovichCF
+class ZeldovichCF(gcl.ZeldovichCF, PickalableSWIG):
+ 
+    def __init__(self, *args):
+        self.args = args
+        gcl.ZeldovichCF.__init__(self, *args)    

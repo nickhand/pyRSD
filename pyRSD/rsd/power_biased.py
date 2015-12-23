@@ -32,6 +32,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
         self.use_mu_corrections = use_mu_corrections
+        self.sigma_v            = self.sigma_lin
         
         # set b1_bar, unless we are fixed
         if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
@@ -142,7 +143,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The linear bias factor of the 2nd tracer.
         """
         return val
-            
+                
     #---------------------------------------------------------------------------
     # CACHED PROPERTIES
     #---------------------------------------------------------------------------
@@ -301,19 +302,25 @@ class BiasedSpectrum(DarkMatterSpectrum):
         mean_bias = np.sqrt(self._ib1*self._ib1_bar)
         return self.sigmav_fitter(mean_bias, self.z) / 0.807
         
-    @cached_property("_unnormed_sigmav_from_sims", "sigma8_z", "sigmav_from_sims", 
-                     "sigma_lin")
-    def sigma_v(self):
+    # @cached_property("_unnormed_sigmav_from_sims", "sigma8_z", "sigmav_from_sims",
+    #                  "sigma_lin")
+    # def sigma_v(self):
+    #     """
+    #     The velocity dispersion at z. [units: Mpc/h]
+    #
+    #     If not provided and ``sigmav_from_sims = False``, this defaults to
+    #     the linear theory prediction, which is independent of bias
+    #     """
+    #     if self.sigmav_from_sims:
+    #         return self._unnormed_sigmav_from_sims * self.sigma8_z
+    #     else:
+    #         return self.sigma_lin
+    @parameter
+    def sigma_v(self, val):
         """
-        The velocity dispersion at z. [units: Mpc/h]
-        
-        If not provided and ``sigmav_from_sims = False``, this defaults to 
-        the linear theory prediction, which is independent of bias
+        The velocity dispersion
         """
-        if self.sigmav_from_sims:
-            return self._unnormed_sigmav_from_sims * self.sigma8_z
-        else:
-            return self.sigma_lin
+        return val
     
     def sigmav_from_bias(self, bias):
         """

@@ -27,7 +27,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     allowable_models = ['P00', 'P01', 'P11', 'Pdv']
     allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', 
                         'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims', 
-                        'k0_low', 'enhance_wiggles', 'linear_power_file']
+                        'k0_low', 'enhance_wiggles', 'linear_power_file', 'Pdv_model_type']
     allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
     
     #---------------------------------------------------------------------------
@@ -44,6 +44,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                        k0_low=5e-3,
                        enhance_wiggles=True,
                        linear_power_file=None,
+                       Pdv_model_type='jennings',
                        **kwargs):
         """
         Parameters
@@ -142,6 +143,9 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         # initialize the integrals    
         Integrals.__init__(self)
+        
+        # set the Pdv model
+        self.Pdv_model_type = Pdv_model_type
         
     def __setstate__(self, d):
         self.__dict__ = d
@@ -516,6 +520,16 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         Whether to use interpolated sim results for Pdv
         """
         return val
+        
+    @parameter
+    def Pdv_model_type(self, val):
+        """
+        Either `jennings` or `sims` to describe the Pdv model
+        """
+        allowed = ['jennings', 'sims']
+        if val not in allowed:
+            raise ValueError("`Pdv_model_type` must be one of %s" %str(allowed))
+        return val
 
     @cached_property("cosmo")
     def P00_hzpt_model(self):
@@ -556,7 +570,30 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         on interpolating simulations
         """
         return SimulationPdv(self.power_lin, self.z, self.sigma8_z, self.f)
-          
+        
+    def Pdv_jennings(self, k):
+        """
+        Return the density-divergence cross spectrum using the fitting
+        formula from Jennings et al 2012 (arxiv: 1207.1439)
+        """
+        a0 = -12483.8; a1 = 2.554; a2 = 1381.29; a3 = 2.540
+        D = self.cosmo.D_z(self.z)
+        s8 = self.cosmo.sigma8() * (self.sigma8_z / self.cosmo.Sigma8_z(self.z))
+        
+        # z = 0 results
+        self.P00_hzpt_model.sigma8_z = s8
+        P00_z0 = self.P00_hzpt_model(k)
+        
+        # redshift scaling
+        z_scaling = 3. / (D + D**2 + D**3)
+        
+        # reset sigma8_z
+        self.P00_hzpt_model.sigma8_z = self.sigma8_z
+        g = (a0 * P00_z0**0.5 + a1 * P00_z0**2) / (a2 + a3 * P00_z0)
+        toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
+        return - self.f * toret
+        
+        
     #---------------------------------------------------------------------------
     # utility functions
     #---------------------------------------------------------------------------        
@@ -671,7 +708,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return norm*(self.power_lin(self.k) + norm*self._Pdd_0(self.k))
         
     #---------------------------------------------------------------------------
-    @cached_property("k", "f", "z", "_power_norm", "use_Pdv_model", "Pdv_loaded")
+    @cached_property("k", "f", "z", "_power_norm", "use_Pdv_model", "Pdv_model_type", "Pdv_loaded")
     def Pdv(self):
         """
         The 1-loop cross-correlation between dark matter density and velocity 
@@ -682,7 +719,10 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             return self.get_loaded_data('Pdv', self.k)
         else:
             if self.use_Pdv_model:
-                return self.Pdv_sim_model(self.k)
+                if self.Pdv_model_type == 'jennings':
+                    return self.Pdv_jennings(self.k)
+                elif self.Pdv_model_type == 'sims':
+                    return self.Pdv_sim_model(self.k)
             else:
                 norm = self._power_norm
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_0(self.k))

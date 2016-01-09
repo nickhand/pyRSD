@@ -4,7 +4,7 @@ from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
 from .simulation import VelocityDispersionFits, NonlinearBiasFits
 from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
-                          PhmResidualModelParams, CrossStochasticityLogModelParams
+                          CrossStochasticityLogModelParams
 from .halo_zeldovich import HaloZeldovichPhm
 
 
@@ -13,9 +13,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
     
     allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                        ['sigmav_from_sims', 'use_tidal_bias', 'use_mean_bias']  
+                        ['vel_disp_from_sims', 'use_tidal_bias', 'use_mean_bias']  
 
-    def __init__(self,  sigmav_from_sims=True, 
+    def __init__(self,  vel_disp_from_sims=True, 
                         use_tidal_bias=False,
                         use_mean_bias=False, 
                         **kwargs):
@@ -25,7 +25,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         # set the default parameters
         self.use_mean_bias      = use_mean_bias
-        self.sigmav_from_sims   = sigmav_from_sims
+        self.vel_disp_from_sims = vel_disp_from_sims
         self.use_tidal_bias     = use_tidal_bias
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
@@ -92,10 +92,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
             
     @parameter
-    def sigmav_from_sims(self, val):
+    def vel_disp_from_sims(self, val):
         """
         Whether to use the linear velocity dispersion for halos as 
-        computed from simulations.
+        computed from simulations, which includes a slight mass
+        dependence 
         """
         return val
         
@@ -128,7 +129,49 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return val
                 
     #---------------------------------------------------------------------------
-    # CACHED PROPERTIES
+    # simulation-calibrated model parameters
+    #---------------------------------------------------------------------------
+    @cached_property()
+    def nonlinear_bias_fitter(self):
+        """
+        Interpolator from simulation data for nonlinear biases
+        """
+        return NonlinearBiasFits()
+                  
+    @cached_property()
+    def vel_disp_fitter(self):
+        """
+        Interpolator from simulation data for linear velocity dispersion of halos
+        """
+        return VelocityDispersionFits()
+
+    @cached_property()
+    def cross_stoch_log_model_params(self):
+        """
+        The bestfit params for the (type B) cross-bin stochasticity, modeled 
+        using a log model, and interpolated using a Gaussian process as a function of 
+        sigma8(z) and b1 
+        """
+        return CrossStochasticityLogModelParams()
+        
+    @cached_property()
+    def stoch_log_model_params(self):
+        """
+        The bestfit params for the (type B) stochasticity, modeled using a log model,
+        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+        """
+        return StochasticityLogModelParams() 
+        
+    @cached_property()
+    def stoch_pade_model_params(self):
+        """
+        The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
+        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+        """
+        return StochasticityPadeModelParams()
+            
+    #---------------------------------------------------------------------------
+    # cached properties
     #---------------------------------------------------------------------------
     @cached_property("cosmo")
     def Phm_hzpt_model(self):
@@ -158,28 +201,28 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return (self.b1*self.b1_bar)**0.5
         
-    @cached_property("_ib1", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1", "z")
     def b2_00(self):
         """
         The quadratic, local bias used for the P00_ss term for the 1st tracer.
         """
         return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_00')
         
-    @cached_property("_ib1_bar", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1_bar", "z")
     def b2_00_bar(self):
         """
         The quadratic, local bias used for the P00_ss term for the 2nd tracer.
         """
         return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_00')
     
-    @cached_property("_ib1", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1", "z")
     def b2_01(self):
         """
         The quadratic, local bias used for the P01_ss term for the 1st tracer.
         """
         return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_01')        
     
-    @cached_property("_ib1_bar", "z", "nonlinear_bias_fitter")
+    @cached_property("_ib1_bar", "z")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term for the 2nd tracer.
@@ -207,49 +250,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return 0.
                 
     @cached_property()
-    def nonlinear_bias_fitter(self):
-        """
-        Interpolator from simulation data for nonlinear biases
-        """
-        return NonlinearBiasFits()
-                  
-    @cached_property()
-    def sigmav_fitter(self):
-        """
-        Interpolator from simulation data for linear sigmav of halos
-        """
-        return VelocityDispersionFits()
-
-    @cached_property()
-    def cross_stoch_log_model_params(self):
-        """
-        The bestfit params for the (type B) cross-bin stochasticity, modeled 
-        using a log model, and interpolated using a Gaussian process as a function of 
-        sigma8(z) and b1 
-        """
-        return CrossStochasticityLogModelParams()
-        
-    @cached_property()
-    def stoch_log_model_params(self):
-        """
-        The bestfit params for the (type B) stochasticity, modeled using a log model,
-        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
-        """
-        return StochasticityLogModelParams() 
-        
-    @cached_property()
-    def stoch_pade_model_params(self):
-        """
-        The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
-        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
-        """
-        return StochasticityPadeModelParams()
-    
-    @cached_property()
-    def Phm_residual_model_params(self):
-        return PhmResidualModelParams()
-        
-    @cached_property()
     def bias_to_sigma_relation(self):
         """
         The relationship between bias and velocity dispersion, using the 
@@ -258,36 +258,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return BiasToSigmaRelation(self.z, self.cosmo, interpolate=self.interpolate)
              
-    @cached_property("_ib1", "_ib1_bar", "z")
-    def _unnormed_sigmav_from_sims(self):
+    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1", "_ib1_bar", "sigma8_z")
+    def sigmav_halo(self):
         """
-        The sigma_v value from simulations, evaluated with sigma8 = 1, such
-        that the true sigma_v is obtained by multiplying by `sigma8`
+        The velocity dispersion for halos
         """
-        # get the sigma in Mpc/h with D(z)*f(z) behavior divided out
-        mean_bias = np.sqrt(self._ib1*self._ib1_bar)
-        return self.sigmav_fitter(mean_bias, self.z) / 0.807
+        if self.vel_disp_from_sims:
+            mean_bias = np.sqrt(self._ib1*self._ib1_bar)
+            return self.vel_disp_fitter(b1=mean_bias, sigma8_z=self.sigma8_z)
+        else:
+            return self.sigma_v
         
-    # @cached_property("_unnormed_sigmav_from_sims", "sigma8_z", "sigmav_from_sims",
-    #                  "sigma_lin")
-    # def sigma_v(self):
-    #     """
-    #     The velocity dispersion at z. [units: Mpc/h]
-    #
-    #     If not provided and ``sigmav_from_sims = False``, this defaults to
-    #     the linear theory prediction, which is independent of bias
-    #     """
-    #     if self.sigmav_from_sims:
-    #         return self._unnormed_sigmav_from_sims * self.sigma8_z
-    #     else:
-    #         return self.sigma_lin
-    @parameter
-    def sigma_v(self, val):
-        """
-        The velocity dispersion
-        """
-        return val
-    
     def sigmav_from_bias(self, bias):
         """
         Return the velocity dispersion `sigmav` value for the specified linear
@@ -466,7 +447,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 2:
             
             # the mu^2 terms depending on velocity (velocities in Mpc/h)
-            sigma_lin = self.sigma_v
+            sigma_lin = self.sigmav_halo
             sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH)
             sigsq_eff = sigma_lin**2 + sigma_02**2
             
@@ -549,7 +530,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # optionally add small scale velocity
-            sigma_lin = self.sigma_v 
+            sigma_lin = self.sigmav_halo 
             sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH)
             sigsq_eff = sigma_lin**2 + sigma_03**2
             
@@ -572,7 +553,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             Plin = self.normed_power_lin(self.k)
             
             # now do mu^4 terms depending on velocity (velocities in Mpc/h)
-            sigma_lin = self.sigma_v  
+            sigma_lin = self.sigmav_halo  
             sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_12**2
             
@@ -607,7 +588,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         P13_ss = PowerTerm()
         
         # vector small scale velocity additions
-        sigma_lin = self.sigma_v 
+        sigma_lin = self.sigmav_halo 
         sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
         sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
         
@@ -647,7 +628,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # velocities in units of Mpc/h
-            sigma_lin = self.sigma_v
+            sigma_lin = self.sigmav_halo
             sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_22**2
         
@@ -689,7 +670,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # compute the relevant small-scale + linear velocities in Mpc/h
-            sigma_lin = self.sigma_v 
+            sigma_lin = self.sigmav_halo 
             sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH) 
             sigsq_eff = sigma_lin**2 + sigma_04**2
             

@@ -125,7 +125,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self.alpha_par         = 1.
         self.alpha_perp        = 1.
         self.small_scale_sigma = 0.
-        self.sigmav_input      = self.sigma_lin
+        self.sigma_v           = self.sigma_lin
         self.sigma_v2          = 0.
         self.sigma_bv2         = 0.
         self.sigma_bv4         = 0.
@@ -352,9 +352,10 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return val
             
     @parameter
-    def sigmav_input(self, val):
+    def sigma_v(self, val):
         """
-        The user-input velocity dispersion at z [units: Mpc/h]
+        The velocity dispersion at z = 0. If not provided, defaults to the 
+        linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
         """
         return val
         
@@ -389,7 +390,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return val
 
     #---------------------------------------------------------------------------
-    # CACHED PROPERTIES
+    # cached properties
     #---------------------------------------------------------------------------
     @cached_property("transfer_fit")
     def transfer_fit_int(self):
@@ -397,15 +398,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         The integer value representing the transfer function fitting method
         """
         return getattr(pygcl.Cosmology, self.transfer_fit)
-            
-    @cached_property("sigmav_input")
-    def sigma_v(self):
-        """
-        The velocity dispersion at z = 0. If not provided, defaults to the 
-        linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
-        """
-        return self.sigmav_input
-            
+                        
     @cached_property("cosmo_filename", "transfer_fit", "linear_power_file")
     def cosmo(self):
         """
@@ -607,7 +600,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         else:
             return k_obs/self.alpha_perp
                 
-    #---------------------------------------------------------------------------
     def mu_true(self, mu_obs):
         """
         Return the `true` mu values, given an observed mu
@@ -615,7 +607,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         F = self.alpha_par / self.alpha_perp
         return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)
     
-    #-------------------------------------------------------------------------------
     def update(self, **kwargs):
         """
         Update the attributes. Checks that the current value is not equal to 
@@ -629,7 +620,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             except Exception as e:
                 raise RuntimeError("failure to set parameter `%s` to value %s: %s" %(k, str(v), str(e)))
     
-    #---------------------------------------------------------------------------
     def _update_models(self, name, models, val):
         """
         Update the specified attribute for the models given
@@ -638,15 +628,13 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             if hasattr(self, "_%s__%s" %(self.__class__.__name__, model)):
                 setattr(getattr(self, model), name, val)
                 
-    #---------------------------------------------------------------------------    
     def normed_power_lin(self, k):
         """
         The linear power evaluated at the specified `k` and at `z`, 
         normalized to `sigma8_z`
         """
         return self._power_norm * self.power_lin(k)
-
-    #---------------------------------------------------------------------------
+        
     def normed_power_lin_nw(self, k):
         """
         The Eisenstein-Hu no-wiggle, linear power evaluated at the specified 
@@ -656,7 +644,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 
             
     #---------------------------------------------------------------------------
-    # POWER TERM ATTRIBUTES
+    # power term attributes
     #---------------------------------------------------------------------------
     @interpolated_property("P00", interp="k")
     def P_mu0(self, k):

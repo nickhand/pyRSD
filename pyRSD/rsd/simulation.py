@@ -2,14 +2,14 @@ from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
 from .. import pygcl, numpy as np, data as sim_data
 from . import tools
-from .mu0_modeling import GPModelParams 
 
 import itertools
 import pandas as pd
 from sklearn.gaussian_process import GaussianProcess
 
+
 #-------------------------------------------------------------------------------
-# SIMULATION DATA INTERPOLATED WITH A GAUSSIAN PROCESS
+# simulation measurements, interpolated with a gaussian process
 #-------------------------------------------------------------------------------
 class GaussianProcessSimulationData(Cache):
     """
@@ -18,25 +18,27 @@ class GaussianProcessSimulationData(Cache):
     """
     _gp_parameters = ['corr', 'theta0', 'thetaL', 'thetaU', 'random_start', 'regr']
     
-    def __init__(self, param_names, use_bias_ratio=False, use_errors=False, **gp_kwargs):
+    def __init__(self, param_names, data, use_bias_ratio=False, use_errors=False, **gp_kwargs):
         """
         Parameters
         ----------
-        param_names : list
-            A list of the names of each parameter to interpolate
-        use_bias_ratio : bool, optional
-            If `True`, interpolate the ratio of the parameters to the linear
-            bias values. Default is `False`
+        param_names : list of str
+            the names of the parameters we are interpolated -- each must
+            be a column in `data`
+        data : pd.DataFrame
+            the data frame holding the data to be interpolated using the GP, 
+            where the index is interpreted as the independent variables
         use_errors : bool, optional
             If `True`, read the errors from param_name + '_err' column and input
             those to the GP. Default is `False`
         """            
-        # initalize the base class
+        # initalize the base Cache class
         super(GaussianProcessSimulationData, self).__init__()    
         
-        # store the parameters
         self.param_names = param_names
-        self.use_bias_ratio = use_bias_ratio
+        self.data = data
+        
+        # whether we are using errors
         self.use_errors = use_errors
         
         # set defaults of gp kwargs
@@ -93,9 +95,9 @@ class GaussianProcessSimulationData(Cache):
         return val          
         
     @parameter
-    def use_bias_ratio(self, val):
+    def data(self, val):
         """
-        Interpolate the ratio of the parameters to the linear bias values
+        The data frame holding the data to interpolate
         """
         return val
         
@@ -106,30 +108,25 @@ class GaussianProcessSimulationData(Cache):
         """
         return val
         
-    #---------------------------------------------------------------------------
-    # Cached properties
-    #---------------------------------------------------------------------------
-    @cached_property()
-    def data(self):
+    @parameter
+    def param_names(self, val):
         """
-        Construct the `pandas` `DataFrame` holding the data, as measured
-        from sims
+        The names of the parameters to interpolate
         """
-        keys = []
-        data = []
-        for z, params in self.sim_results.iteritems():
-            for bias in sorted(params.keys()):
-                keys.append((float(z), float(bias)))
-                data.append(params[bias])
-
-        # make the data data frame
-        index = pd.MultiIndex.from_tuples(keys, names=['z', 'b1'])
-        return pd.DataFrame(data, index=index, columns=self.param_names).sort_index()
+        return val
         
-    
     #---------------------------------------------------------------------------
-    @cached_property("use_errors", "use_bias_ratio", 'corr', 'theta0', 'thetaU',
-                     'thetaL', 'random_start', 'regr', 'data')
+    # cached properties
+    #---------------------------------------------------------------------------
+    @cached_property("data")
+    def independent_vars(self):
+        """
+        The names of the independent variables
+        """
+        return list(self.data.index.names)
+        
+    @cached_property('data', 'param_names', 'use_errors', 'corr', 'theta0', 
+                        'thetaU', 'thetaL', 'random_start', 'regr')
     def interpolation_table(self):
         """
         Setup the backend Gaussian processes needed to do the interpolation
@@ -153,126 +150,120 @@ class GaussianProcessSimulationData(Cache):
             # initialize
             table[col] = GaussianProcess(**kwargs)
             
-            # use the results divided by bias
-            if self.use_bias_ratio:
-                y /= y.index.get_level_values('b1')
-
             # do the fit
             X = np.asarray(list(y.index.get_values()))
             table[col].fit(X, y)            
             
         return table
         
-    #---------------------------------------------------------------------------
     @tools.unpacked
-    def __call__(self, b1, z, col=None):
+    def __call__(self, select=None, **indep_vars):
         """
-        Evaluate the Gaussian processes at specified bias and redshift
+        Evaluate the Gaussian processes at the specified independent variables
         
         Parameters
         ----------
-        b1 : float
-            The linear bias parameter
-        z : float
-            The redshift to evaluate at
+        select : str or list of str, optional
+            If not `None`, only return the parameters with names specified here
+        indep_vars : keywords
+            the independent variables to evaluate at
         """
-        factor = 1. if not self.use_bias_ratio else b1
-        pt = np.array([z, b1])[None,:]
-        if col is None:
-            return [(self.interpolation_table[col].predict(pt)*factor)[0] for col in self.param_names]
-        else:
-            return [(self.interpolation_table[col].predict(pt)*factor)[0]]
+        for p in indep_vars:
+            if p not in self.independent_vars:
+                raise ValueError("please specify the `%s` independent variable" %p)
         
-    #---------------------------------------------------------------------------
+        # the domain point to evaluate at        
+        pt = np.array([indep_vars[x] for x in self.independent_vars]).reshape((1,-1))
+        
+        # determine which parameters we are returning
+        if select is None:
+            select = self.param_names
+        elif isinstance(select, str):
+            select = [select]
+        
+        for col in select:
+            if col not in self.param_names:
+                raise ValueError("the parameter '%s' is not valid" %col)
+        
+        return [(self.interpolation_table[sel].predict(pt))[0] for sel in select]
 
-#-------------------------------------------------------------------------------
+
 class NonlinearBiasFits(GaussianProcessSimulationData):
     """
     Class implementing nonlinear bias fits from Vlah et al. 2013
     """
-    # the nonlinear bias values at z = 0
-    params_z0 = {'1.18' : (-0.39, -0.45), 
-                 '1.47' : (-0.08, -0.35), 
-                 '2.04' : (0.91, 0.14), 
-                 '3.05' : (3.88, 2.00)}
-    
-    # the nonlinear bias values at z = 0.509
-    params_z1 = {'1.64' : (0.18, -0.20), 
-                 '2.18' : (1.29, 0.48), 
-                 '3.13' : (4.48, 2.60), 
-                 '4.82' : (12.70, 9.50)}
-                 
-    # the nonlinear bias values at z = 0.989
-    params_z2 = {'2.32' : (1.75, 0.80), 
-                 '3.17' : (4.77, 3.15), 
-                 '4.64' : (12.80, 10.80)}
-    sim_results = {'0':params_z0, '0.509':params_z1, '0.989':params_z2}
-    
-    #---------------------------------------------------------------------------
-    def __init__(self):
+    def __init__(self, fit='runPB', **kwargs):
+        """
+        Parameters
+        ----------
+        fit : str, {`runPB`, `zvonimir`}
+            which fit to use, either from RunPB simulations or Zvonimir's
+            simulations
+        """
+        # load the data from the json file
+        data = sim_data.nonlinear_bias_params(fit)
 
         cols = ['b2_00', 'b2_01']
-        super(NonlinearBiasFits, self).__init__(cols, use_bias_ratio=True)
-    
-    #---------------------------------------------------------------------------
-  
+        use_errors = all(col+'_err' in data for col in cols)
 
-#-------------------------------------------------------------------------------
-class SigmavFits(GaussianProcessSimulationData):
+        # interpolate b2 / b1
+        for col in cols:
+            data[col] /= data['b1']
+            if use_errors:
+                data[col+'_err'] /= data['b1']
+
+        data = data.set_index(['z', 'b1'])
+        super(NonlinearBiasFits, self).__init__(cols, data, use_errors=use_errors, **kwargs)
+        
+    def __call__(self, **kwargs):
+        
+        b1 = kwargs['b1']
+        toret = super(NonlinearBiasFits, self).__call__(**kwargs)
+        if isinstance(toret, list):
+            return [b1*x for x in toret]
+        else:
+            return b1*toret
+    
+class VelocityDispersionFits(GaussianProcessSimulationData):
     """
-    The halo velocity dispersion in Mpc/h at z = 0, as measured from 
-    simulations. The values are taken from Figure 8 of Vlah et al. 2013. 
-    
-    These are computed in km/s as:
-    
-    :math: \sigma_v(z=0) * D(z) * f(z) * (100h km/s/Mpc)
-    :math: \sigma_v(z=0) ~ 6 Mpc/h.
-    
-    The results will be returned in units of Mpc/h, in order to remove
-    the f dependence by:
-    
-    sigma_v(z) [Mpc/h] = sigma_v(z) [km/s] / f(z) / D(z) / (100h km/s/Mpc)
+    The halo velocity dispersion in Mpc/h, normalized by f(z)*sigma8(z),
+    as measured from the runPB simulations
     """
-    # the values at z = 0
-    params_z0 = {'1.18' : (306.), 
-                 '1.47' : (302.), 
-                 '2.04' : (296.), 
-                 '3.05' : (288.)}
-    
-    # the values at z = 0.509
-    params_z1 = {'1.64' : (357.), 
-                 '2.18' : (352.), 
-                 '3.13' : (346.), 
-                 '4.82' : (339.)}
-                 
-    # the values at z = 0.509
-    params_z2 = {'2.32' : (340.), 
-                 '3.17' : (337.), 
-                 '4.64' : (330.)}
-                 
-    sim_results = {'0':params_z0, '0.509':params_z1, '0.989':params_z2}
-    
-    #---------------------------------------------------------------------------
     def __init__(self):
-
-        cols = ['sigmav']
         
-        # convert the values to Mpc/h
-        cosmo = pygcl.Cosmology("teppei_sims.ini")
-        new_sim_results = {}
-        for z_str, values in self.sim_results.iteritems():
-            z = float(z_str)
-            params = {}
-            for b1, sigma in values.iteritems():
-               factor = cosmo.f_z(z)*cosmo.D_z(z)*100.
-               params[b1] = (sigma/factor)
-               
-            new_sim_results[z_str] = params
-        self.sim_results = new_sim_results
-        super(SigmavFits, self).__init__(cols, use_bias_ratio=False)
+        # load the data from the json file
+        data = sim_data.velocity_dispersion_params()
         
-    #---------------------------------------------------------------------------
-
+        # divide measured sigma_v by f
+        data['sigma_v'] /= data['f']
+        
+        # set the index
+        data = data.set_index(['sigma8_z', 'b1'])
+        kws = {'use_errors':False, 'regr':'quadratic'}
+        super(VelocityDispersionFits, self).__init__(['sigma_v'], data, **kws)
+        
+class P11PlusP02Correction(GaussianProcessSimulationData):
+    """
+    Return the correction parameters for the halo P11 + P02
+    correction model.
+    
+    The parameters are: [`b2_00`, `A1`, `A2`, `A3`, `A4`]
+    
+    where `b2_00` is used to compute `P02` and we add
+    `(1 + A1*k + A2*k**2 + A3*k**3 + A4*k**4) * P11`
+    """
+    def __init__(self):
+        
+        # load the data from the json file
+        data = sim_data.P11_plus_P02_correction_params()
+        
+        # initialize
+        data = data.set_index(['sigma8_z', 'b1'])
+        param_names = ['b2_00', 'A1', 'A2', 'A3', 'A4']
+        kws = {'use_errors':True, 'regr':'quadratic'}
+        super(P11PlusP02Correction, self).__init__(param_names, data, **kws)
+        
+ 
 #-------------------------------------------------------------------------------  
 # SIMULATION DATA INTERPOLATION ON A GRID
 #-------------------------------------------------------------------------------
@@ -563,14 +554,6 @@ class SimulationPdv(InterpolatedSimulationData):
         else:
             pts = np.asarray(list(itertools.product([self.z], k)))
         return self.interpolation_table(pts)*factor
-    
-#------------------------------------------------------------------------------
-class Mu6CorrectionParams(GPModelParams):
-    """
-    The model parameters for the mu^6 correction 
-    """
-    def __init__(self):
-        path = sim_data.mu6_correction_params()
-        super(Mu6CorrectionParams, self).__init__(path)
+
     
     

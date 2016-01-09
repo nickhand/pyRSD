@@ -2,7 +2,7 @@ from .. import numpy as np
 from .tools import RSDSpline, BiasToSigmaRelation
 from ._cache import parameter, cached_property, interpolated_property
 from .power_dm import DarkMatterSpectrum, PowerTerm
-from .simulation import SigmavFits, NonlinearBiasFits, Mu6CorrectionParams
+from .simulation import VelocityDispersionFits, NonlinearBiasFits
 from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
                           PhmResidualModelParams, CrossStochasticityLogModelParams
 from .halo_zeldovich import HaloZeldovichPhm
@@ -180,28 +180,28 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The quadratic, local bias used for the P00_ss term for the 1st tracer.
         """
-        return self.nonlinear_bias_fitter(self._ib1, self.z, col='b2_00')
+        return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_00')
         
     @cached_property("_ib1_bar", "z", "nonlinear_bias_fitter")
     def b2_00_bar(self):
         """
         The quadratic, local bias used for the P00_ss term for the 2nd tracer.
         """
-        return self.nonlinear_bias_fitter(self._ib1_bar, self.z, col='b2_00')
+        return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_00')
     
     @cached_property("_ib1", "z", "nonlinear_bias_fitter")
     def b2_01(self):
         """
         The quadratic, local bias used for the P01_ss term for the 1st tracer.
         """
-        return self.nonlinear_bias_fitter(self._ib1, self.z, col='b2_01')        
+        return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_01')        
     
     @cached_property("_ib1_bar", "z", "nonlinear_bias_fitter")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term for the 2nd tracer.
         """
-        return self.nonlinear_bias_fitter(self._ib1_bar, self.z, col='b2_01')
+        return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_01')
     
     @cached_property("_ib1", "use_tidal_bias")
     def bs(self):
@@ -222,15 +222,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             return -2./7 * (self._ib1_bar - 1.)
         else:
             return 0.
-    
-    @cached_property()
-    def mu6_correction_params(self):
-        """
-        Model params giving the mu^6 amplitude correction as a function
-        of linear bias
-        """
-        return Mu6CorrectionParams()
-        
+            
     @cached_property('z', '_ib1', '_ib1_bar')
     def mu6_correction(self):
         """
@@ -252,7 +244,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         Interpolator from simulation data for linear sigmav of halos
         """
-        return SigmavFits()
+        return VelocityDispersionFits()
 
     @cached_property()
     def cross_stoch_log_model_params(self):

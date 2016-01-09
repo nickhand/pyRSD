@@ -393,6 +393,33 @@ def mu6_correction_params():
     """    
     fname = _os.path.join(data_dir, 'simulation_fits/mu6_corrs_gp_bestfit_params.pickle')
     return fname
+
+def velocity_dispersion_params():
+    """
+    Return a pandas DataFrame holding the measured velocity dispersion values
+    as measured from the runPB simulations
+    """    
+    fname = _os.path.join(data_dir, 'simulation_fits/runPB_vel_disp_fits.json')
+    return pd.read_json(fname).sort_index()
+    
+def nonlinear_bias_params(fit):
+    """
+    Return a pandas DataFrame holding the measured b2_00 and b2_01 bias parameters
+    as measured from Zvonimir's simulations or the runPB simulations
+    """    
+    if fit not in ['runPB', 'zvonimir']:
+        raise ValueError("`fit` for nonlinear bias parameters must be `runPB` or `zvonimir`")
+        
+    fname = _os.path.join(data_dir, 'simulation_fits/nonlinear_biases_fits_%s.json' %fit)
+    return pd.read_json(fname).sort_index()
+    
+def P11_plus_P02_correction_params():
+    """
+    Return a pandas DataFrame holding the parameters for the `P11+P02` correction model, 
+    as measured from the runPB simulations
+    """            
+    fname = _os.path.join(data_dir, 'simulation_fits/P11_plus_P02_correction_fits.json')
+    return pd.read_json(fname).sort_index()
     
     
 

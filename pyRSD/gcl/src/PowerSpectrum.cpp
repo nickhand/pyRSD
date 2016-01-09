@@ -144,3 +144,31 @@ parray PowerSpectrum::Q3_Zel(const parray& k) const {
     return out;
 }
 
+// sigma3_squared kernel I_R(k)
+static double I_R(double r) {
+    double r2 = pow2(r), r4 = pow4(r);
+    return (5./(512.*r4*r)) * (-4*r*(1+r2)*(3-14*r2+3*r4) - 3*pow4(r2-1)*log(pow2(r-1)/pow2(r+1)));
+}
+
+static double sigma3_sq_integrand(const PowerSpectrum& P, double k, double r) {
+    if (r == 1.) r = 1.-1e-10;
+    return r*r * P(k*r) * I_R(r);
+}
+
+double PowerSpectrum::sigma3_squared(double k) const {
+    
+    if(k <= 0) return 0;
+    return 1 / (2*M_PI*M_PI) * pow3(k) * Integrate(bind(sigma3_sq_integrand, cref(*this), k, _1), 1e-5, 1e2, 1e-4, 1e-10);
+}
+
+parray PowerSpectrum::sigma3_squared(const parray& k) const {
+    int n = (int)k.size();
+    parray out(n);
+    #pragma omp parallel for
+    for(int i = 0; i < n; i++)
+        out[i] = sigma3_squared(k[i]);
+    return out;
+}
+
+
+

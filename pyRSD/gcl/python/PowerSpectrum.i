@@ -39,5 +39,8 @@ public:
     
     parray Q3_Zel(const parray& k) const;
     double Q3_Zel(const double k) const;
+    
+    double sigma3_squared(double k) const;
+    parray sigma3_squared(const parray& k) const;
 };
 

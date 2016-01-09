@@ -69,7 +69,11 @@ public:
     
     /* Compute Q3(k) for several k */
     virtual parray Q3_Zel(const parray& k) const;
-
+    
+    /* sigma3 squared */
+    virtual double sigma3_squared(double k) const;
+    virtual parray sigma3_squared(const parray& k) const;
+    
     /* Write power spectrum to file */
     virtual void Save(const char* filename, double kmin = 1e-3, double kmax = 1, int Nk = 1000, bool log = false);
     

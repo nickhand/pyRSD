@@ -1,23 +1,30 @@
 from .. import numpy as np
-from .tools import RSDSpline, BiasToSigmaRelation
 from ._cache import parameter, cached_property, interpolated_property
-from .power_dm import DarkMatterSpectrum, PowerTerm
-from .simulation import VelocityDispersionFits, NonlinearBiasFits
-from .mu0_modeling import StochasticityPadeModelParams, StochasticityLogModelParams, \
-                          CrossStochasticityLogModelParams
+from .tools import RSDSpline, BiasToSigmaRelation
+
+from .power_dm import DarkMatterSpectrum
+from .power_dm import PowerTerm
 from .halo_zeldovich import HaloZeldovichPhm
+from .simulation import VelocityDispersionFits
+from .simulation import NonlinearBiasFits
+from .simulation import P11PlusP02Correction
+
+from .mu0_modeling import StochasticityPadeModelParams
+from .mu0_modeling import StochasticityLogModelParams
+from .mu0_modeling import CrossStochasticityLogModelParams
 
 
-#-------------------------------------------------------------------------------
 class BiasedSpectrum(DarkMatterSpectrum):
     
     allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                        ['vel_disp_from_sims', 'use_tidal_bias', 'use_mean_bias']  
+                        ['vel_disp_from_sims', 'use_tidal_bias', 'use_mean_bias', 
+                         'correct_P11_plus_P02']  
 
     def __init__(self,  vel_disp_from_sims=True, 
                         use_tidal_bias=False,
                         use_mean_bias=False, 
+                        correct_P11_plus_P02=True,
                         **kwargs):
         
         # initalize the dark matter power spectrum
@@ -31,12 +38,22 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.b1                 = 2.
         self.sigma_v            = self.sigma_lin
         
+        # correction models
+        self.correct_P11_plus_P02 = correct_P11_plus_P02
+        
         # set b1_bar, unless we are fixed
         if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
          
     #---------------------------------------------------------------------------
     # ATTRIBUTES
     #---------------------------------------------------------------------------        
+    @parameter
+    def correct_P11_plus_P02(self, val):
+        """
+        Whether to correct the halo P11+P02 model, using a sim-calibrated model
+        """           
+        return val
+        
     @parameter
     def use_mean_bias(self, val):
         """
@@ -144,6 +161,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Interpolator from simulation data for linear velocity dispersion of halos
         """
         return VelocityDispersionFits()
+        
+    @cached_property()
+    def P11_plus_P02_correction(self):
+        """
+        The parameters for the P11+P02 correction
+        """
+        return P11PlusP02Correction()
 
     @cached_property()
     def cross_stoch_log_model_params(self):
@@ -446,6 +470,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         # do mu^2 terms?
         if self.max_mu >= 2:
             
+            if self.correct_P11_plus_P02:
+                b2_00 = self.P11_plus_P02_correction(b1=b1, sigma8_z=self.sigma8_z, select='b2_00')
+                b2_00_bar = self.P11_plus_P02_correction(b1=b1_bar, sigma8_z=self.sigma8_z, select='b2_00')
+            
             # the mu^2 terms depending on velocity (velocities in Mpc/h)
             sigma_lin = self.sigmav_halo
             sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH)
@@ -474,7 +502,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return P02_ss
             
     #---------------------------------------------------------------------------
-    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11", "correct_P11_plus_P02")
     def P11_ss(self):
         """
         The auto-correlation of the halo momentum field, which 
@@ -493,6 +521,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
             I1 = self.Ivvdd_h01(self.k)
             I2 = self.Idvdv_h03(self.k)
             P11_ss.total.mu2 = (b1*b1_bar)*self.f**2 * (I1 + I2)
+            
+            if self.correct_P11_plus_P02:
+                params = ['A1', 'A2', 'A3', 'A4']
+                kws = {'b1':(b1*b1_bar)**0.5, 'sigma8_z':self.sigma8_z, 'select':params}
+                A1, A2, A3, A4 = self.P11_plus_P02_correction(**kws)
+                P11_ss.total.mu2 *= (1 + A1*self.k + A2*self.k**2 + A3*self.k**3 + A4*self.k**4)
             
             # do mu^4 terms?
             if self.max_mu >= 4:

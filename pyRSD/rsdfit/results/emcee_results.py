@@ -194,6 +194,14 @@ class EmceeParameter(object):
             return self._trace
         else:
             return self._trace[:,niter]
+          
+    @property
+    def stderr(self):
+        """
+        The one-sigma standard error, averaging the lower and upper bounds
+        """
+        one_sigma = self.one_sigma
+        return 0.5*(abs(one_sigma[0]) + one_sigma[1])
 
 
 class EmceeResults(object):

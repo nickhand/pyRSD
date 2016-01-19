@@ -5,26 +5,26 @@ from .tools import RSDSpline, BiasToSigmaRelation
 from .power_dm import DarkMatterSpectrum
 from .power_dm import PowerTerm
 from .halo_zeldovich import HaloZeldovichPhm
+
 from .simulation import VelocityDispersionFits
 from .simulation import NonlinearBiasFits
-from .simulation import P11PlusP02Correction
-
-from .mu0_modeling import StochasticityPadeModelParams
-from .mu0_modeling import StochasticityLogModelParams
-from .mu0_modeling import CrossStochasticityLogModelParams
-
+from .simulation import Pmu2ResidualCorrection
+from .simulation import Pmu4ResidualCorrection
+from .simulation import AutoStochasticityFits
+from .simulation import CrossStochasticityFits
 
 class BiasedSpectrum(DarkMatterSpectrum):
     
     allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
     allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                        ['vel_disp_from_sims', 'use_tidal_bias', 'use_mean_bias', 
-                         'correct_P11_plus_P02']  
+                        ['vel_disp_from_sims', 'use_tidal_bias', 
+                         'use_mean_bias', 'correct_mu2', 'correct_mu4']  
 
     def __init__(self,  vel_disp_from_sims=True, 
                         use_tidal_bias=False,
                         use_mean_bias=False, 
-                        correct_P11_plus_P02=True,
+                        correct_mu2=True,
+                        correct_mu4=True,
                         **kwargs):
         
         # initalize the dark matter power spectrum
@@ -39,18 +39,26 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.sigma_v            = self.sigma_lin
         
         # correction models
-        self.correct_P11_plus_P02 = correct_P11_plus_P02
+        self.correct_mu2 = correct_mu2
+        self.correct_mu4 = correct_mu4
         
         # set b1_bar, unless we are fixed
         if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
          
     #---------------------------------------------------------------------------
-    # ATTRIBUTES
+    # attributes
     #---------------------------------------------------------------------------        
     @parameter
-    def correct_P11_plus_P02(self, val):
+    def correct_mu2(self, val):
         """
-        Whether to correct the halo P11+P02 model, using a sim-calibrated model
+        Whether to correct the halo P[mu2] model, using a sim-calibrated model
+        """           
+        return val
+        
+    @parameter
+    def correct_mu4(self, val):
+        """
+        Whether to correct the halo P[mu4] model, using a sim-calibrated model
         """           
         return val
         
@@ -163,36 +171,57 @@ class BiasedSpectrum(DarkMatterSpectrum):
         return VelocityDispersionFits()
         
     @cached_property()
-    def P11_plus_P02_correction(self):
+    def Pmu2_correction(self):
         """
-        The parameters for the P11+P02 correction
+        The parameters for the halo P[mu2] correction
         """
-        return P11PlusP02Correction()
+        return Pmu2ResidualCorrection()
+        
+    @cached_property()
+    def Pmu4_correction(self):
+        """
+        The parameters for the halo P[mu4] correction
+        """
+        return Pmu4ResidualCorrection()
 
     @cached_property()
-    def cross_stoch_log_model_params(self):
+    def auto_stochasticity_fits(self):
         """
-        The bestfit params for the (type B) cross-bin stochasticity, modeled 
-        using a log model, and interpolated using a Gaussian process as a function of 
-        sigma8(z) and b1 
+        The prediction for the auto stochasticity from a GP
         """
-        return CrossStochasticityLogModelParams()
+        return AutoStochasticityFits()
         
     @cached_property()
-    def stoch_log_model_params(self):
+    def cross_stochasticity_fits(self):
         """
-        The bestfit params for the (type B) stochasticity, modeled using a log model,
-        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
+        The prediction for the cross stochasticity from a GP
         """
-        return StochasticityLogModelParams() 
-        
-    @cached_property()
-    def stoch_pade_model_params(self):
-        """
-        The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
-        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
-        """
-        return StochasticityPadeModelParams()
+        return CrossStochasticityFits()
+
+    # @cached_property()
+    # def cross_stoch_log_model_params(self):
+    #     """
+    #     The bestfit params for the (type B) cross-bin stochasticity, modeled
+    #     using a log model, and interpolated using a Gaussian process as a function of
+    #     sigma8(z) and b1
+    #     """
+    #     return CrossStochasticityLogModelParams()
+    #
+    # @cached_property()
+    # def stoch_log_model_params(self):
+    #     """
+    #     The bestfit params for the (type B) stochasticity, modeled using a log model,
+    #     and interpolated using a Gaussian process as a function of sigma8(z) and b1
+    #     """
+    #     return StochasticityLogModelParams()
+    #
+    # @cached_property()
+    # def stoch_pade_model_params(self):
+    #     """
+    #     The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
+    #     and interpolated using a Gaussian process as a function of sigma8(z) and b1
+    #     """
+    #     return StochasticityPadeModelParams()
             
     #---------------------------------------------------------------------------
     # cached properties
@@ -282,14 +311,23 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return BiasToSigmaRelation(self.z, self.cosmo, interpolate=self.interpolate)
              
-    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1", "_ib1_bar", "sigma8_z")
+    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1", "sigma8_z")
     def sigmav_halo(self):
         """
-        The velocity dispersion for halos
+        The velocity dispersion for halos, possibly as a function of bias
         """
         if self.vel_disp_from_sims:
-            mean_bias = np.sqrt(self._ib1*self._ib1_bar)
-            return self.vel_disp_fitter(b1=mean_bias, sigma8_z=self.sigma8_z)
+            return self.vel_disp_fitter(b1=self._ib1, sigma8_z=self.sigma8_z)
+        else:
+            return self.sigma_v
+            
+    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1_bar", "sigma8_z")
+    def sigmav_halo_bar(self):
+        """
+        The velocity dispersion for halos, possibly as a function of bias
+        """
+        if self.vel_disp_from_sims:
+            return self.vel_disp_fitter(b1=self._ib1_bar, sigma8_z=self.sigma8_z)
         else:
             return self.sigma_v
         
@@ -312,53 +350,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 toret = 0.
                 
             return toret
-        
+                        
     #---------------------------------------------------------------------------
-    # MU0 MODELING ATTRIBUTES
-    #---------------------------------------------------------------------------
-    @cached_property("_ib1", "z", "sigma8_z")
-    def stoch_model_params_dict(self):             
-        if self._ib1 != self._ib1_bar:
-            raise ValueError("should probably call cross_stoch_model_params_dict if b1 != b1_bar")
-            
-        if self._ib1 > 1.9:
-            return 'pade', self.stoch_pade_model_params.to_dict(self.sigma8_z, self._ib1)
-        else:
-            # this is a spline table, so could crash
-            try:
-                return 'log', self.stoch_log_model_params.to_dict(self.sigma8_z, self._ib1)
-            except:
-                return 'pade', self.stoch_pade_model_params.to_dict(self.sigma8_z, self._ib1)
-    
-    @cached_property("_ib1", "_ib1_bar", "z", "sigma8_z")
-    def cross_stoch_model_params_dict(self):   
-        biases = sorted([self._ib1, self._ib1_bar])          
-        return self.cross_stoch_log_model_params.to_dict(self.sigma8_z, biases[0], biases[-1])
-    
-    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
-    def stochasticity_model(self):
-        """
-        The model for the (type B) stochasticity, modeled using a Pade expansion,
-        and interpolated using a Gaussian process as a function of sigma8(z) and b1 
-        """  
-        def pade_model(k, A0=None, A1=None, R=None):
-             return (A0 + A1*(k*R)**2) / (1 + (k*R)**2)
-        def log_model(k, A0=None, A1=None):
-             return A0 + A1*np.log(k)
-                
-        if self._ib1 != self._ib1_bar:
-            params = self.cross_stoch_model_params_dict
-            return log_model(self.k, **params)
-        else:
-            model_name, params = self.stoch_model_params_dict
-            if model_name == 'pade':
-                return pade_model(self.k, **params)
-            else:
-                return log_model(self.k, **params)
-                
-    #---------------------------------------------------------------------------
-    # POWER TERM ATTRIBUTES
-    #---------------------------------------------------------------------------        
+    # power term attributes
+    #---------------------------------------------------------------------------                
     @cached_property("_ib1", "P00", "use_Phm_model", "sigma8_z")
     def Phm(self):
         """
@@ -393,15 +388,24 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("stochasticity_model")
+    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
     def stochasticity(self):
         """
         The isotropic (type B) stochasticity term due to the discreteness of the 
         halos, i.e., Poisson noise at 1st order.
+        
+        Notes
+        -----
+        *   The model for the (type B) stochasticity, interpolated as a function 
+            of sigma8(z), b1, and k using a Gaussian process
         """
-        return self.stochasticity_model
-                
-                
+        params = {'sigma8_z' : self.sigma8_z, 'k' : self.k}    
+        if self._ib1 != self._ib1_bar:
+            b1_1, b1_2 = sorted([self._ib1, self._ib1_bar])
+            return self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
+        else:
+            return self.auto_stochasticity_fits(b1=self._ib1, **params)
+                  
     @cached_property("P00_ss_no_stoch", "stochasticity")
     def P00_ss(self):
         """
@@ -413,7 +417,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         P00_ss.total.mu0 = self.P00_ss_no_stoch.total.mu0 + stoch
         return P00_ss
             
-    #---------------------------------------------------------------------------
     @cached_property("P00", "Phm", "Phm_bar")
     def P00_ss_no_stoch(self):
         """
@@ -426,7 +429,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         	       
         return P00_ss_no_stoch
             
-    #---------------------------------------------------------------------------
     @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01")
     def P01_ss(self):
         """
@@ -453,9 +455,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
             P01_ss.total.mu2 = term1 + term2 + term3 + term4
         return P01_ss
         
-    #---------------------------------------------------------------------------
     @cached_property("_ib1", "_ib1_bar", "max_mu", "P02", "P00_ss_no_stoch",
-                     "sigma_v", "sigma_bv2")
+                     "sigmav_halo", "sigmav_halo_bar")
     def P02_ss(self):
         """
         The correlation of the halo density and halo kinetic energy, which 
@@ -470,21 +471,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         # do mu^2 terms?
         if self.max_mu >= 2:
             
-            if self.correct_P11_plus_P02:
-                b2_00 = self.P11_plus_P02_correction(b1=b1, sigma8_z=self.sigma8_z, select='b2_00')
-                b2_00_bar = self.P11_plus_P02_correction(b1=b1_bar, sigma8_z=self.sigma8_z, select='b2_00')
-            
-            # the mu^2 terms depending on velocity (velocities in Mpc/h)
-            sigma_lin = self.sigmav_halo
-            sigma_02  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH)
-            sigsq_eff = sigma_lin**2 + sigma_02**2
+            # the velocities
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
             
             # get the integral attributes
             K20_a = self.K20_a(self.k)
             K20s_a = self.K20s_a(self.k)
             
             term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-            term2_mu2 =  -(self.f*self.k)**2 * sigsq_eff * self.P00_ss_no_stoch.total.mu0
+            term2_mu2 =  -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P00_ss_no_stoch.total.mu0
             term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
             P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
             
@@ -501,8 +497,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         return P02_ss
             
-    #---------------------------------------------------------------------------
-    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11", "correct_P11_plus_P02")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11")
     def P11_ss(self):
         """
         The auto-correlation of the halo momentum field, which 
@@ -521,13 +516,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             I1 = self.Ivvdd_h01(self.k)
             I2 = self.Idvdv_h03(self.k)
             P11_ss.total.mu2 = (b1*b1_bar)*self.f**2 * (I1 + I2)
-            
-            if self.correct_P11_plus_P02:
-                params = ['A1', 'A2', 'A3', 'A4']
-                kws = {'b1':(b1*b1_bar)**0.5, 'sigma8_z':self.sigma8_z, 'select':params}
-                A1, A2, A3, A4 = self.P11_plus_P02_correction(**kws)
-                P11_ss.total.mu2 *= (1 + A1*self.k + A2*self.k**2 + A3*self.k**3 + A4*self.k**4)
-            
+                        
             # do mu^4 terms?
             if self.max_mu >= 4:
                 Plin = self.normed_power_lin(self.k)
@@ -537,43 +526,40 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 J10 = self.J10(self.k)
                 
                 # first term is mu^4 part of P11
-                term1_mu4 = self.P11.total.mu4
+                term1_mu4 = 0.5*(b1 + b1_bar)*self.P11.total.mu4
                 
                 # second term is B11 coming from P11
-                term2_mu4 = (b1 + b1_bar - 2.)*self.f**2 * (6.*self.k**2*Plin*J10 + 2*I22)
+                term2_mu4 = -0.5*((b1 - 1) + (b1_bar-1)) * self.Pvv_jennings(self.k)
                 
                 # third term is mu^4 part of C11 (at 2-loop)
                 I1 = self.Ivvdd_h02(self.k)
                 I2 = self.Idvdv_h04(self.k)
-                term3_mu4 =  (b1*b1_bar - 1)*self.f**2 * (I1 + I2)
+                term3_mu4 =  self.f**2 * (I1 + I2) * (b1*b1_bar - 0.5*(b1 + b1_bar))
 
                 P11_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
         
         return P11_ss
-            
-    #---------------------------------------------------------------------------
-    @cached_property("P01_ss", "sigma_v", "sigma_v2")
+        
+    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar")
     def P03_ss(self):
         """
         The cross-corelation of halo density with the rank three tensor field
         ((1+delta_h)v)^3, which contributes mu^4 terms.
         """
+        b1, b1_bar  = self._ib1, self._ib1_bar
         P03_ss = PowerTerm()
         
         # do mu^4 term?
         if self.max_mu >= 4:
             
-            # optionally add small scale velocity
-            sigma_lin = self.sigmav_halo 
-            sigma_03  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH)
-            sigsq_eff = sigma_lin**2 + sigma_03**2
-            
-            P03_ss.total.mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
-    
+            # velocites
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
+            P03_ss.total.mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P01_ss.total.mu2
+                
         return P03_ss
             
-    #---------------------------------------------------------------------------
-    @cached_property("P01_ss", "sigma_v", "sigma_bv2")
+    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar")
     def P12_ss(self):
         """
         The correlation of halo momentum and halo kinetic energy density, which 
@@ -586,20 +572,15 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             Plin = self.normed_power_lin(self.k)
             
-            # now do mu^4 terms depending on velocity (velocities in Mpc/h)
-            sigma_lin = self.sigmav_halo  
-            sigma_12  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
-            sigsq_eff = sigma_lin**2 + sigma_12**2
+            # the velocities
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
             
-            # get the integral attributes
-            I12 = self.I12(self.k)
-            I03 = self.I03(self.k)
-            J02 = self.J02(self.k)
-            
-            term1_mu4 = self.f**3 * (I12 - 0.5*(b1 + b1_bar)*I03 + 2*self.k**2 * J02*Plin)
-            term2_mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P01_ss.total.mu2
-            P12_ss.total.mu4 = term1_mu4 + term2_mu4
-            
+            term1_mu4 = self.P12.total.mu4
+            term2_mu4 = -0.5*((b1 - 1) + (b1_bar - 1))*self.f**3*self.I03(self.k)
+            term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (self.P01_ss.total.mu2 - self.P01.total.mu2)
+            P12_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
+                        
             # do mu^6 terms?
             if self.max_mu >= 6:
                 
@@ -612,8 +593,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         return P12_ss
             
-    #---------------------------------------------------------------------------
-    @cached_property("P11_ss", "sigma_v", "sigma_bv2", "sigma_v2")
+    @cached_property("P11_ss", "sigmav_halo", "sigmav_halo_bar")
     def P13_ss(self):
         """
         The cross-correlation of halo momentum with the rank three tensor field
@@ -621,10 +601,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         P13_ss = PowerTerm()
         
-        # vector small scale velocity additions
-        sigma_lin = self.sigmav_halo 
-        sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
-        sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
+        # velocities
+        sigsq = self.sigmav_halo**2
+        sigsq_bar = self.sigmav_halo_bar**2
         
         # the amplitude
         A = -(self.f*self.k)**2
@@ -633,22 +612,17 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # using P11_ss mu^2 terms 
-            P13_ss.total.mu4 = A*sigsq_eff_vector*self.P11_ss.total.mu2
+            P13_ss.total.mu4 = 0.5*A*(sigsq + sigsq_bar)*self.P11_ss.total.mu2
         
             # do mu^6 terms?
             if self.max_mu >= 6:
                 
-                # scalar small scale velocity additions
-                sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH) 
-                sigsq_eff_scalar = sigma_lin**2 + sigma_13_s**2
-                
                 # using P11_ss mu^4 terms
-                P13_ss.total.mu6 = A*sigsq_eff_scalar*self.P11_ss.total.mu4
+                P13_ss.total.mu6 = 0.5*A*(sigsq + sigsq_bar)*self.P11_ss.total.mu4
         
         return P13_ss
             
-    #---------------------------------------------------------------------------
-    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv2")
+    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar")
     def P22_ss(self):
         """
         The auto-corelation of halo kinetic energy density, which contributes
@@ -662,10 +636,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.max_mu >= 4:
             
             # velocities in units of Mpc/h
-            sigma_lin = self.sigmav_halo
-            sigma_22  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
-            sigsq_eff = sigma_lin**2 + sigma_22**2
-        
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
+
             # 1-loop P22bar
             term1 = self.P22.no_velocity.mu4
             
@@ -673,10 +646,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.sigmasq_k(self.k)**2
             
             # b1 * P02_bar
-            term3 = -0.5*(self.k*self.f)**2 * sigsq_eff * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
+            term3 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
             
             # sigma^4 x P00_ss
-            term4 = 0.25*(self.k*self.f)**4 * sigsq_eff**2 * self.P00_ss_no_stoch.total.mu0
+            term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * self.P00_ss_no_stoch.total.mu0
             
             P22_ss.total.mu4 = term1 + term2 + term3 + term4
             
@@ -684,14 +657,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
             if self.max_mu >= 6:
                 
                 term1 = self.P22.no_velocity.mu6
-                term2 = -0.5*(self.k*self.f)**2 * sigsq_eff * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
+                term2 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
                 P22_ss.total.mu6 = term1 + term2
-            
-                    
+                
         return P22_ss
             
-    #---------------------------------------------------------------------------
-    @cached_property("P02", "P00_ss_no_stoch", "sigma_v", "sigma_bv4")
+    @cached_property("P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar")
     def P04_ss(self):
         """
         The cross-correlation of halo density with the rank four tensor field
@@ -703,23 +674,22 @@ class BiasedSpectrum(DarkMatterSpectrum):
         # do mu^4 terms?
         if self.max_mu >= 4:
             
-            # compute the relevant small-scale + linear velocities in Mpc/h
-            sigma_lin = self.sigmav_halo 
-            sigma_04  = self.sigma_bv4 * self.cosmo.h() / (self.f*self.conformalH) 
-            sigsq_eff = sigma_lin**2 + sigma_04**2
+            # velocities in Mpc/h
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
             
             # contribution from P02[mu^2]
-            term1 = -0.25*(b1 + b1_bar)*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu2
+            term1 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu2
             
             # contribution here from P00_ss * vel^4
             A = (1./12)*(self.f*self.k)**4 * self.P00_ss_no_stoch.total.mu0
-            term2 = A*(3.*sigsq_eff**2 + self.velocity_kurtosis)
+            term2 = A*(3.*0.5*(sigsq**2 + sigsq_bar**2) + self.velocity_kurtosis)
             
             P04_ss.total.mu4 = term1 + term2
         
             # do mu^6 terms?
             if self.max_mu >= 6:
-                P04_ss.total.mu6 = -0.25*(b1 + b1_bar)*(self.f*self.k)**2 * sigsq_eff * self.P02.no_velocity.mu4
+                P04_ss.total.mu6 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu4
             
         return P04_ss
             
@@ -734,24 +704,40 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return self.P00_ss.total.mu0
 
-    @interpolated_property("P01_ss", "P11_ss", "P02_ss", interp="k")
+    @interpolated_property("P01_ss", "P11_ss", "P02_ss", "correct_mu2", interp="k")
     def P_mu2(self, k):
         """
         The full halo power spectrum term with mu^2 angular dependence. Contributions
         from P01_ss, P11_ss, and P02_ss.
         """
-        return self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2
+        toret = self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2
+        
+        # add a correction interpolated from a GP
+        if self.correct_mu2:
+            mean_bias = (self._ib1*self._ib1_bar)**0.5
+            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'f':self.f, 'k':k}
+            toret += self.Pmu2_correction(**params)
+            
+        return toret
 
     @interpolated_property("P11_ss", "P02_ss", "P12_ss", "P22_ss", "P03_ss",
-                           "P13_ss", "P04_ss", interp="k")
+                           "P13_ss", "P04_ss", "correct_mu4", interp="k")
     def P_mu4(self, k):
         """
         The full halo power spectrum term with mu^4 angular dependence. Contributions
         from P11_ss, P02_ss, P12_ss, P03_ss, P13_ss, P22_ss, and P04_ss.
         """
-        return self.P11_ss.total.mu4 + self.P02_ss.total.mu4 + self.P12_ss.total.mu4 + \
-               self.P22_ss.total.mu4 + self.P03_ss.total.mu4 + self.P13_ss.total.mu4 + \
-               self.P04_ss.total.mu4
+        toret = self.P11_ss.total.mu4 + self.P02_ss.total.mu4 + \
+                self.P12_ss.total.mu4 + self.P03_ss.total.mu4 + \
+                self.P22_ss.total.mu4 + self.P13_ss.total.mu4 + self.P04_ss.total.mu4
+                
+        # add a correction interpolated from a GP
+        if self.correct_mu4:
+            mean_bias = (self._ib1*self._ib1_bar)**0.5
+            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'f':self.f, 'k':k}
+            toret += self.Pmu4_correction(**params)
+                
+        return toret
     
     @interpolated_property("P12_ss", interp="k")
     def P_mu6(self, k):
@@ -761,7 +747,3 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
             
         return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k)
-
-#-------------------------------------------------------------------------------  
-
-        

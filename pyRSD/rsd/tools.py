@@ -52,6 +52,25 @@ def unpacked(method):
             return result
     return _decorator
 
+
+def align_input(f):
+    """
+    Decorator to align input by repeating any scalar entries
+    """     
+    def wrapper(self, **kw):
+        ii = [k for k in kw if not np.isscalar(kw[k])]
+        if len(ii):
+            if len(ii) > 1:
+                if not all(len(kw[k]) == len(kw[ii[0]]) for k in ii):
+                    raise ValueError("size mismatch when aligning multiple arrays")
+            N = len(kw[ii[0]])
+            for k in kw:
+                if k not in ii:
+                    kw[k] = np.repeat(kw[k], N)
+        return f(self, **kw)
+        
+    return wrapper
+    
 def broadcast_kmu(f):
     """
     Decorator to properly handle broadcasting of k, mu

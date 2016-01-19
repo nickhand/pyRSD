@@ -5,99 +5,93 @@ from . import tools
 
 import itertools
 import pandas as pd
-from sklearn.gaussian_process import GaussianProcess
+#from sklearn.gaussian_process import GaussianProcess
+from sklearn import preprocessing
+import george
 
 
 #-------------------------------------------------------------------------------
 # simulation measurements, interpolated with a gaussian process
 #-------------------------------------------------------------------------------
-class GaussianProcessSimulationData(Cache):
+class GeorgeSimulationData(Cache):
     """
-    Class to interpolate simulation data as a function of bias and redshift, 
-    using `GaussianProcess` class from `sklearn.gaussian_process`
-    """
-    _gp_parameters = ['corr', 'theta0', 'thetaL', 'thetaU', 'random_start', 'regr']
+    Class to interpolate and predict functional data based on a training set 
+    of simulation data as a function of cosmological parameters
     
-    def __init__(self, param_names, data, use_bias_ratio=False, use_errors=False, **gp_kwargs):
+    Notes
+    -----
+    * this uses the `GP` class from the class `george` (see: http://dan.iel.fm/george)
+    """    
+    def __init__(self,  
+                    independent_vars,  
+                    data, 
+                    theta, 
+                    use_errors=True,
+                    dependent_col='y',
+                    kernel=george.kernels.ExpSquaredKernel, 
+                    solver=george.HODLRSolver):
         """
         Parameters
         ----------
-        param_names : list of str
-            the names of the parameters we are interpolated -- each must
-            be a column in `data`
-        data : pd.DataFrame
-            the data frame holding the data to be interpolated using the GP, 
-            where the index is interpreted as the independent variables
+        independent_vars : list of str
+            the names of the independent variables to interpolate the data. Should be
+            a column in `data`
+        data : pandas.DataFrame
+            the `pandas.DataFrame` holding the independent and dependent variables, 
+            which will be plugged into the Gaussian process
+        theta : array_like
+            the hyperparameters that d
         use_errors : bool, optional
-            If `True`, read the errors from param_name + '_err' column and input
-            those to the GP. Default is `False`
-        """            
-        # initalize the base Cache class
-        super(GaussianProcessSimulationData, self).__init__()    
+            If `True`, use the errors associated with each dependent variable
+        dependent_col : list of str
+            the name of the dependent variable to interpolate the data. Should be 
+            a column in `data`
+        kernel : `george.kernels.Kernel`, optional
+            the kernel class to use in the Gaussian process covariance matrix
+        solver : {`george.BasicSolver`, `george.HODLRSolver`}, optional
+            the solver class to use when evaluating the Gaussian process
+        """
+        super(GeorgeSimulationData, self).__init__()    
         
-        self.param_names = param_names
-        self.data = data
-        
-        # whether we are using errors
-        self.use_errors = use_errors
-        
-        # set defaults of gp kwargs
-        self.corr         = gp_kwargs.get('corr', 'squared_exponential')
-        self.theta0       = gp_kwargs.get('theta0', [0.1, 0.1])
-        self.thetaL       = gp_kwargs.get('thetaL', [1e-4, 1e-4])
-        self.thetaU       = gp_kwargs.get('thetaU', [1., 1.])
-        self.random_start = gp_kwargs.get('random_start', 100)
-        self.regr         = gp_kwargs.get('regr', 'linear')
+        self.use_errors  = use_errors
+        self.data        = data
+        self.independent = independent_vars
+        self.dependent   = dependent_col
+        self.solver      = solver
+        self.kernel      = kernel
+        self.theta       = theta
          
     #---------------------------------------------------------------------------
-    # Parameters
+    # parameters
     #---------------------------------------------------------------------------
     @parameter
-    def corr(self, val):
+    def kernel(self, val):
         """
-        The GP correlation kernel to use
+        The kernel to use in the Gaussian process
         """
         return val
         
     @parameter
-    def theta0(self, val):
+    def solver(self, val):
         """
-        The initial values of the GP hyperparameters
+        The solver to use in the Gaussian process
         """
+        avail = [george.BasicSolver, george.HODLRSolver]
+        if val not in avail:
+            raise ValueError("the `solver` must be one of %s" %str(avail))
         return val
             
     @parameter
-    def thetaL(self, val):
+    def theta(self, val):
         """
-        The lower bounds on the values of the GP hyperparameters
+        The Gaussian process hyperparameters
         """
         return val
-        
-    @parameter
-    def thetaU(self, val):
-        """
-        The upper bounds on the values of the GP hyperparameters
-        """
-        return val 
-        
-    @parameter
-    def random_start(self, val):
-        """
-        The number of restarts from random hyperparameters to do
-        """
-        return val 
-        
-    @parameter
-    def regr(self, val):
-        """
-        The type of GP regression model
-        """
-        return val          
-        
+                
     @parameter
     def data(self, val):
         """
-        The data frame holding the data to interpolate
+        The `pandas.DataFrame` holding the data to interpolate
         """
         return val
         
@@ -109,163 +103,256 @@ class GaussianProcessSimulationData(Cache):
         return val
         
     @parameter
-    def param_names(self, val):
+    def independent(self, val):
         """
-        The names of the parameters to interpolate
+        The names of the independent variables to interpolate
         """
+        for col in val:
+            if col not in self.data.columns:
+                raise ValueError("the independent variable `%s` is not in the supplied data" %col)
+        return val
+    
+    @parameter
+    def dependent(self, val):
+        """
+        The name of the dependent variable to interpolate
+        """
+        if val not in self.data.columns:
+            raise ValueError("the dependent variable `%s` is not in the supplied data" %val)
+        if self.use_errors and val+'_err' not in self.data.columns:
+            raise ValueError("trying to use error columns, but no error available for `%s`" %val)
         return val
         
     #---------------------------------------------------------------------------
     # cached properties
     #---------------------------------------------------------------------------
+    @cached_property("x")
+    def xshape(self):
+        """
+        The shape of the second axis of `x`
+        """
+        x = self.x
+        if x.ndim == 1: x = x.reshape(-1, 1)
+        return x.shape[1]
+        
+    @cached_property("theta")
+    def ndim(self):
+        """
+        The number of independent variables, also the size of `theta`
+        """
+        return len(self.theta)
+        
     @cached_property("data")
-    def independent_vars(self):
+    def x(self):
         """
-        The names of the independent variables
+        The unscaled independent variables
         """
-        return list(self.data.index.names)
+        return self.data.loc[:,self.independent].values
         
-    @cached_property('data', 'param_names', 'use_errors', 'corr', 'theta0', 
-                        'thetaU', 'thetaL', 'random_start', 'regr')
-    def interpolation_table(self):
+    @cached_property("data")
+    def y(self):
         """
-        Setup the backend Gaussian processes needed to do the interpolation
+        The unscaled dependent variable
         """
-        table = {}
+        return self.data.loc[:,self.dependent].values
         
-        # initialize GP for each column in `self.data`
-        for col in self.param_names:
-            kwargs = {name : getattr(self, name) for name in self._gp_parameters}
-            
-            # get the data to be interpolated, making sure to remove nulls
-            y = self.data[col]
-            inds = y.notnull() 
-            y = y[inds]            
-            
-            # check for error columns
-            if self.use_errors and col+'_err' in self.data:
-                dy = self.data[col+'_err'][inds]
-                kwargs['nugget'] = (dy/y)**2
-                
-            # initialize
-            table[col] = GaussianProcess(**kwargs)
-            
-            # do the fit
-            X = np.asarray(list(y.index.get_values()))
-            table[col].fit(X, y)            
-            
-        return table
+    @cached_property("data")
+    def yerr(self):
+        """
+        The unscaled error on the dependent variable
+        """
+        return self.data.loc[:,self.dependent+'_err'].values
         
+    @cached_property("x")
+    def x_scaler(self):
+        """
+        The class to scale the `x` attribute
+        """
+        x = self.x
+        if x.ndim == 1: x = x.reshape(-1, 1)
+        return preprocessing.StandardScaler(copy=True).fit(x)
+        
+    @cached_property("y")
+    def y_scaler(self):
+        """
+        The class to scale the `y` attribute
+        """
+        return preprocessing.StandardScaler(copy=True).fit(self.y.reshape(-1, 1))
+    
+    @cached_property("x")
+    def x_scaled(self):
+        """
+        The scaled independent variables
+        """
+        if self.x.ndim == 1:
+            return np.squeeze(self.x_scaler.transform(self.x.reshape(-1,1)))
+        else:
+            return self.x_scaler.transform(self.x)
+        
+    @cached_property("y")
+    def y_scaled(self):
+        """
+        The scaled dependent variable
+        """
+        return np.squeeze(self.y_scaler.transform(self.y.reshape(-1,1)))
+        
+    @cached_property("yerr")
+    def yerr_scaled(self):
+        """
+        The scaled error on the dependent variable
+        """
+        return self.yerr / self.y_scaler.scale_
+            
+    @cached_property("data", "kernel", "solver")
+    def gp(self):
+        """
+        The Gaussian process needed to do the interpolation
+        """
+        if self.ndim == self.xshape:
+            kernel = self.kernel(self.theta, ndim=self.xshape)
+        elif self.ndim == self.xshape+1:
+            kernel = self.theta[0] * self.kernel(self.theta[1:], ndim=self.xshape)
+        else:
+            raise ValueError("size mismatch between supplied `x` variables and `theta` length")
+        gp = george.GP(kernel, solver=self.solver)
+    
+        kws = {}
+        if self.use_errors: kws['yerr'] = self.yerr_scaled
+        gp.compute(self.x_scaled, **kws)
+        return gp
+    
+    @tools.align_input
     @tools.unpacked
-    def __call__(self, select=None, **indep_vars):
+    def __call__(self, **indep_vars):
         """
         Evaluate the Gaussian processes at the specified independent variables
         
         Parameters
         ----------
-        select : str or list of str, optional
-            If not `None`, only return the parameters with names specified here
         indep_vars : keywords
             the independent variables to evaluate at
         """
-        for p in indep_vars:
-            if p not in self.independent_vars:
+        for p in self.independent:
+            if p not in indep_vars:
                 raise ValueError("please specify the `%s` independent variable" %p)
+          
+        # the domain point to predict
+        pt = np.asarray([indep_vars[k] for k in self.independent]).T 
+        if pt.ndim == 1: pt = pt.reshape(1, -1) 
+        pt = self.x_scaler.transform(pt)
         
-        # the domain point to evaluate at        
-        pt = np.array([indep_vars[x] for x in self.independent_vars]).reshape((1,-1))
+        return self.y_scaler.inverse_transform(self.gp.predict(self.y_scaled, pt, mean_only=True))
+        
+
+class GeorgeSimulationDataSet(object):
+    """
+    Class designed to hold a `GeorgeSimulationData` instance
+    for several parameters of the same model
+    """
+    def __init__(self, independent, dependent, data, theta, **kwargs):
+        
+        if len(dependent) != len(theta):
+            raise ValueError("size mismatch between supplied parameter names and `theta`")
+        self.dependents = dependent
+          
+        # initialize a Gaussian process for each dependent variable
+        self._data = {}
+        for i, dep in enumerate(dependent):
+            self._data[dep] = GeorgeSimulationData(independent, data, theta[i], dependent_col=dep, **kwargs)
+            
+    @tools.unpacked
+    def __call__(self, select=None, **indep_vars):
         
         # determine which parameters we are returning
         if select is None:
-            select = self.param_names
+            select = self.dependents
         elif isinstance(select, str):
             select = [select]
-        
-        for col in select:
-            if col not in self.param_names:
-                raise ValueError("the parameter '%s' is not valid" %col)
-        
-        return [(self.interpolation_table[sel].predict(pt))[0] for sel in select]
-
-
-class NonlinearBiasFits(GaussianProcessSimulationData):
-    """
-    Class implementing nonlinear bias fits from Vlah et al. 2013
-    """
-    def __init__(self, fit='runPB', **kwargs):
-        """
-        Parameters
-        ----------
-        fit : str, {`runPB`, `zvonimir`}
-            which fit to use, either from RunPB simulations or Zvonimir's
-            simulations
-        """
-        # load the data from the json file
-        data = sim_data.nonlinear_bias_params(fit)
-
-        cols = ['b2_00', 'b2_01']
-        use_errors = all(col+'_err' in data for col in cols)
-
-        # interpolate b2 / b1
-        for col in cols:
-            data[col] /= data['b1']
-            if use_errors:
-                data[col+'_err'] /= data['b1']
-
-        data = data.set_index(['z', 'b1'])
-        super(NonlinearBiasFits, self).__init__(cols, data, use_errors=use_errors, **kwargs)
-        
-    def __call__(self, **kwargs):
-        
-        b1 = kwargs['b1']
-        toret = super(NonlinearBiasFits, self).__call__(**kwargs)
-        if isinstance(toret, list):
-            return [b1*x for x in toret]
         else:
-            return b1*toret
-    
-class VelocityDispersionFits(GaussianProcessSimulationData):
+            raise ValueError("do not understand `select` keyword")
+            
+        return [self._data[par](**indep_vars) for par in select]
+        
+
+class Pmu4ResidualCorrection(GeorgeSimulationData):
     """
-    The halo velocity dispersion in Mpc/h, normalized by f(z)*sigma8(z),
-    as measured from the runPB simulations
+    Return the prediction for the Pmu4 model residual correction
     """
     def __init__(self):
         
-        # load the data from the json file
-        data = sim_data.velocity_dispersion_params()
+        theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417]
+        data = sim_data.Pmu4_correction_data()
+        independent = ['f', 'sigma8_z', 'b1', 'k']
         
-        # divide measured sigma_v by f
+        super(Pmu4ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
+        
+class Pmu2ResidualCorrection(GeorgeSimulationData):
+    """
+    Return the prediction for the Pmu2 model residual correction
+    """
+    def __init__(self):
+        
+        theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439]
+        data = sim_data.Pmu2_correction_data()
+        independent = ['f', 'sigma8_z', 'b1', 'k']
+        
+        super(Pmu2ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
+        
+class VelocityDispersionFits(GeorgeSimulationData):
+    """
+    Return the halo velocity dispersion in Mpc/h, as measured from the 
+    runPB simulations, as a function of sigma8(z) and b1
+    """
+    def __init__(self):
+        
+        theta = [0.48087061,  0.21521814,  0.45073149]
+        data = sim_data.velocity_dispersion_data()
         data['sigma_v'] /= data['f']
+        data['sigma_v_err'] = 1e-5 * data['sigma_v']
         
-        # set the index
-        data = data.set_index(['sigma8_z', 'b1'])
-        kws = {'use_errors':False, 'regr':'quadratic'}
-        super(VelocityDispersionFits, self).__init__(['sigma_v'], data, **kws)
-        
-class P11PlusP02Correction(GaussianProcessSimulationData):
+        independent = ['sigma8_z', 'b1']
+        kws = {'use_errors':True, 'dependent_col':'sigma_v'}
+        super(VelocityDispersionFits, self).__init__(independent, data, theta, **kws)
+
+class NonlinearBiasFits(GeorgeSimulationDataSet):
     """
-    Return the correction parameters for the halo P11 + P02
-    correction model.
-    
-    The parameters are: [`b2_00`, `A1`, `A2`, `A3`, `A4`]
-    
-    where `b2_00` is used to compute `P02` and we add
-    `(1 + A1*k + A2*k**2 + A3*k**3 + A4*k**4) * P11`
+    Return the nonlinear biases b2_00 and b2_01 as a function of 
+    sigma8(z) and b1
     """
     def __init__(self):
         
-        # load the data from the json file
-        data = sim_data.P11_plus_P02_correction_params()
+        data = sim_data.nonlinear_bias_data()        
+        independent = ['z', 'b1']
+        dependent = ['b2_00', 'b2_01']
+        theta = [[6.52899259, 6.17291945, 4.81539378], [5.76031228, 11.50416509, 1.92884161]]
+        super(NonlinearBiasFits, self).__init__(independent, dependent, data, theta, use_errors=True)
         
-        # initialize
-        data = data.set_index(['sigma8_z', 'b1'])
-        param_names = ['b2_00', 'A1', 'A2', 'A3', 'A4']
-        kws = {'use_errors':True, 'regr':'quadratic'}
-        super(P11PlusP02Correction, self).__init__(param_names, data, **kws)
+class AutoStochasticityFits(GeorgeSimulationData):
+    """
+    Return the prediction for the auto stochasticity
+    """
+    def __init__(self):
         
- 
+        theta = [0.56384418, 0.76723559, 0.49555955, 5.7815692]
+        data = sim_data.auto_stochasticity_data()
+        independent = ['sigma8_z', 'b1', 'k']
+        
+        super(AutoStochasticityFits, self).__init__(independent, data, theta, use_errors=True)
+        
+class CrossStochasticityFits(GeorgeSimulationData):
+    """
+    Return the prediction for the cross stochasticity
+    """
+    def __init__(self):
+        
+        theta = [2.42796735, 0.59461745, 3.75844384, 1.5391186, 11.53257307]
+        data = sim_data.cross_stochasticity_data()
+        independent = ['sigma8_z', 'b1_1', 'b1_2', 'k']
+        
+        super(CrossStochasticityFits, self).__init__(independent, data, theta, use_errors=True)
+
 #-------------------------------------------------------------------------------  
-# SIMULATION DATA INTERPOLATION ON A GRID
+# simulation data interpolated onto a grid
 #-------------------------------------------------------------------------------
 class InterpolatedSimulationData(Cache):
     """

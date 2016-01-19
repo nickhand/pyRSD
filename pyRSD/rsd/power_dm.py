@@ -586,6 +586,28 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
         return - self.f * toret
         
+    def Pvv_jennings(self, k):
+        """
+        Return the divergence auto spectrum using the fitting
+        formula from Jennings et al 2012 (arxiv: 1207.1439)
+        """
+        a0 = -12480.5; a1 = 1.824; a2 = 2165.87; a3 = 1.796
+        D = self.cosmo.D_z(self.z)
+        s8 = self.cosmo.sigma8() * (self.sigma8_z / self.cosmo.Sigma8_z(self.z))
+        
+        # z = 0 results
+        self.P00_hzpt_model.sigma8_z = s8
+        P00_z0 = self.P00_hzpt_model(k)
+        
+        # redshift scaling
+        z_scaling = 3. / (D + D**2 + D**3)
+        
+        # reset sigma8_z
+        self.P00_hzpt_model.sigma8_z = self.sigma8_z
+        g = (a0 * P00_z0**0.5 + a1 * P00_z0**2) / (a2 + a3 * P00_z0)
+        toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
+        return self.f**2 * toret
+        
         
     #---------------------------------------------------------------------------
     # utility functions

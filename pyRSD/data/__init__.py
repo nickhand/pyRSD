@@ -33,13 +33,12 @@ __all__ = ['load',
            'Pgg_z_0_509',
            'Pgg_mono_z_0_509',
            'Pgg_quad_z_0_509', 
-           'stochB_pade_params',
-           'stochB_log_params',
-           'Phm_residual_params',
-           'Phm_correctedPT_params',
-           'Phh_params',
-           'stochB_cross_log_params',
-           'mu6_correction_params', 
+           'Pmu2_correction_data',
+           'Pmu4_correction_data',
+           'nonlinear_bias_data',
+           'velocity_dispersion_data',
+           'auto_stochasticity_data',
+           'cross_stochasticity_data'
            'hzpt_wiggles']
 
 
@@ -68,7 +67,7 @@ def load(f):
     return np.loadtxt(_os.path.join(data_dir, f))
 
 #-------------------------------------------------------------------------------
-# GALAXY SIM DATA
+# galaxy simulation data
 #-------------------------------------------------------------------------------
 def Pcc_z_0_509():
     """
@@ -236,7 +235,7 @@ def Pgg_quad_z_0_509():
     return np.loadtxt(_os.path.join(data_dir, f), usecols=(0, 1, 2))
 
 #-------------------------------------------------------------------------------
-# DARK MATTER SIM DATA
+# dark matter simulation data
 #-------------------------------------------------------------------------------
 def P00_mu0_z_0_000():
     """
@@ -333,93 +332,64 @@ def P11_mu2_z_0_989():
     return load("dark_matter/pkmu_P11_mu2_z_0.989.dat")
 
 #-------------------------------------------------------------------------------
-# SIMULATIONS
+# simulation data training sets
 #-------------------------------------------------------------------------------
-def stochB_pade_params():
+def Pmu2_correction_data():
     """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of Pade expansion for the `type B` stochasticity,
-    as a function of sigma8(z) and b1
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochB_pade_gp_bestfit_params.pickle')
-    return fname
-    
-def stochB_log_params():
-    """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of Pade expansion for the `type B` stochasticity,
-    as a function of sigma8(z) and b1
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochB_log_spline_bestfit_params.pickle')
-    return fname
-    
-def stochB_cross_log_params():
-    """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of Pade expansion for the `type B` cross bin stochasticity,
-    as a function of sigma8(z) and b1
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/stochB_cross_log_gp_bestfit_params.pickle')
-    return fname
-    
-def Phm_residual_params():
-    """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of a Pade expansion modeling Phm - b1*Pzel
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/Phm_residual_gp_bestfit_params.pickle')
-    return fname
-
-def Phm_correctedPT_params():
-    """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of a Pade expansion modeling the corrected PT Phm
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/Phm_correctedPT_gp_bestfit_params.pickle')
-    return fname
-    
-def Phh_params():
-    """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of a mode for Phh
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/Phh_gp_bestfit_params.pickle')
-    return fname
-    
-def mu6_correction_params():
-    """
-    Return the filename of a pickled Gaussian Process holding fits to 
-    the parameters of the mu6 correction model
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/mu6_corrs_gp_bestfit_params.pickle')
-    return fname
-
-def velocity_dispersion_params():
-    """
-    Return a pandas DataFrame holding the measured velocity dispersion values
+    Return a pandas DataFrame holding the training data used to 
+    calibrate the Gaussian process for the `P_mu2` correction model, 
     as measured from the runPB simulations
-    """    
-    fname = _os.path.join(data_dir, 'simulation_fits/runPB_vel_disp_fits.json')
-    return pd.read_json(fname).sort_index()
-    
-def nonlinear_bias_params(fit):
     """
-    Return a pandas DataFrame holding the measured b2_00 and b2_01 bias parameters
-    as measured from Zvonimir's simulations or the runPB simulations
-    """    
-    if fit not in ['runPB', 'zvonimir']:
-        raise ValueError("`fit` for nonlinear bias parameters must be `runPB` or `zvonimir`")
-        
-    fname = _os.path.join(data_dir, 'simulation_fits/nonlinear_biases_fits_%s.json' %fit)
-    return pd.read_json(fname).sort_index()
+    fname = _os.path.join(data_dir, 'simulation_fits/Pmu2_residual_data.pickle')
+    return pd.read_pickle(fname)
     
-def P11_plus_P02_correction_params():
+def Pmu4_correction_data():
     """
-    Return a pandas DataFrame holding the parameters for the `P11+P02` correction model, 
+    Return a pandas DataFrame holding the training data used to 
+    calibrate the Gaussian process for the `P_mu4` correction model, 
     as measured from the runPB simulations
-    """            
-    fname = _os.path.join(data_dir, 'simulation_fits/P11_plus_P02_correction_fits.json')
-    return pd.read_json(fname).sort_index()
+    """
+    fname = _os.path.join(data_dir, 'simulation_fits/Pmu4_residual_data.pickle')
+    return pd.read_pickle(fname)
+    
+def nonlinear_bias_data():     
+    """
+    Return a pandas DataFrame holding the training data used to 
+    calibrate the Gaussian process nonlinear biases `b2_00` and `b2_01`,
+    as measured from the runPB simulations
+    """
+    fname = _os.path.join(data_dir, 'simulation_fits/nonlinear_biases_fits_runPB.pickle')
+    return pd.read_pickle(fname)
+    
+def velocity_dispersion_data():
+    """
+    Return a pandas DataFrame holding the training data used to 
+    calibrate the Gaussian process for the bias dependence of the halo 
+    velocity dispersion, as measured from the runPB simulations
+    """
+    fname = _os.path.join(data_dir, 'simulation_fits/runPB_vel_disp.pickle')
+    return pd.read_pickle(fname)
+    
+def auto_stochasticity_data():
+    """
+    Return a pandas DataFrame holding the training data used to 
+    calibrate the Gaussian process for the auto stochasiticity,
+    as measured from the runPB simulations
+    """
+    fname = _os.path.join(data_dir, 'simulation_fits/auto_stochasticity_runPB.pickle')
+    return pd.read_pickle(fname)
+    
+def cross_stochasticity_data():
+    """
+    Return a pandas DataFrame holding the training data used to 
+    calibrate the Gaussian process for the cross stochasiticity,
+    as measured from the runPB simulations
+    """
+    fname = _os.path.join(data_dir, 'simulation_fits/cross_stochasticity_runPB.pickle')
+    return pd.read_pickle(fname)
     
     
+    
+
+
 

@@ -5,7 +5,7 @@ from scipy.special import legendre
 from scipy.integrate import simps
 
 #-------------------------------------------------------------------------------
-# FOG MODELS
+# finger-of-god models
 #-------------------------------------------------------------------------------
 def fog_modified_lorentzian(x):
     """
@@ -26,7 +26,6 @@ def fog_gaussian(x):
     return np.exp(-0.5*x**2)
     
 
-#-------------------------------------------------------------------------------
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     """
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
@@ -65,9 +64,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.f_so = 0.
         self.sigma_so = 0.
         
-     
     #---------------------------------------------------------------------------
-    # PARAMETERS
+    # parameters
     #---------------------------------------------------------------------------  
     @parameter
     def f_so(self, val):
@@ -195,7 +193,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return val
                    
     #---------------------------------------------------------------------------
-    # CACHED PROPERTIES
+    # cached properties
     #---------------------------------------------------------------------------
     @cached_property("fog_model")
     def fog_function(self):
@@ -221,7 +219,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.fsB*self.b1_sB + (1.-self.fsB)*self.b1_sA
     
     #---------------------------------------------------------------------------
-    # UTILITY FUNCTIONS
+    # utility functions
     #---------------------------------------------------------------------------
     def initialize(self):
         """
@@ -241,7 +239,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.fog_function(k*mu*sigma)
     
     #---------------------------------------------------------------------------
-    # Centrals power spectrum
+    # centrals power spectrum
     #--------------------------------------------------------------------------- 
     def Pgal_cAcA(self, k, mu, flatten=False):
         """
@@ -318,7 +316,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     #---------------------------------------------------------------------------
-    # Central-satellite cross spectrum
+    # central-satellite cross spectrum
     #---------------------------------------------------------------------------
     def Pgal_cAs(self, k, mu, flatten=False):
         """
@@ -377,7 +375,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
-    # Satellites auto spectrum
+    # satellites auto spectrum
     #---------------------------------------------------------------------------
     def Pgal_sAsA(self, k, mu, flatten=False):
         """
@@ -450,7 +448,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
                     
     #---------------------------------------------------------------------------
-    # Total galaxy P(k,mu)
+    # total galaxy P(k,mu)
     #---------------------------------------------------------------------------
     def Pgal(self, k, mu, flatten=False):
         """

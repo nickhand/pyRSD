@@ -197,31 +197,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The prediction for the cross stochasticity from a GP
         """
         return CrossStochasticityFits()
-
-    # @cached_property()
-    # def cross_stoch_log_model_params(self):
-    #     """
-    #     The bestfit params for the (type B) cross-bin stochasticity, modeled
-    #     using a log model, and interpolated using a Gaussian process as a function of
-    #     sigma8(z) and b1
-    #     """
-    #     return CrossStochasticityLogModelParams()
-    #
-    # @cached_property()
-    # def stoch_log_model_params(self):
-    #     """
-    #     The bestfit params for the (type B) stochasticity, modeled using a log model,
-    #     and interpolated using a Gaussian process as a function of sigma8(z) and b1
-    #     """
-    #     return StochasticityLogModelParams()
-    #
-    # @cached_property()
-    # def stoch_pade_model_params(self):
-    #     """
-    #     The bestfit params for the (type B) stochasticity, modeled using a Pade expansion,
-    #     and interpolated using a Gaussian process as a function of sigma8(z) and b1
-    #     """
-    #     return StochasticityPadeModelParams()
             
     #---------------------------------------------------------------------------
     # cached properties
@@ -693,6 +668,32 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return P04_ss
             
+    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z")
+    def mu2_model_correction(self):
+        """
+        The mu2 correction to the model evaluated at `k`
+        """
+        b1, b1_bar = self._ib1, self._ib1_bar
+        corr = PowerTerm()
+        
+        if self.correct_mu2:
+            params = {'b1':(b1*b1_bar)**05, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            corr.total.mu2 = self.Pmu2_correction(**params)
+        return corr
+        
+    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z")
+    def mu4_model_correction(self):
+        """
+        The mu4 correction to the model evaluated at `k`
+        """
+        b1, b1_bar = self._ib1, self._ib1_bar
+        corr = PowerTerm()
+        
+        if self.correct_mu4:
+            params = {'b1':(b1*b1_bar)**05, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            corr.total.mu4 = self.Pmu4_correction(**params)
+        return corr
+    
     #---------------------------------------------------------------------------
     # power as a function of mu
     #---------------------------------------------------------------------------
@@ -704,40 +705,28 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return self.P00_ss.total.mu0
 
-    @interpolated_property("P01_ss", "P11_ss", "P02_ss", "correct_mu2", interp="k")
+    @interpolated_property("P01_ss", "P11_ss", "P02_ss", "mu2_model_correction", interp="k")
     def P_mu2(self, k):
         """
         The full halo power spectrum term with mu^2 angular dependence. Contributions
         from P01_ss, P11_ss, and P02_ss.
         """
-        toret = self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2
-        
-        # add a correction interpolated from a GP
-        if self.correct_mu2:
-            mean_bias = (self._ib1*self._ib1_bar)**0.5
-            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'f':self.f, 'k':k}
-            toret += self.Pmu2_correction(**params)
-            
-        return toret
+        return self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + \
+                self.P02_ss.total.mu2 + self.mu2_model_correction.total.mu2
+
 
     @interpolated_property("P11_ss", "P02_ss", "P12_ss", "P22_ss", "P03_ss",
-                           "P13_ss", "P04_ss", "correct_mu4", interp="k")
+                           "P13_ss", "P04_ss", "mu4_model_correction", interp="k")
     def P_mu4(self, k):
         """
         The full halo power spectrum term with mu^4 angular dependence. Contributions
         from P11_ss, P02_ss, P12_ss, P03_ss, P13_ss, P22_ss, and P04_ss.
         """
-        toret = self.P11_ss.total.mu4 + self.P02_ss.total.mu4 + \
+        return self.P11_ss.total.mu4 + self.P02_ss.total.mu4 + \
                 self.P12_ss.total.mu4 + self.P03_ss.total.mu4 + \
-                self.P22_ss.total.mu4 + self.P13_ss.total.mu4 + self.P04_ss.total.mu4
-                
-        # add a correction interpolated from a GP
-        if self.correct_mu4:
-            mean_bias = (self._ib1*self._ib1_bar)**0.5
-            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'f':self.f, 'k':k}
-            toret += self.Pmu4_correction(**params)
-                
-        return toret
+                self.P22_ss.total.mu4 + self.P13_ss.total.mu4 + \
+                self.P04_ss.total.mu4 + self.mu4_model_correction.total.mu4
+
     
     @interpolated_property("P12_ss", interp="k")
     def P_mu6(self, k):

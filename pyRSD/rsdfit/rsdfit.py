@@ -1,6 +1,6 @@
 from pyRSD.rsdfit.util import rsd_io, parse_command_line
 from pyRSD.rsdfit import FittingDriver, logging, params_filename, model_filename
-from pyRSD import os, sys
+from pyRSD import os, sys, numpy as np
 import tempfile
 
 def split_ranks(N_ranks, N_chunks):
@@ -193,7 +193,7 @@ def run():
             else:
                 if chain_number == 0:
                     model_dir = driver.params.get('model_dir', args.folder)
-                    rsd_io.save_pickle(driver.theory.model, os.path.join(model_dir, model_filename))
+                    np.save(os.path.join(model_dir, model_filename), driver.theory.model)
         if chain_number == 0:
             driver.to_file(os.path.join(args.folder, params_filename))
                 

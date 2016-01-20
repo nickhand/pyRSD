@@ -29,7 +29,7 @@ class GeorgeSimulationData(Cache):
                     use_errors=True,
                     dependent_col='y',
                     kernel=george.kernels.ExpSquaredKernel, 
-                    solver=george.HODLRSolver):
+                    solver=george.BasicSolver):
         """
         Parameters
         ----------
@@ -216,7 +216,7 @@ class GeorgeSimulationData(Cache):
             raise ValueError("size mismatch between supplied `x` variables and `theta` length")
         gp = george.GP(kernel, solver=self.solver)
     
-        kws = {}
+        kws = {'sort':False}
         if self.use_errors: kws['yerr'] = self.yerr_scaled
         gp.compute(self.x_scaled, **kws)
         return gp
@@ -280,9 +280,10 @@ class Pmu4ResidualCorrection(GeorgeSimulationData):
     """
     def __init__(self):
         
-        theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417]
+        #theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417]
+        theta = [11.76523097, 7.63002238, 3.74838973, 0.84367439]
         data = sim_data.Pmu4_correction_data()
-        independent = ['f', 'sigma8_z', 'b1', 'k']
+        independent = ['sigma8_z', 'b1', 'k']
         
         super(Pmu4ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
         
@@ -292,9 +293,10 @@ class Pmu2ResidualCorrection(GeorgeSimulationData):
     """
     def __init__(self):
         
-        theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439]
+        #theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439]
+        theta = [7.2492907, 4.48197495, 3.0182625, 0.67960878]
         data = sim_data.Pmu2_correction_data()
-        independent = ['f', 'sigma8_z', 'b1', 'k']
+        independent = ['sigma8_z', 'b1', 'k']
         
         super(Pmu2ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
         

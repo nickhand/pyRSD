@@ -19,7 +19,7 @@ class LowKPowerMode():
     from collections import OrderedDict
     params = OrderedDict({'use_P00_model':False, 'use_P01_model':False, 
                             'use_P11_model':False, 'use_Pdv_model':False, 
-                            'Phm_model':None})
+                            'use_Phm_model':False})
                 
     def __init__(self, model):
         self.model = model

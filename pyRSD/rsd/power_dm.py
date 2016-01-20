@@ -33,7 +33,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     #---------------------------------------------------------------------------
     def __init__(self, kmin=1e-3,
                        kmax=0.5,
-                       Nk=500,
+                       Nk=100,
                        z=0., 
                        cosmo_filename="planck1_WP.ini",
                        include_2loop=False,
@@ -159,7 +159,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         return {k:getattr(self, k) for k in allowed}
         
     #---------------------------------------------------------------------------
-    # ATTRIBUTES
+    # parameters
     #---------------------------------------------------------------------------
     @parameter
     def load_dm_sims(self, val):

@@ -280,10 +280,10 @@ class Pmu4ResidualCorrection(GeorgeSimulationData):
     """
     def __init__(self):
         
-        #theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417]
-        theta = [11.76523097, 7.63002238, 3.74838973, 0.84367439]
+        theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417] # with f
+        #theta = [11.76523097, 7.63002238, 3.74838973, 0.84367439]
         data = sim_data.Pmu4_correction_data()
-        independent = ['sigma8_z', 'b1', 'k']
+        independent = ['f', 'sigma8_z', 'b1', 'k']
         
         super(Pmu4ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
         
@@ -293,10 +293,10 @@ class Pmu2ResidualCorrection(GeorgeSimulationData):
     """
     def __init__(self):
         
-        #theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439]
-        theta = [7.2492907, 4.48197495, 3.0182625, 0.67960878]
+        theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439] # with f
+        #theta = [7.2492907, 4.48197495, 3.0182625, 0.67960878]
         data = sim_data.Pmu2_correction_data()
-        independent = ['sigma8_z', 'b1', 'k']
+        independent = ['f', 'sigma8_z', 'b1', 'k']
         
         super(Pmu2ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
         

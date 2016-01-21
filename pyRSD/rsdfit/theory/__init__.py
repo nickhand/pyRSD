@@ -18,7 +18,8 @@ base_model_params = {'sigma8_z': 'mass variance at r = 8 Mpc/h at z',
                     'small_scale_sigma': 'additional small scale velocity in km/s',
                     'N' : 'constant offset to model, in (Mpc/h)^3', 
                     'f_so' : 'so vs fof fraction', 
-                    'sigma_so' : 'so vs fof sigma'}
+                    'sigma_so' : 'so vs fof sigma', 
+                    'alpha_mu' : 'sigma8_z for mu corrections'}
 
 extra_model_params = {'b1_s': 'linear bias of satellites',
                     'b1_c': 'linear bias of centrals', 

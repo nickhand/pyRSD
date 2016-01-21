@@ -167,7 +167,9 @@ def run():
 
     # if using MPI and not the master, wait for instructions
     if pool is not None and not pool.is_master():
+        print "rank %d: waiting with pool..." %world_rank
         pool.wait()
+        print "rank %d: DONE..." %world_rank
         sys.exit(0)
     mpi_kwargs = {'pool':pool, 'chains_comm':chains_comm}
 
@@ -294,6 +296,7 @@ def run():
             chains_comm.Free()
             
         print "rank %d: DONE..." %world_rank
+        sys.exit(0)
             
     
 if __name__ == "__main__":

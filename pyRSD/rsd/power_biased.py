@@ -51,6 +51,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     # attributes
     #---------------------------------------------------------------------------        
     @parameter
+    def alpha_mu(self, val):
+        """
+        Free parameter to serve as sigma8_z in mu corrections
+        """           
+        return val
+        
+    @parameter
     def correct_mu2(self, val):
         """
         Whether to correct the halo P[mu2] model, using a sim-calibrated model
@@ -677,7 +684,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return P04_ss
             
-    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z", "f", "mucorr_vary_f")
+    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "alpha_mu", "f", "mucorr_vary_f")
     def mu2_model_correction(self):
         """
         The mu2 correction to the model evaluated at `k`
@@ -687,12 +694,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         if self.correct_mu2:
             mean_bias = (b1*b1_bar)**0.5
-            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            params = {'b1':mean_bias, 'sigma8_z':self.alpha_mu, 'k':self.k}
             if self.mucorr_vary_f: params['f'] = self.f
             corr.total.mu2 = self.Pmu2_correction(**params)
         return corr
         
-    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z", "f", "mucorr_vary_f")
+    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "alpha_mu", "f", "mucorr_vary_f")
     def mu4_model_correction(self):
         """
         The mu4 correction to the model evaluated at `k`
@@ -702,7 +709,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         if self.correct_mu4:
             mean_bias = (b1*b1_bar)**0.5
-            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            params = {'b1':mean_bias, 'sigma8_z':self.alpha_mu, 'k':self.k}
             if self.mucorr_vary_f: params['f'] = self.f
             corr.total.mu4 = self.Pmu4_correction(**params)
         return corr

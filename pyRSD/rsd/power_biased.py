@@ -668,7 +668,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return P04_ss
             
-    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z")
+    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z", "f")
     def mu2_model_correction(self):
         """
         The mu2 correction to the model evaluated at `k`
@@ -677,11 +677,12 @@ class BiasedSpectrum(DarkMatterSpectrum):
         corr = PowerTerm()
         
         if self.correct_mu2:
-            params = {'b1':(b1*b1_bar)**05, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            mean_bias = (b1*b1_bar)**0.5
+            params = {'b1':mean_bias, 'f':self.f, 'sigma8_z':self.sigma8_z, 'k':self.k}
             corr.total.mu2 = self.Pmu2_correction(**params)
         return corr
         
-    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z")
+    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z", "f")
     def mu4_model_correction(self):
         """
         The mu4 correction to the model evaluated at `k`
@@ -690,7 +691,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
         corr = PowerTerm()
         
         if self.correct_mu4:
-            params = {'b1':(b1*b1_bar)**05, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            mean_bias = (b1*b1_bar)**0.5
+            params = {'b1':mean_bias, 'f':self.f, 'sigma8_z':self.sigma8_z, 'k':self.k}
             corr.total.mu4 = self.Pmu4_correction(**params)
         return corr
     

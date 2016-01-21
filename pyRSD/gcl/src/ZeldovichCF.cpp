@@ -7,7 +7,7 @@ static const int NUM_PTS = 1024;
 
 
 ZeldovichCF::ZeldovichCF(const Cosmology& C_, double z_, double kmin_, double kmax_) 
-                          : C(C_), z(z_), Pzel(C_, z_), Plin(C_, z_),
+                          : C(C_), z(z_), Pzel(C_, z_, true), Plin(C_, z_),
                             sigma8_z(C_.Sigma8_z(z_)), kmin(kmin_), kmax(kmax_)
 {    
     // initialize the k, Pzel grid arrays

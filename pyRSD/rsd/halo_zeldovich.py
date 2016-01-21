@@ -334,8 +334,25 @@ class HaloZeldovichCF00(HaloZeldovichPS):
         """
         The broadband power correction as given by Eq. 7 in arXiv:1501.07512.
         """
-        A = -self.A0 * np.exp(-r/self.R) / (4*np.pi*r*self.R**2)
-        return A * (1. - (self.R/self.R1h)**2 * np.exp(-r*(self.R + self.R1h)/(self.R*self.R1h)))
+        A0, R, R1, R1h, R2h = self.A0, self.R, self.R1, self.R1h, self.R2h
+        
+        # define some values
+        S = np.sqrt(R1h**4 - 4*R2h**4)
+        norm = -A0*np.exp(-r/R) / (4*np.pi*r*R**2)
+        A = R**2*(-2*R2h**4 + R1**2*(R1h**2-S)) + R2h**4*(R1h**2-S) + R1**2*(-R1h**4+2*R2h**4+R1h**2*S)
+        A /= 2*R2h**4*S
+        B = R2h**4*(R1h**2+S) - R1**2*(R1h**4-2*R2h**4+R1h**2*S) + R**2*(-2*R2h**4+R1**2*(R1h**2+S))
+        B *= -1
+        B /= 2*R2h**4*S
+        
+        
+        num_term1 = 1. - (self.R1/self.R)**2
+        num_term2 = A*np.exp(r*(1./self.R - (0.5*(self.R1h**2-S))**0.5/self.R2h**2))
+        num_term3 = B*np.exp(r*(1./self.R - (0.5*(self.R1h**2+S))**0.5/self.R2h**2))
+        denom = (1 - (R1h/R)**2 + (R2h/R)**4)
+        
+        return norm * (num_term1 + num_term2 + num_term3) / denom
+        
 
     @tools.unpacked
     def __zeldovich__(self, r, ignore_interpolated=False):
@@ -826,8 +843,24 @@ class HaloZeldovichCFhm(HaloZeldovichPhm):
         """
         The broadband power correction as given by Eq. 7 in arXiv:1501.07512.
         """
-        A = -self.A0 * np.exp(-r/self.R) / (4*np.pi*r*self.R**2)
-        return A * (1. - (self.R/self.R1h)**2 * np.exp(-r*(self.R + self.R1h)/(self.R*self.R1h)))
+        A0, R, R1, R1h, R2h = self.A0, self.R, self.R1, self.R1h, self.R2h
+        
+        # define some values
+        S = np.sqrt(R1h**4 - 4*R2h**4)
+        norm = -A0*np.exp(-r/R) / (4*np.pi*r*R**2)
+        A = R**2*(-2*R2h**4 + R1**2*(R1h**2-S)) + R2h**4*(R1h**2-S) + R1**2*(-R1h**4+2*R2h**4+R1h**2*S)
+        A /= 2*R2h**4*S
+        B = R2h**4*(R1h**2+S) - R1**2*(R1h**4-2*R2h**4+R1h**2*S) + R**2*(-2*R2h**4+R1**2*(R1h**2+S))
+        B *= -1
+        B /= 2*R2h**4*S
+        
+        
+        num_term1 = 1. - (self.R1/self.R)**2
+        num_term2 = A*np.exp(r*(1./self.R - (0.5*(self.R1h**2-S))**0.5/self.R2h**2))
+        num_term3 = B*np.exp(r*(1./self.R - (0.5*(self.R1h**2+S))**0.5/self.R2h**2))
+        denom = (1 - (R1h/R)**2 + (R2h/R)**4)
+        
+        return norm * (num_term1 + num_term2 + num_term3) / denom
 
     @tools.unpacked
     def __zeldovich__(self, r, ignore_interpolated=False):

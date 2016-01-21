@@ -286,10 +286,10 @@ def run():
         if pool is not None:
             print "rank %d: HEY 4..." %world_rank
             pool.close()
-        if chains_group is not None and chains_comm.rank == 0:
+        if chains_group is not None:
             print "rank %d: HEY 5..." %world_rank
             chains_group.Free()
-        if chains_comm is not None and chains_comm.rank == 0:
+        if chains_comm is not None:
             print "rank %d: HEY 6..." %world_rank
             chains_comm.Free()
             

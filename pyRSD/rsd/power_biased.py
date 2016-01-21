@@ -37,6 +37,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
         self.sigma_v            = self.sigma_lin
+        self.epsilon            = 0.
         
         # correction models
         self.correct_mu2 = correct_mu2
@@ -59,6 +60,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     def correct_mu4(self, val):
         """
         Whether to correct the halo P[mu4] model, using a sim-calibrated model
+        """           
+        return val
+        
+    @parameter
+    def epsilon(self, val):
+        """
+        Rescaling factor for stochasticity
         """           
         return val
         
@@ -363,7 +371,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
+    @cached_property("epsilon", "k", "_ib1", "_ib1_bar", "z", "sigma8_z")
     def stochasticity(self):
         """
         The isotropic (type B) stochasticity term due to the discreteness of the 
@@ -377,9 +385,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         params = {'sigma8_z' : self.sigma8_z, 'k' : self.k}    
         if self._ib1 != self._ib1_bar:
             b1_1, b1_2 = sorted([self._ib1, self._ib1_bar])
-            return self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
+            toret = self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
         else:
-            return self.auto_stochasticity_fits(b1=self._ib1, **params)
+            toret = self.auto_stochasticity_fits(b1=self._ib1, **params)
+            
+        return (1 + self.epsilon) * toret
                   
     @cached_property("P00_ss_no_stoch", "stochasticity")
     def P00_ss(self):

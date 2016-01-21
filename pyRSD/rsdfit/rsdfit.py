@@ -284,9 +284,8 @@ def run():
 
         # # handle the MPI stuff
         if pool is not None:
-            if chains_comm is None or chains_comm.rank == 0:
-                print "rank %d: HEY 4..." %world_rank
-                pool.close()
+            print "rank %d: HEY 4..." %world_rank
+            pool.close()
         if chains_group is not None and chains_comm.rank == 0:
             print "rank %d: HEY 5..." %world_rank
             chains_group.Free()

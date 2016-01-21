@@ -25,6 +25,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
                         use_mean_bias=False, 
                         correct_mu2=True,
                         correct_mu4=True,
+                        mucorr_vary_f=True,
                         **kwargs):
         
         # initalize the dark matter power spectrum
@@ -37,11 +38,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
         self.sigma_v            = self.sigma_lin
-        self.epsilon            = 0.
         
         # correction models
-        self.correct_mu2 = correct_mu2
-        self.correct_mu4 = correct_mu4
+        self.correct_mu2   = correct_mu2
+        self.correct_mu4   = correct_mu4
+        self.mucorr_vary_f = mucorr_vary_f
         
         # set b1_bar, unless we are fixed
         if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
@@ -62,14 +63,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
         Whether to correct the halo P[mu4] model, using a sim-calibrated model
         """           
         return val
-        
+    
     @parameter
-    def epsilon(self, val):
+    def mucorr_vary_f(self, val):
         """
-        Rescaling factor for stochasticity
+        Include `f` as an independent variable when predicting the mu corrections
         """           
         return val
-        
+                
     @parameter
     def use_mean_bias(self, val):
         """
@@ -178,19 +179,19 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return VelocityDispersionFits()
         
-    @cached_property()
+    @cached_property("mucorr_vary_f")
     def Pmu2_correction(self):
         """
         The parameters for the halo P[mu2] correction
         """
-        return Pmu2ResidualCorrection()
+        return Pmu2ResidualCorrection(vary_f=self.mucorr_vary_f)
         
-    @cached_property()
+    @cached_property("mucorr_vary_f")
     def Pmu4_correction(self):
         """
         The parameters for the halo P[mu4] correction
         """
-        return Pmu4ResidualCorrection()
+        return Pmu4ResidualCorrection(vary_f=self.mucorr_vary_f)
 
     @cached_property()
     def auto_stochasticity_fits(self):
@@ -371,7 +372,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
 
         return Phm
         
-    @cached_property("epsilon", "k", "_ib1", "_ib1_bar", "z", "sigma8_z")
+    @cached_property("k", "_ib1", "_ib1_bar", "z", "sigma8_z")
     def stochasticity(self):
         """
         The isotropic (type B) stochasticity term due to the discreteness of the 
@@ -385,12 +386,10 @@ class BiasedSpectrum(DarkMatterSpectrum):
         params = {'sigma8_z' : self.sigma8_z, 'k' : self.k}    
         if self._ib1 != self._ib1_bar:
             b1_1, b1_2 = sorted([self._ib1, self._ib1_bar])
-            toret = self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
+            return self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
         else:
-            toret = self.auto_stochasticity_fits(b1=self._ib1, **params)
-            
-        return (1 + self.epsilon) * toret
-                  
+            return self.auto_stochasticity_fits(b1=self._ib1, **params)
+                              
     @cached_property("P00_ss_no_stoch", "stochasticity")
     def P00_ss(self):
         """
@@ -678,7 +677,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return P04_ss
             
-    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z")
+    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z", "f", "mucorr_vary_f")
     def mu2_model_correction(self):
         """
         The mu2 correction to the model evaluated at `k`
@@ -689,10 +688,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.correct_mu2:
             mean_bias = (b1*b1_bar)**0.5
             params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            if self.mucorr_vary_f: params['f'] = self.f
             corr.total.mu2 = self.Pmu2_correction(**params)
         return corr
         
-    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z")
+    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z", "f", "mucorr_vary_f")
     def mu4_model_correction(self):
         """
         The mu4 correction to the model evaluated at `k`
@@ -703,6 +703,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         if self.correct_mu4:
             mean_bias = (b1*b1_bar)**0.5
             params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k}
+            if self.mucorr_vary_f: params['f'] = self.f
             corr.total.mu4 = self.Pmu4_correction(**params)
         return corr
     

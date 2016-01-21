@@ -278,26 +278,30 @@ class Pmu4ResidualCorrection(GeorgeSimulationData):
     """
     Return the prediction for the Pmu4 model residual correction
     """
-    def __init__(self):
+    def __init__(self, vary_f=True):
         
-        #theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417] # with f
-        theta = [11.76523097, 7.63002238, 3.74838973, 0.84367439]
+        if vary_f:
+            theta = [33.66747949, 3.95336447, 1.74027224, 0.62058417] # with f
+            independent = ['f', 'sigma8_z', 'b1', 'k']
+        else:
+            theta = [11.76523097, 7.63002238, 3.74838973, 0.84367439]
+            independent = ['sigma8_z', 'b1', 'k']
         data = sim_data.Pmu4_correction_data()
-        independent = ['sigma8_z', 'b1', 'k']
-        
         super(Pmu4ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
         
 class Pmu2ResidualCorrection(GeorgeSimulationData):
     """
     Return the prediction for the Pmu2 model residual correction
     """
-    def __init__(self):
+    def __init__(self, vary_f=True):
         
-        #theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439] # with f
-        theta = [7.2492907, 4.48197495, 3.0182625, 0.67960878]
+        if vary_f:
+            theta = [11.84812224, 4.15569036, 1.26297742, 1.03950439] # with f
+            independent = ['f', 'sigma8_z', 'b1', 'k']
+        else:
+            theta = [7.2492907, 4.48197495, 3.0182625, 0.67960878]
+            independent = ['sigma8_z', 'b1', 'k']
         data = sim_data.Pmu2_correction_data()
-        independent = ['sigma8_z', 'b1', 'k']
-        
         super(Pmu2ResidualCorrection, self).__init__(independent, data, theta, use_errors=True)
         
 class VelocityDispersionFits(GeorgeSimulationData):

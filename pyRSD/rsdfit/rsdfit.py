@@ -167,9 +167,7 @@ def run():
 
     # if using MPI and not the master, wait for instructions
     if pool is not None and not pool.is_master():
-        print "rank %d: waiting with pool..." %world_rank
         pool.wait()
-        print "rank %d: DONE..." %world_rank
         sys.exit(0)
     mpi_kwargs = {'pool':pool, 'chains_comm':chains_comm}
 
@@ -264,38 +262,26 @@ def run():
 
             # now save the log to the logs dir
             copy_log(temp_log_name, output_name, **copy_kwargs)
-
-        print "rank %d: done copying..." %world_rank
-        
+    
         # wait for all the processes, if we more than one
         if chains_comm is not None and chains_comm.size > 1:
-            print "waiting for all the chains..."
             chains_comm.Barrier()
-        
-        print "done waiting..."
-
+    
         # if we made it this far, it's safe to delete the old results
         if chains_comm is None or chains_comm.rank == 0:
-            print "rank %d: HEY 1..." %world_rank
             if os.path.exists(temp_log_name):
-                print "rank %d: HEY 2..." %world_rank
                 os.remove(temp_log_name)
             if args.subparser_name == 'restart' and os.path.exists(restart_file):
-                print "rank %d: HEY 3..." %world_rank
                 os.remove(restart_file)
 
         # # handle the MPI stuff
         if pool is not None:
-            print "rank %d: HEY 4..." %world_rank
             pool.close()
         if chains_group is not None:
-            print "rank %d: HEY 5..." %world_rank
             chains_group.Free()
         if chains_comm is not None:
-            print "rank %d: HEY 6..." %world_rank
             chains_comm.Free()
             
-        print "rank %d: DONE..." %world_rank
         sys.exit(0)
             
     

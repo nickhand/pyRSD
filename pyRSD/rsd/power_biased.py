@@ -292,9 +292,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The velocity dispersion for halos, possibly as a function of bias
         """
         if self.vel_disp_from_sims:
-            return A*self.vel_disp_fitter(b1=self._ib1, sigma8_z=self.sigma8_z)
+            return self.vel_disp_fitter(b1=self._ib1, sigma8_z=self.sigma8_z)
         else:
-            return A*self.sigma_v
+            return self.sigma_v
             
     @cached_property("sigma_v", "vel_disp_from_sims", "_ib1_bar", "sigma8_z")
     def sigmav_halo_bar(self):
@@ -302,9 +302,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The velocity dispersion for halos, possibly as a function of bias
         """
         if self.vel_disp_from_sims:
-            return A*self.vel_disp_fitter(b1=self._ib1_bar, sigma8_z=self.sigma8_z)
+            return self.vel_disp_fitter(b1=self._ib1_bar, sigma8_z=self.sigma8_z)
         else:
-            return A*self.sigma_v
+            return self.sigma_v
         
     def sigmav_from_bias(self, bias):
         """

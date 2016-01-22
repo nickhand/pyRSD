@@ -37,6 +37,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
         self.sigma_v            = self.sigma_lin
+        self.A_sigmav           = 1.0
         
         # correction models
         self.correct_mu2   = correct_mu2
@@ -150,6 +151,13 @@ class BiasedSpectrum(DarkMatterSpectrum):
     def b1_bar(self, val):
         """
         The linear bias factor of the 2nd tracer.
+        """
+        return val
+        
+    @parameter
+    def A_sigmav(self, val):
+        """
+        An amplitude re-scaling of sigma_v
         """
         return val
                 
@@ -286,25 +294,27 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return BiasToSigmaRelation(self.z, self.cosmo, interpolate=self.interpolate)
              
-    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1", "sigma8_z")
+    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1", "sigma8_z", "A_sigmav")
     def sigmav_halo(self):
         """
         The velocity dispersion for halos, possibly as a function of bias
         """
+        A = self.A_sigmav
         if self.vel_disp_from_sims:
-            return self.vel_disp_fitter(b1=self._ib1, sigma8_z=self.sigma8_z)
+            return A*self.vel_disp_fitter(b1=self._ib1, sigma8_z=self.sigma8_z)
         else:
-            return self.sigma_v
+            return A*self.sigma_v
             
-    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1_bar", "sigma8_z")
+    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1_bar", "sigma8_z", "A_sigmav")
     def sigmav_halo_bar(self):
         """
         The velocity dispersion for halos, possibly as a function of bias
         """
+        A = self.A_sigmav
         if self.vel_disp_from_sims:
-            return self.vel_disp_fitter(b1=self._ib1_bar, sigma8_z=self.sigma8_z)
+            return A*self.vel_disp_fitter(b1=self._ib1_bar, sigma8_z=self.sigma8_z)
         else:
-            return self.sigma_v
+            return A*self.sigma_v
         
     def sigmav_from_bias(self, bias):
         """
@@ -668,7 +678,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
         return P04_ss
             
-    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z", "f")
+    @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z")
     def mu2_model_correction(self):
         """
         The mu2 correction to the model evaluated at `k`
@@ -678,11 +688,11 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         if self.correct_mu2:
             mean_bias = (b1*b1_bar)**0.5
-            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k, 'f':self.f}
+            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k}
             corr.total.mu2 = self.Pmu2_correction(**params)
         return corr
         
-    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z", "f")
+    @cached_property("k", "correct_mu4", "_ib1", "_ib1_bar", "sigma8_z")
     def mu4_model_correction(self):
         """
         The mu4 correction to the model evaluated at `k`
@@ -692,7 +702,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         if self.correct_mu4:
             mean_bias = (b1*b1_bar)**0.5
-            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k, 'f':self.f}
+            params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':self.k}
             corr.total.mu4 = self.Pmu4_correction(**params)
         return corr
     

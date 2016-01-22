@@ -331,6 +331,12 @@ class FittingDriver(object):
             logger.info("setting the theoretical model from existing instance")
         self.theory.set_model(val)
         
+        # print out the model paramete
+        params = self.theory.model.to_dict()
+        msg = "running with model parameters:\n\n"
+        msg += "\n".join(["%-25s: %s" %(k, str(v)) for k,v in sorted(params.iteritems())])
+        logger.info(msg)
+        
         # model callable
         self._model_callable = self.theory.model_callable(self.data)
         logger.info("...theoretical model successfully read")

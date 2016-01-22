@@ -197,8 +197,7 @@ class GalaxyPowerTheory(object):
             raise rsd_io.ConfigurationError("failure to set model in `GalaxyPowerTheory` from file or instance")
     
         # update the constraints
-        self.update_constraints()
-    
+        self.update_constraints()    
     
     def to_file(self, filename, mode='w'):
         """

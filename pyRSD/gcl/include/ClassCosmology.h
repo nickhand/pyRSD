@@ -18,6 +18,9 @@ History (add to end):
 #include "ClassParams.h"
 #include "Engine.h"
 #include "Common.h"
+#include "parray.h"
+#include "Quadrature.h"
+#include <functional>
 
 /*----------------------------------------------------------------------------*/
 /* class to serve as the engine for CLASS */
@@ -112,35 +115,58 @@ public:
     
     /*------------------------------------------------------------------------*/
     /* background quantities as a function of z */
-    /*------------------------------------------------------------------------*/
+    /*------------------------------------------------------------------------*/    
     // the growth rate f(z) (unitless)
     inline double f_z(double z) const { return BackgroundValue(z, ba.index_bg_f); }
+    parray f_z(const parray& z) const;
     
     // Hubble constant H(z) (km/s/Mpc)
     double H_z(double z) const { return (z != 0.) ? BackgroundValue(z, ba.index_bg_H)*Constants::c_light/(Constants::km/Constants::second) : H0(); }
+    parray H_z(const parray& z) const;
         
-    // angular diameter distance (Mpc)
+    // angular diameter distance in Mpc -- this is Dm/(1+z)
     double Da_z(double z) const { return BackgroundValue(z, ba.index_bg_ang_distance); }
+    parray Da_z(const parray& z) const;
+
+    // conformal distance in flat case in Mpc
+    double Dc_z(double z) const { return BackgroundValue(z, ba.index_bg_conf_distance); }
+    parray Dc_z(const parray& z) const;
+    
+    // comoving radius coordinate in Mpc -- equal to conformal distance in flat case
+    double Dm_z(double z) const;
+    parray Dm_z(const parray& z) const;
     
     // growth function D(z) / D(0) (normalized to unity at z = 0)
     double D_z(double z) const { return (z != 0.) ? BackgroundValue(z, ba.index_bg_D) / BackgroundValue(0., ba.index_bg_D) : 1.; }
+    parray D_z(const parray& z) const;
     
     // sigma8 (z) as derived from the scalar amplitude
     // may not be equal to the desired sigma8
     double Sigma8_z(double z) const;
+    parray Sigma8_z(const parray& z) const;
 
     // Omega0_m as a function of z
     double Omega_m_z(double z) const;
+    parray Omega_m_z(const parray& z) const;
     
     // mean matter density in units of h^2 M_sun / Mpc^3 if cgs = False, or
     // in units of g / cm^3
     double rho_bar_z(double z, bool cgs = false) const;
+    parray rho_bar_z(const parray& z, bool cgs = false) const;
     
     // critical matter density in units of h^2 M_sun / Mpc^3 if cgs = False, or
     // in units of g / cm^3
     double rho_crit_z(double z, bool cgs = false) const;
-
-        
+    parray rho_crit_z(const parray& z, bool cgs = false) const;
+    
+    // the comoving volume element per unit solid angle per unit redshift in Gpc^3
+    double dV(double z) const;
+    parray dV(const parray& z) const;
+    
+    // the comoving volume between two redshifts (full sky)
+    double V(double zmin, double zmax, int Nz=1024) const;
+    parray V(const parray& zmin, const parray& zmax, int Nz=1024) const;
+            
     
     /*------------------------------------------------------------------------*/
     // print content of file_content
@@ -203,9 +229,18 @@ protected:
     // omega0_m and omega0_r are constants
     double Omega0_m_, Omega0_r_;
     
+    // evaluate background quantities at several redshifts
+    template<typename Function>
+    parray EvaluateMany(Function f, const parray& z) const {
+      int Nz = (int) z.size();
+      parray toret(Nz);
+      #pragma omp parallel for
+      for(int i = 0; i < Nz; i++)
+          toret[i] = f(z[i]);
+      return toret;
+    }
+    
 };
 
-
-;
 #endif
 

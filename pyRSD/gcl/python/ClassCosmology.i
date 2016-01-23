@@ -45,14 +45,40 @@ public:
     double z_reio() const;
     
     double f_z(double z) const;
+    parray f_z(const parray& z) const;
+    
     double H_z(double z) const;
+    parray H_z(const parray& z) const;
+    
     double Da_z(double z) const;
+    parray Da_z(const parray& z) const;
+
+    double Dc_z(double z) const;
+    parray Dc_z(const parray& z) const;
+    
+    double Dm_z(double z) const;
+    parray Dm_z(const parray& z) const;
+    
     double D_z(double z) const;
+    parray D_z(const parray& z) const;
+    
     double Sigma8_z(double z) const;
+    parray Sigma8_z(const parray& z) const;
     
     double Omega_m_z(double z) const;
+    parray Omega_m_z(const parray& z) const;
+    
     double rho_bar_z(double z, bool cgs = false) const;
+    parray rho_bar_z(const parray& z, bool cgs = false) const;
+    
     double rho_crit_z(double z, bool cgs = false) const;
+    parray rho_crit_z(const parray& z, bool cgs = false) const;
+    
+    double dV(double z) const;
+    parray dV(const parray& z) const;
+    
+    double V(double zmin, double zmax, int Nz=1024) const;
+    parray V(const parray& zmin, const parray& zmax, int Nz=1024) const;
 
     void PrintFC();
 

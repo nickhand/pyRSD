@@ -569,4 +569,92 @@ double ClassCosmology::rho_bar_z(double z, bool cgs) const {
 }
 
 /*----------------------------------------------------------------------------*/
+double ClassCosmology::Dm_z(double z) const {
+    double Dc = Dc_z(z);
+    double toret(0.);
+    if (ba.sgnK == 0)
+        toret = Dc;
+    else if (ba.sgnK == 1)
+        toret = sin(sqrt(ba.K)*Dc)/sqrt(ba.K);
+    else if (ba.sgnK == -1)
+        toret = sinh(sqrt(-ba.K)*Dc)/sqrt(-ba.K);
+    return toret;
+}
+
+parray ClassCosmology::Dm_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::Dm_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::f_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::f_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::H_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::H_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::Da_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::Da_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::Dc_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::Dc_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::D_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::D_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::Sigma8_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::Sigma8_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::Omega_m_z(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::Omega_m_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+parray ClassCosmology::rho_bar_z(const parray& z, bool cgs) const {
+    double (ClassCosmology::*pf)(double, bool) const = &ClassCosmology::rho_bar_z;
+    return EvaluateMany(bind(pf, this, placeholders::_1, cgs), z);
+}
+
+parray ClassCosmology::rho_crit_z(const parray& z, bool cgs) const {
+    double (ClassCosmology::*pf)(double, bool) const = &ClassCosmology::rho_crit_z;;
+    return EvaluateMany(bind(pf, this, placeholders::_1, cgs), z);
+}
+
+double ClassCosmology::dV(double z) const {
+    double c_kms = Constants::c_light/(Constants::km/Constants::second);
+    return c_kms * pow2((1+z)*Da_z(z)) / H_z(z) / pow3(1e3);  
+}
+
+parray ClassCosmology::dV(const parray& z) const {
+    double (ClassCosmology::*pf)(double) const = &ClassCosmology::dV;
+    return EvaluateMany(bind(pf, this, placeholders::_1), z);
+}
+
+double ClassCosmology::V(double zmin, double zmax, int Nz) const {
+    parray z = parray::linspace(zmin, zmax, Nz);
+    parray integrand = dV(z);
+    return 4*M_PI*SimpsIntegrate(z, integrand);
+}
+
+parray ClassCosmology::V(const parray& zmin, const parray& zmax, int Nz) const {
+    
+    int N = (int) zmin.size();
+    parray toret(N);
+    #pragma omp parallel for
+    for(int i = 0; i < N; i++)
+        toret[i] = V(zmin[i], zmax[i], Nz);
+    return toret;
+}
+
 

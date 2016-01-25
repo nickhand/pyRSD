@@ -591,6 +591,59 @@ class PolesTransfer(PkmuTransfer):
         modes = modes.reshape((self.N1*self.N2,)*2)
         return self._return_covariance(Psq, modes, components)
         
+        
+    def to_cutsky_covariance(self, cosmo, zbins, nbar, P0, fsky, components=False):
+        """
+        Return the P(k,mu) covariance, which is diagonal and equal to
+        
+        :math: C_{l,l'} = 2 / N(k) * \sum_\mu L(\mu, l) L(\mu, l') P(k,mu)^2 
+        
+        Parameters
+        ----------
+        components : bool, optional (`False`)
+            If `True`, the mean squared power and modes (with the the shape
+            of the covariance matrix), such that C = 2*Psq/modes
+        """
+        # volume of redshift shells
+        dV = cosmo.V(zbins[:-1], zbins[1:]) * cosmo.h()**3 * 1e9 * fsky # in (Mpc/h)^3
+        
+        # number density
+        zcen = 0.5*(zbins[:-1] + zbins[1:])
+        nbar_ = nbar(zcen)
+        w = 1. / (1 + nbar_*P0) # FKP weights
+        
+        # initialize the return array
+        Psq = np.zeros((self.N2, self.N1)*2)
+        modes = np.zeros((self.N2, self.N1)*2)
+        
+        # legendre weights*power squared -- shape is (Nell, Nell, Nk, Nmu, Nz)
+        weights = self.legendre_weights[:,None]*self.legendre_weights[None,:]
+        power = (self.power[...,None] + 1./nbar_)**2
+        tobin = weights[...,None] * power[None,...]
+        
+        # normalization for redshift integral
+        W = ((nbar_*w)**2 * dV).sum()
+        
+        # k-shell volume 
+        dk = np.diff(self.k_mean).mean()
+        Vk  = 4*np.pi*self.k_mean**2*dk
+        
+        # fill the covariance for each ell, ell_prime
+        for i in range(self.N2):
+            for j in range(i, self.N2):
+                
+                # do the sum over redshift first
+                x = ( (w*nbar_)**4 * dV * tobin ).sum(axis=-1) / W**2
+                Psq[i,:,j,:] = np.diag(self.average(x[i,j,:], self.grid.modes))
+                modes[i,:,j,:] = 2 * Vk / (2*np.pi)**3
+                if i != j: 
+                    Psq[j,:,i,:] = Psq[i,:,j,:]
+                    modes[j,:,i,:] = modes[i,:,j,:]
+        
+        # reshape squared power and modes
+        Psq = Psq.reshape((self.N1*self.N2,)*2)
+        modes = modes.reshape((self.N1*self.N2,)*2)
+        return self._return_covariance(Psq, modes, components)
 
     
 

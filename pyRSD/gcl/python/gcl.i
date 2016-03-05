@@ -17,6 +17,7 @@
 using std::string;
 
 %feature("kwargs");
+%feature("autodoc");
 
 %include "parray.i"
 %include "Common.i"

@@ -34,16 +34,16 @@ class HaloZeldovichPS(Cache):
         self.interpolate     = interpolate
         self.enhance_wiggles = enhance_wiggles
         
-        self._A0_amp    = 682.3 #730.
-        self._A0_alpha  = 3.85 #3.75
-        self._R_amp     = 33.8 #26.0
-        self._R_alpha   = 0.049 #0.15
-        self._R1_amp    = 2.18 #3.25
-        self._R1_alpha  = 0.38 #0.7
-        self._R1h_amp   = 2.66 #3.87
-        self._R1h_alpha = -0.07 #0.29
-        self._R2h_amp   = 1.25 #1.69
-        self._R2h_alpha = 0.97 #0.43  
+        self._A0_amp    = 763.74
+        self._A0_alpha  = 3.313
+        self._R_amp     = 25.252
+        self._R_alpha   = 0.297
+        self._R1_amp    = 4.132
+        self._R1_alpha  = 0.2318
+        self._R1h_amp   = 4.8919
+        self._R1h_alpha = -0.3831
+        self._R2h_amp   = 1.9536
+        self._R2h_alpha = 0.2163
         self._W0_alpha  = 1.86
        
     #---------------------------------------------------------------------------
@@ -346,9 +346,9 @@ class HaloZeldovichCF00(HaloZeldovichPS):
         B /= 2*R2h**4*S
         
         
-        num_term1 = 1. - (self.R1/self.R)**2
-        num_term2 = A*np.exp(r*(1./self.R - (0.5*(self.R1h**2-S))**0.5/self.R2h**2))
-        num_term3 = B*np.exp(r*(1./self.R - (0.5*(self.R1h**2+S))**0.5/self.R2h**2))
+        num_term1 = 1. - (R1/R)**2
+        num_term2 = A * np.exp(r*(1./R - np.sqrt(0.5*(R1h**2 - S)) / R2h**2))
+        num_term3 = B * np.exp(r*(1./R - np.sqrt(0.5*(R1h**2 + S)) / R2h**2))
         denom = (1 - (R1h/R)**2 + (R2h/R)**4)
         
         return norm * (num_term1 + num_term2 + num_term3) / denom
@@ -415,7 +415,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
 
     @cached_property('f', 'R')
     def dR_dlna(self):
-        return self.f * 0.15 * self.R
+        return self.f * self._R_alpha * self.R
         
     @cached_property('f', 'R1')
     def dR1_dlna(self):
@@ -449,23 +449,21 @@ class HaloZeldovichP01(HaloZeldovichPS):
 
         This is the derivative of the broadband band term for P00, taken
         with respect to ``lna``
-        """
-        # store these for convenience
-        F = 1. - 1./(1. + (k*self.R)**2)
-        norm = 1 + (k*self.R1h)**2 + (k*self.R2h)**4
-        C = (1. + (k*self.R1)**2) / norm
+        """        
+        k2 = k**2; k4 = k2**2
+        A0, R, R1, R1h, R2h = self.A0, self.R, self.R1, self.R1h, self.R2h
+        dA0, dR, dR1, dR1h, dR2h = self.dA0_dlna, self.dR_dlna, self.dR1_dlna, self.dR1h_dlna, self.dR2h_dlna
 
-        # 1st term of tot deriv
-        term1 = self.dA0_dlna*F*C;
+        F = 1 - 1./(1 + k2*R**2)
+        norm = (1 + k2*R1h**2 + k4*R2h**4)**(-2)
 
-        # 2nd term
-        term2 = self.A0*C * (2*k**2*self.R*self.dR_dlna) / (1 + (k*self.R)**2)**2
+        term1 = F*(1 + k2*R1**2) * (1 + k2*R1h**2 + k4*R2h**4) * dA0
+        term2 = (2*k2*A0*R*(1 + k2*R1**2) * (1 + k2*R1h**2 + k4*R2h**4) * dR) / (1 + k2*R**2)**2
+        term3 = (2*k4*A0*R**2*R1*(1 + k2*R1h**2 + k4*R2h**4) * dR1) / (1 + k2*R**2)
+        term4 = (2*k4*A0*R**2*(1 + k2*R1**2) * (R1h*dR1h + 2*k2*R2h**3*dR2h)) / (1 + k2*R**2)
 
-        # 3rd term
-        term3_a = (2*k**2*self.R1*self.dR1_dlna) / norm
-        term3_b = -(1 + (k*self.R1**2)) / norm**2 * (2*k**2*self.R1h*self.dR1h_dlna + 4*k**4*self.R2h**3*self.dR2h_dlna)
-        term3 = self.A0*F * (term3_a + term3_b)
-        return term1 + term2 + term3
+        return norm * (term1 + term2 + term3 - term4)
+        
         
     @tools.unpacked
     def __call__(self, k):
@@ -632,29 +630,34 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         self.cosmo = cosmo
         
         # A0 power law
-        self._A0_amp   = 780.
-        self._A0_alpha = 1.57
-        self._A0_beta  = 3.50
+        self._A0_amp   = 531.737
+        self._A0_alpha = 1.887
+        self._A0_beta  = 4.0062
+        self._A0_run   = 0.
         
         # R1 power law
-        self._R1_amp   = 4.88
-        self._R1_alpha = -0.59
-        self._R1_beta  = 0.12
+        self._R1_amp   = 1.687
+        self._R1_alpha = -0.504
+        self._R1_beta  = 0.1609
+        self._R1_run   = 0.
         
         # R1h power law
-        self._R1h_amp   = 8.00
-        self._R1h_alpha = -0.92
-        self._R1h_beta  = -0.36
+        self._R1h_amp   = 3.20
+        self._R1h_alpha = -0.992
+        self._R1h_beta  = -0.308
+        self._R1h_run   = 0.
         
         # R2h power law
-        self._R2h_amp   = 2.92
-        self._R2h_alpha = -1.07
-        self._R2h_beta  = -0.35
+        self._R2h_amp   = 0.3806
+        self._R2h_alpha = 0.5034
+        self._R2h_beta  = 0.2093
+        self._R2h_run   = 0
         
         # R power law
-        self._R_amp   = 14.7
-        self._R_alpha = 0.22
-        self._R_beta  = -0.18
+        self._R_amp   = 25.137
+        self._R_alpha = 0.552
+        self._R_beta  = 1.407
+        self._R_run   = 0
         
     #---------------------------------------------------------------------------
     # parameters
@@ -680,6 +683,10 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     @parameter
     def _A0_beta(self, val):
         return val
+    
+    @parameter
+    def _A0_run(self, val):
+        return val
         
     #---------------------------------------------------------------------------
     # R parameter
@@ -694,6 +701,10 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     
     @parameter
     def _R_beta(self, val):
+        return val
+    
+    @parameter
+    def _R_run(self, val):
         return val
         
     #---------------------------------------------------------------------------
@@ -710,6 +721,10 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     @parameter
     def _R1_beta(self, val):
         return val
+    
+    @parameter
+    def _R1_run(self, val):
+        return val
         
     #---------------------------------------------------------------------------
     # R1h parameter
@@ -724,6 +739,10 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     
     @parameter
     def _R1h_beta(self, val):
+        return val
+    
+    @parameter
+    def _R1h_run(self, val):
         return val
         
     #---------------------------------------------------------------------------
@@ -741,63 +760,67 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     def _R2h_beta(self, val):
         return val
         
+    @parameter
+    def _R2h_run(self, val):
+        return val
+        
     #---------------------------------------------------------------------------
     # cached parameters
     #---------------------------------------------------------------------------
-    @cached_property('sigma8_z', 'b1', '_A0_amp', '_A0_alpha', '_A0_beta')
+    @cached_property('sigma8_z', 'b1', '_A0_amp', '_A0_alpha', '_A0_beta', '_A0_run')
     def A0(self):
         """
         Returns the A0 radius parameter
 
         Note: the units are power [(h/Mpc)^3]
         """
-        return self.__powerlaw__(self._A0_amp, self._A0_alpha, self._A0_beta)
+        return self.__powerlaw__(self._A0_amp, self._A0_alpha, self._A0_beta, self._A0_run)
         
-    @cached_property('sigma8_z', 'b1', '_R1_amp', '_R1_alpha', '_R1_beta')
+    @cached_property('sigma8_z', 'b1', '_R1_amp', '_R1_alpha', '_R1_beta', '_R1_run')
     def R1(self):
         """
         Returns the R1 radius parameter
 
         Note: the units are length [Mpc/h]
         """
-        return self.__powerlaw__(self._R1_amp, self._R1_alpha, self._R1_beta)
+        return self.__powerlaw__(self._R1_amp, self._R1_alpha, self._R1_beta, self._R1_run)
             
-    @cached_property('sigma8_z', 'b1', '_R1h_amp', '_R1h_alpha', '_R1h_beta')
+    @cached_property('sigma8_z', 'b1', '_R1h_amp', '_R1h_alpha', '_R1h_beta', '_R1h_run')
     def R1h(self):
         """
         Returns the R1h radius parameter
 
         Note: the units are length [Mpc/h]
         """
-        return self.__powerlaw__(self._R1h_amp, self._R1h_alpha, self._R1h_beta)
+        return self.__powerlaw__(self._R1h_amp, self._R1h_alpha, self._R1h_beta, self._R1h_run)
     
-    @cached_property('sigma8_z', 'b1', '_R2h_amp', '_R2h_alpha', '_R2h_beta')
+    @cached_property('sigma8_z', 'b1', '_R2h_amp', '_R2h_alpha', '_R2h_beta', '_R2h_run')
     def R2h(self):
         """
         Returns the R2h radius parameter
 
         Note: the units are length [Mpc/h]
         """
-        return self.__powerlaw__(self._R2h_amp, self._R2h_alpha, self._R2h_beta)
+        return self.__powerlaw__(self._R2h_amp, self._R2h_alpha, self._R2h_beta, self._R2h_run)
                 
-    @cached_property('sigma8_z', 'b1', '_R_amp', '_R_alpha', '_R_beta')
+    @cached_property('sigma8_z', 'b1', '_R_amp', '_R_alpha', '_R_beta', '_R_run')
     def R(self):
         """
         Returns the R radius parameter
 
         Note: the units are length [Mpc/h]
         """
-        return self.__powerlaw__(self._R_amp, self._R_alpha, self._R_beta)
+        return self.__powerlaw__(self._R_amp, self._R_alpha, self._R_beta, self._R_run)
         
     #---------------------------------------------------------------------------
     # main functions
     #---------------------------------------------------------------------------        
-    def __powerlaw__(self, A, alpha, beta):
+    def __powerlaw__(self, A, alpha, beta, running):
         """
         Return a power law as a linear bias and sigma8(z) with the specified 
         parameters
         """
-        return A * self.b1**alpha * (self.sigma8_z/0.8)**beta
+        return A * self.b1**(alpha+running*np.log(self.b1)) * (self.sigma8_z/0.8)**beta
         
     def __call__(self, b1, k):
         """

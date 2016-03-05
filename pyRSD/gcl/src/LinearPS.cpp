@@ -10,9 +10,7 @@ LinearPS::LinearPS(const Cosmology& C_, double z_)
 
 double LinearPS::Evaluate(double k) const {
     
-    double Dz = C.D_z(z);
-    double A = pow2(C.delta_H()) * pow2(Dz);
+    double A = pow2(C.delta_H());
     double norm = pow2(sigma8_z / C.sigma8());
-    
     return A * norm * pow(k, C.n_s())*(pow2(C.EvaluateTransfer(k)));
 }

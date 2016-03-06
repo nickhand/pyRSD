@@ -1,3 +1,4 @@
+from .. import numpy
 from functools import wraps
 from collections import OrderedDict
 import inspect
@@ -41,13 +42,8 @@ class ParameterProperty(Property):
         """
         if self.fset is None:
             raise AttributeError("can't set attribute")
-        self.fset(obj, value)
+        self.fset(obj, value, deps=self._deps)
         
-        # clear the cache of any parameters that depend
-        # on this attribute
-        for dep in self._deps:
-            obj._cache.pop(dep, None)
-
 class CachedProperty(Property):
     """
     A subclass of the `property` descriptor to represent an
@@ -178,6 +174,18 @@ class Cache(object):
     def __init__(self):
         pass
 
+def obj_eq(new_val, old_val):
+    equal = False
+    try:
+        if old_val is not None:
+            if numpy.isscalar(new_val) and numpy.isscalar(old_val):
+                equal = new_val == old_val
+            else:
+                equal = numpy.allclose(new_val, old_val)
+    except:
+        pass
+    return equal
+
 def parameter(f):
     """
     Decorator to represent a model parameter that must
@@ -185,9 +193,22 @@ def parameter(f):
     """
     name = f.__name__
     _name = '__'+name
-    def _set_property(self, value):
+    def _set_property(self, value, deps=[]):
         val = f(self, value)
-        setattr(self, _name, val)
+        try:
+            old_val = getattr(self, _name)
+            doset = False
+        except AttributeError:
+            old_val = None
+            doset = True
+        
+        if doset or not obj_eq(val, old_val):
+            setattr(self, _name, val)
+        
+            # clear the cache of any parameters that depend
+            # on this attribute
+            for dep in deps:
+                self._cache.pop(dep, None)
         return val
         
     @wraps(f)
@@ -256,7 +277,7 @@ def interpolated_property(*parents, **kwargs):
         def _del_property(self):
             self._cache.pop(name, None)
                         
-        prop = InterpolatedProperty(_get_property, None, None)
+        prop = InterpolatedProperty(_get_property, None, _del_property)
         prop._parents = list(parents) # the dependencies of this property
         prop._deps = set()
         return prop

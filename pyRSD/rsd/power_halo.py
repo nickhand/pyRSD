@@ -1,16 +1,15 @@
 from ._cache import cached_property
 from .power_biased import BiasedSpectrum
 
-#-------------------------------------------------------------------------------
 class HaloSpectrum(BiasedSpectrum):
-    
-                
+    """
+    The power spectrum of halos with linear bias `b1` in redshift space
+    """
     def __init__(self, **kwargs):
         
         # initalize the dark matter power spectrum
         super(HaloSpectrum, self).__init__(**kwargs)
 
-    #---------------------------------------------------------------------------
     @cached_property("b1")
     def b1_bar(self):
         """
@@ -18,7 +17,6 @@ class HaloSpectrum(BiasedSpectrum):
         """
         return self.b1
 
-    #---------------------------------------------------------------------------
     @cached_property("b2_00")
     def b2_00_bar(self):
         """
@@ -26,20 +24,16 @@ class HaloSpectrum(BiasedSpectrum):
         """
         return self.b2_00
         
-    #---------------------------------------------------------------------------
     @cached_property("b2_01")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term.
         """
         return self.b2_01
-            
-    #---------------------------------------------------------------------------
+
     @cached_property("bs")
     def bs_bar(self):
         """
         The quadratic, nonlocal tidal bias factor
         """
         return self.bs
-    #---------------------------------------------------------------------------
-#-------------------------------------------------------------------------------

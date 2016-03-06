@@ -1,6 +1,6 @@
 import fnmatch
 
-from ._cache import CachedModel, parameter, interpolated_property, cached_property
+from ._cache import Cache, parameter, interpolated_property, cached_property
 from . import tools, INTERP_KMIN, INTERP_KMAX
 from .. import pygcl, numpy as np, data as sim_data, os
 
@@ -15,8 +15,7 @@ def verify_krange(k, kmin, kmax):
     if np.amax(k) > kmax:
         raise ValueError("cannot compute power spectrum for k > %.2e; adjust `kmax` parameter" %kmax)
 
-@CachedModel
-class DarkMatterSpectrum(SimLoader, Integrals):
+class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     """
     The dark matter power spectrum in redshift space
     """
@@ -91,8 +90,7 @@ class DarkMatterSpectrum(SimLoader, Integrals):
             string specifying the name of a file which gives the linear 
             power spectrum, from which the transfer function in ``cosmo``
             will be initialized
-        """        
-        # initialize class for loading builtin sims
+        """   
         SimLoader.__init__(self)
         
         # set the input parameters

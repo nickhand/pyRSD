@@ -43,8 +43,8 @@ def normalize_ImnOneLoop(f):
     def wrapper(self):
         norm = self._power_norm
         def normalized_spline(k):
-            terms = fget(self)(k)
-            return norm**2*terms[0] + norm**3*terms[1] + norm**4*terms[2]
+            terms = fget(self)
+            return norm**2*terms[0](k) + norm**3*terms[1](k) + norm**4*terms[2](k)
         return normalized_spline
         
     f.fget = wrapper

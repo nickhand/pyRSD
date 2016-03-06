@@ -6,7 +6,6 @@
     __email__  : nhand@berkeley.edu
     __desc__   : compute the smoothed correlation function multipoles
 """
-from ._cache import Cache, parameter, interpolated_property, cached_property
 from .. import pygcl, numpy as np
 from . import ExtrapolatedPowerSpectrum
 

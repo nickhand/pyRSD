@@ -44,7 +44,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.fs            = 0.10
         self.fcB           = 0.08
         self.fsB           = 0.40
-        self.fso           = 0.
         self.b1_cA         = 1.85
         self.b1_cB         = 2.8
         self.b1_sA         = 2.6

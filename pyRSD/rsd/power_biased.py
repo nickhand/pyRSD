@@ -1,5 +1,5 @@
 from .. import numpy as np
-from ._cache import CachedModel, parameter, cached_property, interpolated_property
+from ._cache import parameter, cached_property, interpolated_property
 from .tools import RSDSpline, BiasToSigmaRelation
 
 from .power_dm import DarkMatterSpectrum
@@ -13,7 +13,6 @@ from .simulation import Pmu4ResidualCorrection
 from .simulation import AutoStochasticityFits
 from .simulation import CrossStochasticityFits
 
-@CachedModel
 class BiasedSpectrum(DarkMatterSpectrum):
     """
     The power spectrum of two biased tracers, with linear biases `b1`

@@ -1,11 +1,10 @@
-from ._cache import CachedModel, parameter, cached_property
+from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
 from . import tools, INTERP_KMIN, INTERP_KMAX
 from .. import numpy as np, pygcl
 from ..data import hzpt_wiggles
 
-@CachedModel
-class HaloZeldovichPS(object):
+class HaloZeldovichPS(Cache):
     """
     Base class to represent a Halo Zeldovich power spectrum
     """
@@ -26,7 +25,7 @@ class HaloZeldovichPS(object):
         enhance_wiggles : bool, optional (`False`)
             using the Hy1 model from arXiv:1509.02120, enhance the wiggles
             of pure HZPT
-        """        
+        """    
         # the model parameters
         self.sigma8_z        = sigma8_z
         self.interpolate     = interpolate

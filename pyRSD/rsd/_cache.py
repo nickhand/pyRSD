@@ -97,22 +97,17 @@ def CachedModel(cls):
     Declares a model that will have its parameters registered and
     cached, keeping track of dependencies
     """
-    return add_metaclass(Cache)(cls)
+    return add_metaclass(CacheSchema)(cls)
 
 
-class Cache(type):
+class CacheSchema(type):
     """
     Metaclass to gather all `parameter` and `cached_property`
     attributes from the class, and keep track of dependencies
     for caching purposes
     """
-    def __new__(cls, name, bases, attrs):
-
-        # call the standard creation method
-        return type.__new__(cls, name, bases, attrs)
-
     def __init__(cls, clsname, bases, attrs):
-                        
+                                    
         # keep track of allowable kwargs of main class
         attrs, varargs, varkw, defaults = inspect.getargspec(cls.__init__)
         cls.allowable_kwargs = set(attrs[1:])
@@ -171,10 +166,18 @@ class Cache(type):
         # compute the inverse cache
         for name in cls._cachemap:
             invert_cachemap(name, cls._cachemap[name])
-        
-        # the empty cache dictionary
-        cls._cache = {}
     
+@CachedModel
+class Cache(object):
+    
+    def __new__(typ, *args, **kwargs):
+        obj = object.__new__(typ, *args, **kwargs)
+        obj._cache = {}
+        return obj
+
+    def __init__(self):
+        pass
+
 def parameter(f):
     """
     Decorator to represent a model parameter that must
@@ -186,7 +189,8 @@ def parameter(f):
     def _set_property(self, value):
         val = f(self, value)
         setattr(self, _name, val)
-
+        return val
+        
     @wraps(f)
     def _get_property(self):
         if _name not in self.__dict__:

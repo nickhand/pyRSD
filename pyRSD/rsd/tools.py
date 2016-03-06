@@ -260,10 +260,7 @@ class BiasToMassRelation(Cache):
             The cosmology object
         interpolate : bool, optional
             Whether to return results from an interpolation table
-        """
-        # initialize the Cache base class
-        super(BiasToMassRelation, self).__init__()
-        
+        """        
         # save the parameters
         self.z = z
         self.cosmo = cosmo

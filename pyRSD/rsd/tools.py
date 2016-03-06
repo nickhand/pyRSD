@@ -9,7 +9,7 @@ import functools
 import itertools
 
 #-------------------------------------------------------------------------------
-# DECORATORS/CONTEXTS
+# decorators and contexts
 #-------------------------------------------------------------------------------  
 class LowKPowerMode():
     """
@@ -27,17 +27,19 @@ class LowKPowerMode():
     def __enter__(self):
         
         # save the original state
-        self.state = {k:getattr(self.model, k) for k in self.params.keys()}
+        self.state = {k:getattr(self.model, k, None) for k in self.params.keys()}
         
         # update the state to low-k mode
         for k,v in self.params.iteritems():
-            setattr(self.model, k, v)
+            if hasattr(self.model, k):
+                setattr(self.model, k, v)
             
     def __exit__(self, type, value, traceback):
         
         # restore the original state
         for k, v in self.state.iteritems():
-            setattr(self.model, k, v)
+            if hasattr(self.model, k):
+                setattr(self.model, k, v)
 
 def unpacked(method):
     """

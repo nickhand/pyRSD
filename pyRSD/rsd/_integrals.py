@@ -1,51 +1,55 @@
+from functools import wraps
 from .. import pygcl, numpy as np
 from ._cache import parameter, interpolated_property, cached_property
 from .tools import RSDSpline as spline
 from . import INTERP_KMIN, INTERP_KMAX
 
 #-------------------------------------------------------------------------------
-# Decorators to properly normalize intergrals
+# decorators to properly normalize integrals
 #-------------------------------------------------------------------------------
 def normalize_Jmn(f):
     """
     Decorator to properly normalize Jmn integrals
-    """     
-    def wrapper(self, *args):
-        return self._power_norm * f(self, *args)
-    return wrapper
+    """   
+    fget = f.fget
+    def wrapper(self):
+        def normalized_spline(k):
+            return self._power_norm * fget(self)(k)
+        return normalized_spline
+        
+    f.fget = wrapper
+    return f
 
-#-------------------------------------------------------------------------------
 def normalize_Imn(f):
     """
     Decorator to properly normalize Imn integrals
-    """     
-    def wrapper(self, *args):
-        return self._power_norm**2 * f(self, *args)
-    return wrapper
+    """   
+    fget = f.fget
+    def wrapper(self):
+        def normalized_spline(k):
+            return self._power_norm**2 * fget(self)(k)
+        return normalized_spline
+        
+    f.fget = wrapper
+    return f
 
-#-------------------------------------------------------------------------------
-def normalize_Kmn(f):
-    """
-    Decorator to properly normalize Kmn integrals
-    """     
-    def wrapper(self, *args):
-        return self._power_norm**2 * f(self, *args)
-    return wrapper
+normalize_Kmn = normalize_Imn
     
-#-------------------------------------------------------------------------------
 def normalize_ImnOneLoop(f):
     """
     Decorator to properly normalize one loop Imn integrals
-    """     
-    def wrapper(self, *args):
+    """
+    fget = f.fget
+    def wrapper(self):
         norm = self._power_norm
-        terms = f(self, *args) 
-        return norm**2*terms[0] + norm**3*terms[1] + norm**4*terms[2]
-    return wrapper
+        def normalized_spline(k):
+            terms = fget(self)(k)
+            return norm**2*terms[0] + norm**3*terms[1] + norm**4*terms[2]
+        return normalized_spline
+        
+    f.fget = wrapper
+    return f
 
-#-------------------------------------------------------------------------------
-# BASE CLASS FOR HANDLING INTEGRALS
-#-------------------------------------------------------------------------------
 class Integrals(object):
     """
     Class to compute and store the necessary PT integrals for the dark 
@@ -54,7 +58,8 @@ class Integrals(object):
     Notes
     -----
     The class is written such that the computationally-expensive parts do not 
-    depend on changes in redshift or sigma8.
+    depend on changes in sigma8(z) so the integrals can be renormalized to 
+    the correct sigma8(z) with an overall scaling
     """
     def __init__(self):
         
@@ -63,29 +68,38 @@ class Integrals(object):
         assert self.power_lin.GetRedshift() == 0., msg
         
     #---------------------------------------------------------------------------
-    # ONE LOOP POWER SPECTRA
+    # one-loop power spectra
     #---------------------------------------------------------------------------
     @cached_property("power_lin")
     def _Pdd_0(self):
+        """
+        The 1-loop density auto spectrum 
+        """
         return pygcl.OneLoopPdd(self.power_lin)
     
-    #---------------------------------------------------------------------------
     @cached_property("power_lin")
     def _Pdv_0(self):
+        """
+        The 1-loop density-velocity cross spectrum
+        """
         return pygcl.OneLoopPdv(self.power_lin)
-
-    #---------------------------------------------------------------------------
+        
     @cached_property("power_lin")
     def _Pvv_0(self):
+        """
+        The 1-loop velocity auto spectrum
+        """
         return pygcl.OneLoopPvv(self.power_lin)
-    
-    #---------------------------------------------------------------------------
+
     @cached_property("power_lin")
     def _P22bar_0(self):
+        """
+        The 1-loop P22 power spectrum
+        """
         return pygcl.OneLoopP22Bar(self.power_lin)
             
     #---------------------------------------------------------------------------
-    # INTEGRAL DRIVERS
+    # drivers for the various PT integrals -- depend on Plin
     #---------------------------------------------------------------------------
     @cached_property("power_lin")
     def _Imn(self):
@@ -94,7 +108,6 @@ class Integrals(object):
         """
         return pygcl.Imn(self.power_lin)
         
-    #---------------------------------------------------------------------------
     @cached_property("power_lin")
     def _Jmn(self):
         """
@@ -102,7 +115,6 @@ class Integrals(object):
         """
         return pygcl.Jmn(self.power_lin)
 
-    #---------------------------------------------------------------------------
     @cached_property("power_lin")
     def _Kmn(self):
         """
@@ -110,7 +122,6 @@ class Integrals(object):
         """
         return pygcl.Kmn(self.power_lin)
 
-    #---------------------------------------------------------------------------
     @cached_property("_Pdv_0")
     def _Imn1Loop_dvdv(self):
         """
@@ -119,7 +130,6 @@ class Integrals(object):
         """
         return pygcl.ImnOneLoop(self._Pdv_0)
 
-    #---------------------------------------------------------------------------
     @cached_property("_Pvv_0", "_Pdd_0")
     def _Imn1Loop_vvdd(self):
         """
@@ -128,7 +138,6 @@ class Integrals(object):
         """
         return pygcl.ImnOneLoop(self._Pvv_0, self._Pdd_0)
 
-    #---------------------------------------------------------------------------
     @cached_property("_Pvv_0")
     def _Imn1Loop_vvvv(self):
         """
@@ -143,31 +152,37 @@ class Integrals(object):
     @normalize_Jmn
     @interpolated_property("_Jmn")
     def J00(self, k):
+        """J(m=0,n=0) perturbation theory integral"""
         return self._Jmn(k, 0, 0)
 
     @normalize_Jmn
     @interpolated_property("_Jmn")
     def J01(self, k):
-         return self._Jmn(k, 0, 1)
+        """J(m=0,n=1) perturbation theory integral"""
+        return self._Jmn(k, 0, 1)
 
     @normalize_Jmn
     @interpolated_property("_Jmn")
     def J10(self, k):
+        """J(m=1,n=0) perturbation theory integral"""
         return self._Jmn(k, 1, 0)
 
     @normalize_Jmn
     @interpolated_property("_Jmn")
     def J11(self, k):
+        """J(m=1,n=1) perturbation theory integral"""
         return self._Jmn(k, 1, 1)
            
     @normalize_Jmn
     @interpolated_property("_Jmn")
     def J02(self, k):
+        """J(m=0,n=2) perturbation theory integral"""
         return self._Jmn(k, 0, 2)
     
     @normalize_Jmn
     @interpolated_property("_Jmn")        
     def J20(self, k):
+        """J(m=2,n=0) perturbation theory integral"""
         return self._Jmn(k, 2, 0)
             
     #---------------------------------------------------------------------------
@@ -176,81 +191,97 @@ class Integrals(object):
     @normalize_Imn
     @interpolated_property("_Imn")
     def I00(self, k):
+        """I(m=0,n=0) perturbation theory integral"""
         return self._Imn(k, 0, 0)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I01(self, k):
+        """I(m=0,n=1) perturbation theory integral"""
         return self._Imn(k, 0, 1)
 
     @normalize_Imn
     @interpolated_property("_Imn")
     def I02(self, k):
+        """I(m=0,n=2) perturbation theory integral"""
         return self._Imn(k, 0, 2)
         
     @normalize_Imn
     @interpolated_property("_Imn")    
     def I03(self, k):
+        """I(m=0,n=3) perturbation theory integral"""
         return self._Imn(k, 0, 3)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I10(self, k):
+        """I(m=1,n=0) perturbation theory integral"""
         return self._Imn(k, 1, 0)
 
     @normalize_Imn
     @interpolated_property("_Imn")    
     def I11(self, k):
+        """I(m=1,n=1) perturbation theory integral"""
         return self._Imn(k, 1, 1)
     
     @normalize_Imn
     @interpolated_property("_Imn")    
     def I12(self, k):
+        """I(m=1,n=2) perturbation theory integral"""
         return self._Imn(k, 1, 2)
 
     @normalize_Imn
     @interpolated_property("_Imn")
     def I13(self, k):
+        """I(m=1,n=3) perturbation theory integral"""
         return self._Imn(k, 1, 3)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I20(self, k):
+        """I(m=2,n=0) perturbation theory integral"""
         return self._Imn(k, 2, 0)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I21(self, k):
+        """I(m=2,n=1) perturbation theory integral"""
         return self._Imn(k, 2, 1)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I22(self, k):
+        """I(m=2,n=2) perturbation theory integral"""
         return self._Imn(k, 2, 2)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I23(self, k):
+        """I(m=2,n=3) perturbation theory integral"""
         return self._Imn(k, 2, 3)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I30(self, k):
+        """I(m=3,n=0) perturbation theory integral"""
         return self._Imn(k, 3, 0)
         
     @normalize_Imn
     @interpolated_property("_Imn")
     def I31(self, k):
+        """I(m=3,n=1) perturbation theory integral"""
         return self._Imn(k, 3, 1)
     
     @normalize_Imn
     @interpolated_property("_Imn")
     def I32(self, k):
+        """I(m=3,n=2) perturbation theory integral"""
         return self._Imn(k, 3, 2)
         
     @normalize_Imn
     @interpolated_property("_Imn")
     def I33(self, k):
+        """I(m=3,n=3) perturbation theory integral"""
         return self._Imn(k, 3, 3)
 
     #---------------------------------------------------------------------------
@@ -259,70 +290,83 @@ class Integrals(object):
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K00(self, k):
+        """K(m=0,n=0) perturbation theory integral"""
         return self._Kmn(k, 0, 0)
     
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K00s(self, k):
+        """K(m=0,n=0,s=True) perturbation theory integral"""
         return self._Kmn(k, 0, 0, True)
      
     @normalize_Kmn
     @interpolated_property("_Kmn")         
     def K01(self, k):
+        """K(m=0,n=1) perturbation theory integral"""
         return self._Kmn(k, 0, 1)
 
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K01s(self, k):
+        """K(m=0,n=1,s=True) perturbation theory integral"""
         return self._Kmn(k, 0, 1, True)
             
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K02s(self, k):
+        """K(m=0,n=2,s=True) perturbation theory integral"""
         return self._Kmn(k, 0, 2, True)
        
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K10(self, k):
+        """K(m=1,n=0) perturbation theory integral"""
         return self._Kmn(k, 1, 0)
 
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K10s(self, k):
+        """K(m=1,n=0,s=True) perturbation theory integral"""
         return self._Kmn(k, 1, 0, True)
         
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K11(self, k):
+        """K(m=1,n=1) perturbation theory integral"""
         return self._Kmn(k, 1, 1)
     
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K11s(self, k):
+        """K(m=1,n=1,s=True) perturbation theory integral"""
         return self._Kmn(k, 1, 1, True)
 
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K20_a(self, k):
+        """K(m=2,n=0) mu^2 perturbation theory integral"""
         return self._Kmn(k, 2, 0, False, 0)
        
     @normalize_Kmn
     @interpolated_property("_Kmn")         
     def K20_b(self, k):
+        """K(m=2,n=0) mu^4 perturbation theory integral"""
         return self._Kmn(k, 2, 0, False, 1)
 
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K20s_a(self, k):
+        """K(m=2,n=0,s=True) mu^2 perturbation theory integral"""
         return self._Kmn(k, 2, 0, True, 0)
         
     @normalize_Kmn
     @interpolated_property("_Kmn")
     def K20s_b(self, k):
+        """K(m=2,n=0,s=True) mu^4 perturbation theory integral"""
         return self._Kmn(k, 2, 0, True, 1)
             
     #---------------------------------------------------------------------------
-    # 2-LOOP INTEGRALS
+    # full 2-loop integrals
     #---------------------------------------------------------------------------
     @normalize_ImnOneLoop
     @interpolated_property("_Imn1Loop_vvdd")
@@ -388,6 +432,8 @@ class Integrals(object):
         return I_lin, I_cross, I_1loop
         
     #---------------------------------------------------------------------------
+    # velocity-related quantities
+    #---------------------------------------------------------------------------
     @cached_property('_P22bar_0')
     def _unnormed_velocity_kurtosis(self):
         """
@@ -403,9 +449,8 @@ class Integrals(object):
         """
         return self._power_norm**2 * self._unnormed_velocity_kurtosis
             
-    #---------------------------------------------------------------------------
     @normalize_Jmn
-    @interpolated_property("normed_power_lin")
+    @interpolated_property("power_lin")
     def sigmasq_k(self, k):
         """
         The dark matter velocity dispersion at z, as a function of k, 
@@ -413,6 +458,3 @@ class Integrals(object):
         """
         # integrate up to 0.5 * kmax
         return self.power_lin.VelocityDispersion(k, 0.5)
-
-    #---------------------------------------------------------------------------
-#-------------------------------------------------------------------------------

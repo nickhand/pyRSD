@@ -1,4 +1,6 @@
-from ._cache import Cache, parameter, interpolated_property, cached_property
+import fnmatch
+
+from ._cache import CachedModel, parameter, interpolated_property, cached_property
 from . import tools, INTERP_KMIN, INTERP_KMAX
 from .. import pygcl, numpy as np, data as sim_data, os
 
@@ -9,12 +11,12 @@ from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11
 
 def verify_krange(k, kmin, kmax):
     if np.amin(k) < kmin:
-        raise ValueError("cannot compute power spectrum for k < %.2e" %kmin)
+        raise ValueError("cannot compute power spectrum for k < %.2e; adjust `kmin` parameter" %kmin)
     if np.amax(k) > kmax:
-        raise ValueError("cannot compute power spectrum for k > %.2e" %kmax)
+        raise ValueError("cannot compute power spectrum for k > %.2e; adjust `kmax` parameter" %kmax)
 
-#-------------------------------------------------------------------------------
-class DarkMatterSpectrum(Cache, Integrals, SimLoader):
+@CachedModel
+class DarkMatterSpectrum(SimLoader, Integrals):
     """
     The dark matter power spectrum in redshift space
     """
@@ -23,14 +25,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
     spline = tools.RSDSpline
     spline_kwargs = {'bounds_error' : True, 'fill_value' : 0}
     
-    # kwargs
-    allowable_models = ['P00', 'P01', 'P11', 'Pdv']
-    allowable_kwargs = ['kmin', 'kmax', 'Nk', 'z', 'cosmo_filename', 'include_2loop', 
-                        'transfer_fit', 'max_mu', 'interpolate', 'load_dm_sims', 
-                        'k0_low', 'enhance_wiggles', 'linear_power_file', 'Pdv_model_type']
-    allowable_kwargs += ['use_%s_model' %m for m in allowable_models]
-    
-    #---------------------------------------------------------------------------
     def __init__(self, kmin=1e-3,
                        kmax=0.5,
                        Nk=100,
@@ -97,11 +91,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             string specifying the name of a file which gives the linear 
             power spectrum, from which the transfer function in ``cosmo``
             will be initialized
-        """
-        # initialize the Cache subclass first
-        Cache.__init__(self)
-        
-        # initialize the other abstract base classes
+        """        
+        # initialize class for loading builtin sims
         SimLoader.__init__(self)
         
         # set the input parameters
@@ -118,6 +109,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         self.k0_low            = k0_low
         self.enhance_wiggles   = enhance_wiggles
         self.linear_power_file = linear_power_file
+        self.Pdv_model_type    = Pdv_model_type
         
         # initialize the cosmology parameters and set defaults
         self.sigma8_z          = self.cosmo.Sigma8_z(self.z)
@@ -132,32 +124,17 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         # set the models we want to use
         # default is to use all models
-        for model in self.allowable_models:
-            name = 'use_%s_model' %model
-            val = kwargs.pop(name, True)
-            setattr(self, name, val)
+        for kw in self.allowable_kwargs:
+            if fnmatch.fnmatch(kw, 'use_*_model'):
+                setattr(self, kw, kwargs.pop(kw, True))
             
         if len(kwargs):
             for k in kwargs:
                 print "warning: extra keyword `%s` is ignored" %k
         
-        # initialize the integrals    
+        # finally, initialize the integrals    
         Integrals.__init__(self)
-        
-        # set the Pdv model
-        self.Pdv_model_type = Pdv_model_type
-        
-    def __setstate__(self, d):
-        self.__dict__ = d
-        self.enhance_wiggles = False
-    
-    def to_dict(self):
-        """
-        Return a dictionary of the allowable parameters
-        """
-        allowed = self.__class__.allowable_kwargs
-        return {k:getattr(self, k) for k in allowed}
-        
+                    
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------
@@ -200,7 +177,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         Whether we want to interpolate any underlying models
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model']
         self._update_models('interpolate', models, val)
         
         return val
@@ -211,7 +188,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         Whether to enhance the wiggles over the default HZPT model
         """
         # set the dependencies
-        models = ['P00_model', 'P01_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model']
         self._update_models('enhance_wiggles', models, val)
         
         return val
@@ -341,14 +318,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         The parallel Alcock-Paczynski effect scaling parameter, where
         :math: `k_{par, true} = k_{par, true} / alpha_{par}`
         """
-        return val
-          
-    @parameter
-    def small_scale_sigma(self, val):
-        """
-        Additional small scale sigma in km/s
-        """
-        self.sigma_bv2 = self.sigma_v2 = self.sigma_bv4 = val
         return val
             
     @parameter
@@ -611,7 +580,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
     #---------------------------------------------------------------------------
     # utility functions
-    #---------------------------------------------------------------------------        
+    #---------------------------------------------------------------------------         
     def k_true(self, k_obs, mu_obs):
         """
         Return the `true` k values, given an observed (k, mu)
@@ -642,14 +611,24 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             except Exception as e:
                 raise RuntimeError("failure to set parameter `%s` to value %s: %s" %(k, str(v), str(e)))
     
+    def to_dict(self):
+        """
+        Return a dictionary of the allowable parameters
+        """
+        allowed = self.__class__.allowable_kwargs
+        return {k:getattr(self, k) for k in allowed}
+        
     def _update_models(self, name, models, val):
         """
         Update the specified attribute for the models given
         """
         for model in models:
-            if hasattr(self, "_%s__%s" %(self.__class__.__name__, model)):
+            if model in self._cache:
                 setattr(getattr(self, model), name, val)
-                
+                        
+    #---------------------------------------------------------------------------
+    # power term attributes
+    #---------------------------------------------------------------------------
     def normed_power_lin(self, k):
         """
         The linear power evaluated at the specified `k` and at `z`, 
@@ -663,11 +642,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         `k` and at `self.z`, normalized to `sigma8_z`
         """
         return self._power_norm * self.power_lin_nw(k)
-                
-            
-    #---------------------------------------------------------------------------
-    # power term attributes
-    #---------------------------------------------------------------------------
+        
     @interpolated_property("P00", interp="k")
     def P_mu0(self, k):
         """
@@ -676,7 +651,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return self.P00.total.mu0
         
-    #---------------------------------------------------------------------------
     @interpolated_property("P01", "P11", "P02", interp="k")
     def P_mu2(self, k):
         """
@@ -684,8 +658,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         from P01, P11, and P02.
         """
         return self.P01.total.mu2 + self.P11.total.mu2 + self.P02.total.mu2
-        
-    #---------------------------------------------------------------------------
+    
     @interpolated_property("P11", "P02", "P12", "P22", "P03", "P13", 
                            "P04", "include_2loop", interp="k")
     def P_mu4(self, k):
@@ -696,8 +669,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         Pk = self.P11.total.mu4 + self.P02.total.mu4 + self.P12.total.mu4 + self.P22.total.mu4 + self.P03.total.mu4
         if self.include_2loop: Pk += self.P13.total.mu4 + self.P04.total.mu4
         return Pk
-
-    #---------------------------------------------------------------------------
+        
     @interpolated_property("P12", "P22", "P13", "P04", "include_2loop", interp="k")
     def P_mu6(self, k):
         """
@@ -708,7 +680,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         if self.include_2loop: Pk += self.P04.total.mu6
         return Pk
             
-    #---------------------------------------------------------------------------
     @cached_property("k", "z", "_power_norm")
     def Pdd(self):
         """
@@ -717,7 +688,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         norm = self._power_norm
         return norm*(self.power_lin(self.k) + norm*self._Pdd_0(self.k))
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f", "z", "_power_norm", "use_Pdv_model", "Pdv_model_type", "Pdv_loaded")
     def Pdv(self):
         """
@@ -736,8 +706,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             else:
                 norm = self._power_norm
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_0(self.k))
-          
-    #---------------------------------------------------------------------------
+    
     @cached_property("k", "f", "z", "_power_norm")
     def Pvv(self):
         """
@@ -746,7 +715,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         norm = self._power_norm
         return self.f**2 * norm*(self.power_lin(self.k) + norm*self._Pvv_0(self.k))
     
-    #---------------------------------------------------------------------------
     @cached_property("k", "z", "sigma8_z", "use_P00_model", "power_lin", 
                      "P00_mu0_loaded", "enhance_wiggles")
     def P00(self):
@@ -777,7 +745,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
         return P00
             
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "use_P01_model", "power_lin", 
                      "max_mu", "P01_mu2_loaded", "enhance_wiggles")
     def P01(self):
@@ -807,7 +774,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         return P01
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "use_P11_model", "power_lin", 
                      "max_mu", "include_2loop", "P11_mu2_loaded", "P11_mu4_loaded")
     def P11(self):
@@ -877,7 +843,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
             
             return P11
             
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "P00")
     def P02(self):
@@ -922,7 +887,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                 
         return P02
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "P01")
     def P12(self):
@@ -972,7 +936,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         return P12
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "P00", "P02")
     def P22(self):
@@ -1071,7 +1034,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                     
         return P22
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_v2", "P01")
     def P03(self):
@@ -1100,7 +1062,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
 
         return P03
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv2", "sigma_v2", "P11")
     def P13(self):
@@ -1146,7 +1107,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         
         return P13
         
-    #---------------------------------------------------------------------------
     @cached_property("k", "f",  "z", "sigma8_z", "power_lin", "max_mu", 
                      "include_2loop", "sigma_v", "sigma_bv4", "P02", "P00")
     def P04(self):
@@ -1187,6 +1147,8 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
                     
         return P04
         
+    #---------------------------------------------------------------------------
+    # main user callables
     #---------------------------------------------------------------------------
     @tools.broadcast_kmu
     def power(self, k_obs, mu_obs, flatten=False):
@@ -1250,7 +1212,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         if flatten: toret = np.ravel(toret, order='F')
         return toret
     
-    #---------------------------------------------------------------------------
     @tools.monopole
     def monopole(self, k, mu, **kwargs):
         """
@@ -1259,7 +1220,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return self.power(k, mu)
             
-    #---------------------------------------------------------------------------
     @tools.quadrupole
     def quadrupole(self, k, mu, **kwargs):
         """
@@ -1268,7 +1228,6 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return self.power(k, mu)
     
-    #---------------------------------------------------------------------------
     @tools.hexadecapole
     def hexadecapole(self, k, mu, **kwargs):
         """
@@ -1277,9 +1236,7 @@ class DarkMatterSpectrum(Cache, Integrals, SimLoader):
         """
         return self.power(k, mu)
                 
-    #---------------------------------------------------------------------------
-
-#-------------------------------------------------------------------------------   
+    
 class PowerTerm(object):
     """
     Class to hold the data for each term in the power expansion.
@@ -1297,7 +1254,7 @@ class PowerTerm(object):
         self.no_velocity   = Angular()
         self.with_velocity = Angular()
         
-#-------------------------------------------------------------------------------  
+
 class Angular(object):
     """
     Class to keep track of the different angular terms for each power term.
@@ -1308,9 +1265,3 @@ class Angular(object):
         self.mu4 = 0.
         self.mu6 = 0.
         self.mu8 = 0.
-
-#-------------------------------------------------------------------------------
-
-
-        
-        

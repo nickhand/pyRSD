@@ -30,10 +30,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     """
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
     for biased redshift space power spectra
-    """
-    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + \
-                        ['fog_model', 'use_so_correction']
-    
+    """    
     def __init__(self, fog_model='modified_lorentzian', 
                        use_so_correction=False,
                        **kwargs):

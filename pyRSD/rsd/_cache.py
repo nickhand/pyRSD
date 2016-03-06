@@ -184,16 +184,17 @@ def parameter(f):
     be set by the user
     """
     name = f.__name__
+    _name = '__'+name
     def _set_property(self, value):
         val = f(self, value)
-        setattr(self, name, val)
+        setattr(self, _name, val)
         return val
         
     @wraps(f)
     def _get_property(self):
-        if name not in self.__dict__:
+        if _name not in self.__dict__:
             raise ValueError("required parameter '%s' has not yet been set" %name)
-        return self.__dict__[name]
+        return self.__dict__[_name]
        
     prop = ParameterProperty(_get_property, _set_property, None)
     prop._deps = set() # track things that depend on this parameter

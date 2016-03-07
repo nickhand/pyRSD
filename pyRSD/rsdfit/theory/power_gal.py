@@ -188,7 +188,7 @@ class GalaxyPowerTheory(object):
             elif ext == '.pickle':
                 self.model = rsd_io.load_pickle(model[0])
             else:
-                raise ValueError("extension for model file not recognized")
+                raise ValueError("extension for model file not recognized; must be `.npy` or `.pickle`")
             self.model.update(**kwargs)
         elif isinstance(model[0], rsd.GalaxySpectrum):
             self.model = model[0]

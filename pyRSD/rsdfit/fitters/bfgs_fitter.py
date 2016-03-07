@@ -27,7 +27,7 @@ def run(params, theory, objective, pool=None, init_values=None):
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
     epsilon = params.get('bfgs_epsilon', 1e-8)
-    factr   = params.get('bfgs_factr', 1e5)
+    factr   = params.get('bfgs_factr', 1e6)
             
     #-----------------
     # do the work
@@ -54,7 +54,7 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     exception = False  
     try:
-        x, f, d = scipy.optimize.fmin_l_bfgs_b(objective, x0=init_values, bounds=bounds, fprime=gradient, maxiter=1, iprint=1)
+        x, f, d = scipy.optimize.fmin_l_bfgs_b(objective, x0=init_values, bounds=bounds, fprime=gradient, iprint=1)
     except:
         exception = True
         pass

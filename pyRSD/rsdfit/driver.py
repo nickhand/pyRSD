@@ -178,8 +178,13 @@ class FittingDriver(object):
         """
         # if we are initializing from max-like, first call lmfit
         init_from = self.params.get('init_from', None)
+        init_values = None
+        
+        # init from maximum likelihood solution
         if init_from == 'max-like':
             init_values = self.do_maximum_likelihood()
+            
+        # init from fiducial values
         elif init_from == 'fiducial':
             free = self.theory.free_names
             params = self.theory.fit_params
@@ -188,6 +193,8 @@ class FittingDriver(object):
                 raise ValueError("cannot initialize from fiducial values")
             else:
                 init_values = np.array(init_values)
+                
+        # init from existing chain
         elif init_from == 'chain':
             free = self.theory.free_names
             start_chain = EmceeResults.from_npz(self.params['start_chain'].value)
@@ -219,10 +226,11 @@ class FittingDriver(object):
             elif init_from == 'previous_run':
                 kwargs['init_values'] = self.results.copy()
                 
-        # lmfit
-        elif solver_name == 'lmfit':
-            solver = lmfit_fitter.run
-            objective = functools.partial(FittingDriver.normed_residuals, self)
+        # scipy
+        elif solver_name == 'scipy':
+            solver = bfgs_fitter.run
+            objective = functools.partial(FittingDriver.chi2, self)
+            kwargs = {'init_values': init_values}
             
         # incorrect
         else:
@@ -258,18 +266,23 @@ class FittingDriver(object):
         Compute the maximum likelihood values and return them as an array
         """
         # get the solver and objective
-        solver = lmfit_fitter.run
-        objective = functools.partial(FittingDriver.normed_residuals, self)
+        solver = bfgs_fitter.run
+        objective = functools.partial(FittingDriver.chi2, self)
         
-        # make params
-        params = ParameterSet()
-        params.add('lmfit_method', value='leastsq')
+        # init values from fiducial
+        free = self.theory.free_names
+        params = self.theory.fit_params
+        init_values = [params[key].fiducial for key in free]
+        if None in init_values:
+            raise ValueError("cannot initialize from fiducial values in maximum likelihood initialization run")
+        else:
+            init_values = np.array(init_values)
         
         logger.info("Computing the maximum likelihood values to use as initialization")
-        results, exception = solver(params, self.theory, objective)
+        results, exception = solver(params, copy.deepcopy(self.theory), objective, init_values=init_values)
         logger.info("...done compute maximum likelihood")
         
-        values = results.values()
+        values = results.min_chi2_values
         del results
         return values
 
@@ -385,17 +398,6 @@ class FittingDriver(object):
         parameters in  `GalaxyPowerTheory`
         """
         return self.theory.lnprior
-
-    def normed_residuals(self, theta=None):
-        """
-        Return an array of the normed residuals: (model - data) / diag(covariance)**0.5
-        """
-        # set the free parameters
-        if theta is not None:
-            self.theory.set_free_parameters(theta)
-        
-        norm = np.sqrt(self.data.covariance.diag)
-        return  (self.combined_model - self.data.combined_power) / norm
 
     def chi2(self, theta=None):
         """

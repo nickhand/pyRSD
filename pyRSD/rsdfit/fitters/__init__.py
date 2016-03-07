@@ -1,6 +1,6 @@
 import emcee_fitter
-import lmfit_fitter
+import bfgs_fitter
 
-__all__ = ['emcee_fitter', 'lmfit_fitter']
+__all__ = ['emcee_fitter', 'bfgs_fitter']
     
     

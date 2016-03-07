@@ -59,10 +59,7 @@ class CovarianceMatrix(Cache):
         verify : bool, optional
             If `True`, verify that the matrix is positive-semidefinite and
             symmetric
-        """
-        # initialize the base Cache
-        Cache.__init__(self)
-        
+        """        
         # make local copies
         data = np.asarray(data).copy()
         
@@ -117,8 +114,7 @@ class CovarianceMatrix(Cache):
         """
         Shortcut around __init__ for internal use
         """
-        obj = object.__new__(cls)
-        Cache.__init__(obj)
+        obj = cls.__new__(cls)
         obj._setup(data, coords=coords, names=names)
         obj.inverse_rescaling = 1.0
         if attrs is None:

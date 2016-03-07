@@ -3,7 +3,7 @@ from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
 
 from scipy.integrate import simps
-from scipy.interpolate import InterpolatedUnivariateSpline
+import scipy.interpolate as interp
 from scipy.optimize import brentq
 
 import functools
@@ -139,7 +139,7 @@ def hexadecapole(f):
 #-------------------------------------------------------------------------------
 # InterpolatedUnivariateSpline with extrapolation
 #-------------------------------------------------------------------------------
-class RSDSpline(InterpolatedUnivariateSpline):
+class RSDSpline(interp.InterpolatedUnivariateSpline):
     """
     Class to implement an `InterpolatedUnivariateSpline` that remembers 
     the x-domain
@@ -219,7 +219,7 @@ class RSDSpline(InterpolatedUnivariateSpline):
         Evaluate the spline
         """
         out_of_bounds = self._check_bounds(x_new)
-        y_new = InterpolatedUnivariateSpline.__call__(self, x_new)
+        y_new = interp.InterpolatedUnivariateSpline.__call__(self, x_new)
         if np.isscalar(y_new) or y_new.ndim == 0:
             return self.fill_value if out_of_bounds else y_new
         else:
@@ -648,6 +648,16 @@ def convolve_multipoles(k, Pell, window, k_out=None):
     if k_out.shape[-1] != len(ells):
         raise ValueError("input `k_out` must have 3 columns for ell=0,2,4 poles")
     
+    # make the hires version to avoid wiggles when convolving
+    if len(k) < 500:
+        k_hires = np.logspace(np.log10(k.min()), np.log10(k.max()), 500)
+        poles_hires = []
+        for i in range(Pell.shape[1]):
+            tck = interp.splrep(k, Pell[:,i], k=3, s=0)
+            poles_hires.append(interp.splev(k_hires, tck))
+        Pell = np.vstack(poles_hires).T
+        k = k_hires.copy()
+        
     # FT the power multipoles    
     xi = np.empty((len(s), len(ells)))
     for i, ell in enumerate(ells): 

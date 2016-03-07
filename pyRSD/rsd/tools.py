@@ -2,6 +2,7 @@ from .. import pygcl, numpy as np
 from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator
 
+from scipy.integrate import simps
 from scipy.interpolate import InterpolatedUnivariateSpline
 from scipy.optimize import brentq
 

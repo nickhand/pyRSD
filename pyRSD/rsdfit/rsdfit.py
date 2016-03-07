@@ -20,19 +20,7 @@ def split_ranks(N_ranks, N_chunks):
         yield i, seq[start:end]
         start = end
         end += avg
-        
-def split_ranks(N_ranks, N_chunks):
-    seq = range(N_ranks)
-    avg = N_ranks / float(N_chunks)
-    last = 0.
-
-    i = 0
-    while last < N_ranks:
-        yield i, seq[int(last):int(last + avg)]
-        last += avg
-        i += 1
   
-#-------------------------------------------------------------------------------
 def copy_log(temp_log_name, output_name, restart=None):
     """
     Copy the contents of the log from the temporary log file    
@@ -58,7 +46,6 @@ def copy_log(temp_log_name, output_name, restart=None):
         log_file.write(line)
     log_file.close()
             
-#-------------------------------------------------------------------------------
 def add_console_logger(rank):
     """
     Add a logger that logs to the console at level `INFO`.
@@ -68,7 +55,6 @@ def add_console_logger(rank):
                         format='chain #%d: '%rank + '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
                                               
-#-------------------------------------------------------------------------------
 def add_file_logger(filename, rank):
     """
     Add a logger that logs everything to a file at level `DEBUG` and
@@ -102,8 +88,6 @@ def find_start_chain(val):
     index, value = max(enumerate(max_lnprobs), key=operator.itemgetter(1))
     return chains[index]
 
-                
-#-------------------------------------------------------------------------------
 def run():
     """
     Run the analysis steps as specified by the command line arguments passed
@@ -204,7 +188,7 @@ def run():
                 raise rsd_io.ConfigurationError("please specify the number of walkers to use")
             if args.iterations is None:
                 raise rsd_io.ConfigurationError("please specify the number of steps to run")
-        
+                
         # store some command line arguments
         driver.params.add('walkers', value=args.walkers)
         driver.params.add('iterations', value=args.iterations)
@@ -255,8 +239,8 @@ def run():
                 
         # get the output and finalize
         if driver.results is not None:
-            kwargs['walkers'] = driver.results.walkers
-            kwargs['iterations'] =  driver.results.iterations
+            kwargs['walkers'] = getattr(driver.results, 'walkers', None)
+            kwargs['iterations'] =  getattr(driver.results, 'iterations', None)
             output_name = rsd_io.create_output_file(args, driver.params['fitter'].value, chain_number, **kwargs)
             driver.finalize_fit(exception, output_name)
 

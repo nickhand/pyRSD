@@ -162,9 +162,7 @@ class PkmuTransfer(Cache):
             the power values defined on the grid -- can have shape
             (Nk,Nmu) or (N,), in which case it is interpreted
             as the values at all valid grid points
-        """
-        super(PkmuTransfer, self).__init__()
-        
+        """        
         self.grid      = grid
         self.mu_bounds = mu_bounds
         self.kmin      = kmin
@@ -434,7 +432,7 @@ class PolesTransfer(PkmuTransfer):
             (Nk,Nmu) or (N,), in which case it is interpreted
             as the values at all valid grid points
         """
-        self._PolesTransfer__ells = np.array(ells)
+        self.ells = np.array(ells)
         super(PolesTransfer, self).__init__(grid, [(0., 1.)], kmin=kmin, kmax=kmax, power=power)
         self.window = None
         

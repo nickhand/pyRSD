@@ -84,7 +84,8 @@ class BFGSResults(object):
     
     def __repr__(self):
         N = len(self.constrained_names)
-        return "<ScipyResults: {} free parameters, {} constrained parameters>".format(self.ndim, N)
+        name = self.__class__.__name__
+        return "<{}: {} free parameters, {} constrained parameters>".format(name, self.ndim, N)
         
     def __getitem__(self, key):
         

@@ -2,11 +2,11 @@ import numpy as np
 import copy
 import logging
 
-logger = logging.getLogger('pyRSD.analysis.bfgs_results')
+logger = logging.getLogger('pyRSD.analysis.lbfgs_results')
 logger.addHandler(logging.NullHandler())
 
 #-------------------------------------------------------------------------------
-class BFGSResults(object):
+class LBFGSResults(object):
     """
     Class to hold the fitting results from an `scipy.optimize` L-BFGS-B 
     nonlinear optimization run.    

@@ -226,9 +226,9 @@ class FittingDriver(object):
             elif init_from == 'previous_run':
                 kwargs['init_values'] = self.results.copy()
                 
-        # scipy
-        elif solver_name == 'scipy':
-            solver = bfgs_fitter.run
+        # lbfgs
+        elif solver_name == 'lbfgs':
+            solver = lbfgs_fitter.run
             objective = functools.partial(FittingDriver.chi2, self)
             kwargs = {'init_values': init_values}
             

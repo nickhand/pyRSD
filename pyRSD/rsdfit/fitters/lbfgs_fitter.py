@@ -1,5 +1,5 @@
 from ... import numpy as np
-from ..results import EmceeResults, BFGSResults
+from ..results import EmceeResults, LBFGSResults
 from . import tools
 
 import scipy.optimize
@@ -10,7 +10,7 @@ try:
 except:
     numdiff = None
 
-logger = logging.getLogger('rsdfit.bfgs_fitter')
+logger = logging.getLogger('rsdfit.lbfgs_fitter')
 logger.addHandler(logging.NullHandler())
 
 
@@ -26,9 +26,9 @@ def run(params, theory, objective, pool=None, init_values=None):
     if init_values is None:
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
-    epsilon    = params.get('bfgs_epsilon', 1e-8)
-    factr      = params.get('bfgs_factr', 1e7)
-    use_bounds = params.get('bfgs_use_bounds', True)
+    epsilon    = params.get('lbfgs_epsilon', 1e-8)
+    factr      = params.get('lbfgs_factr', 1e7)
+    use_bounds = params.get('lbfgs_use_bounds', True)
             
     #-----------------
     # do the work
@@ -72,7 +72,7 @@ def run(params, theory, objective, pool=None, init_values=None):
         
     results = None
     if not exception:
-        results = BFGSResults((x, f, d), theory.fit_params)
+        results = LBFGSResults((x, f, d), theory.fit_params)
     return results, exception
 
 

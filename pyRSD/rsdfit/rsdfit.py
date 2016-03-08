@@ -143,7 +143,7 @@ def run():
     
     # initialize the emcee pool, if the comm has more than 1 process
     if pool_comm is not None and pool_comm.size > 1:
-        pool = MPIPool(comm=pool_comm, debug=args.debug)
+        pool = MPIPool(comm=pool_comm, debug=args.debug, loadbalance=True)
 
     # if using MPI and not the master, wait for instructions
     if pool is not None and not pool.is_master():

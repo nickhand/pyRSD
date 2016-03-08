@@ -14,6 +14,7 @@ from .data import PowerData
 from .fitters import *
 from .util import rsd_io
 from .results import EmceeResults
+from ..rsd import GalaxySpectrum
 import functools
 import copy
 
@@ -100,19 +101,21 @@ class FittingDriver(object):
         params_path = os.path.join(dirname, params_filename)
         
         model_path = model_file
+        existing_model = isinstance(model_path, str) and os.path.exists(model_path)
+        existing_model = existing_model or isinstance(model_path, GalaxySpectrum)
         if model_path is not None:
-            if not os.path.exists(model_path):
+            if not existing_model:
                 raise rsd_io.ConfigurationError('provided model file `%s` does not exist' %model_path)
         else:
             model_path = os.path.join(dirname, model_filename)
         if not os.path.exists(params_path):
             raise rsd_io.ConfigurationError('parameter file `%s` must exist to load driver' %params_path)
             
-        init_model = (not os.path.exists(model_path)) and init_model
+        init_model = (not existing_model and init_model)
         driver = cls(params_path, init_model=init_model, **kwargs)
         
         # set the model and results
-        if os.path.exists(model_path):
+        if existing_model:
             driver.model = model_path
         if results_file is not None:
             if not os.path.exists(results_file):

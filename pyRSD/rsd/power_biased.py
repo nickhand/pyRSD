@@ -304,21 +304,21 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return self.sigma_v
         
-    def sigmav_from_bias(self, bias):
+    def sigmav_from_bias(self, s8_z, bias):
         """
         Return the velocity dispersion `sigmav` value for the specified linear
         bias value
         """
         try:
-            return self.bias_to_sigma_relation(self.sigma8_z, bias)
+            return self.bias_to_sigma_relation(s8_z, bias)
         except Exception as e:
             msg = "Warning: error in computing sigmav from bias = %.2f; original msg = %s" %(bias, e)
             print msg
             b1s = self.bias_to_sigma_relation.interpolation_grid['b1']
             if bias < np.amin(b1s):
-                toret = self.bias_to_sigma_relation(self.sigma8_z, np.amin(b1s))
+                toret = self.bias_to_sigma_relation(s8_z, np.amin(b1s))
             elif bias > np.amax(b1s):
-                toret = self.bias_to_sigma_relation(self.sigma8_z, np.amax(b1s))
+                toret = self.bias_to_sigma_relation(s8_z, np.amax(b1s))
             else:
                 toret = 0.
                 

@@ -4,15 +4,41 @@ from . import tools
 
 import scipy.optimize
 import logging
-
-try:
-    from statsmodels.tools import numdiff
-except:
-    numdiff = None
+import functools
 
 logger = logging.getLogger('rsdfit.lbfgs_fitter')
 logger.addHandler(logging.NullHandler())
+                       
+def add_epsilon(theta, i, eps):
+    toret = theta.copy()
+    toret[i] += eps
+    return toret
 
+def approx_fprime(x0, f, epsilon=1e-8, pool=None):
+    """
+    Forward finite-difference gradient of a function, optionally
+    in parallel
+    
+    Parameters
+    ----------
+    x : array
+        parameters at which the derivative is evaluated
+    f : function
+        `f(*((x,)+args), **kwargs)` returning either one value or 1d array
+    pool : 
+        class with a map function to map work across workers
+    """
+    N = len(x0)
+    f0 = f(x0) # value of function at x0
+
+    x = [add_epsilon(x0, i, epsilon) for i in range(N)]
+    if pool is None:
+        M = map
+    else:
+        M = pool.map
+    
+    derivs = np.array(M(f, x))
+    return (derivs - f0) / epsilon
 
 def run(params, theory, objective, pool=None, init_values=None):
     """
@@ -20,23 +46,20 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     Any kwargs passed will not be used
     """
-    if numdiff is None:
-        raise ImportError('`statsmodels` is required to compute derivatives in the scipy.optimize fitter')
-        
     if init_values is None:
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
     epsilon    = params.get('lbfgs_epsilon', 1e-8)
     factr      = params.get('lbfgs_factr', 1e7)
-    use_bounds = params.get('lbfgs_use_bounds', True)
+    use_bounds = params.get('lbfgs_use_bounds', False)
             
     #-----------------
     # do the work
     #-----------------
     
-    # compute the gradient using finite difference from statsmodels
+    # compute the gradient using finite difference
     def gradient(theta):
-        return numdiff.approx_fprime(theta, objective, epsilon=epsilon)
+        return approx_fprime(theta, objective, epsilon=epsilon, pool=pool)
     
     # bounds
     bounds = None
@@ -65,8 +88,10 @@ def run(params, theory, objective, pool=None, init_values=None):
     # handle the results
     #---------------------------------------------------------------------------
     # extract the values to put them in the feedback
-    if d['warnflag'] != 0:
-        logger.error("scipy.optimize: nonlinear fit with method L-BFGS-B failed; %s" %d['task'])
+    if exception or d['warnflag'] != 0:
+        msg = "scipy.optimize: nonlinear fit with method L-BFGS-B failed"
+        if not exception: msg += "; %s" %d['task']
+        logger.error(msg)
     else:
         logger.info("scipy.optimize: nonlinear fit with method L-BFGS-B succeeded after %d iterations" %d['nit'])
         

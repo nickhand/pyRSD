@@ -14,19 +14,10 @@ def add_epsilon(theta, i, eps):
     toret[i] += eps
     return toret
 
-def approx_fprime(x0, f, epsilon=1e-8, pool=None):
+def lbfgs_objective(x0, f, epsilon=1e-8, pool=None):
     """
-    Forward finite-difference gradient of a function, optionally
-    in parallel
-    
-    Parameters
-    ----------
-    x : array
-        parameters at which the derivative is evaluated
-    f : function
-        `f(*((x,)+args), **kwargs)` returning either one value or 1d array
-    pool : 
-        class with a map function to map work across workers
+    Return the function we are optimizing at `x0` plus its derivative, 
+    which is the forward finite-difference gradient
     """
     N = len(x0)
     f0 = f(x0) # value of function at x0
@@ -38,7 +29,7 @@ def approx_fprime(x0, f, epsilon=1e-8, pool=None):
         M = pool.map
     
     derivs = np.array(M(f, x))
-    return (derivs - f0) / epsilon
+    return f0, (derivs - f0) / epsilon
 
 def run(params, theory, objective, pool=None, init_values=None):
     """
@@ -56,11 +47,7 @@ def run(params, theory, objective, pool=None, init_values=None):
     #-----------------
     # do the work
     #-----------------
-    
-    # compute the gradient using finite difference
-    def gradient(theta):
-        return approx_fprime(theta, objective, epsilon=epsilon, pool=pool)
-    
+
     # bounds
     bounds = None
     if use_bounds:
@@ -78,9 +65,13 @@ def run(params, theory, objective, pool=None, init_values=None):
                 max_val = min(max_val, upper)
             bounds.append((min_val, max_val))
     
+    # call the objective which returns f, fprime
+    def _lbfgs_objective(x):
+        return lbfgs_objective(x, objective, epsilon=epsilon, pool=pool)
+    
     exception = False  
     try:
-        x, f, d = scipy.optimize.fmin_l_bfgs_b(objective, x0=init_values, bounds=bounds, fprime=gradient, iprint=1)
+        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, x0=init_values, bounds=bounds, iprint=1)
     except:
         exception = True
         pass

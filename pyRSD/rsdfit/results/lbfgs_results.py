@@ -46,8 +46,10 @@ class LBFGSResults(object):
         with np.load(filename) as ff:
             for k, v in ff.iteritems():
                 setattr(toret, k, v)
-        toret.free_names = list(toret.free_names)
-        toret.constrained_names = list(toret.constrained_names)
+        
+        for a in ['min_chi2', 'info', 'free_names', 'constrained_names']:
+            v = getattr(toret, a)
+            setattr(toret, a, v.tolist())
         return toret
         
     def __iter__(self):

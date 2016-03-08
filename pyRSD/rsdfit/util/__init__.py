@@ -1,2 +1,2 @@
-from .rsd_parser import parse_command_line
+from .rsd_parser import rsdfit_parser
 import rsd_io

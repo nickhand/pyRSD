@@ -250,7 +250,7 @@ def setup_analyze_subparser(parent):
             analyze.new_scales={'name1':number1,'name2':number2,...}"""
     subparser.add_argument('--extra', help=h, dest='optional_plot_file', default='')
                
-def initialize_parser():
+def rsdfit_parser():
     """
     Initialize the parser of command-line arguments. 
     
@@ -282,48 +282,57 @@ def initialize_parser():
     setup_restart_subparser(subparser)
     # analyze subcommand
     setup_analyze_subparser(subparser)
-                   
+                 
+    # set the parse_args functions
+    def parse_args(parser, args=None, namespace=None):
+        ns = ap.ArgumentParser.parse_args(parser, args=args, namespace=namespace)
+        return verify_arguments(ns)
+    
+    def parse_known_args(parser, args=None, namespace=None):
+        ns, unknown = ap.ArgumentParser.parse_known_args(parser, args=args, namespace=namespace)
+        ns = verify_arguments(ns)
+        return ns, unknown
+        
+    parser.parse_args = lambda *args, **kwargs: parse_args(parser, *args, **kwargs)
+    parser.parse_known_args = lambda *args, **kwargs: parse_known_args(parser, *args, **kwargs)
     return parser
 
-def parse_command_line():
+
+def verify_arguments(ns):
     """
-    Parse the command line arguments
+    Run a few quick verification tests on the supplied arguments
     """
-    # initialize the parser and parse
-    parser = initialize_parser()
-    args = parser.parse_args()
-    
     ## restart from existing
-    if args.subparser_name == 'restart':
+    if ns.subparser_name == 'restart':
         
         # if we are restarting, automatically use the same folder, 
         # and the driver.pickle
-        args.folder = os.path.sep.join(args.restart_files[0].split(os.path.sep)[:-1])
-        args.params = os.path.join(args.folder, params_filename)
-        if not os.path.exists(args.params):
+        ns.folder = os.path.sep.join(ns.restart_files[0].split(os.path.sep)[:-1])
+        ns.params = os.path.join(ns.folder, params_filename)
+        if not os.path.exists(ns.params):
             raise rsd_io.ConfigurationError("Restarting but associated `%s` doesn't exist" %params_filename)
-        if args.model is None:
-            args.model = os.path.join(args.folder, model_filename)
-            if not os.path.exists(args.model):
+        if ns.model is None:
+            ns.model = os.path.join(ns.folder, model_filename)
+            if not os.path.exists(ns.model):
                 raise rsd_io.ConfigurationError("Restarting but cannot find existing model file to read")
-        logger.warning("Restarting from %s and using associated params.dat" %args.restart_files[0])
+        logger.warning("Restarting from %s and using associated params.dat" %ns.restart_files[0])
     
     ## run from new  
-    elif args.subparser_name == "run":
+    elif ns.subparser_name == "run":
 
         # if the folder already exists, and no parameter files were specified
         # try to use an existing params.dat
-        if os.path.isdir(args.folder):
-            params_path = os.path.join(args.folder, params_filename)
-            model_path = os.path.join(args.folder, model_filename)
+        if os.path.isdir(ns.folder):
+            params_path = os.path.join(ns.folder, params_filename)
+            model_path = os.path.join(ns.folder, model_filename)
             if os.path.exists(params_path):
                 # if the params.dat exists, and param files were given, 
                 # use the params.dat, and notify the user
-                if args.params is not None:
+                if ns.params is not None:
                     logger.warning("Appending to an existing folder: using the "
-                                   "`%s` instead of %s" %(args.params, params_filename))
+                                   "`%s` instead of %s" %(ns.params, params_filename))
             else:
-                if args.params is None:
+                if ns.params is None:
                     raise rsd_io.ConfigurationError(
                         "The requested output folder seems empty. "
                         "You must then provide a parameter file (command"
@@ -331,15 +340,15 @@ def parse_command_line():
                         
             # also check for existing model file now
             if os.path.exists(model_path):
-                if args.model is None:
-                    args.model = model_path
+                if ns.model is None:
+                    ns.model = model_path
         else:
-            if args.params is None:
+            if ns.params is None:
                 raise rsd_io.ConfigurationError(
                     "The requested output folder appears to be non "
                     "existent. You must then provide a parameter file "
                     "(command line option -p any.param)")
             else:
-                os.makedirs(args.folder)
+                os.makedirs(ns.folder)
 
-    return args
+    return ns

@@ -26,31 +26,34 @@ def run(params, theory, objective, pool=None, init_values=None):
     if init_values is None:
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
-    epsilon = params.get('bfgs_epsilon', 1e-8)
-    factr   = params.get('bfgs_factr', 1e6)
+    epsilon    = params.get('bfgs_epsilon', 1e-8)
+    factr      = params.get('bfgs_factr', 1e7)
+    use_bounds = params.get('bfgs_use_bounds', True)
             
     #-----------------
     # do the work
     #-----------------
     
-    # the gradient
+    # compute the gradient using finite difference from statsmodels
     def gradient(theta):
         return numdiff.approx_fprime(theta, objective, epsilon=epsilon)
     
     # bounds
-    bounds = []
-    for par in theory.fit_params.free:
+    bounds = None
+    if use_bounds:
+        bounds = []
+        for par in theory.fit_params.free:
         
-        lower = par.lower
-        min_val =  par.min
-        if lower is not None:
-            min_val = max(min_val, lower)
+            lower = par.lower
+            min_val =  par.min
+            if lower is not None:
+                min_val = max(min_val, lower)
         
-        upper = par.upper
-        max_val = par.max
-        if upper is not None:
-            max_val = min(max_val, upper)
-        bounds.append((min_val, max_val))
+            upper = par.upper
+            max_val = par.max
+            if upper is not None:
+                max_val = min(max_val, upper)
+            bounds.append((min_val, max_val))
     
     exception = False  
     try:

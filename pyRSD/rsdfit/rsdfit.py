@@ -99,7 +99,10 @@ def run():
         A `Namespace` containing the arguments passed to the `pyRSDFitter`,
         script. These are the arguments returned from the parser initialized
         by `util.initialize_parser`
-    """        
+    """      
+    # all ranks parse the command line arguments
+    args = parse_command_line()
+          
     from mpi4py import MPI
     from emcee.utils import MPIPool
 
@@ -108,14 +111,7 @@ def run():
     world_rank = world_comm.Get_rank()
     world_size = world_comm.Get_size()
     world_group = world_comm.Get_group()
-    
-    # parse the command line arguments
-    if world_comm > 1:
-        args = None
-        if world_rank == 0:
-            args = parse_command_line()
-        args = world_comm.bcast(args, root=0)
-                
+           
     # analyze an existing chain
     if args.subparser_name == 'analyze':
         from pyRSD.rsdfit import analysis
@@ -234,6 +230,8 @@ def run():
         exception = driver.run()
         
     except Exception as e:
+        import traceback
+        logging.error("exception: " + traceback.format_exc())
         raise Exception(e)
     finally:
                 

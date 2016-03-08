@@ -5,10 +5,8 @@ from . import tools
 
 import itertools
 import pandas as pd
-#from sklearn.gaussian_process import GaussianProcess
 from sklearn import preprocessing
 import george
-
 
 #-------------------------------------------------------------------------------
 # simulation measurements, interpolated with a gaussian process
@@ -51,8 +49,6 @@ class GeorgeSimulationData(Cache):
         solver : {`george.BasicSolver`, `george.HODLRSolver`}, optional
             the solver class to use when evaluating the Gaussian process
         """
-        super(GeorgeSimulationData, self).__init__()    
-        
         self.use_errors  = use_errors
         self.data        = data
         self.independent = independent_vars
@@ -361,9 +357,6 @@ class InterpolatedSimulationData(Cache):
     A base class for computing power moments from interpolated simulation data
     """
     def __init__(self, power_lin, z, sigma8_z, f):
-        
-        # initialize the Cache base class
-        Cache.__init__(self)
         
         # set the parameters
         self.z         = z

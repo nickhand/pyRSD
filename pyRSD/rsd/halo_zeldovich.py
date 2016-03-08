@@ -25,10 +25,7 @@ class HaloZeldovichPS(Cache):
         enhance_wiggles : bool, optional (`False`)
             using the Hy1 model from arXiv:1509.02120, enhance the wiggles
             of pure HZPT
-        """
-        # initialize the Cache base class
-        Cache.__init__(self)
-        
+        """    
         # the model parameters
         self.sigma8_z        = sigma8_z
         self.interpolate     = interpolate

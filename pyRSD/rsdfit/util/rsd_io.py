@@ -41,7 +41,22 @@ def save_pickle(obj, filename):
     # make sure pool is None, so it is pickable
     cPickle.dump(obj, open(filename, 'w'))
     
-#-------------------------------------------------------------------------------
+def load_model(filename):
+    """
+    Load a model from file
+    """
+    if not os.path.exists(filename):
+        raise ConfigurationError('cannot load model from file `%s`; does not exist' %filename)
+    _, ext = os.path.splitext(filename)
+    if ext == '.npy':
+        model = np.load(filename).tolist()
+    elif ext == '.pickle':
+        model = load_pickle(filename)
+    else:
+        raise ValueError("extension for model file not recognized; must be `.npy` or `.pickle`")
+    
+    return model
+
 def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0, restart=None):
     """
     Automatically create a new name for the results file.

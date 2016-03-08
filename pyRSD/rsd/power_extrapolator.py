@@ -55,10 +55,7 @@ class ExtrapolatedPowerSpectrum(Cache):
             kcut_hi : float
                 only include wavenumbers above this value when fitting
                 the extrapolation parameters; default is `0.5*k_hi`
-        """
-        # initialize the base class
-        Cache.__init__(self)
-        
+        """        
         # the model
         self.model = model
         self.model_kmin = model.kmin

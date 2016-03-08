@@ -10,13 +10,28 @@
 from . import tools, distributions as dists
 from .. import lmfit
 from ... import numpy as np
-from ...rsd._cache import Cache, parameter, cached_property
+from ...rsd._cache import CachedModel, parameter, cached_property
 import copy_reg
 
-class PickeableClass(type):
-    def __init__(cls, name, bases, attrs):
+    
+@CachedModel
+class PickeableCache(object):
+    
+    def __new__(cls, *args, **kwargs):
+        
+        # make the new instance
+        obj = object.__new__(cls, *args, **kwargs)
+        
+        # add the cache dictionary
+        obj._cache = {}
+        
+        # register the pickling
         copy_reg.pickle(cls, _pickle, _unpickle)
+        return obj
 
+    def __init__(self):
+        pass
+        
 def _pickle(param):
     d = {k:getattr(param, k, None) for k in param.keys()}
     d['prior'] = param.prior_name
@@ -25,13 +40,12 @@ def _pickle(param):
 def _unpickle(cls, kwargs):
     return cls(**kwargs)
 
-class Parameter(lmfit.Parameter, Cache):
+class Parameter(PickeableCache, lmfit.Parameter):
     """
     A subclass of ``lmfit.Parameter`` to represent a generic parameter. The added
     functionality is largely the ability to associate a prior with the parameter.
     Currently, the prior can either be a uniform or normal distribution.
     """
-    __metaclass__ = PickeableClass
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
                    'description', 'fiducial', 'prior', 'lower', 'upper', 'mu', 'sigma']
                    
@@ -69,8 +83,6 @@ class Parameter(lmfit.Parameter, Cache):
         mu, sigma : floats, optional
             The mean and std deviation of the normal prior to use
         """
-        Cache.__init__(self)
-        
         # set value to fiducial if it wasn't provided
         if value is None and kwargs.get('fiducial', None) is not None:
             value = kwargs['fiducial']

@@ -197,11 +197,17 @@ class ParameterSet(lmfit.Parameters):
                         toret[tag][key] = v
                     else:
                         toret[key] = v
-            else:
+            else:  
                 try:
+                    k = k.replace('.', '_')
                     toret[k] = v
-                except:
+                except Exception as e:
                     pass
+        
+        if len(tags) > 1:
+            for tag in tags:
+                toret[tag].tag = tag
+                
         return toret
                         
     def to_file(self, filename, mode='w', header_name=None, footer=False, as_dict=True):
@@ -215,23 +221,31 @@ class ParameterSet(lmfit.Parameters):
         Parameters
         ----------
         """
-        with open(filename, mode=mode) as f:
-            if header_name is not None:
-                header = "#{x}\n# {hdr}\n#{x}\n".format(hdr=header_name, x="-"*79)
-                f.write(header)
+        if hasattr(filename, 'write'):
+            f = filename
+            close = False
+        else:
+            f = open(filename, mode=mode)
+            close = True
         
-            output = []
-            for name, par in sorted(self.items()):
-                key = name if self.tag is None else "{}.{}".format(self.tag, name)
-                if as_dict:
-                    par_dict = par.to_dict()
-                    if len(par_dict):
-                        output.append("{} = {}".format(key, par_dict))
-                else:
-                    output.append("{} = {}".format(key, repr(par())))
-            
-            f.write("%s\n" %("\n".join(output)))
-            if footer: f.write("#{}\n\n".format("-"*79))
+        if header_name is not None:
+            header = "#{x}\n# {hdr}\n#{x}\n".format(hdr=header_name, x="-"*79)
+            f.write(header)
+    
+        output = []
+        for name, par in sorted(self.items()):
+            key = name if self.tag is None else "{}.{}".format(self.tag, name)
+            if as_dict:
+                par_dict = par.to_dict()
+                if len(par_dict):
+                    output.append("{} = {}".format(key, par_dict))
+            else:
+                output.append("{} = {}".format(key, repr(par())))
+        
+        f.write("%s\n" %("\n".join(output)))
+        if footer: f.write("#{}\n\n".format("-"*79))
+        
+        if close: f.close()
         
     #---------------------------------------------------------------------------
     # functions to handle param constraints

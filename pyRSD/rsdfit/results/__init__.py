@@ -1,2 +1,2 @@
 from .emcee_results import EmceeResults, EmceeParameter
-from .lmfit_results import LmfitResults
+from .lbfgs_results import LBFGSResults

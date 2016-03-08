@@ -1,4 +1,4 @@
-from pyRSD.rsdfit.util import rsd_io, parse_command_line
+from pyRSD.rsdfit.util import rsd_io, rsdfit_parser
 from pyRSD.rsdfit import FittingDriver, logging, params_filename, model_filename
 from pyRSD import os, sys, numpy as np
 import tempfile
@@ -20,19 +20,7 @@ def split_ranks(N_ranks, N_chunks):
         yield i, seq[start:end]
         start = end
         end += avg
-        
-def split_ranks(N_ranks, N_chunks):
-    seq = range(N_ranks)
-    avg = N_ranks / float(N_chunks)
-    last = 0.
-
-    i = 0
-    while last < N_ranks:
-        yield i, seq[int(last):int(last + avg)]
-        last += avg
-        i += 1
   
-#-------------------------------------------------------------------------------
 def copy_log(temp_log_name, output_name, restart=None):
     """
     Copy the contents of the log from the temporary log file    
@@ -58,7 +46,6 @@ def copy_log(temp_log_name, output_name, restart=None):
         log_file.write(line)
     log_file.close()
             
-#-------------------------------------------------------------------------------
 def add_console_logger(rank):
     """
     Add a logger that logs to the console at level `INFO`.
@@ -68,7 +55,6 @@ def add_console_logger(rank):
                         format='chain #%d: '%rank + '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
                                               
-#-------------------------------------------------------------------------------
 def add_file_logger(filename, rank):
     """
     Add a logger that logs everything to a file at level `DEBUG` and
@@ -102,9 +88,7 @@ def find_start_chain(val):
     index, value = max(enumerate(max_lnprobs), key=operator.itemgetter(1))
     return chains[index]
 
-                
-#-------------------------------------------------------------------------------
-def run():
+def run(args, comm=None, model=None, exit=True):
     """
     Run the analysis steps as specified by the command line arguments passed
     to the script `rsdfits`
@@ -115,23 +99,16 @@ def run():
         A `Namespace` containing the arguments passed to the `pyRSDFitter`,
         script. These are the arguments returned from the parser initialized
         by `util.initialize_parser`
-    """        
+    """                
     from mpi4py import MPI
     from emcee.utils import MPIPool
 
-    # get the world MPI attributes
-    world_comm = MPI.COMM_WORLD
-    world_rank = world_comm.Get_rank()
-    world_size = world_comm.Get_size()
-    world_group = world_comm.Get_group()
-    
-    # parse the command line arguments
-    if world_comm > 1:
-        args = None
-        if world_rank == 0:
-            args = parse_command_line()
-        args = world_comm.bcast(args, root=0)
-                
+    # get the main comm attributes
+    if comm is None: comm = MPI.COMM_WORLD
+    rank = comm.rank
+    size = comm.size
+    group = comm.group
+           
     # analyze an existing chain
     if args.subparser_name == 'analyze':
         from pyRSD.rsdfit import analysis
@@ -145,25 +122,25 @@ def run():
         args.nchains = len(args.restart_files)
         
     # too many chains requested?
-    if args.nchains > world_size:
+    if args.nchains > size:
         raise ValueError("number of chains requested must be less than total processes")
         
     # split ranks
     chains_group, chains_comm, pool_comm, pool = [None]*4
-    if world_size > 1:
+    if size > 1:
         ranges = []
-        for i, ranks in split_ranks(world_size, args.nchains):
+        for i, ranks in split_ranks(size, args.nchains):
             ranges.append(ranks[0])
-            if world_rank in ranks: color = i
+            if rank in ranks: color = i
         
-        pool_comm = world_comm.Split(color, 0)
+        pool_comm = comm.Split(color, 0)
         if args.nchains > 1:
-            chains_group = world_group.Incl(ranges)
-            chains_comm = world_comm.Create(chains_group)
+            chains_group = group.Incl(ranges)
+            chains_comm = comm.Create(chains_group)
     
-    # initialize the emcee pool, if the comm has more than 1 process
+    # initialize the MPI pool, if the comm has more than 1 process
     if pool_comm is not None and pool_comm.size > 1:
-        pool = MPIPool(comm=pool_comm, debug=args.debug)
+        pool = MPIPool(comm=pool_comm, debug=args.debug, loadbalance=True)
 
     # if using MPI and not the master, wait for instructions
     if pool is not None and not pool.is_master():
@@ -177,6 +154,9 @@ def run():
     if not silent: add_console_logger(chain_number)
     copy_kwargs = {}
     kwargs = {}
+    
+    if model is not None:
+        args.model = model
 
     # run the full fitting pipeline
     if args.subparser_name == 'run':
@@ -204,7 +184,7 @@ def run():
                 raise rsd_io.ConfigurationError("please specify the number of walkers to use")
             if args.iterations is None:
                 raise rsd_io.ConfigurationError("please specify the number of steps to run")
-        
+                
         # store some command line arguments
         driver.params.add('walkers', value=args.walkers)
         driver.params.add('iterations', value=args.iterations)
@@ -250,13 +230,15 @@ def run():
         exception = driver.run()
         
     except Exception as e:
+        import traceback
+        logging.error("exception: " + traceback.format_exc())
         raise Exception(e)
     finally:
                 
         # get the output and finalize
         if driver.results is not None:
-            kwargs['walkers'] = driver.results.walkers
-            kwargs['iterations'] =  driver.results.iterations
+            kwargs['walkers'] = getattr(driver.results, 'walkers', None)
+            kwargs['iterations'] =  getattr(driver.results, 'iterations', None)
             output_name = rsd_io.create_output_file(args, driver.params['fitter'].value, chain_number, **kwargs)
             driver.finalize_fit(exception, output_name)
 
@@ -282,10 +264,19 @@ def run():
         if chains_comm is not None:
             chains_comm.Free()
             
-        sys.exit(0)
+        # TODO: do we still need this?
+        if exit:
+            sys.exit(0)
             
     
+def main():
+    
+    # parse and run
+    parser = rsdfit_parser()    
+    run(parser.parse_args())
+
 if __name__ == "__main__":
-    run()
+    main()
+
     
     

@@ -684,12 +684,22 @@ class PowerData(Cache):
         else:
             return 1.5
             
+    @cached_property('window')
+    def window_kmin_boost(self):
+        """
+        The boost factor for the `global_kmin` parameter
+        """
+        if self.window is None:
+            return 1.
+        else:
+            return 0.25
+            
     @cached_property('kmin')
     def global_kmin(self):
         """
         The global mininum wavenumber
         """
-        return self.kmin.min()
+        return self.window_kmin_boost * self.kmin.min()
         
     @cached_property('kmax', 'window_kmax_boost')
     def global_kmax(self):

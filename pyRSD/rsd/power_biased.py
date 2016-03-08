@@ -14,18 +14,16 @@ from .simulation import AutoStochasticityFits
 from .simulation import CrossStochasticityFits
 
 class BiasedSpectrum(DarkMatterSpectrum):
-    
-    allowable_models = DarkMatterSpectrum.allowable_models + ['Phm']
-    allowable_kwargs = DarkMatterSpectrum.allowable_kwargs + \
-                        ['vel_disp_from_sims', 'use_tidal_bias', 
-                         'use_mean_bias', 'correct_mu2', 'correct_mu4']  
-
-    def __init__(self,  vel_disp_from_sims=True, 
-                        use_tidal_bias=False,
-                        use_mean_bias=False, 
-                        correct_mu2=True,
-                        correct_mu4=True,
-                        **kwargs):
+    """
+    The power spectrum of two biased tracers, with linear biases `b1`
+    and `b1_bar` in redshift space
+    """
+    def __init__(self, use_tidal_bias=False,
+                       use_mean_bias=False,
+                       vel_disp_from_sims=False,  
+                       correct_mu2=False,
+                       correct_mu4=False,
+                       **kwargs):
         
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
@@ -306,21 +304,21 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return self.sigma_v
         
-    def sigmav_from_bias(self, bias):
+    def sigmav_from_bias(self, s8_z, bias):
         """
         Return the velocity dispersion `sigmav` value for the specified linear
         bias value
         """
         try:
-            return self.bias_to_sigma_relation(self.sigma8_z, bias)
+            return self.bias_to_sigma_relation(s8_z, bias)
         except Exception as e:
             msg = "Warning: error in computing sigmav from bias = %.2f; original msg = %s" %(bias, e)
             print msg
             b1s = self.bias_to_sigma_relation.interpolation_grid['b1']
             if bias < np.amin(b1s):
-                toret = self.bias_to_sigma_relation(self.sigma8_z, np.amin(b1s))
+                toret = self.bias_to_sigma_relation(s8_z, np.amin(b1s))
             elif bias > np.amax(b1s):
-                toret = self.bias_to_sigma_relation(self.sigma8_z, np.amax(b1s))
+                toret = self.bias_to_sigma_relation(s8_z, np.amax(b1s))
             else:
                 toret = 0.
                 

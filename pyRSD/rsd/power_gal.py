@@ -25,19 +25,70 @@ def fog_gaussian(x):
     """
     return np.exp(-0.5*x**2)
     
+#-------------------------------------------------------------------------------
+# tools
+#-------------------------------------------------------------------------------
+class SOCorrection(object):
+    """
+    Class to manage the handling of `sigma_c` when using an SO correction
+    """
+    def __init__(self, model):
+        self.model = model
+        self._sigma_c = self.model.sigma_c
+        
+    def __enter__(self):
+        
+        if self.model.use_so_correction:
+            self.model.sigma_c = 0
+        return self.model
 
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.model.sigma_c = self._sigma_c
+        
+class ZeroShotNoise(object):
+    """
+    Class to manage the handling of `N` when computing component spectra
+    """
+    def __init__(self, model):
+        self.model = model
+        self._N = self.model.N
+        
+    def __enter__(self):
+        self.model.N = 0
+        return self._N
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.model.N = self._N
+    
+
+def compute_component_spectra(x, model, k, mu):
+    
+    params, name = x
+    model.update(**params)
+    return getattr(model, name)(k, mu)
+    
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     """
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
     for biased redshift space power spectra
-    """
-    allowable_kwargs = power_biased.BiasedSpectrum.allowable_kwargs + \
-                        ['fog_model', 'use_so_correction']
-    
+    """    
     def __init__(self, fog_model='modified_lorentzian', 
                        use_so_correction=False,
                        **kwargs):
+        """
+        Additional `GalaxySpectrum`-specific parameters:
         
+        Parameters
+        ----------
+        fog_model : str, optional
+            the string specifying the FOG model to use; one of 
+            ['modified_lorentzian', 'lorentzian', 'gaussian']. 
+            Default is 'modified_lorentzian'
+        use_so_correction : bool, optional
+            Boost the centrals auto spectrum with a correction
+            accounting for extra structure around centrals due
+            to SO halo finders; default is `False`
+        """
         # initalize the dark matter power spectrum
         super(GalaxySpectrum, self).__init__(**kwargs)
         
@@ -47,7 +98,6 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.fs            = 0.10
         self.fcB           = 0.08
         self.fsB           = 0.40
-        self.fso           = 0.
         self.b1_cA         = 1.85
         self.b1_cB         = 2.8
         self.b1_sA         = 2.6
@@ -60,9 +110,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.NsBsB         = 9e4
         self.N             = 0.
         
+        # SO corretion
         self.use_so_correction = use_so_correction
-        self.f_so = 0.
-        self.sigma_so = 0.
+        self.f_so              = 0.
+        self.sigma_so          = 0.
         
     #---------------------------------------------------------------------------
     # parameters
@@ -244,12 +295,13 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     def Pgal_cAcA(self, k, mu, flatten=False):
         """
         The central type `A` galaxy auto spectrum, which is a 2-halo term only.
-        """    
+        """ 
         # set the linear biases first
         self.b1 = self.b1_bar = self.b1_cA
         
         # FOG damping
-        G = self.evaluate_fog(k, mu, self.sigma_c)
+        with SOCorrection(self) as socorr:
+            G = self.evaluate_fog(k, mu, socorr.sigma_c)
 
         # now return the power spectrum here
         toret = G**2 * self.power(k, mu) + self.N        
@@ -264,7 +316,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
          self.b1_bar = self.b1_cB
 
          # FOG damping
-         G = self.evaluate_fog(k, mu, self.sigma_c)
+         with SOCorrection(self) as socorr:
+             G = self.evaluate_fog(k, mu, socorr.sigma_c)
 
          # now return the power spectrum here
          toret = G**2 * self.power(k, mu) + self.N
@@ -278,7 +331,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.b1 = self.b1_bar = self.b1_cB
 
         # FOG damping
-        G = self.evaluate_fog(k, mu, self.sigma_c)
+        with SOCorrection(self) as socorr:
+            G = self.evaluate_fog(k, mu, socorr.sigma_c)
 
         # now return the power spectrum here
         toret = G**2*self.power(k, mu) + self.N
@@ -288,32 +342,37 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The totals centrals galaxy spectrum, which is a 2-halo term only.
         """
-        N = self.N
-        self.N = 0
-                
-        if self.use_so_correction:
-            sigma_c = self.sigma_c
-            self.sigma_c = 0
-            
-        PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
-        PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
-        PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
-        pk = PcAcA + PcAcB + PcBcB
+        with ZeroShotNoise(self) as N:
         
-        if self.use_so_correction:
-            G = self.evaluate_fog(k, mu, sigma_c)
-            G2 = self.evaluate_fog(k, mu, self.sigma_so)
-            term1 = (1 - self.f_so)**2 * G**2 * pk
-            term2 = 2*self.f_so*(1-self.f_so)*G*G2*pk
-            term3 = self.f_so**2 * G2**2 * pk
-            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs/(self.alpha_perp**2 * self.alpha_par)
-            toret = term1 + term2 + term3 + term4 + N
-            self.sigma_c = sigma_c
-        else:
-            toret = pk + N
+            # sum the individual components of Pcc                    
+            PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
+            PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
+            PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
+            pk = PcAcA + PcAcB + PcBcB
         
-        self.N = N      
+            # add in an optional SO correction
+            toret = self.Pgal_cc_so(pk, k, mu) + N
+           
         return toret if not flatten else np.ravel(toret, order='F')
+        
+    def Pgal_cc_so(self, Pcc, k, mu):
+        """
+        The SO correction term to add to `Pgal_cc`
+        """
+        # add the correction
+        if self.use_so_correction:
+            
+            G = self.evaluate_fog(k, mu, self.sigma_c)
+            G2 = self.evaluate_fog(k, mu, self.sigma_so)
+            term1 = (1 - self.f_so)**2 * G**2 * Pcc
+            term2 = 2*self.f_so*(1-self.f_so) * G*G2 * Pcc
+            term3 = self.f_so**2 * G2**2 * Pcc
+            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs/(self.alpha_perp**2 * self.alpha_par)
+            return term1 + term2 + term3 + term4
+            
+        # just return the input Pcc
+        else:
+            return Pcc
         
     #---------------------------------------------------------------------------
     # central-satellite cross spectrum
@@ -364,14 +423,12 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The total central-satellite cross spectrum.
         """
-        N = self.N
-        self.N = 0
+        with ZeroShotNoise(self) as N:
                     
-        PcAs = (1. - self.fcB)*self.Pgal_cAs(k, mu)
-        PcBs = self.fcB*self.Pgal_cBs(k, mu)
-        toret = PcAs + PcBs + N
+            PcAs = (1. - self.fcB)*self.Pgal_cAs(k, mu)
+            PcBs = self.fcB*self.Pgal_cBs(k, mu)
+            toret = PcAs + PcBs + N
         
-        self.N = N
         return toret if not flatten else np.ravel(toret, order='F')
     
     #---------------------------------------------------------------------------
@@ -435,22 +492,19 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         The total satellites auto spectrum
         """
-        N = self.N
-        self.N = 0
-        
-        PsAsA = (1. - self.fsB)**2 * self.Pgal_sAsA(k, mu)
-        PsAsB = 2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(k, mu)
-        PsBsB = self.fsB**2 * self.Pgal_sBsB(k, mu) 
-        
-        # now return
-        toret = PsAsA + PsAsB + PsBsB + N
-        self.N = N
+        with ZeroShotNoise(self) as N:
+
+            PsAsA = (1. - self.fsB)**2 * self.Pgal_sAsA(k, mu)
+            PsAsB = 2*self.fsB*(1-self.fsB)*self.Pgal_sAsB(k, mu)
+            PsBsB = self.fsB**2 * self.Pgal_sBsB(k, mu) 
+            toret = PsAsA + PsAsB + PsBsB + N
+            
         return toret if not flatten else np.ravel(toret, order='F')
                     
     #---------------------------------------------------------------------------
     # total galaxy P(k,mu)
     #---------------------------------------------------------------------------
-    def Pgal(self, k, mu, flatten=False):
+    def Pgal(self, k, mu, flatten=False, update={}):
         """
         The total redshift-space galaxy power spectrum, combining the individual
         terms.
@@ -469,15 +523,14 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             If `True`, flatten the return array, which will have a length of 
             `len(k) * len(mu)`
         """                
-        N = self.N
-        self.N = 0
-        
-        # get the model
-        Pcc = (1. - self.fs)**2 * self.Pgal_cc(k, mu)
-        Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(k, mu)
-        Pss = self.fs**2 * self.Pgal_ss(k, mu)
-        toret = Pcc + Pcs + Pss + N
-        self.N = N
+        with ZeroShotNoise(self) as N:
+                            
+            # sum the component spectra
+            Pcc = (1. - self.fs)**2 * self.Pgal_cc(k, mu)
+            Pcs = 2.*self.fs*(1 - self.fs) * self.Pgal_cs(k, mu)
+            Pss = self.fs**2 * self.Pgal_ss(k, mu)
+            toret = Pcc + Pcs + Pss + N
+
         return toret if not flatten else np.ravel(toret, order='F')
         
     def Pgal_poles(self, k, poles, flatten=False, Nmu=41):

@@ -180,15 +180,7 @@ class GalaxyPowerTheory(object):
         if not len(model):
             self.model = rsd.GalaxySpectrum(**kwargs)
         elif isinstance(model[0], basestring):
-            if not os.path.exists(model[0]):
-                raise rsd_io.ConfigurationError('cannot set model from file `%s`' %model[0])
-            _, ext = os.path.splitext(model[0])
-            if ext == '.npy':
-                self.model = np.load(model[0]).tolist()
-            elif ext == '.pickle':
-                self.model = rsd_io.load_pickle(model[0])
-            else:
-                raise ValueError("extension for model file not recognized")
+            self.model = rsd_io.load_model(model[0])
             self.model.update(**kwargs)
         elif isinstance(model[0], rsd.GalaxySpectrum):
             self.model = model[0]

@@ -65,14 +65,14 @@ class Cosmology(gcl.Cosmology, PickalableSWIG):
     @classmethod
     def from_power(cls, param_file, pkfile):
         # class the underlying c++ method
-        toret = cls.FromPower(param_file, pkfile)
+        toret = cls.FromPower(FindFilename(param_file), pkfile)
         # promote the class to pygcl.Cosmology
         toret.__class__ = Cosmology
         return toret
         
     @classmethod
     def from_file(cls, param_file, tkfile):
-        return cls(param_file, tkfile)
+        return cls(FindFilename(param_file), FindFilename(tkfile))
             
     def __getitem__(self, key):
         if hasattr(self, key):

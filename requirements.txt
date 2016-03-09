@@ -1,4 +1,4 @@
 george
 scikit-learn>=0.17
-lmifit==0.8.3
+lmfit==0.8.3
 xray

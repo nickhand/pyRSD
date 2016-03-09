@@ -3,9 +3,6 @@
 
 MDIR := $(shell pwd)
 WRKDIR = $(MDIR)/build
-ifndef
-	DATADIR := $(shell cd ../data/params; pwd )
-endif
 
 .base:
 	if ! [ -e $(WRKDIR) ]; then mkdir $(WRKDIR) ; mkdir $(WRKDIR)/lib; fi;
@@ -27,10 +24,6 @@ include ../../setup.config
 ########################################################
 ###### IN PRINCIPLE THE REST SHOULD BE LEFT UNCHANGED ##
 ########################################################
-
-# pass current working directory to the code
-MCK_CXXFLAGS += -DGCLDIR='"$(MDIR)"'
-MCK_CXXFLAGS += -DDATADIR='"$(DATADIR)"'
 
 # optimization flag
 MCK_OPT = $(MCK_OPT_WARN) $(MCK_OPT_HIGH)

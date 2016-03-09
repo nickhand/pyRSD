@@ -14,7 +14,7 @@ NonlinearPS::NonlinearPS(const string& param_file, double z_,
                             NonlinearFit fit, bool use_cmbh_) { 
     
     // make the class params first and update the nonlinear value
-    ClassParams pars(FindFilename(param_file));
+    ClassParams pars(param_file);
     pars.Update("non linear", "halofit");
     
     // initialize the private variables
@@ -27,25 +27,6 @@ NonlinearPS::NonlinearPS(const string& param_file, double z_,
     // initialize the FrankenEmu spline
     if (nonlinear_fit == FrankenEmu)
         InitializeTheFrankenEmu();
-}
-
-/*----------------------------------------------------------------------------*/
-const string NonlinearPS::FindFilename(const string& file_name) {
-    
-    string fullpath(file_name);
-    FILE* fp = fopen(fullpath.c_str(), "r");
-
-    if(!fp) {
-        /* Next search in the default data directory */
-        fullpath = DATADIR "/" + fullpath;
-        fp = fopen(fullpath.c_str(), "r");
-    }
-
-    if(!fp) {
-        error("NonlinearPS: could not find parameter file '%s'\n  tried ./%s and %s/%s\n", \
-                file_name.c_str(), file_name.c_str(), DATADIR, file_name.c_str());
-    }
-    return fullpath;
 }
 
 /*----------------------------------------------------------------------------*/

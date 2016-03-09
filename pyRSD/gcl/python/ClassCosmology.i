@@ -81,6 +81,4 @@ public:
     parray V(const parray& zmin, const parray& zmax, int Nz=1024) const;
 
     void PrintFC();
-
-
 };

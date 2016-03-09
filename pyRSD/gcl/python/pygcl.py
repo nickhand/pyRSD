@@ -1,3 +1,6 @@
+from pyRSD import data_dir
+import os
+
 import gcl
 from gcl import ClassCosmology
 from gcl import ClassParams
@@ -30,11 +33,29 @@ class PickalableSWIG:
     def __getstate__(self):
         return {'args': self.args}
     
-            
+
+def FindFilename(fname):
+        
+    if not os.path.exists(fname):
+        fname_ = os.path.join(data_dir, 'params', fname)
+        if not os.path.exists(fname_):
+            raise ValueError("input file does not exists; tried %s and %s" %(fname, fname_))
+        fname = fname_
+    return fname
+
 #-------------------------------------------------------------------------------
 # Cosmology
 class Cosmology(gcl.Cosmology, PickalableSWIG):
     __metaclass__ = DocFixer 
+    
+    def __init__(self, *args):
+        
+        # find the correct filenames, searching the data directory too
+        newargs = list(args)
+        for i, arg in enumerate(args):
+            if isinstance(arg, str):
+                newargs[i] = FindFilename(arg)
+        gcl.Cosmology.__init__(self, *newargs)
     
     def __getstate__(self):
         args = (self.GetParamFile(), self.GetTransferFit(), self.sigma8(), self.GetTransferFile(), 
@@ -58,6 +79,11 @@ class Cosmology(gcl.Cosmology, PickalableSWIG):
             f = getattr(self, key)
             if callable(f): return f()
         raise KeyError("Sorry, cannot return parameter '%s' in dict-like fashion" %key)
+        
+    def LoadTransferFunction(self, tkfile, kcol=1, tcol=2):
+        # find the correct filename, searching the data directory too
+        tkfile = FindFilename(tkfile)
+        return gcl.Cosmology.LoadTransferFunction(self, tkfile, kcol, tcol)
             
 #-------------------------------------------------------------------------------
 # CorrelationFunction
@@ -93,6 +119,8 @@ class NonlinearPS(gcl.NonlinearPS, PickalableSWIG):
     __metaclass__ = DocFixer 
  
     def __init__(self, *args):
+        args = list(args)
+        args[0] = FindFilename(args[0])
         self.args = args
         gcl.NonlinearPS.__init__(self, *args)
         

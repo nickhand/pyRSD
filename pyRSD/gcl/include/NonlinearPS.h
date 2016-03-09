@@ -47,10 +47,7 @@ private:
     double spline_kmin, spline_kmax;
     Spline emu_spline;
     double h_;
-    
-    // helper function to find correctfile name
-    const std::string FindFilename(const std::string& file_name);
-    
+        
     // initialize the spline for the FrankenEmu
     void InitializeTheFrankenEmu();
     

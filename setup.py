@@ -18,7 +18,7 @@ def make_pygcl(path, dist_name):
     # make pygcl
     install_path_args = path, dist_name
     data_dir = "{}/{}/data/params".format(*install_path_args)
-    ans = os.system("cd pyRSD/gcl; make gcl DATADIR=%s;" %data_dir)
+    ans = os.system("cd pyRSD/gcl; make gcl")
     if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
     
 class MyInstall(Install):

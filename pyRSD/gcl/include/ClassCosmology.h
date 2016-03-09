@@ -167,8 +167,6 @@ public:
     double V(double zmin, double zmax, int Nz=1024) const;
     parray V(const parray& zmin, const parray& zmax, int Nz=1024) const;
             
-    
-    /*------------------------------------------------------------------------*/
     // print content of file_content
     void PrintFC() const;
     
@@ -222,10 +220,7 @@ protected:
         
     // functions for returning cosmological quantities
     double BackgroundValue(double z, int index) const;
-    
-    // helper function to find correctfile name
-    const std::string FindFilename(const std::string& file_name);
-    
+        
     // omega0_m and omega0_r are constants
     double Omega0_m_, Omega0_r_;
     

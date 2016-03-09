@@ -24,7 +24,7 @@ ClassCosmology::ClassCosmology(const string & param_file, const string & precisi
 : cl(0), dofree(true)
 {
     
-    string fname(FindFilename(param_file));
+    string fname(param_file);
     ClassParams parameters(fname);
     verbose("Reading CLASS parameters from %s\n", fname.c_str());
 
@@ -32,41 +32,16 @@ ClassCosmology::ClassCosmology(const string & param_file, const string & precisi
     Initialize(parameters, precision_file);
 
 }
-/*----------------------------------------------------------------------------*/
-const string ClassCosmology::FindFilename(const string& file_name) {
-    
-    string fullpath(file_name);
-    FILE* fp = fopen(fullpath.c_str(), "r");
 
-    if(fp == NULL) {
-        /* Next search in the default data directory */
-        fullpath = DATADIR "/" + fullpath;
-        fp = fopen(fullpath.c_str(), "r");
-		if (fp == NULL) {
-	        error("ClassCosmology: could not find parameter file '%s'\n  tried ./%s and %s/%s\n", \
-	                file_name.c_str(), file_name.c_str(), DATADIR, file_name.c_str());
-		}
-		else
-			fclose(fp);
-    }
-	else 
-		fclose(fp);
-
-    return fullpath;
-}
 /*----------------------------------------------------------------------------*/
-void ClassCosmology::Initialize(const ClassParams& pars, const string & pre_file)
+void ClassCosmology::Initialize(const ClassParams& pars, const string & precision_file)
 {
     // set lmax value
     _lmax = 0;
     
-    string precision_file;
-    if (pre_file != "") {
-        precision_file = FindFilename(pre_file);
+    if (precision_file != "")
         verbose("Reading CLASS precision file from %s\n", precision_file.c_str());
-    } else
-        precision_file = "";
-        
+
     // setup the file contents
     struct file_content fc_input;       /* a temporary structure with all input parameters */
     struct file_content fc_precision;   /* a temporary structure with all precision parameters */

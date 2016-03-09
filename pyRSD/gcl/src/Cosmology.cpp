@@ -83,14 +83,8 @@ void Cosmology::LoadTransferFunction(const std::string& tkfile, int kcol, int tc
     FILE* fp = fopen(tkpath.c_str(), "r");
 
     if(!fp) {
-        /* Next search in the default data directory */
-        tkpath = DATADIR "/" + tkpath;
-        fp = fopen(tkpath.c_str(), "r");
-    }
-
-    if(!fp) {
-        error("Cosmology: could not find transfer file '%s'\n  tried ./%s and %s/%s\n", \
-                tkfile.c_str(), tkfile.c_str(), DATADIR, tkfile.c_str());
+        error("Cosmology: could not find transfer file '%s'\n", \
+                tkfile.c_str());
     }
 
     verbose("Cosmology: reading transfer function from %s\n", tkpath.c_str());

@@ -7,3 +7,5 @@ pyRSD/data/halo
 pyRSD/data/simulation_fits/
 pyRSD/data/legacy/
 pyRSD/gcl/python/_gcl.so.*
+*.sh
+*tar*

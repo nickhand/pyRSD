@@ -1,5 +1,4 @@
 import xray
-from xray.core import indexing
 import numpy as np
 import pandas as pd
         
@@ -90,7 +89,7 @@ def remap_label_indexers(indexes, indexers):
                 label = indexers[dim]
                 if not isinstance(label, slice):
                     _, label = index.get_nearest(dim, label)
-                toret[dim] = indexing.convert_label_indexer(index.to_pandas(dim), label, dim, None)
+                toret[dim] = xray.core.indexing.convert_label_indexer(index.to_pandas(dim), label, dim, None)
                 
     return toret
     

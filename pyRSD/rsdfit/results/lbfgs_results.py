@@ -28,6 +28,34 @@ class LBFGSResults(object):
         # constrained
         self.min_chi2_constrained_values = self._get_constrained_values(fit_params)
         
+    def verify_param_ordering(self, free_params, constrained_params):
+        """
+        Verify the ordering of of parameters, making sure that the
+        ordering specified by `free_params` and  `constrained_params` is 
+        respected in the results
+        """
+        if sorted(self.free_names) != sorted(free_params):
+            raise ValueError("mismatch in `LBFGSResults` free parameters")
+        if sorted(self.constrained_names) != sorted(constrained_params):
+            raise ValueError("mismatch in `LBFGSResults` constrained parameters")
+        
+        reordered = False
+        # reorder ``min_chi2_values``
+        if self.free_names != free_params:
+            inds = [self.free_names.index(k) for k in free_params]
+            self.min_chi2_values = self.min_chi2_values[inds]
+            reordered = True
+        
+        # reorder ``min_chi2_constrained_values``
+        if self.constrained_names != constrained_params:
+            inds = [self.constrained_names.index(k) for k in constrained_params]
+            self.min_chi2_constrained_values = self.min_chi2_constrained_values[inds]
+            reordered = True
+        
+        if reordered:
+            self.free_names = free_params
+            self.constrained_names = constrained_params
+            
     def to_npz(self, filename):
         """
         Save the relevant information of the class to a numpy ``npz`` file

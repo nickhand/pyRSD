@@ -13,7 +13,7 @@ from .theory import GalaxyPowerTheory
 from .data import PowerData
 from .fitters import *
 from .util import rsd_io
-from .results import EmceeResults
+from .results import EmceeResults, LBFGSResults
 from ..rsd import GalaxySpectrum
 import functools
 import copy
@@ -123,7 +123,10 @@ class FittingDriver(object):
                     raise rsd_io.ConfigurationError('specified results file `%s` does not exist' %results_file)
                 else:
                     results_file = os.path.join(dirname, results_file)
-            driver.results = EmceeResults.from_npz(results_file)
+            try:
+                driver.results = EmceeResults.from_npz(results_file)
+            except:
+                driver.results = LBFGSResults.from_npz(results_file)
     
         return driver
         
@@ -474,14 +477,17 @@ class FittingDriver(object):
         Set the free parameters from the results objects and update the model
         """
         if self.results is not None:
-            if method == 'median':
-                theta = self.results.values()
-            elif method == 'peak':
-                theta = self.results.peak_values()
-            elif method == 'max_lnprob':
-                theta = self.results.max_lnprob_values()
+            if isinstance(self.results, LBFGSResults):
+                theta = self.results.min_chi2_values
             else:
-                raise ValueError("`method` keyword must be one of ['median', 'peak', 'max_lnprob']")
+                if method == 'median':
+                    theta = self.results.values()
+                elif method == 'peak':
+                    theta = self.results.peak_values()
+                elif method == 'max_lnprob':
+                    theta = self.results.max_lnprob_values()
+                else:
+                    raise ValueError("`method` keyword must be one of ['median', 'peak', 'max_lnprob']")
             self.theory.set_free_parameters(theta)
             
     def data_model_pairs(self):

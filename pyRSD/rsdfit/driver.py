@@ -21,6 +21,11 @@ import copy
 logger = logging.getLogger('rsdfit.fitting_driver')
 logger.addHandler(logging.NullHandler())
 
+def add_epsilon(theta, i, eps):
+    toret = theta.copy()
+    toret[i] += eps
+    return toret
+
 class FittingDriver(object):
     """
     A class to handle the data analysis pipeline, merging together a model, 
@@ -196,7 +201,8 @@ class FittingDriver(object):
             params = self.theory.fit_params
             init_values = [params[key].fiducial for key in free]
             if None in init_values:
-                raise ValueError("cannot initialize from fiducial values")
+                names = [free[i] for i in range(len(free)) if init_values[i] is None]
+                raise ValueError("cannot initialize from fiducial values for parameters: %s" %str(names))
             else:
                 init_values = np.array(init_values)
                 
@@ -215,6 +221,7 @@ class FittingDriver(object):
                     else:
                         raise ValueError("cannot initiate from chain -- `%s` parameter missing" %key)
             
+        
         # get the solver function
         kwargs = {}
         solver_name = self.params.get('fitter', 'emcee').lower()
@@ -234,8 +241,16 @@ class FittingDriver(object):
                 
         # lbfgs
         elif solver_name == 'lbfgs':
+                        
+            # setup the priors for minimization routines
+            for name in self.theory.free_names:
+                p = self.theory.fit_params[name]
+                p.ignore_bounds_in_prior = True
+                if p.prior_name == 'uniform':
+                    p.prior.analytic = True
+            
             solver = lbfgs_fitter.run
-            objective = functools.partial(FittingDriver.chi2, self)
+            objective = functools.partial(FittingDriver.minimize_objective, self)
             kwargs = {'init_values': init_values}
             
         # incorrect
@@ -252,7 +267,10 @@ class FittingDriver(object):
         
         # if there was an exception, print out current parameters
         if exception:
-            logger.warning("exception occurred: current parameters:\n %s" %str(self.theory.fit_params))
+            import traceback
+            logger.error("exception occurred: ")
+            logger.error("     current parameters:\n %s" %str(self.theory.fit_params))
+            logger.error("     traceback:\n %s" %traceback.format_exc())
         
         return exception
     
@@ -273,7 +291,7 @@ class FittingDriver(object):
         """
         # get the solver and objective
         solver = bfgs_fitter.run
-        objective = functools.partial(FittingDriver.chi2, self)
+        objective = functools.partial(FittingDriver.minimize_objective, self)
         
         # init values from fiducial
         free = self.theory.free_names
@@ -284,7 +302,7 @@ class FittingDriver(object):
         else:
             init_values = np.array(init_values)
         
-        logger.info("Computing the maximum likelihood values to use as initialization")
+        logger.info("computing the maximum likelihood values to use as initialization")
         results, exception = solver(params, copy.deepcopy(self.theory), objective, init_values=init_values)
         logger.info("...done compute maximum likelihood")
         
@@ -427,11 +445,11 @@ class FittingDriver(object):
         """
         return self.chi2() / self.dof
         
-    def lnlike(self):
+    def lnlike(self, theta=None):
         """
         The log of the likelihood, equal to -0.5 * chi2
         """
-        return -0.5*self.chi2()
+        return -0.5*self.chi2(theta=theta)
         
     def lnprob(self, theta=None):
         """
@@ -458,7 +476,66 @@ class FittingDriver(object):
             except Exception as e:
                 return -np.inf
             return toret if not np.isnan(toret) else -np.inf
+                    
+    def minimize_objective(self, theta=None, epsilon=1e-8, pool=None, use_priors=True):
+        """
+        The objective function for minimizing the negative log probability
+        
+        Notes
+        -----
+        This uses either the maximum likelihood (ML) (excluding log priors) or 
+        maximum a posteriori probability (MAP) (including log priors) estimation
+        
+        Parameters
+        ----------
+        theta : array_like, optional
+            if provided, the values of the free parameters to compute the probability
+            at; it not provided, use the current values of free parameters from 
+            `theory.fit_params`
+        epsilon : float, optional
+            the step-size to use in the finite-difference derivative calculation; 
+            default is 1e-8
+        pool : MPIPool, optional
+            a MPI Pool object to distribute the calculations of derivatives to 
+            multiple processes in parallel
+        use_priors : bool, optional
+            whether to include the log priors in the objective function when 
+            minimizing the negative log probability
+        """
+        if use_priors:
+            nlp0 = -self.lnprior()
+            ndlp = -self.theory.dlnprior
+        
+        # set the free parameters
+        if theta is not None:
+            good_model = self.theory.set_free_parameters(theta)
+            #if not good_model:
+            #    return 1e10+nlp0, ndlp
+        else:
+            theta = self.theory.free_values
 
+        # value at theta
+        nll0 = -self.lnlike()
+        
+        # derivatives
+        x = [add_epsilon(theta, i, epsilon) for i in range(self.Np)]
+        
+        if pool is None:
+            M = map
+        else:
+            M = pool.map
+    
+        derivs = -1.*np.array(M(self.lnlike, x)) # negative likelihood
+        derivs = (derivs - nll0) / epsilon
+        prob = nll0
+        
+        # add in log prior prob and derivatives of log priors
+        if use_priors: 
+            derivs += ndlp
+            prob += nlp0
+            
+        return prob, derivs
+    
     def set_fiducial(self):
         """
         Set the fiducial values as the current values of the free parameters

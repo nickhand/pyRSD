@@ -254,10 +254,17 @@ class GalaxyPowerTheory(object):
     @property
     def lnprior(self):
         """
-        Return the log prior for all "changed" parameters as the sum of the priors
+        Return the log prior for all "free" parameters as the sum of the priors
         of each individual parameter
         """       
-        return self.lnprior_free + self.lnprior_constrained
+        return self.lnprior_free
+        
+    @property
+    def dlnprior(self):
+        """
+        Return the derivative of the log prior for all "free" parameters
+        """       
+        return np.array([p.dlnprior for p in self.free])
     
     #---------------------------------------------------------------------------
     # convenience attributes
@@ -304,8 +311,8 @@ class GalaxyPowerTheory(object):
         for val, name in zip(theta, self.free_names):
             self.fit_params[name].value = val
                    
-        # only do this if the free params have finite priors
-        if not np.isfinite(self.lnprior_free):
+        # only do this if the free params are within bounds
+        if not all(p.within_bounds for p in self.free):
             return False
     
         # try to update

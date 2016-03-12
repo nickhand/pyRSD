@@ -47,7 +47,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
     Currently, the prior can either be a uniform or normal distribution.
     """
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
-                   'description', 'fiducial', 'prior', 'lower', 'upper', 'mu', 'sigma']
+                   'description', 'fiducial', 'prior', 'lower', 'upper', 'mu', 'sigma', 'ignore_bounds_in_prior']
                    
     def __init__(self, name=None, value=None, vary=False, min=None, max=None, expr=None, **kwargs):
         """
@@ -94,6 +94,9 @@ class Parameter(PickeableCache, lmfit.Parameter):
         self.prior_name = kwargs.get('prior', None)
         for k in ['fiducial', 'lower', 'upper', 'mu', 'sigma']:
             setattr(self, k, kwargs.get(k, None))
+            
+        # ignore bounds in prior
+        self.ignore_bounds_in_prior = kwargs.get('ignore_bounds_in_prior', True)
             
     #---------------------------------------------------------------------------
     # parameters
@@ -143,6 +146,13 @@ class Parameter(PickeableCache, lmfit.Parameter):
     def sigma(self, val):
         """
         The standard deviation of the normal prior
+        """
+        return val
+        
+    @parameter
+    def ignore_bounds_in_prior(self, val):
+        """
+        If True, ignore bounds limits in the prior calculation
         """
         return val
         
@@ -210,12 +220,28 @@ class Parameter(PickeableCache, lmfit.Parameter):
         If the current value is outside `Parameter.min` or `Parameter.max`, 
         return `numpy.inf`
         """
-        lnprior = -np.inf
-        if self.within_bounds:
-            lnprior = 0
-            if self.has_prior:
-                lnprior = np.log(self.prior.pdf(domain=self.value)[1])
+        lnprior = 0
+        if self.has_prior:
+            lnprior = self.prior.log_pdf(self.value)
+            
+        if not self.ignore_bounds_in_prior and not self.within_bounds:
+            lnprior = -np.inf
         return lnprior
+        
+    @property
+    def dlnprior(self):
+        """
+        Return the derivative of the log of the prior, which is either a 
+        uniform or normal prior. If the current value is outside 
+        `Parameter.min` or `Parameter.max`, return `numpy.inf`
+        """
+        dlnprior = 0
+        if self.has_prior:
+            dlnprior = self.prior.deriv_log_pdf(self.value)
+        
+        if not self.ignore_bounds_in_prior and not self.within_bounds:
+            dlnprior = -np.inf
+        return dlnprior
     
     #---------------------------------------------------------------------------
     # functions

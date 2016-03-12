@@ -9,8 +9,7 @@ valid_distributions = {'normal' : ['mu', 'sigma'], \
                        'uniform': ['lower', 'upper'], \
                        'trace' : ['trace'] }
 
-        
-#-------------------------------------------------------------------------------    
+          
 def histogram_bins(signal):
     """
     Return optimal number of bins.
@@ -20,8 +19,7 @@ def histogram_bins(signal):
     bins = int(np.ceil((max(signal[select])-min(signal[select])) / h))*2
 
     return bins
-                           
-#-------------------------------------------------------------------------------
+
 class DistributionBase(object):
     """
     Base class for representing a `Distribution`
@@ -54,7 +52,6 @@ class DistributionBase(object):
                 raise ValueError("`%s` attribute for `%s` prior distribution can not be `None`" %(k, self.name))
             setattr(self, k, v)
 
-    #---------------------------------------------------------------------------
     def __str__(self):
         """
         Builtin string method
@@ -62,16 +59,13 @@ class DistributionBase(object):
         name = self.name.title()
         pars = ", ".join(['{}={}'.format(key, getattr(self, key)) for key in sorted(self.params)])
         return "{}({})".format(name, pars)
-        
-    #---------------------------------------------------------------------------
+
     def __repr__(self):
         """
         Builtin representation method
         """
         return self.__str__()
-    #---------------------------------------------------------------------------
 
-#-------------------------------------------------------------------------------
 class Normal(DistributionBase):
     """
     The Normal distribution.
@@ -118,7 +112,6 @@ class Normal(DistributionBase):
         """
         super(Normal, self).__init__('normal', mu=mu, sigma=sigma)
     
-    #---------------------------------------------------------------------------
     def limits(self, factor=1.):
         """
         Return the minimum and maximum of the normal distribution.
@@ -131,7 +124,6 @@ class Normal(DistributionBase):
         upper = self.mu + 3*self.sigma*factor
         return lower, upper
     
-    #---------------------------------------------------------------------------
     def draw(self, size=1):
         """
         Draw random value(s) from the normal distribution.
@@ -150,7 +142,6 @@ class Normal(DistributionBase):
         values = np.random.normal(**kwargs)
         return values if size > 1 else values[0]
     
-    #---------------------------------------------------------------------------
     def grid(self, sampling=5):
         """
         Draw regularly sampled values from the distribution, spaced 
@@ -162,7 +153,6 @@ class Normal(DistributionBase):
         mygrid = scipy.stats.norm(loc=self.mu, scale=self.sigma).isf(cum_sampling)
         return mygrid
     
-    #---------------------------------------------------------------------------
     def pdf(self, domain=None, factor=1.):
         """
         Return the probability distribution function
@@ -183,8 +173,35 @@ class Normal(DistributionBase):
           
         kwargs = {'loc' : self.loc, 'scale' : self.scale}
         return domain, getattr(scipy.stats.norm(**kwargs), 'pdf')(domain)
+    
+    def deriv_pdf(self, x):
+        """
+        Return the derivative of the normal PDF at the
+        specified domain values
+        """
+        if domain is None:
+            lower, upper = self.limits(factor=factor)
+            domain = np.linspace(lower, upper, 1000)
         
-    #---------------------------------------------------------------------------
+        kwargs = {'loc' : self.loc, 'scale' : self.scale}
+        pdf = scipy.stats.norm.pdf(x, loc=self.loc, scale=self.scale)
+        return pdf*(self.loc - x)/self.scale**2
+    
+    def log_pdf(self, x):
+        """
+        Return the natural log of the normal PDF at the
+        specified domain values
+        """        
+        x = (x - self.loc)/self.scale
+        return -0.5*np.log(2*np.pi*self.scale**2) - 0.5*x**2
+        
+    def deriv_log_pdf(self, x):
+        """
+        Return the derivative of the natural log of the 
+        normal PDF at the specified domain values
+        """
+        return (self.loc - x)/self.scale**2
+    
     def cdf(self, domain=None, factor=1.):
         """
         Return the cumulative distribution function
@@ -205,8 +222,7 @@ class Normal(DistributionBase):
 
         kwargs = {'loc' : self.loc, 'scale' : self.scale}
         return domain, getattr(scipy.stats.norm(**kwargs), 'cdf')(domain)
-            
-    #---------------------------------------------------------------------------   
+              
     def plot(self, on_axis='x', **kwargs):
         """
         Plot a normal prior to the current axes.
@@ -221,7 +237,6 @@ class Normal(DistributionBase):
             domain, mypdf = mypdf, domain
         ax.plot(domain, mypdf, **kwargs)
     
-    #---------------------------------------------------------------------------
     @property
     def loc(self):
         """
@@ -229,21 +244,19 @@ class Normal(DistributionBase):
         """
         return self.mu
     
-    #---------------------------------------------------------------------------
     @property
     def scale(self):
         """
         Return the `scale` parameter used by `numpy`, equal here to `self.sigma`
         """
         return self.sigma
-    #---------------------------------------------------------------------------
     
-#-------------------------------------------------------------------------------
+    
 class Uniform(DistributionBase):
     """
     The Uniform distribution.
     """
-    def __init__(self, lower, upper):
+    def __init__(self, lower, upper, analytic=False):
         """
         Initiate a normal distribution.
         
@@ -253,10 +266,16 @@ class Uniform(DistributionBase):
             the lower limit of the distribution
         upper : float
             the upper limit of the distribution
+        analytic : bool, optional
+            use an analytic approximation to the uniform distribution; 
+            default is False
         """
         super(Uniform, self).__init__('uniform', lower=lower, upper=upper)
-    
-    #---------------------------------------------------------------------------
+        
+        self.analytic = analytic
+        self._center = 0.5*(self.lower + self.upper)
+        self._width = self.upper - self.lower
+        
     @property
     def lower(self):
         """
@@ -271,7 +290,6 @@ class Uniform(DistributionBase):
     def lower(self, val):
         self._lower = val
         
-    #---------------------------------------------------------------------------
     @property
     def upper(self):
         """
@@ -286,7 +304,42 @@ class Uniform(DistributionBase):
     def upper(self, val):
         self._upper = val
         
-    #---------------------------------------------------------------------------
+    def _analytic_pdf(self, x, k=1000):
+        """
+        Use an analytic approximation to the Heaviside step function,
+        returning the `Rectangular` function, aka step function
+        """
+        y = (x-self._center)/self._width
+        y_ = 0.25 - y**2
+        return (1. / self._width) / (1 + np.exp(-2*k*y_))
+        
+    def _analytic_deriv_pdf(self, x, k=1000):
+        """
+        Derivative of the analytic uniform pdf
+        """
+        y = (x-self._center)/self._width
+        y_ = 0.25 - y**2
+        ratio = np.exp(-2*k*y_ - 2*np.logaddexp(0, -2*k*y_))
+        return (1. / self._width**2) * -4*k*y * ratio
+        
+    def _analytic_log_pdf(self, x, k=1000):
+        """
+        The log of the analytic approximation of the pdf
+        """
+        y = (x-self._center)/self._width
+        y_ = 0.25 - y**2
+        return -np.log(self._width) - np.logaddexp(0, -2*k*y_)
+    
+    def _analytic_deriv_log_pdf(self, x, k=1000):
+        """
+        Derivative of the log of the analytic uniform pdf
+        """
+        y = (x-self._center)/self._width
+        y_ = 0.25 - y**2
+        
+        ratio = np.exp(-2*k*y_ - np.logaddexp(0, -2*k*y_)) # safely compute the ratio for large values
+        return (1./self._width) * -4*y*k * ratio
+    
     def limits(self, factor=1.):
         """
         Return the minimum and maximum of the uniform distribution.
@@ -300,7 +353,6 @@ class Uniform(DistributionBase):
         
         return lower, upper
     
-    #---------------------------------------------------------------------------
     def draw(self, size=1):
         """
         Draw random value(s) from the uniform distribution.
@@ -319,15 +371,13 @@ class Uniform(DistributionBase):
         values = np.random.uniform(**kwargs)
         return values if size > 1 else values[0]
 
-    #---------------------------------------------------------------------------
     def grid(self, sampling=5):
         """
         Draw a (set of) likely value(s) from the uniform distribution.
         """
         return np.linspace(self.lower, self.upper, sampling)
         
-    #---------------------------------------------------------------------------
-    def pdf(self, domain=None, factor=1.):
+    def pdf(self, domain=None, factor=1., k=1000):
         """
         Return the probability distribution function
         
@@ -344,11 +394,45 @@ class Uniform(DistributionBase):
         if domain is None:
             lower, upper = self.limits(factor=factor)
             domain = np.linspace(lower, upper, 1000)
-          
-        kwargs = {'loc' : self.loc, 'scale' : self.scale}
-        return domain, getattr(scipy.stats.uniform(**kwargs), 'pdf')(domain)
+         
+        if not self.analytic: 
+            kwargs = {'loc' : self.loc, 'scale' : self.scale}
+            return domain, scipy.stats.uniform.pdf(domain, **kwargs)
+        else:
+            return domain, self._analytic_pdf(domain, k=k)
         
-    #---------------------------------------------------------------------------
+    def deriv_pdf(self, x, k=1000):
+        """
+        Return the derivative of the uniform PDF at the
+        specified domain values
+        """
+        if not self.analytic: 
+            raise ValueError("set `analytic = True` for derivative of uniform PDF")
+        else:
+            return self._analytic_deriv_pdf(x, k=k)
+    
+    def log_pdf(self, x, k=1000):
+        """
+        Return the natural log of the uniform PDF at the
+        specified domain values, optionally using an analytic
+        approximation
+        """        
+        if not self.analytic: 
+            kwargs = {'loc' : self.loc, 'scale' : self.scale}
+            return scipy.stats.uniform.logpdf(x, **kwargs)
+        else:
+            return self._analytic_log_pdf(x, k=k)
+        
+    def deriv_log_pdf(self, x, k=1000):
+        """
+        Return the derivative of the natural log of the uniform PDF
+        at the specified domain values
+        """
+        if not self.analytic: 
+            raise ValueError("set `analytic = True` for derivative of the log of the uniform PDF")
+        else:
+            return self._analytic_deriv_log_pdf(x, k=k)
+        
     def cdf(self, domain=None, factor=1.):
         """
         Return the cumulative distribution function

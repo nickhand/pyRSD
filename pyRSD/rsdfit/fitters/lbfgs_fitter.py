@@ -9,28 +9,6 @@ import functools
 logger = logging.getLogger('rsdfit.lbfgs_fitter')
 logger.addHandler(logging.NullHandler())
                        
-def add_epsilon(theta, i, eps):
-    toret = theta.copy()
-    toret[i] += eps
-    return toret
-
-def lbfgs_objective(x0, f, epsilon=1e-8, pool=None):
-    """
-    Return the function we are optimizing at `x0` plus its derivative, 
-    which is the forward finite-difference gradient
-    """
-    N = len(x0)
-    f0 = f(x0) # value of function at x0
-
-    x = [add_epsilon(x0, i, epsilon) for i in range(N)]
-    if pool is None:
-        M = map
-    else:
-        M = pool.map
-    
-    derivs = np.array(M(f, x))
-    return f0, (derivs - f0) / epsilon
-
 def run(params, theory, objective, pool=None, init_values=None):
     """
     Perform nonlinear fitting of a system using `scipy.optimize`.
@@ -41,38 +19,48 @@ def run(params, theory, objective, pool=None, init_values=None):
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
     epsilon    = params.get('lbfgs_epsilon', 1e-8)
-    factr      = params.get('lbfgs_factr', 1e7)
+    factr      = params.get('lbfgs_factr', 1e8)
     use_bounds = params.get('lbfgs_use_bounds', False)
-            
-    #-----------------
-    # do the work
-    #-----------------
+    use_priors = params.get('lbfgs_use_priors', True)
 
+    # log some info
+    if use_priors:
+        logger.info("running LBFGS minimizer with priors")
+    else:
+        logger.info("running LBFGS minimizer without priors")
+    if use_bounds:
+        logger.info("running LBFGS minimizer with bounds")
+    else:
+        logger.info("running LBFGS minimizer without bounds")
+    
     # bounds
     bounds = None
     if use_bounds:
         bounds = []
+        eps = 1e-5
         for par in theory.fit_params.free:
         
             lower = par.lower
-            min_val =  par.min
+            min_val =  par.min + eps
             if lower is not None:
                 min_val = max(min_val, lower)
         
             upper = par.upper
-            max_val = par.max
+            max_val = par.max - eps
             if upper is not None:
                 max_val = min(max_val, upper)
             bounds.append((min_val, max_val))
     
     # call the objective which returns f, fprime
     def _lbfgs_objective(x):
-        return lbfgs_objective(x, objective, epsilon=epsilon, pool=pool)
+        return objective(x, epsilon=epsilon, pool=pool, use_priors=use_priors)
     
     exception = False  
     try:
-        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, x0=init_values, bounds=bounds, iprint=1)
+        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=1000, x0=init_values, bounds=bounds, iprint=1)
     except:
+        import traceback
+        logger.warning("exception occured:\n%s" %traceback.format_exc())
         exception = True
         pass
     

@@ -338,17 +338,17 @@ class GalaxyPowerTheory(object):
             self.fit_params.update_values()
         except Exception as e:
             import traceback
-            msg = ("exception while trying to update free parameters:\n"
-                    "   current parameters:\n%s\n" %str(self.fit_params)
-                    "   traceback:\n%s" %traceback.format_exc())
+            msg = "exception while trying to update free parameters:\n"
+            msg += "   current parameters:\n%s\n" %str(self.fit_params)
+            msg += "   traceback:\n%s" %(traceback.format_exc())
             raise RuntimeError(msg)
         try:
             self.update_model()
         except Exception as e:
             import traceback
-            msg = ("exception while trying to update the theoretical model:\n"
-                    "   current parameters:\n%s\n" %str(self.fit_params)
-                    "   traceback:\n%s" %traceback.format_exc())
+            msg = "exception while trying to update the theoretical model:\n"
+            msg += "   current parameters:\n%s\n" %str(self.fit_params)
+            msg += "   traceback:\n%s" %(traceback.format_exc())
             raise RuntimeError(msg)
         
         return True

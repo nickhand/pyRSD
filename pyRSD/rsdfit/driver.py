@@ -503,9 +503,9 @@ class FittingDriver(object):
                     raise ValueError("log-likelihood calculation resulted in NaN")
             except:
                 import traceback
-                msg = ("exception while computing log-likelihood:\n"
-                        "   current parameters:\n%s\n" %str(self.fit_params)
-                        "   traceback:\n%s" %traceback.format_exc())
+                msg = "exception while computing log-likelihood:\n"
+                msg += "   current parameters:\n%s\n" %str(self.fit_params)
+                msg += "   traceback:\n%s" %(traceback.format_exc())
                 raise RuntimeError(msg)
             
             return lp + lnlike

@@ -1,5 +1,5 @@
 from ._cache import Cache, parameter, cached_property
-from ._interpolate import RegularGridInterpolator
+from ._interpolate import RegularGridInterpolator, InterpolationDomainError
 from . import tools, INTERP_KMIN, INTERP_KMAX
 from .. import numpy as np, pygcl
 from ..data import hzpt_wiggles
@@ -65,6 +65,7 @@ class HaloZeldovichPS(Cache):
         """
         The sigma8 value at z
         """
+        if val <= 0.: raise ValueError("`sigma8_z` must be positive")
         self.Pzel.SetSigma8AtZ(val)
         return val
         
@@ -258,11 +259,14 @@ class HaloZeldovichPS(Cache):
         Return the Zel'dovich power at the specified `k`
         """
         if self.interpolate and not ignore_interpolated:
-            if np.isscalar(k):
-                pts = [self.sigma8_z, k]
-            else:
-                pts = np.vstack((np.repeat(self.sigma8_z, len(k)), k)).T
-            return self.interpolation_table(pts)
+            try:
+                if np.isscalar(k):
+                    pts = [self.sigma8_z, k]
+                else:
+                    pts = np.vstack((np.repeat(self.sigma8_z, len(k)), k)).T
+                return self.interpolation_table(pts)
+            except InterpolationDomainError:
+                return np.nan_to_num(self.Pzel(k))
         else:
             return np.nan_to_num(self.Pzel(k)) # set any NaNs to zero
             

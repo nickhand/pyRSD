@@ -1,6 +1,6 @@
 from .. import pygcl, numpy as np
 from ._cache import Cache, parameter, cached_property
-from ._interpolate import RegularGridInterpolator
+from ._interpolate import RegularGridInterpolator, InterpolationDomainError
 
 from scipy.integrate import simps
 import scipy.interpolate as interp
@@ -363,11 +363,8 @@ class BiasToMassRelation(Cache):
             The sigma8 value
         b1 : float
             The linear bias
-        """        
-        if self.interpolate:
-            return self.interpolation_table([sigma8_z, b1])
-        else:
-            
+        """     
+        def compute_fresh(sigma8_z, b1):
             # setup a few functions we need
             mean_dens = self.cosmo.rho_bar_z(0.)
             mass_norm = 1e13
@@ -380,6 +377,15 @@ class BiasToMassRelation(Cache):
                 return bias_Tinker(sigma, delta_halo=self.delta_halo) - b1
 
             return brentq(objective, 1e-8, 1e3)*mass_norm
+               
+        if self.interpolate:
+            try:
+                return self.interpolation_table([sigma8_z, b1])
+            except InterpolationDomainError:
+                return compute_fresh(sigma8_z, b1)
+        else:
+            return compute_fresh(sigma8_z, b1)
+
             
 #-------------------------------------------------------------------------------
 # bias to sigma relation

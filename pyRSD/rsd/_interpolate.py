@@ -1,5 +1,8 @@
 from .. import numpy as np
 import itertools
+
+class InterpolationDomainError(Exception):
+    pass
     
 #-------------------------------------------------------------------------------
 # Regular grid interpolator from scipy
@@ -142,8 +145,8 @@ class RegularGridInterpolator(object):
             for i, p in enumerate(xi.T):
                 if not np.logical_and(np.all(self.grid[i][0] <= p),
                                       np.all(p <= self.grid[i][-1])):
-                    raise ValueError("One of the requested xi is out of bounds "
-                                     "in dimension %d" % i)
+                    raise InterpolationDomainError("One of the requested domain values is out of bounds "
+                                                    "in dimension %d" %i)
 
         indices, norm_distances, out_of_bounds = self._find_indices(xi.T)
         if method == "linear":

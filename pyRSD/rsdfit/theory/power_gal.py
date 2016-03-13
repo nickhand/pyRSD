@@ -270,6 +270,19 @@ class GalaxyPowerTheory(object):
     # convenience attributes
     #---------------------------------------------------------------------------
     @property
+    def free_fiducial(self):
+        """
+        Return an array of the fiducial free parameters
+        """
+        free = self.free_names
+        params = self.fit_params
+        toret = [params[key].fiducial for key in free]
+        if None in toret:
+            names = [free[i] for i in range(len(free)) if toret[i] is None]
+            raise ValueError("fiducial values missing for parameters: %s" %str(names))
+        return np.array(toret)
+            
+    @property
     def free_names(self):
         return self.fit_params.free_names
 
@@ -299,35 +312,45 @@ class GalaxyPowerTheory(object):
     def set_free_parameters(self, theta):
         """
         Given an array of values `theta`, set the free parameters of 
-        `GalaxyPowerTheory.fit_params`. 
+        `GalaxyPowerTheory.fit_params`
         
         Notes
-        ------
-        This assumes that theta is of the correct length, and sets the
-        values in the same order as returned by 
-        `GalaxyPowerTheory.fit_params.free`
+        -----
+        * if any free parameter values are outside their bounds, the
+        model will not be updated and `False` will be returned
+        
+        Returns
+        -------
+        valid_model : bool
+            return `True/False` flag indicating if we were able
+            to successfully set the free parameters and update the model
         """
+        # only set and update the model when all free params are within bounds
+        if not all(p.within_bounds(theta[i]) for i, p in enumerate(self.free)):
+            return False
+        
         # set the parameters
         for val, name in zip(theta, self.free_names):
             self.fit_params[name].value = val
                    
-        # only do this if the free params are within bounds
-        if not all(p.within_bounds for p in self.free):
-            return False
-    
         # try to update
         try:
             self.fit_params.update_values()
         except Exception as e:
-            args = (str(e), str(self.fit_params))
-            msg = "error trying to update fit parameters; original message:\n%s\n\ncurrent parameters:\n%s" %args
+            import traceback
+            msg = ("exception while trying to update free parameters:\n"
+                    "   current parameters:\n%s\n" %str(self.fit_params)
+                    "   traceback:\n%s" %traceback.format_exc())
             raise RuntimeError(msg)
         try:
             self.update_model()
         except Exception as e:
-            args = (str(e), str(self.fit_params))
-            msg = "error trying to update model; original message:\n%s\n\ncurrent parameters:\n%s" %args
-            raise RuntimeError(msg)   
+            import traceback
+            msg = ("exception while trying to update the theoretical model:\n"
+                    "   current parameters:\n%s\n" %str(self.fit_params)
+                    "   traceback:\n%s" %traceback.format_exc())
+            raise RuntimeError(msg)
+        
         return True
         
     def model_callable(self, data):

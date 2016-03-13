@@ -211,6 +211,13 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         return self.prior is not None
         
+    @cached_property('fiducial')
+    def has_fiducial(self):
+        """
+        Whether the parameter has a fiducial value defined
+        """
+        return self.fiducial is not None
+        
     @cached_property('min')
     def min_bound(self):
         """
@@ -225,16 +232,6 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         return dists.MaximumBound(self.max)
         
-    @property
-    def within_bounds(self):
-        """
-        Returns `True` if the current value is within the bounds
-        """
-        if not self.bounded:
-            return True
-        x = self.user_value
-        return bool(self.min_bound.pdf(x) and self.max_bound.pdf(x))
-
     @property
     def bounded(self):
         """
@@ -284,6 +281,15 @@ class Parameter(PickeableCache, lmfit.Parameter):
             dlnprior += self.prior.deriv_log_pdf(x)
         
         return dlnprior
+        
+    def within_bounds(self, x=None):
+        """
+        Returns `True` if the specified value is within the bounds
+        """
+        if not self.bounded:
+            return True
+        if x is None: x = self.user_value
+        return bool(self.min_bound.pdf(x) and self.max_bound.pdf(x))
     
     #---------------------------------------------------------------------------
     # functions

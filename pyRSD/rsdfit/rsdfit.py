@@ -271,9 +271,19 @@ def run(args, comm=None, model=None, exit=True):
     
 def main():
     
-    # parse and run
-    parser = rsdfit_parser()    
-    run(parser.parse_args())
+    from mpi4py import MPI
+    comm = MPI.COMM_WORLD
+    
+    # parse the command line arguments
+    if comm.size > 1:
+        args = None
+        if comm.rank == 0:
+            args = rsdfit_parser().parse_args()    
+        args = comm.bcast(args, root=0)
+    else:
+        args = rsdfit_parser().parse_args()
+    
+    run(args)
 
 if __name__ == "__main__":
     main()

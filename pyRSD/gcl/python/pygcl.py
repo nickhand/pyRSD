@@ -58,8 +58,12 @@ class Cosmology(gcl.Cosmology, PickalableSWIG):
         gcl.Cosmology.__init__(self, *newargs)
     
     def __getstate__(self):
-        args = (self.GetParamFile(), self.GetTransferFit(), self.sigma8(), self.GetTransferFile(), 
-                self.GetDiscreteK(), self.GetDiscreteTk())
+        args = [self.GetParamFile(), self.GetTransferFit(), self.sigma8(), self.GetTransferFile(), 
+                self.GetDiscreteK(), self.GetDiscreteTk()]
+        
+        for i in [0, 3]:
+            s = args[i].split(data_dir+'/params/')
+            if len(s) == 2: args[i] = s[-1]
         return {'args': args} 
     
     @classmethod

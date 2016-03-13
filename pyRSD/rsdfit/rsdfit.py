@@ -52,7 +52,7 @@ def add_console_logger(rank):
     """ 
     # set up console logging
     logging.basicConfig(level=logging.INFO,
-                        format='chain #%d: '%rank + '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
+                        format='rank #%d: '%rank + '%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
                                               
 def add_file_logger(filename, rank):
@@ -64,7 +64,7 @@ def add_file_logger(filename, rank):
     # define a Handler which writes DEBUG messages or higher file
     f = logging.FileHandler(filename, mode='w')
     f.setLevel(logging.DEBUG)
-    formatter = logging.Formatter('chain #%d: '%rank + '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
+    formatter = logging.Formatter('rank #%d: '%rank + '%(asctime)s %(name)-12s %(levelname)-8s %(message)s')
     f.setFormatter(formatter)
     logging.getLogger('').addHandler(f)
             

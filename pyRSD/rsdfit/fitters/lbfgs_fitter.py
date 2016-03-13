@@ -57,7 +57,7 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     exception = False  
     try:
-        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=1000, x0=init_values, bounds=bounds, iprint=1)
+        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, x0=init_values, bounds=bounds, iprint=1)
     except:
         import traceback
         logger.warning("exception occured:\n%s" %traceback.format_exc())

@@ -187,39 +187,49 @@ class FittingDriver(object):
         """
         Run the whole fitting analysis, from start to finish
         """
-        # if we are initializing from max-like, first call lmfit
         init_from = self.params.get('init_from', None)
         init_values = None
         
-        # init from maximum likelihood solution
+        # check for deprecated init_values
         if init_from == 'max-like':
-            init_values = self.do_maximum_likelihood()
+            raise ValueError("``init_from = max-like`` has been deprecated; use `maximum_probability` instead")
+        if init_from == 'chain':
+            raise ValueError("``init_from = chain`` has been deprecated; use `result` instead")
+        
+        # init from maximum probability solution
+        if init_from == 'maximum_probability':
+            init_values = self.find_peak_probability()
             
         # init from fiducial values
         elif init_from == 'fiducial':
-            free = self.theory.free_names
-            params = self.theory.fit_params
-            init_values = [params[key].fiducial for key in free]
-            if None in init_values:
-                names = [free[i] for i in range(len(free)) if init_values[i] is None]
-                raise ValueError("cannot initialize from fiducial values for parameters: %s" %str(names))
-            else:
-                init_values = np.array(init_values)
+            init_values = self.theory.free_fiducial
                 
-        # init from existing chain
-        elif init_from == 'chain':
-            free = self.theory.free_names
-            start_chain = EmceeResults.from_npz(self.params['start_chain'].value)
-            best_values = dict(zip(start_chain.free_names, start_chain.max_lnprob_values()))
-            init_values = np.empty(len(free))
-            for i, key in enumerate(free):
+        # init from previous result
+        elif init_from == 'result':
+            
+            # the result to start from
+            start_from = self.params.get('start_from', None)
+            if start_from is None:
+                raise ValueError("if ``init_from = 'result'``, a `start_from` file path must be provided")
+            
+            # load the result and get the best-fit values
+            try:
+                result = EmceeResults.from_npz(start_from)
+                best_values = result.max_lnprob_values()
+            except:
+                result = LBFGSResults.from_npz(start_from)
+                best_values = result.min_chi2_values
+            best_values = dict(zip(result.free_names, best_values))
+
+            init_values = np.empty(self.Np)
+            for i, key in enumerate(self.theory.free_names):
                 if key in best_values:
                     init_values[i] = best_values[key]
                 else:
-                    if self.theory.fit_params[key].fiducial is not None:
+                    if self.theory.fit_params[key].has_fiducial is not None:
                         init_values[i] = self.theory.fit_params[key].fiducial
                     else:
-                        raise ValueError("cannot initiate from chain -- `%s` parameter missing" %key)
+                        raise ValueError("cannot initiate from previous result -- `%s` parameter missing" %key)
             
         
         # get the solver function
@@ -228,6 +238,12 @@ class FittingDriver(object):
         
         # emcee
         if solver_name == 'emcee':
+            
+            # do not use any analytic approximations for bounds and priors
+            # since MCMC can handle discontinuity in log-prob
+            for name in self.theory.free_names:
+                self.theory.fit_params[name].analytic = False
+                
             solver = emcee_fitter.run
             objective = functools.partial(FittingDriver.lnprob, self)
             
@@ -242,12 +258,10 @@ class FittingDriver(object):
         # lbfgs
         elif solver_name == 'lbfgs':
                         
-            # setup the priors for minimization routines
+            # use analytic approximation for bounds and priors
+            # to enforce continuity
             for name in self.theory.free_names:
-                p = self.theory.fit_params[name]
-                p.ignore_bounds_in_prior = True
-                if p.prior_name == 'uniform':
-                    p.prior.analytic = True
+                self.theory.fit_params[name].analytic = True
             
             solver = lbfgs_fitter.run
             objective = functools.partial(FittingDriver.minimize_objective, self)
@@ -285,26 +299,28 @@ class FittingDriver(object):
         if not exception:
             self.results.summarize_fit()
 
-    def do_maximum_likelihood(self):
+    def find_peak_probability(self):
         """
-        Compute the maximum likelihood values and return them as an array
+        Find the peak of the probability distribution
+        
+        This uses either the maximum likelihood (ML) (excluding log priors) or 
+        maximum a posteriori probability (MAP) (including log priors) estimation
         """
+        # use analytic approximation for bounds and priors
+        # to enforce continuity
+        for name in self.theory.free_names:
+            self.theory.fit_params[name].analytic = True
+            
         # get the solver and objective
         solver = bfgs_fitter.run
         objective = functools.partial(FittingDriver.minimize_objective, self)
         
         # init values from fiducial
-        free = self.theory.free_names
-        params = self.theory.fit_params
-        init_values = [params[key].fiducial for key in free]
-        if None in init_values:
-            raise ValueError("cannot initialize from fiducial values in maximum likelihood initialization run")
-        else:
-            init_values = np.array(init_values)
+        init_values = self.theory.free_fiducial
         
-        logger.info("computing the maximum likelihood values to use as initialization")
+        logger.info("using L-BFGS soler to find the maximum probability values to use as initialization")
         results, exception = solver(params, copy.deepcopy(self.theory), objective, init_values=init_values)
-        logger.info("...done compute maximum likelihood")
+        logger.info("...done compute maximum probability")
         
         values = results.min_chi2_values
         del results
@@ -326,6 +342,12 @@ class FittingDriver(object):
         # the model callable
         self._model_callable = self.theory.model_callable(self.data)
                                         
+    @property
+    def fiducial(self):
+        """
+        Convenience function to return the fiducial values 
+        """
+        
     @property
     def results(self):
         """
@@ -463,19 +485,30 @@ class FittingDriver(object):
         """
         # set the free parameters
         if theta is not None:
-            good_model = self.theory.set_free_parameters(theta)
-            if not good_model:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # return -np.inf if parameters are out of bounds
+            if not in_bounds:
                 return -np.inf
                 
+        # check the prior
         lp = self.lnprior()
         if not np.isfinite(lp):
             return -np.inf
+        # only compute lnlike if we have finite prior
         else:
             try:
-                toret = lp + self.lnlike() 
-            except Exception as e:
-                return -np.inf
-            return toret if not np.isnan(toret) else -np.inf
+                lnlike = self.lnlike() 
+                if np.isnan(lnlike):
+                    raise ValueError("log-likelihood calculation resulted in NaN")
+            except:
+                import traceback
+                msg = ("exception while computing log-likelihood:\n"
+                        "   current parameters:\n%s\n" %str(self.fit_params)
+                        "   traceback:\n%s" %traceback.format_exc())
+                raise RuntimeError(msg)
+            
+            return lp + lnlike
                     
     def minimize_objective(self, theta=None, epsilon=1e-8, pool=None, use_priors=True):
         """
@@ -508,9 +541,7 @@ class FittingDriver(object):
         
         # set the free parameters
         if theta is not None:
-            good_model = self.theory.set_free_parameters(theta)
-            #if not good_model:
-            #    return 1e10+nlp0, ndlp
+            in_bounds = self.theory.set_free_parameters(theta)
         else:
             theta = self.theory.free_values
 

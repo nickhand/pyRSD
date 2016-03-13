@@ -257,15 +257,17 @@ class FittingDriver(object):
                 
         # lbfgs
         elif solver_name == 'lbfgs':
+            solver = lbfgs_fitter.run
                         
             # use analytic approximation for bounds and priors
             # to enforce continuity
             for name in self.theory.free_names:
                 self.theory.fit_params[name].analytic = True
-            
-            solver = lbfgs_fitter.run
-            objective = functools.partial(FittingDriver.minimize_objective, self)
-            kwargs = {'init_values': init_values}
+                
+            # explictly pass the lnlike function to avoid re-pickling it in parallel
+            lnlike_objective = functools.partial(FittingDriver.lnlike, self)
+            objective = functools.partial(FittingDriver.minimize_objective, self, lnlike_objective)
+            kwargs = {'init_values': init_values, 'pool':self.pool}
             
         # incorrect
         else:
@@ -281,6 +283,70 @@ class FittingDriver(object):
         
         return exception
     
+    def minimize_objective(self, lnlike, theta=None, epsilon=1e-8, pool=None, use_priors=True):
+        """
+        The objective function for minimizing the negative log probability
+        
+        Notes
+        -----
+        This uses either the maximum likelihood (ML) (excluding log priors) or 
+        maximum a posteriori probability (MAP) (including log priors) estimation
+        
+        Parameters
+        ----------
+        theta : array_like, optional
+            if provided, the values of the free parameters to compute the probability
+            at; it not provided, use the current values of free parameters from 
+            `theory.fit_params`
+        lnlike : 
+        epsilon : float, optional
+            the step-size to use in the finite-difference derivative calculation; 
+            default is 1e-8
+        pool : MPIPool, optional
+            a MPI Pool object to distribute the calculations of derivatives to 
+            multiple processes in parallel
+        use_priors : bool, optional
+            whether to include the log priors in the objective function when 
+            minimizing the negative log probability
+        """            
+        if use_priors:
+            nlp0 = -self.lnprior()
+            ndlp = -self.theory.dlnprior
+        
+        # set the free parameters
+        if theta is not None:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                return -self.null_lnlike - self.lnprior(), -self.theory.dlnprior
+        else:
+            theta = self.theory.free_values
+
+        # value at theta
+        nll0 = -lnlike()
+        
+        # derivatives
+        x = [add_epsilon(theta, i, epsilon) for i in range(self.Np)]
+        
+        if pool is None:
+            M = map
+        else:
+            M = pool.map
+    
+        # compute the derivatives, optionally in parallel
+        derivs = -1.*np.array(M(lnlike, x)) # negative likelihood
+        derivs = (derivs - nll0) / epsilon
+        prob = nll0
+        
+        # add in log prior prob and derivatives of log priors
+        if use_priors: 
+            derivs += ndlp
+            prob += nlp0
+            
+        return prob, derivs
+        
     def finalize_fit(self, exception, results_file):
         """
         Finalize the fit, saving the results file
@@ -312,7 +378,7 @@ class FittingDriver(object):
         init_values = self.theory.free_fiducial
         
         logger.info("using L-BFGS soler to find the maximum probability values to use as initialization")
-        results, exception = solver(params, copy.deepcopy(self.theory), objective, init_values=init_values)
+        results, exception = solver(params, copy.deepcopy(self.theory), objective, pool=self.pool, init_values=init_values)
         logger.info("...done compute maximum probability")
         
         values = results.min_chi2_values
@@ -515,69 +581,7 @@ class FittingDriver(object):
                 raise RuntimeError(msg)
             
             return lp + lnlike
-                    
-    def minimize_objective(self, theta=None, epsilon=1e-8, pool=None, use_priors=True):
-        """
-        The objective function for minimizing the negative log probability
-        
-        Notes
-        -----
-        This uses either the maximum likelihood (ML) (excluding log priors) or 
-        maximum a posteriori probability (MAP) (including log priors) estimation
-        
-        Parameters
-        ----------
-        theta : array_like, optional
-            if provided, the values of the free parameters to compute the probability
-            at; it not provided, use the current values of free parameters from 
-            `theory.fit_params`
-        epsilon : float, optional
-            the step-size to use in the finite-difference derivative calculation; 
-            default is 1e-8
-        pool : MPIPool, optional
-            a MPI Pool object to distribute the calculations of derivatives to 
-            multiple processes in parallel
-        use_priors : bool, optional
-            whether to include the log priors in the objective function when 
-            minimizing the negative log probability
-        """
-        if use_priors:
-            nlp0 = -self.lnprior()
-            ndlp = -self.theory.dlnprior
-        
-        # set the free parameters
-        if theta is not None:
-            in_bounds = self.theory.set_free_parameters(theta)
-            
-            # if parameters are out of bounds, return the log-likelihood
-            # for a null model + the prior results (which hopefully are restrictive)
-            if not in_bounds:
-                return -self.null_lnlike + nlp0, ndlp
-        else:
-            theta = self.theory.free_values
-
-        # value at theta
-        nll0 = -self.lnlike()
-        
-        # derivatives
-        x = [add_epsilon(theta, i, epsilon) for i in range(self.Np)]
-        
-        if pool is None:
-            M = map
-        else:
-            M = pool.map
-    
-        derivs = -1.*np.array(M(self.lnlike, x)) # negative likelihood
-        derivs = (derivs - nll0) / epsilon
-        prob = nll0
-        
-        # add in log prior prob and derivatives of log priors
-        if use_priors: 
-            derivs += ndlp
-            prob += nlp0
-            
-        return prob, derivs
-    
+                        
     def set_fiducial(self):
         """
         Set the fiducial values as the current values of the free parameters

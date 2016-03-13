@@ -282,14 +282,19 @@ class Parameter(PickeableCache, lmfit.Parameter):
         
         return dlnprior
         
-    def within_bounds(self, x=None):
+    @property
+    def within_bounds(self):
         """
-        Returns `True` if the specified value is within the bounds
+        Returns `True` if the specified value is within the (min, max)
+        bounds and if the prior is uniform, within the lower/upper values
+        of the prior
         """
-        if not self.bounded:
-            return True
-        if x is None: x = self.user_value
-        return bool(self.min_bound.pdf(x) and self.max_bound.pdf(x))
+        x = self.user_value
+        toret = True
+        if self.has_prior and self.prior_name == 'uniform':
+            toret = (x >= self.prior.lower) and (x <= self.prior.upper)
+        
+        return toret and bool(self.min_bound.pdf(x) and self.max_bound.pdf(x))
     
     #---------------------------------------------------------------------------
     # functions

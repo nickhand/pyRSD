@@ -324,15 +324,16 @@ class GalaxyPowerTheory(object):
         valid_model : bool
             return `True/False` flag indicating if we were able
             to successfully set the free parameters and update the model
-        """
-        # only set and update the model when all free params are within bounds
-        if not all(p.within_bounds(theta[i]) for i, p in enumerate(self.free)):
-            return False
-        
+        """        
         # set the parameters
         for val, name in zip(theta, self.free_names):
             self.fit_params[name].value = val
-                   
+           
+        # only set and update the model when all free params are 
+        # within max/min bounds and uniform prior bounds
+        if not all(p.within_bounds for p in self.free):
+            return False
+                    
         # try to update
         try:
             self.fit_params.update_values()

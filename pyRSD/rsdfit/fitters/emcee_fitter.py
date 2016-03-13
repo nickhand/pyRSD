@@ -284,11 +284,11 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
     start_chain = None
     
     # 1) initialixe from initial provided values
-    if init_from in ['max-like', 'fiducial', 'chain']:
+    if init_from in ['maximum_probability', 'fiducial', 'result']:
         if init_values is None:
             raise ValueError("EMCEE: cannot initialize around best guess -- none provided")
         
-        labels = {'max-like' : 'maximum likelihood', 'fiducial': 'fiducial', 'chain': "start chain max lnprob"}
+        labels = {'maximum_probability' : 'maximum probability', 'fiducial': 'fiducial', 'result': "previous result best-fit"}
         lab = labels[init_from]
         
         # initialize in random ball
@@ -296,7 +296,7 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
         p0 = np.array([init_values + 1e-3*np.random.randn(ndim) for i in range(nwalkers)])
         logger.warning("EMCEE: initializing walkers in random ball around %s parameters" %lab)
             
-    # 2) initialize from past run
+    # 2) initialize and restart from previous run
     elif isinstance(init_values, EmceeResults):
         
         # copy the results object

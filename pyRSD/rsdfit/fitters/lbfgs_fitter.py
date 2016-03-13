@@ -55,9 +55,13 @@ def run(params, theory, objective, pool=None, init_values=None):
     def _lbfgs_objective(x):
         return objective(x, epsilon=epsilon, pool=pool, use_priors=use_priors)
     
+    # setup the logging header
+    names = "   ".join(["%9s" %name for name in theory.free_names])
+    logging.info('{0:4s}   {1:s}   {2:9s}'.format('Iter', names, 'f(X)'))
+     
     exception = False  
     try:
-        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, x0=init_values, bounds=bounds, iprint=1)
+        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, x0=init_values, bounds=bounds)
     except:
         import traceback
         logger.warning("exception occured:\n%s" %traceback.format_exc())

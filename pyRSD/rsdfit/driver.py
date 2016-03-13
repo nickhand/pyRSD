@@ -21,6 +21,8 @@ import copy
 logger = logging.getLogger('rsdfit.fitting_driver')
 logger.addHandler(logging.NullHandler())
 
+Nfevals = 1
+
 def add_epsilon(theta, i, eps):
     toret = theta.copy()
     toret[i] += eps
@@ -308,7 +310,9 @@ class FittingDriver(object):
         use_priors : bool, optional
             whether to include the log priors in the objective function when 
             minimizing the negative log probability
-        """            
+        """
+        global Nfevals
+                    
         if use_priors:
             nlp0 = -self.lnprior()
             ndlp = -self.theory.dlnprior
@@ -344,6 +348,11 @@ class FittingDriver(object):
         if use_priors: 
             derivs += ndlp
             prob += nlp0
+            
+        # log (to root)
+        values = "   ".join(["%.6f" %th for th in theta])
+        logging.info("%.4d   %s   %.6f" %(Nfevals, values, nll0))
+        Nfevals += 1
             
         return prob, derivs
         

@@ -414,6 +414,19 @@ class FittingDriver(object):
         return self._model_callable()
         
     @property
+    def null_lnlike(self):
+        """
+        Return the log-likelihood value for a null model, to be used
+        when the model parameters are in an invalid state
+        """
+        try:
+            return self._null_lnlike
+        except:
+            d = self.data.combined_power
+            self._null_lnlike = -0.5 * np.dot(d, np.dot(self.data.covariance.inverse, d))
+            return self._null_lnlike
+            
+    @property
     def dof(self):
         """
         Return the degrees of freedom, equal to number of data points minus
@@ -542,6 +555,11 @@ class FittingDriver(object):
         # set the free parameters
         if theta is not None:
             in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                return -self.null_lnlike + nlp0, ndlp
         else:
             theta = self.theory.free_values
 

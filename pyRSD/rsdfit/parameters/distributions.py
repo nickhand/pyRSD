@@ -20,6 +20,45 @@ def histogram_bins(signal):
 
     return bins
 
+
+class BoundDistribution(object):
+    """
+    Base class to represent a minimum/maximum bound on a distribution
+    """
+    def __init__(self, sign, value, analytic=False):
+        self.sign = sign
+        self.value = value
+        self.analytic = analytic
+        
+    def pdf(self, x, k=1000):
+        x = self.sign * (x-self.value)
+        if not self.analytic:
+            return 0. if x < 0 else 1.
+        else:
+            return 1./(1 + np.exp(-2*k*x))
+        
+    def log_pdf(self, x, k=1000):
+        x = self.sign * (x-self.value)
+        if not self.analytic:
+            return -np.inf if x < 0 else 0.
+        else:
+            return -np.logaddexp(0, -2*k*x)
+            
+    def deriv_log_pdf(self, x, k=1000):
+        x = self.sign * (x-self.value)
+        ratio = np.exp(-2*k*x - np.logaddexp(0, -2*k*x))
+        return 2*k*self.sign * ratio
+            
+class MinimumBound(BoundDistribution):
+    def __init__(self, value, analytic=False):
+        if value is None: value = -np.inf
+        super(MinimumBound, self).__init__(1., value, analytic=analytic)
+        
+class MaximumBound(BoundDistribution):
+    def __init__(self, value, analytic=False):
+        if value is None: value = np.inf
+        super(MaximumBound, self).__init__(-1., value, analytic=analytic)
+        
 class DistributionBase(object):
     """
     Base class for representing a `Distribution`

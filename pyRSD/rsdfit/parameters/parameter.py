@@ -47,7 +47,8 @@ class Parameter(PickeableCache, lmfit.Parameter):
     Currently, the prior can either be a uniform or normal distribution.
     """
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
-                   'description', 'fiducial', 'prior', 'lower', 'upper', 'mu', 'sigma', 'ignore_bounds_in_prior']
+                   'description', 'fiducial', 'prior', 'lower', 'upper', 
+                   'mu', 'sigma', 'analytic']
                    
     def __init__(self, name=None, value=None, vary=False, min=None, max=None, expr=None, **kwargs):
         """
@@ -95,14 +96,44 @@ class Parameter(PickeableCache, lmfit.Parameter):
         for k in ['fiducial', 'lower', 'upper', 'mu', 'sigma']:
             setattr(self, k, kwargs.get(k, None))
             
-        # ignore bounds in prior
-        self.ignore_bounds_in_prior = kwargs.get('ignore_bounds_in_prior', True)
+        # use analytic approximations for prior, bounds
+        self.analytic = kwargs.get('analytic', False)
             
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------
     @parameter
+    def analytic(self, val):
+        """
+        If `True`, use an analytic approximation for `Uniform` priors and the
+        min/max bounds
+        """
+        self.min_bound.analytic = val
+        self.max_bound.analytic = val
+        if self.prior_name == 'uniform':
+            self.prior.analytic = val
+            
+        return val
+        
+    @parameter
+    def min(self, val):
+        """
+        The minimum allowed value (inclusive)
+        """
+        return val
+        
+    @parameter
+    def max(self, val):
+        """
+        The maximum allowed value (exclusive)
+        """
+        return val
+    
+    @parameter
     def value(self, val):
+        """
+        The parameter value
+        """
         self.user_value = val
         self._val = val
         return self._getval()
@@ -148,14 +179,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         The standard deviation of the normal prior
         """
         return val
-        
-    @parameter
-    def ignore_bounds_in_prior(self, val):
-        """
-        If True, ignore bounds limits in the prior calculation
-        """
-        return val
-        
+                
     @parameter
     def prior_name(self, val):
         """
@@ -187,6 +211,20 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         return self.prior is not None
         
+    @cached_property('min')
+    def min_bound(self):
+        """
+        The distribution representing the minimum bound
+        """
+        return dists.MinimumBound(self.min)
+        
+    @cached_property('max')
+    def max_bound(self):
+        """
+        The distribution representing the minimum bound
+        """
+        return dists.MaximumBound(self.max)
+        
     @property
     def within_bounds(self):
         """
@@ -194,10 +232,8 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         if not self.bounded:
             return True
-            
-        min_cond = True if self.min is None else self.user_value >= self.min
-        max_cond = True if self.max is None else self.user_value <= self.max
-        return min_cond and max_cond
+        x = self.user_value
+        return bool(self.min_bound.pdf(x) and self.max_bound.pdf(x))
 
     @property
     def bounded(self):
@@ -220,12 +256,15 @@ class Parameter(PickeableCache, lmfit.Parameter):
         If the current value is outside `Parameter.min` or `Parameter.max`, 
         return `numpy.inf`
         """
-        lnprior = 0
-        if self.has_prior:
-            lnprior = self.prior.log_pdf(self.value)
-            
-        if not self.ignore_bounds_in_prior and not self.within_bounds:
-            lnprior = -np.inf
+        x = self.value
+        
+        # this will be 0 if within bounds, -np.inf otherwise
+        lnprior = self.min_bound.log_pdf(x) + self.max_bound.log_pdf(x)
+        
+        # add in the log prior value (can also be -inf)
+        if self.has_prior: 
+            lnprior += self.prior.log_pdf(x)
+   
         return lnprior
         
     @property
@@ -235,12 +274,15 @@ class Parameter(PickeableCache, lmfit.Parameter):
         uniform or normal prior. If the current value is outside 
         `Parameter.min` or `Parameter.max`, return `numpy.inf`
         """
-        dlnprior = 0
-        if self.has_prior:
-            dlnprior = self.prior.deriv_log_pdf(self.value)
+        x = self.value
         
-        if not self.ignore_bounds_in_prior and not self.within_bounds:
-            dlnprior = -np.inf
+        # this will be 0 if within bounds (and large pos/neg if out of bounds)
+        dlnprior = self.min_bound.deriv_log_pdf(x) + self.max_bound.deriv_log_pdf(x)
+        
+        # add in the derivative of the log prior
+        if self.has_prior:
+            dlnprior += self.prior.deriv_log_pdf(x)
+        
         return dlnprior
     
     #---------------------------------------------------------------------------

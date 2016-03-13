@@ -279,13 +279,6 @@ class FittingDriver(object):
         self.results, exception = solver(self.params, copy.deepcopy(self.theory), objective, **kwargs)
         logger.info("...fitting complete")
         
-        # if there was an exception, print out current parameters
-        if exception:
-            import traceback
-            logger.error("exception occurred: ")
-            logger.error("     current parameters:\n %s" %str(self.theory.fit_params))
-            logger.error("     traceback:\n %s" %traceback.format_exc())
-        
         return exception
     
     def finalize_fit(self, exception, results_file):

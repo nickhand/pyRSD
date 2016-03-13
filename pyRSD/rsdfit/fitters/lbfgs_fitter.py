@@ -19,7 +19,7 @@ def run(params, theory, objective, pool=None, init_values=None):
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
     epsilon    = params.get('lbfgs_epsilon', 1e-8)
-    factr      = params.get('lbfgs_factr', 1e8)
+    factr      = params.get('lbfgs_factor', 1e8)
     use_bounds = params.get('lbfgs_use_bounds', False)
     use_priors = params.get('lbfgs_use_priors', True)
 

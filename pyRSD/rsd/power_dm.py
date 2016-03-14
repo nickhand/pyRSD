@@ -403,6 +403,27 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         return np.logspace(np.log10(kmin), np.log10(kmax), self.Nk)
         
     @cached_property("z", "cosmo")
+    def D(self):
+        """
+        The growth function at z
+        """
+        return self.cosmo.D_z(self.z)
+        
+    @cached_property("cosmo")
+    def _cosmo_sigma8(self):
+        """
+        The sigma8 value from the cosmology
+        """
+        return self.cosmo.sigma8()
+    
+    @cached_property("cosmo", "z")
+    def _cosmo_sigma8_z(self):
+        """
+        The sigma8(z) value from the cosmology
+        """
+        return self.cosmo.Sigma8_z(self.z)
+    
+    @cached_property("z", "cosmo")
     def conformalH(self):
         """
         The conformal Hubble parameter, defined as `H(z) / (1 + z)`
@@ -537,9 +558,9 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         formula from Jennings et al 2012 (arxiv: 1207.1439)
         """
         a0 = -12483.8; a1 = 2.554; a2 = 1381.29; a3 = 2.540
-        D = self.cosmo.D_z(self.z)
-        s8 = self.cosmo.sigma8() / D
-        
+        D = self.D
+        s8 = self.sigma8_z / D
+       
         # z = 0 results
         self.P00_hzpt_model.sigma8_z = s8
         P00_z0 = self.P00_hzpt_model(k)
@@ -559,8 +580,8 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         formula from Jennings et al 2012 (arxiv: 1207.1439)
         """
         a0 = -12480.5; a1 = 1.824; a2 = 2165.87; a3 = 1.796
-        D = self.cosmo.D_z(self.z)
-        s8 = self.cosmo.sigma8() / D
+        D = self.D
+        s8 = self.sigma8_z / D
         
         # z = 0 results
         self.P00_hzpt_model.sigma8_z = s8

@@ -65,12 +65,13 @@ def run(params, theory, objective, pool=None, init_values=None):
     try:
         start = time.time()
         x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, factr=factr, x0=init_values, bounds=bounds)
-        stop = time.time()
+        
     except:
         import traceback
         logger.warning("exception occured:\n%s" %traceback.format_exc())
         exception = True
         pass
+    stop = time.time()
     
     # handle the results
     #---------------------------------------------------------------------------

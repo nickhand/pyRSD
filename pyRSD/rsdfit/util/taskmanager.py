@@ -473,7 +473,7 @@ class TaskManager(object):
         task = self.task_values[itask]
 
         # if you are the pool's root, write out the temporary parameter file
-        this_config = None
+        this_config = None; rsdfit_cmd = None
         if self.pool_comm.rank == 0:
                   
             params = collections.OrderedDict()
@@ -503,25 +503,25 @@ class TaskManager(object):
 
             # update the rsdfit options
             valid = {k:possible_kwargs[k] for k in possible_kwargs if k in self.rsdfit_cmd_kwargs}
-            rsdfit_cmd = self.rsdfit_cmd.format(**valid)
+            rsdfit_cmd = self.rsdfit_cmd.format(**valid).split()
         
         # bcast the file name to all in the worker pool
         this_config = self.pool_comm.bcast(this_config, root=0)
+        rsdfit_cmd = self.pool_comm.bcast(rsdfit_cmd, root=0)
 
         # get the args
-        rsdfit_options = rsdfit_cmd.split()
-        ns = self.parser.parse_args(rsdfit_options + ['-p', this_config])
+        ns = self.parser.parse_args(rsdfit_cmd + ['-p', this_config])
         
         # try to load and cache the model
         if self.model is None:
             i = -1
-            if '-m' in rsdfit_options:
-                i = rsdfit_options.index('-m') + 1
-            elif '--model' in rsdfit_options:
-                i = rsdfit_options.index('--model') + 1
+            if '-m' in rsdfit_cmd:
+                i = rsdfit_cmd.index('-m') + 1
+            elif '--model' in rsdfit_cmd:
+                i = rsdfit_cmd.index('--model') + 1
             
             if i != -1:    
-                filename = rsdfit_options[i]
+                filename = rsdfit_cmd[i]
                 logger.info("loading model from '%s' before calling `rsdfit.run`" %filename)
                 self.model = rsd_io.load_model(filename)
         

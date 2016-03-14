@@ -538,7 +538,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         """
         a0 = -12483.8; a1 = 2.554; a2 = 1381.29; a3 = 2.540
         D = self.cosmo.D_z(self.z)
-        s8 = self.cosmo.sigma8() * (self.sigma8_z / self.cosmo.Sigma8_z(self.z))
+        s8 = self.cosmo.sigma8() / D
         
         # z = 0 results
         self.P00_hzpt_model.sigma8_z = s8
@@ -560,7 +560,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         """
         a0 = -12480.5; a1 = 1.824; a2 = 2165.87; a3 = 1.796
         D = self.cosmo.D_z(self.z)
-        s8 = self.cosmo.sigma8() * (self.sigma8_z / self.cosmo.Sigma8_z(self.z))
+        s8 = self.cosmo.sigma8() / D
         
         # z = 0 results
         self.P00_hzpt_model.sigma8_z = s8

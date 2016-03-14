@@ -518,11 +518,10 @@ class TaskManager(object):
         if self.pool_comm.size > 1:
             if self.pool_comm.rank == 0:
                 ns = self.parser.parse_args(options)
-            ns = comm.bcast(ns, root=0)
+            ns = self.pool_comm.bcast(ns, root=0)
         else:
             ns = self.parser.parse_args(options)
                 
-        
         # try to load and cache the model
         if self.model is None:
             i = -1

@@ -199,7 +199,12 @@ class GridIndex(object):
             the nearest element value
         """
         index = pd.Index(self.to_pandas(dim).unique())
-        ii = index._get_nearest_indexer([value], None)[0]
+        
+        # due to change introduced to pandas in v0.17
+        try:
+            ii = index._get_nearest_indexer([value], None)[0]
+        except:
+            ii = index._get_nearest_indexer([value], None, None)[0]
         return ii, index[ii]
         
                  

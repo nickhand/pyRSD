@@ -173,6 +173,12 @@ class TaskManager(object):
                     kwargs = [kw for _, kw, _, _ in formatter.parse(p) if kw]
                     if len(kwargs):
                         self.template_kwargs[(key, name)] = kwargs
+                        
+        self.rsdfit_options_kwargs = {}
+        for i, option in enumerate(self.rsdfit_options):
+            kwargs = [kw for _, kw, _, _ in formatter.parse(option) if kw]
+            if len(kwargs):
+                self.rsdfit_options_kwargs[i] = kwargs
         
     def _params_to_file(self, params, ff, possible_kwargs):
         """
@@ -450,6 +456,7 @@ class TaskManager(object):
         if self.pool_comm.rank == 0:
                   
             params = self.template.copy()
+            rsdfit_options = list(self.rsdfit_options)
             
             # initialize a temporary file
             with tempfile.NamedTemporaryFile(delete=False) as ff:
@@ -471,12 +478,19 @@ class TaskManager(object):
                 # write to file
                 self._params_to_file(params, ff, possible_kwargs)
 
+            # update the rsdfit options
+            for i in self.rsdfit_options_kwargs:
+                kwargs = self.rsdfit_options_kwargs[i]
+                v = rsdfit_options[i]
+                valid = {k:possible_kwargs[k] for k in possible_kwargs if k in kwargs}
+                rsdfit_options[i]= v.format(**valid)
+
         
         # bcast the file name to all in the worker pool
         this_config = self.pool_comm.bcast(this_config, root=0)
 
         # get the args
-        ns = self.parser.parse_args(self.rsdfit_options + ['-p', this_config])
+        ns = self.parser.parse_args(rsdfit_options + ['-p', this_config])
         
         # try to load and cache the model
         if self.model is None:

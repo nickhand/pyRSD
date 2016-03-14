@@ -1,10 +1,10 @@
 from ... import numpy as np
-from ..results import EmceeResults, LBFGSResults
+from ..results import LBFGSResults
 from . import tools
 
 import scipy.optimize
 import logging
-import functools
+import time
 
 logger = logging.getLogger('rsdfit.lbfgs_fitter')
 logger.addHandler(logging.NullHandler())
@@ -19,7 +19,7 @@ def run(params, theory, objective, pool=None, init_values=None):
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     
     epsilon    = params.get('lbfgs_epsilon', 1e-8)
-    factr      = params.get('lbfgs_factor', 1e8)
+    factr      = params.get('lbfgs_factor', 1e3)
     use_bounds = params.get('lbfgs_use_bounds', False)
     use_priors = params.get('lbfgs_use_priors', True)
 
@@ -61,7 +61,9 @@ def run(params, theory, objective, pool=None, init_values=None):
      
     exception = False  
     try:
+        start = time.time()
         x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, x0=init_values, bounds=bounds)
+        stop = time.time()
     except:
         import traceback
         logger.warning("exception occured:\n%s" %traceback.format_exc())
@@ -70,6 +72,8 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     # handle the results
     #---------------------------------------------------------------------------
+    logger.warning("scipy.optimize: ...optimization finished. Time elapsed: {}".format(tools.hms_string(stop-start)))
+    
     # extract the values to put them in the feedback
     if exception or d['warnflag'] != 0:
         msg = "scipy.optimize: nonlinear fit with method L-BFGS-B failed"
@@ -77,6 +81,7 @@ def run(params, theory, objective, pool=None, init_values=None):
         logger.error(msg)
     else:
         logger.info("scipy.optimize: nonlinear fit with method L-BFGS-B succeeded after %d iterations" %d['nit'])
+        logger.info("   convergence message: %s" %d['task'])
         
     results = None
     if not exception:

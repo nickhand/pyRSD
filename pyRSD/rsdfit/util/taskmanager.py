@@ -532,7 +532,8 @@ class TaskManager(object):
             
             if i != -1:    
                 filename = rsdfit_cmd[i]
-                logger.info("loading model from '%s' before calling `rsdfit.run`" %filename)
+                if self.pool_comm.rank == 0:
+                    logger.info("loading model from '%s' before calling `rsdfit.run`" %filename)
                 self.model = rsd_io.load_model(filename)
         
         # and run with with pool comm

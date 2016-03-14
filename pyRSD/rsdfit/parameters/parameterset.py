@@ -106,7 +106,7 @@ class ParameterSet(lmfit.Parameters):
         """
         Return a copy
         """
-        return copy.copy(self)
+        return copy.deepcopy(self)
         
     @classmethod
     def from_file(cls, filename, tags=[]):

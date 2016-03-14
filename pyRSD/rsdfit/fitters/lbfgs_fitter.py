@@ -62,7 +62,7 @@ def run(params, theory, objective, pool=None, init_values=None):
     exception = False  
     try:
         start = time.time()
-        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, x0=init_values, bounds=bounds)
+        x, f, d = scipy.optimize.fmin_l_bfgs_b(_lbfgs_objective, m=100, factr=factr, x0=init_values, bounds=bounds)
         stop = time.time()
     except:
         import traceback

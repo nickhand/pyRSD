@@ -55,6 +55,8 @@ def run(params, theory, objective, pool=None, init_values=None):
     def _lbfgs_objective(x):
         return objective(x, epsilon=epsilon, pool=pool, use_priors=use_priors)
     
+    logger.info("scipy.optimize: LBFGS convergence factor = %.1e" %factr)
+    
     # setup the logging header
     names = "   ".join(["%9s" %name for name in theory.free_names])
     logging.info('{0:4s}   {1:s}   {2:9s}'.format('Iter', names, 'f(X)'))

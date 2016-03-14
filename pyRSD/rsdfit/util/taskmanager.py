@@ -510,7 +510,10 @@ class TaskManager(object):
         rsdfit_cmd = self.pool_comm.bcast(rsdfit_cmd, root=0)
 
         # get the args
-        ns = self.parser.parse_args(rsdfit_cmd + ['-p', this_config])
+        options = rsdfit_cmd + ['-p', this_config]
+        if self.pool_comm.rank == 0:
+            logger.debug("calling rsdfit with arguments: %s" %str(options))
+        ns = self.parser.parse_args(options)
         
         # try to load and cache the model
         if self.model is None:

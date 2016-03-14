@@ -3,6 +3,7 @@ import os
 import sys
 import traceback
 import tempfile
+import collections
 from string import Formatter
 
 from pyRSD.rsdfit.parameters import ParameterSet
@@ -107,8 +108,8 @@ class TaskManager(object):
     Task manager for running a set of `Algorithm` computations,
     possibly in parallel using MPI
     """
-    def __init__(self, comm, rsdfit_options, template, cpus_per_worker, 
-                    task_dims, task_values, log_level=logging.INFO, extras={}):
+    def __init__(self, comm, rsdfit_cmd, template, cpus_per_worker, 
+                    task_dims, task_values, log_level=logging.INFO, extras={}, update_values={}):
         """
         Parameters
         ----------
@@ -139,15 +140,16 @@ class TaskManager(object):
         """
         logger.setLevel(log_level)
         
-        tags = ['driver', 'data', 'theory', 'theory_extra', 'model']
-        self.template = ParameterSet.from_file(template, tags=tags)
-        self._determine_template_kwargs()
-        
-        self.rsdfit_options  = rsdfit_options 
+        self.rsdfit_cmd      = rsdfit_cmd
         self.cpus_per_worker = cpus_per_worker
         self.task_dims       = task_dims
         self.task_values     = task_values
         self.extras          = extras
+        self.update_values   = update_values
+        
+        tags = ['driver', 'data', 'theory', 'theory_extra', 'model']
+        self.template = ParameterSet.from_file(template, tags=tags)
+        self._determine_template_kwargs()
         
         self.comm      = comm
         self.size      = comm.size
@@ -174,11 +176,10 @@ class TaskManager(object):
                     if len(kwargs):
                         self.template_kwargs[(key, name)] = kwargs
                         
-        self.rsdfit_options_kwargs = {}
-        for i, option in enumerate(self.rsdfit_options):
-            kwargs = [kw for _, kw, _, _ in formatter.parse(option) if kw]
-            if len(kwargs):
-                self.rsdfit_options_kwargs[i] = kwargs
+        self.rsdfit_cmd_kwargs = {}
+        kwargs = [kw for _, kw, _, _ in formatter.parse(self.rsdfit_cmd) if kw]
+        if len(kwargs):
+            self.rsdfit_cmd_kwargs = kwargs
         
     def _params_to_file(self, params, ff, possible_kwargs):
         """
@@ -194,6 +195,18 @@ class TaskManager(object):
             valid = {k:possible_kwargs[k] for k in possible_kwargs if k in kwargs}
             params[tag][name].value = v.format(**valid)
         
+        # update any fiducial values
+        for k in possible_kwargs:
+            v = possible_kwargs[k]
+            name = '%s_%s' %(k, str(v))
+            if name in self.update_values:
+                toupdate = self.update_values[name]
+                for name in toupdate:                
+                    if name not in params['theory']:
+                        raise ValueError("cannot update value of theory parameter '%s'; does not exist" %name)
+                    params['theory'][name].value = toupdate[name]
+                    params['theory'][name].fiducial = toupdate[name]
+            
         # write to file
         for tag in params:
             p = params[tag]
@@ -208,9 +221,8 @@ class TaskManager(object):
         import inspect 
         
         if comm is None: comm = MPI.COMM_WORLD
-        args_dict, rsdfit_options = cls.parse_known_args(desc)
+        args_dict = cls.parse_args(desc)
         args_dict['comm'] = comm
-        args_dict['rsdfit_options'] = rsdfit_options
         template = args_dict.pop('params')
         args_dict['template'] = template
         
@@ -235,7 +247,7 @@ class TaskManager(object):
         return cls(*fargs, **fkwargs)
         
     @classmethod
-    def parse_known_args(cls, desc=None):
+    def parse_args(cls, desc=None):
         """
         Parse command-line arguments that are needed to initialize a 
         `TaskManager` class
@@ -280,20 +292,29 @@ class TaskManager(object):
                 syntax to indicate which variables will be updated for each task, 
                 i.e., an input file could be specified as 'input/box{box}.dat', 
                 if `box` were one of the task dimensions"""
-        required_named.add_argument('-p', '--params', type=str, help=h)
+        required_named.add_argument('-p', '--params', required=True, type=str, help=h)
     
+        # the rsdfit command
+        h = 'the command to pass to rsdfit, as a single string'
+        required_named.add_argument('-cmd', '--rsdfit_cmd', required=True, type=str, help=h)
+        
         # read any extra string replacements from file
         h = """file providing extra string replaces, with lines of the form 
                  `tag = ['tag1', 'tag2']`; if the keys match keywords in the 
                  template param file, the file with be updated with
                  the `ith` value for the `ith` task"""
         parser.add_argument('--extras', dest='extras', default={}, type=replacements_from_file, help=h)
+        
+        # read any parameter value replacements from file
+        h = """file providing parameter values stored by key to update on each iteration,
+                i.e., ``box_1 = {'nbar':3e-4}``"""
+        parser.add_argument('--update_values', default={}, type=replacements_from_file, help=h)
     
         h = "set the logging output to debug, with lots more info printed"
         parser.add_argument('--debug', help=h, action="store_const", dest="log_level", 
                             const=logging.DEBUG, default=logging.INFO)
                                 
-        args, unknown = parser.parse_known_args()
+        args = parser.parse_args()
         
         # format the tasks, taking the product of multiple task lists
         keys = []; values = []
@@ -311,7 +332,7 @@ class TaskManager(object):
         args.task_dims = keys
         args.task_values = values
         
-        return vars(args), unknown
+        return vars(args)
     
     def _initialize_pool_comm(self):
         """
@@ -455,8 +476,10 @@ class TaskManager(object):
         this_config = None
         if self.pool_comm.rank == 0:
                   
-            params = self.template.copy()
-            rsdfit_options = list(self.rsdfit_options)
+            params = collections.OrderedDict()
+            for tag in self.template:
+                params[tag] = self.template[tag].copy()
+            print params['data']
             
             # initialize a temporary file
             with tempfile.NamedTemporaryFile(delete=False) as ff:
@@ -479,29 +502,26 @@ class TaskManager(object):
                 self._params_to_file(params, ff, possible_kwargs)
 
             # update the rsdfit options
-            for i in self.rsdfit_options_kwargs:
-                kwargs = self.rsdfit_options_kwargs[i]
-                v = rsdfit_options[i]
-                valid = {k:possible_kwargs[k] for k in possible_kwargs if k in kwargs}
-                rsdfit_options[i]= v.format(**valid)
-
+            valid = {k:possible_kwargs[k] for k in possible_kwargs if k in self.rsdfit_cmd_kwargs}
+            rsdfit_cmd = self.rsdfit_cmd.format(**valid)
         
         # bcast the file name to all in the worker pool
         this_config = self.pool_comm.bcast(this_config, root=0)
 
         # get the args
+        rsdfit_options = rsdfit_cmd.split()
         ns = self.parser.parse_args(rsdfit_options + ['-p', this_config])
         
         # try to load and cache the model
         if self.model is None:
             i = -1
-            if '-m' in self.rsdfit_options:
-                i = self.rsdfit_options.index('-m') + 1
-            elif '--model' in self.rsdfit_options:
-                i = self.rsdfit_options.index('--model') + 1
+            if '-m' in rsdfit_options:
+                i = rsdfit_options.index('-m') + 1
+            elif '--model' in rsdfit_options:
+                i = rsdfit_options.index('--model') + 1
             
             if i != -1:    
-                filename = self.rsdfit_options[i]
+                filename = rsdfit_options[i]
                 logger.info("loading model from '%s' before calling `rsdfit.run`" %filename)
                 self.model = rsd_io.load_model(filename)
         

@@ -479,7 +479,6 @@ class TaskManager(object):
             params = collections.OrderedDict()
             for tag in self.template:
                 params[tag] = self.template[tag].copy()
-            print params['data']
             
             # initialize a temporary file
             with tempfile.NamedTemporaryFile(delete=False) as ff:

@@ -8,6 +8,20 @@ import time
 
 logger = logging.getLogger('rsdfit.lbfgs_fitter')
 logger.addHandler(logging.NullHandler())
+
+def InitializeFromPrior(params):
+    """
+    Initialize by drawing from the prior
+    """
+    while True:
+        p0 = np.array([p.get_value_from_prior(size=1) for p in params])
+        for i, value in enumerate(p0):
+            params[i].value = value
+
+        if all(p.within_bounds for p in params):
+           break
+
+    return p0
                        
 def run(params, theory, objective, pool=None, init_values=None):
     """
@@ -15,6 +29,9 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     Any kwargs passed will not be used
     """
+    if params['init_from'].value == 'prior':
+        init_values = InitializeFromPrior(theory.fit_params.free)
+    
     if init_values is None:
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     

@@ -232,7 +232,6 @@ class FittingDriver(object):
                         init_values[i] = self.theory.fit_params[key].fiducial
                     else:
                         raise ValueError("cannot initiate from previous result -- `%s` parameter missing" %key)
-            
         
         # get the solver function
         kwargs = {}

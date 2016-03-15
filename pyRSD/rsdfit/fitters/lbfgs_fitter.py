@@ -22,6 +22,22 @@ def InitializeFromPrior(params):
            break
 
     return p0
+
+def InitializeWithScatter(params, x, scatter):
+    """
+    Initialize by drawing from the prior
+    """
+    scale = scatter*x
+    
+    while True:
+        p0 = x + np.random.normal(scale=scale)
+        for i, value in enumerate(p0):
+            params[i].value = value
+
+        if all(p.within_bounds for p in params):
+           break
+
+    return p0
                        
 def run(params, theory, objective, pool=None, init_values=None):
     """
@@ -29,9 +45,14 @@ def run(params, theory, objective, pool=None, init_values=None):
     
     Any kwargs passed will not be used
     """
-    if params['init_from'].value == 'prior':
+    init_from = params['init_from'].value
+    if init_from == 'prior':
         init_values = InitializeFromPrior(theory.fit_params.free)
-    
+    elif init_from in ['fiducial', 'result']:
+        scatter = params.get('init_scatter', 0.)
+        if scatter > 0:
+            init_values = InitializeWithScatter(theory.fit_params.free, init_values, scatter)
+        
     if init_values is None:
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
     

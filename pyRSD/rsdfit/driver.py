@@ -251,7 +251,7 @@ class FittingDriver(object):
             # add some kwargs to pass too
             kwargs['pool'] = self.pool
             kwargs['chains_comm'] = self.chains_comm
-            if init_from in ['max-like', 'fiducial', 'chain']: 
+            if init_from in ['maximum_probability', 'fiducial', 'result']: 
                 kwargs['init_values'] = init_values
             elif init_from == 'previous_run':
                 kwargs['init_values'] = self.results.copy()

@@ -253,7 +253,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         If the current value is outside `Parameter.min` or `Parameter.max`, 
         return `numpy.inf`
         """
-        x = self.value
+        x = self.user_value
         
         # this will be 0 if within bounds, -np.inf otherwise
         lnprior = self.min_bound.log_pdf(x) + self.max_bound.log_pdf(x)
@@ -271,7 +271,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         uniform or normal prior. If the current value is outside 
         `Parameter.min` or `Parameter.max`, return `numpy.inf`
         """
-        x = self.value
+        x = self.user_value
         
         # this will be 0 if within bounds (and large pos/neg if out of bounds)
         dlnprior = self.min_bound.deriv_log_pdf(x) + self.max_bound.deriv_log_pdf(x)
@@ -294,7 +294,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         if self.has_prior and self.prior_name == 'uniform':
             toret = (x >= self.prior.lower) and (x <= self.prior.upper)
         
-        return toret and bool(self.min_bound.pdf(x) and self.max_bound.pdf(x))
+        return toret and (x >= self.min_bound.value and x <= self.max_bound.value)
     
     #---------------------------------------------------------------------------
     # functions

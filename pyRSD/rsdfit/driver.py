@@ -23,11 +23,6 @@ logger.addHandler(logging.NullHandler())
 
 Nfevals = 1
 
-def add_epsilon(theta, i, eps):
-    toret = theta.copy()
-    toret[i] += eps
-    return toret
-
 class FittingDriver(object):
     """
     A class to handle the data analysis pipeline, merging together a model, 
@@ -330,30 +325,34 @@ class FittingDriver(object):
         # value at theta
         nll0 = -lnlike()
         
-        # derivatives
-        x = [add_epsilon(theta, i, epsilon) for i in range(self.Np)]
+        # the increments to take
+        increments = np.identity(self.Np) * epsilon
         
         if pool is None:
             M = map
         else:
             M = pool.map
     
-        # compute the derivatives, optionally in parallel
-        derivs = -1.*np.array(M(lnlike, x)) # negative likelihood
-        derivs = (derivs - nll0) / epsilon
+        # compute the forward finite-difference derivative
+        f_hi = -np.array(map(lnlike, theta+increments))
+        f_lo = -np.array(map(lnlike, theta-increments))
+        gradient = (f_hi - f_lo) / (2.*epsilon)
         prob = nll0
         
         # add in log prior prob and derivatives of log priors
         if use_priors: 
-            derivs += ndlp
+            gradient += ndlp
             prob += nlp0
             
         # log (to root)
         values = "   ".join(["%.6f" %th for th in theta])
         logging.info("%.4d   %s   %.6f" %(Nfevals, values, nll0))
+        
+        dvalues = "   ".join(["%.6f" %g for g in gradient])
+        logging.info("%.4d   %s   %.6f" %(Nfevals, dvalues, nll0))
         Nfevals += 1
             
-        return prob, derivs
+        return prob, gradient
         
     def finalize_fit(self, exception, results_file):
         """
@@ -676,7 +675,7 @@ class FittingDriver(object):
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
         ax.legend(loc=0, ncol=2)
             
-    def plot(self):
+    def plot(self, usetex=False):
         """
         Plot the model and data points for the measurements, plotting the 
         P(k, mu) and multipoles on separate figures
@@ -687,6 +686,7 @@ class FittingDriver(object):
         results = self.data_model_pairs()
         
         fig = pfy.figure()
+        fig.usetex = usetex
         if self.mode == 'pkmu':
             self._plot_pkmu(fig, results, self.data.combined_mu)
         elif self.mode == 'poles':

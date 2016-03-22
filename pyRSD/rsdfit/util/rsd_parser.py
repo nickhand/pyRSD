@@ -87,15 +87,7 @@ def setup_run_subparser(parent):
     h = 'the folder where the results will be written'
     kwargs = {'help':h, 'type':str, 'required':True, 'dest':'folder'}
     subparser.add_argument('-o', '--output', **kwargs)
-    
-    # arbitrary numbering of an output chain (OPTIONAL)
-    h = """An arbitrary number for the output chain. \n
-           By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with
-           year, month and day being extracted, `K` being the number of
-           walkers, `M` being the number of steps, and `i` an 
-           automatically updated index."""
-    subparser.add_argument('--chain-number', help=h)
-    
+        
     # debug
     h = 'whether to print more info about the mpi4py.Pool object'
     subparser.add_argument('--debug', help=h, action='store_true', default=False)

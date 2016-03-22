@@ -57,16 +57,14 @@ def load_model(filename):
     
     return model
 
-def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0, restart=None):
+def create_output_file(folder, solver_type, chain_number, walkers=0, iterations=0, restart=None):
     """
     Automatically create a new name for the results file.
     
     This routine takes care of organizing the folder for you. It will
     automatically generate names for the new chains according to the date,
     number of points chosen.
-    """
-    subparser = args.subparser_name
-    
+    """    
     if solver_type == 'emcee':
         tag = "{}x{}".format(walkers, iterations)
     else:
@@ -81,24 +79,19 @@ def create_output_file(args, solver_type, chain_number, walkers=0, iterations=0,
         outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
         
     suffix = 0
-    if args.chain_number is None:
-        for files in os.listdir(args.folder):
-            if files.find(outname_base) != -1:
-                if int(files.split('__')[-1].split('.')[0]) > suffix:
-                    suffix = int(files.split('__')[-1].split('.')[0])
-        suffix += 1
-        while True:
-            fname = os.path.join(args.folder, outname_base)+str(suffix)+'.npz'
-            if os.path.exists(fname):
-                suffix += 1
-            else:
-                break
-        outfile_name = os.path.join(args.folder, outname_base)+str(suffix)+'.npz'
-        print 'Creating %s\n' %outfile_name
-        
-    else:
-        outfile_name = os.path.join(args.folder, outname_base)+args.chain_number+'.npz'
-        print 'Creating %s\n' %outfile_name
+    for files in os.listdir(folder):
+        if files.find(outname_base) != -1:
+            if int(files.split('__')[-1].split('.')[0]) > suffix:
+                suffix = int(files.split('__')[-1].split('.')[0])
+    suffix += 1
+    while True:
+        fname = os.path.join(folder, outname_base)+str(suffix)+'.npz'
+        if os.path.exists(fname):
+            suffix += 1
+        else:
+            break
+    outfile_name = os.path.join(folder, outname_base)+str(suffix)+'.npz'
+    print 'Creating %s\n' %outfile_name
      
     # touch the file so it exists and then return
     open(outfile_name, 'a').close()   

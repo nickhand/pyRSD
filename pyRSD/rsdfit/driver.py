@@ -6,8 +6,13 @@
     __email__  : nhand@berkeley.edu
     __desc__   : the driver for the main rsdfit fitter
 """
+import functools
+import copy
+
 from .. import numpy as np, os
-from . import logging, params_filename, model_filename
+from . import MPILoggerAdapter, logging
+from . import params_filename, model_filename
+
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData
@@ -15,11 +20,8 @@ from .fitters import *
 from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
 from ..rsd import GalaxySpectrum
-import functools
-import copy
 
-logger = logging.getLogger('rsdfit.fitting_driver')
-logger.addHandler(logging.NullHandler())
+logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
 Nfevals = 1
 
@@ -33,8 +35,6 @@ class FittingDriver(object):
     def __init__(self,
                     param_file, 
                     extra_param_file=None, 
-                    pool=None, 
-                    chains_comm=None, 
                     init_model=True):
         """
         Initialize the driver with the specified parameters
@@ -45,14 +45,9 @@ class FittingDriver(object):
             a string specifying the name of the main parameter file
         extra_param_file : str, optional
             a string specifying the name of a file holding extra extra theory parameters
-        pool : mpi4py.Pool, optional
-            if provided, a pool of MPI processes to use for ``emcee`` fitting; default is ``None``
-        chains_comm : mpi4py.Intracomm
-            if provided, an MPI Intracommunicator used to communicate between multiple chains
-            running concurrently
         init_model : bool, optional
             if `True`, initialize the theoretical model upon initialization; default is `True`
-        """        
+        """                
         # initialize the data too
         self.data = PowerData(param_file)
         self.mode = self.data.mode # mode is either pkmu/poles
@@ -66,9 +61,7 @@ class FittingDriver(object):
         
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
-        self.pool = pool
-        self.chains_comm = chains_comm
-        
+                        
         # setup the model for data
         if init_model: self._setup_for_data()
         
@@ -180,7 +173,7 @@ class FittingDriver(object):
         self.data.to_file(filename, mode='a')
         self.theory.to_file(filename, mode='a')
             
-    def run(self):
+    def run(self, pool=None, chains_comm=None):
         """
         Run the whole fitting analysis, from start to finish
         """
@@ -195,7 +188,7 @@ class FittingDriver(object):
         
         # init from maximum probability solution
         if init_from == 'maximum_probability':
-            init_values = self.find_peak_probability()
+            init_values = self.find_peak_probability(pool=pool)
             
         # init from fiducial values
         elif init_from == 'fiducial':
@@ -244,8 +237,8 @@ class FittingDriver(object):
             objective = functools.partial(FittingDriver.lnprob, self)
             
             # add some kwargs to pass too
-            kwargs['pool'] = self.pool
-            kwargs['chains_comm'] = self.chains_comm
+            kwargs['pool'] = pool
+            kwargs['chains_comm'] = chains_comm
             if init_from in ['maximum_probability', 'fiducial', 'result']: 
                 kwargs['init_values'] = init_values
             elif init_from == 'previous_run':
@@ -263,7 +256,7 @@ class FittingDriver(object):
             # explictly pass the lnlike function to avoid re-pickling it in parallel
             lnlike_objective = functools.partial(FittingDriver.lnlike, self)
             objective = functools.partial(FittingDriver.minimize_objective, self, lnlike_objective)
-            kwargs = {'init_values': init_values, 'pool':self.pool}
+            kwargs = {'init_values': init_values, 'pool':pool}
             
         # incorrect
         else:
@@ -332,10 +325,10 @@ class FittingDriver(object):
             M = map
         else:
             M = pool.map
-    
+            
         # compute the forward finite-difference derivative
-        f_hi = -np.array(map(lnlike, theta+increments))
-        f_lo = -np.array(map(lnlike, theta-increments))
+        f_hi = -np.array(M(lnlike, theta+increments))
+        f_lo = -np.array(M(lnlike, theta-increments))
         gradient = (f_hi - f_lo) / (2.*epsilon)
         prob = nll0
         
@@ -365,7 +358,7 @@ class FittingDriver(object):
         if not exception:
             self.results.summarize_fit()
 
-    def find_peak_probability(self):
+    def find_peak_probability(self, pool=None):
         """
         Find the peak of the probability distribution
         
@@ -385,7 +378,7 @@ class FittingDriver(object):
         init_values = self.theory.free_fiducial
         
         logger.info("using L-BFGS soler to find the maximum probability values to use as initialization")
-        results, exception = solver(params, copy.deepcopy(self.theory), objective, pool=self.pool, init_values=init_values)
+        results, exception = solver(params, copy.deepcopy(self.theory), objective, pool=pool, init_values=init_values)
         logger.info("...done compute maximum probability")
         
         values = results.min_chi2_values
@@ -400,10 +393,10 @@ class FittingDriver(object):
         Setup the model callables for this set of data
         """
         # initialize the model
-        logger.info("Initializing theoretical model")
+        logger.info("Initializing theoretical model", on=0)
         self.theory.update_model()
         self.theory.model.initialize()
-        logger.info("...theoretical model initialized")
+        logger.info("...theoretical model initialized", on=0)
         
         # the model callable
         self._model_callable = self.theory.model_callable(self.data)
@@ -451,20 +444,20 @@ class FittingDriver(object):
         """
         # set it
         if isinstance(val, basestring):
-            logger.info("setting the theoretical model from file `%s`" %val)
+            logger.info("setting the theoretical model from file `%s`" %val, on=0)
         else:
-            logger.info("setting the theoretical model from existing instance")
+            logger.info("setting the theoretical model from existing instance", on=0)
         self.theory.set_model(val)
         
         # print out the model paramete
         params = self.theory.model.to_dict()
         msg = "running with model parameters:\n\n"
         msg += "\n".join(["%-25s: %s" %(k, str(v)) for k,v in sorted(params.iteritems())])
-        logger.info(msg)
+        logger.info(msg, on=0)
         
         # model callable
         self._model_callable = self.theory.model_callable(self.data)
-        logger.info("...theoretical model successfully read")
+        logger.info("...theoretical model successfully read", on=0)
         
     @property
     def combined_model(self):
@@ -598,7 +591,7 @@ class FittingDriver(object):
         theta = np.array([params[key].fiducial for key in free])
         
         if len(theta) != self.theory.ndim:
-            logger.error("Problem set fiducial values; not correct number")
+            logger.error("problem setting fiducial values; not correct number")
             raise ValueError("Number of fiducial values not equal to number of free params")
         self.theory.set_free_parameters(theta)
 

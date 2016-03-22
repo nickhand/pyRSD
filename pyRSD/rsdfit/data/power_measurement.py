@@ -1,12 +1,11 @@
 from ... import numpy as np
 from ...rsd._cache import Cache, parameter, cached_property
 from ...rsd import PkmuTransfer, PolesTransfer, PkmuGrid
-from .. import logging
+from .. import logging, MPILoggerAdapter
 from ..parameters import ParameterSet
 from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 
-logger = logging.getLogger('rsdfit.data')
-logger.addHandler(logging.NullHandler())
+logger = MPILoggerAdapter(logging.getLogger('rsdfit.data'))
 
 class PowerMeasurement(Cache):
     """
@@ -341,7 +340,7 @@ class PowerData(Cache):
         """
         # log the kmin/kmax
         lims = ", ".join("(%.2f, %.2f)" %(x,y) for x,y in zip(self.kmin, self.kmax))
-        logger.info("trimmed the read covariance matrix to: [%s] h/Mpc" %lims)
+        logger.info("trimmed the read covariance matrix to: [%s] h/Mpc" %lims, on=0)
                            
         # verify the covariance matrix
         if self.ndim != self.covariance.N:
@@ -466,7 +465,7 @@ class PowerData(Cache):
             self.measurements.append(PowerMeasurement(power_type, data))
         
         # log the number of measurements read
-        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=stats))
+        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=stats), on=0)
     
     def set_covariance(self):
         """
@@ -498,7 +497,7 @@ class PowerData(Cache):
                 N = self.covariance.N
                 msg = "have %d data points, but covariance size is %dx%d" %(N_data, N, N)
                 raise ValueError("size mismatch between read data and covariance -- " + msg)
-            logger.info("read covariance matrix successfully from file '{f}'".format(f=cov_file)) 
+            logger.info("read covariance matrix successfully from file '{f}'".format(f=cov_file), on=0) 
             loaded = True           
                         
         # use the diagonals
@@ -516,13 +515,13 @@ class PowerData(Cache):
                 self.covariance = PkmuCovarianceMatrix(errors**2, x, y, verify=False)
             else:
                 self.covariance = PoleCovarianceMatrix(errors**2, x, y, verify=False)
-            logger.info('initialized diagonal covariance matrix from error columns')
+            logger.info('initialized diagonal covariance matrix from error columns', on=0)
         
         # rescale the covariance matrix
         rescaling = self.params.get('covariance_rescaling', 1.0)
         self.covariance = self.covariance*rescaling
         if rescaling != 1.0:
-            logger.info("rescaled covariance matrix by value = {:s}".format(str(rescaling)))
+            logger.info("rescaled covariance matrix by value = {:s}".format(str(rescaling)), on=0)
                     
         # set errors for each indiv measurement to match any loaded covariance
         if loaded: self.set_errors_from_cov()
@@ -616,8 +615,8 @@ class PowerData(Cache):
             nb = self.ndim
             rescaling = 1.*(Ns - nb - 2) / (Ns - 1)
             self.covariance.inverse_rescaling = rescaling
-            logger.info("rescaling inverse of covariance matrix using Ns = %d, nb = %d" %(Ns, nb))
-            logger.info("   rescaling factor = %.3f" %rescaling)
+            logger.info("rescaling inverse of covariance matrix using Ns = %d, nb = %d" %(Ns, nb), on=0)
+            logger.info("   rescaling factor = %.3f" %rescaling, on=0)
             
             # update the `error` attribute of each measurement
             for m in self:

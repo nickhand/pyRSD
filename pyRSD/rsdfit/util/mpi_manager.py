@@ -79,13 +79,16 @@ class MPIManager(object):
             from emcee.utils import MPIPool
             kws = {'loadbalance':True, 'comm':self.pool_comm, 'debug':self.debug}
             self.pool = MPIPool(**kws)
-            
-        
+                    
         # explicitly force non-master ranks in pool to wait
         if self.pool is not None and not self.pool.is_master():
             self.pool.wait()
             self.logger.debug("exiting after pool closed")
             sys.exit(0)
+            
+        # log
+        if self.pool is not None:
+            self.logger.debug("using an MPIPool instance with %d worker(s)" %self.pool.size)
         
         self.rank = 0
         if self.par_runs_comm is not None:

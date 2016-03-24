@@ -1,11 +1,3 @@
-"""
-    fitting_driver.py
-    pyRSD.rsdfit
-
-    __author__ : Nick Hand
-    __email__  : nhand@berkeley.edu
-    __desc__   : the driver for the main rsdfit fitter
-"""
 import functools
 import copy
 
@@ -16,14 +8,22 @@ from . import params_filename, model_filename
 from .parameters import ParameterSet
 from .theory import GalaxyPowerTheory
 from .data import PowerData
-from .fitters import *
+from .solvers import *
 from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
 from ..rsd import GalaxySpectrum
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
-Nfevals = 1
+def load_results(filename):
+    """
+    Load a result from file
+    """
+    try:
+        result = EmceeResults.from_npz(filename)
+    except:
+        result = LBFGSResults.from_npz(filename)
+    return result
 
 class FittingDriver(object):
     """
@@ -118,15 +118,13 @@ class FittingDriver(object):
                     raise rsd_io.ConfigurationError('specified results file `%s` does not exist' %results_file)
                 else:
                     results_file = os.path.join(dirname, results_file)
-            try:
-                driver.results = EmceeResults.from_npz(results_file)
-            except:
-                driver.results = LBFGSResults.from_npz(results_file)
+            driver.results = results_file
+
     
         return driver
         
     @classmethod
-    def from_restart(cls, dirname, restart_file, iterations, **kwargs):
+    def from_restart(cls, dirname, restart_file, iterations=None, **kwargs):
         """
         Restart chain from a previous run, returning the driver with the results 
         loaded from the specified chain file
@@ -145,15 +143,18 @@ class FittingDriver(object):
         
         # tell driver we are starting from previous run
         driver.params['init_from'].value = 'previous_run'
+        
+        # the solver name
+        solver_name = driver.params.get('solver_type', None).lower()
+        if solver_name is None:
+            raise ValueError("`solver_type` is `None` -- not sure how to restart")
                 
         # set the number of iterations to the total sum we want to do
-        driver.params.add('iterations', value=iterations+driver.results.iterations)
-        driver.params.add('walkers', value=driver.results.walkers)
-        
-        # make sure we want to use emcee
-        solver_name = driver.params.get('fitter', 'emcee').lower()
-        if solver_name != 'emcee':
-            raise ValueError("cannot restart chain if desired solver is not `emcee`")
+        if solver_name == 'mcmc':
+            if iterations is None:
+                raise ValueError("please specify the number of iterations to run when restarting")
+            driver.params.add('iterations', value=iterations+driver.results.iterations)
+            driver.params.add('walkers', value=driver.results.walkers)
         
         return driver
     
@@ -176,18 +177,18 @@ class FittingDriver(object):
     def run(self, pool=None, chains_comm=None):
         """
         Run the whole fitting analysis, from start to finish
-        """
+        """            
         init_from = self.params.get('init_from', None)
         init_values = None
         
         # check for deprecated init_values
         if init_from == 'max-like':
-            raise ValueError("``init_from = max-like`` has been deprecated; use `maximum_probability` instead")
+            raise ValueError("``init_from = max-like`` has been deprecated; use `nlopt` instead")
         if init_from == 'chain':
             raise ValueError("``init_from = chain`` has been deprecated; use `result` instead")
         
         # init from maximum probability solution
-        if init_from == 'maximum_probability':
+        if init_from == 'nlopt':
             init_values = self.find_peak_probability(pool=pool)
             
         # init from fiducial values
@@ -220,132 +221,56 @@ class FittingDriver(object):
                         init_values[i] = self.theory.fit_params[key].fiducial
                     else:
                         raise ValueError("cannot initiate from previous result -- `%s` parameter missing" %key)
-        
+                        
+        # restart from previous result
+        elif init_from  == 'previous_run':   
+            init_values = self.results.copy()
+            
         # get the solver function
-        kwargs = {}
-        solver_name = self.params.get('fitter', 'emcee').lower()
+        solver_name = self.params.get('solver_type', None).lower()
+        if solver_name is None:
+            raise ValueError("`solver_type` is `None` -- not sure what to do")
+        
+        kwargs = {'pool':pool}
+        if init_values is not None:
+            kwargs['init_values'] = init_values
         
         # emcee
-        if solver_name == 'emcee':
+        if solver_name == 'mcmc':
             
             # do not use any analytic approximations for bounds and priors
             # since MCMC can handle discontinuity in log-prob
             for name in self.theory.free_names:
                 self.theory.fit_params[name].analytic = False
                 
-            solver = emcee_fitter.run
+            solver = emcee_solver.run
             objective = functools.partial(FittingDriver.lnprob, self)
             
-            # add some kwargs to pass too
-            kwargs['pool'] = pool
+            # also pass the chains comm
             kwargs['chains_comm'] = chains_comm
-            if init_from in ['maximum_probability', 'fiducial', 'result']: 
-                kwargs['init_values'] = init_values
-            elif init_from == 'previous_run':
-                kwargs['init_values'] = self.results.copy()
-                
+              
         # lbfgs
         elif solver_name == 'lbfgs':
-            solver = lbfgs_fitter.run
+            solver = lbfgs_solver.run
                         
             # use analytic approximation for bounds and priors
             # to enforce continuity
             for name in self.theory.free_names:
                 self.theory.fit_params[name].analytic = True
                 
-            # explictly pass the lnlike function to avoid re-pickling it in parallel
-            lnlike_objective = functools.partial(FittingDriver.lnlike, self)
-            objective = functools.partial(FittingDriver.minimize_objective, self, lnlike_objective)
-            kwargs = {'init_values': init_values, 'pool':pool}
-            
         # incorrect
         else:
-            raise NotImplementedError("fitter with name '{}' not currently available".format(solver_name))
+            raise NotImplementedError("solver with name '{}' not currently available".format(solver_name))
           
         # run the solver and store the results
         if init_from == 'previous_run':
-            logger.info("Restarting `emcee` solver from an old chain")
+            logger.info("Restarting '{}' solver from a previous result".format(solver_name))
         else:
-            logger.info("Calling the '{}' fitter's solve function".format(solver_name))
-        self.results, exception = solver(self.params, copy.deepcopy(self.theory), objective, **kwargs)
+            logger.info("Calling the '{}' solve function".format(solver_name))
+        self.results, exception = solver(self.params, self.theory, **kwargs)
         logger.info("...fitting complete")
         
         return exception
-    
-    def minimize_objective(self, lnlike, theta=None, epsilon=1e-8, pool=None, use_priors=True):
-        """
-        The objective function for minimizing the negative log probability
-        
-        Notes
-        -----
-        This uses either the maximum likelihood (ML) (excluding log priors) or 
-        maximum a posteriori probability (MAP) (including log priors) estimation
-        
-        Parameters
-        ----------
-        theta : array_like, optional
-            if provided, the values of the free parameters to compute the probability
-            at; it not provided, use the current values of free parameters from 
-            `theory.fit_params`
-        lnlike : 
-        epsilon : float, optional
-            the step-size to use in the finite-difference derivative calculation; 
-            default is 1e-8
-        pool : MPIPool, optional
-            a MPI Pool object to distribute the calculations of derivatives to 
-            multiple processes in parallel
-        use_priors : bool, optional
-            whether to include the log priors in the objective function when 
-            minimizing the negative log probability
-        """
-        global Nfevals
-                    
-        if use_priors:
-            nlp0 = -self.lnprior()
-            ndlp = -self.theory.dlnprior
-        
-        # set the free parameters
-        if theta is not None:
-            in_bounds = self.theory.set_free_parameters(theta)
-            
-            # if parameters are out of bounds, return the log-likelihood
-            # for a null model + the prior results (which hopefully are restrictive)
-            if not in_bounds:
-                return -self.null_lnlike - self.lnprior(), -self.theory.dlnprior
-        else:
-            theta = self.theory.free_values
-
-        # value at theta
-        nll0 = -lnlike()
-        
-        # the increments to take
-        increments = np.identity(self.Np) * epsilon
-        
-        if pool is None:
-            M = map
-        else:
-            M = pool.map
-            
-        # compute the forward finite-difference derivative
-        f_hi = -np.array(M(lnlike, theta+increments))
-        f_lo = -np.array(M(lnlike, theta-increments))
-        gradient = (f_hi - f_lo) / (2.*epsilon)
-        prob = nll0
-        
-        # add in log prior prob and derivatives of log priors
-        if use_priors: 
-            gradient += ndlp
-            prob += nlp0
-            
-        # log (to root)
-        values = "   ".join(["%.6f" %th for th in theta])
-        logging.info("%.4d   %s   %.6f" %(Nfevals, values, nll0))
-        
-        dvalues = "   ".join(["%.6f" %g for g in gradient])
-        logging.info("%.4d   %s   %.6f" %(Nfevals, dvalues, nll0))
-        Nfevals += 1
-            
-        return prob, gradient
         
     def finalize_fit(self, exception, results_file):
         """
@@ -371,8 +296,8 @@ class FittingDriver(object):
             self.theory.fit_params[name].analytic = True
             
         # get the solver and objective
-        solver = bfgs_fitter.run
-        objective = functools.partial(FittingDriver.minimize_objective, self)
+        solver = bfgs_solver.run
+        objective = functools.partial(FittingDriver.nlopt_objective, self)
         
         # init values from fiducial
         init_values = self.theory.free_fiducial
@@ -423,6 +348,9 @@ class FittingDriver(object):
         Set the results, checking to make sure we re-order the fitted params
         into the right order
         """
+        if isinstance(val, str):
+            val = load_results(val)
+            
         # possibly reorder the results
         if hasattr(val, 'verify_param_ordering'):
             free_params = self.theory.free_names
@@ -582,6 +510,95 @@ class FittingDriver(object):
             
             return lp + lnlike
                         
+    def gradient(self, obj, theta=None, epsilon=1e-4, pool=None, use_priors=True):
+        """
+        Return the vector of the gradient of the specified objective function 
+        with respect to the free parameters, optionally evaluating at `theta`
+        
+        This uses a central-difference finite-difference approximation to 
+        compute the numerical derivatives
+        
+        Parameters
+        ----------
+        obj : callable
+            the objective function to take the derivative of
+        theta : array_like, optional
+            if provided, the values of the free parameters to compute the 
+            gradient at; if not provided, the current values of free parameters 
+            from `theory.fit_params` will be used
+        epsilon : float, optional
+            the step-size to use in the finite-difference derivative calculation; 
+            default is 1e-4
+        pool : MPIPool, optional
+            a MPI Pool object to distribute the calculations of derivatives to 
+            multiple processes in parallel
+        use_priors : bool, optional
+            whether to include the log priors in the objective function when 
+            minimizing the negative log probability
+        """                    
+        # set the free parameters
+        if theta is not None:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                return -self.theory.dlnprior
+        else:
+            theta = self.theory.free_values
+        
+        # the increments to take
+        increments = np.identity(self.Np) * epsilon
+        tasks = np.concatenate([theta+increments, theta-increments], axis=0)
+        
+        # how to map
+        if pool is None:
+            M = map
+        else:
+            M = pool.map
+            
+        # compute the central finite-difference derivative
+        results = np.array(M(obj, tasks)).reshape((-1, 2), order='F')
+        gradient = (results[:,0] - results[:,1]) / (2.*epsilon)
+        
+        # add in log prior prob and derivatives of log priors
+        if use_priors: 
+            gradient += -self.theory.dlnprior
+            
+        return gradient
+        
+    def neg_lnlike(self, theta=None, use_priors=False):
+        """
+        Return the negative log-likelihood, optionally including priors
+        
+        Parameters
+        ----------
+        theta : array_like, optional
+            if provided, the values of the free parameters to compute the probability
+            at; it not provided, use the current values of free parameters from 
+            `theory.fit_params`
+        use_priors : bool, optional
+            whether to include the log priors in the objective function when 
+            minimizing the negative log probability
+        """
+        # set the free parameters
+        if theta is not None:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                return -self.null_lnlike - self.lnprior()
+        else:
+            theta = self.theory.free_values
+        
+        # value at theta
+        prob = -self.lnlike()
+        if use_priors:
+            prob += -self.lnprior()
+            
+        return prob
+            
     def set_fiducial(self):
         """
         Set the fiducial values as the current values of the free parameters

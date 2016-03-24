@@ -1,11 +1,12 @@
 from ... import numpy as np, os
 from .. import logging
 from ..results import EmceeResults
-from . import tools
+from . import tools, objectives
 
 import time
 import signal
 import traceback
+import functools
 
 logger = logging.getLogger('rsdfit.emcee_fitter')
 logger.addHandler(logging.NullHandler())
@@ -220,7 +221,7 @@ def test_convergence(chains0, niter, epsilon):
 #------------------------------------------------------------------------------
 # the main function to runs
 #------------------------------------------------------------------------------
-def run(params, theory, objective, pool=None, chains_comm=None, init_values=None):
+def run(params, theory, pool=None, chains_comm=None, init_values=None):
     """
     Perform MCMC sampling of the parameter space of a system using `emcee`
         
@@ -230,8 +231,6 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
         This holds the parameters needed to run the `emcee` fitter
     theory : GalaxyPowerTheory
         Theory object, which has the `fit_params` ParameterSet as an attribute
-    objective : callable
-        The function that results the log of the probability
     pool : emcee.MPIPool, optional
         Pool object if we are using MPI to run emcee
     init_values : array_like, `EmceeResults`
@@ -259,7 +258,7 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
     ndim      = theory.ndim
     init_from = params.get('init_from', 'prior')
     epsilon   = params.get('epsilon', 0.02)
-    test_conv = params.get('test_convergence', True)
+    test_conv = params.get('test_convergence', False)
     
     #---------------------------------------------------------------------------
     # let's check a few things so we dont mess up too badly
@@ -327,6 +326,7 @@ def run(params, theory, objective, pool=None, chains_comm=None, init_values=None
     
     # initialize the sampler
     logger.warning("EMCEE: initializing sampler with {} walkers".format(nwalkers))
+    objective = functools.partial(objectives.lnprob)
     sampler = emcee.EnsembleSampler(nwalkers, ndim, objective, pool=pool)
 
     # iterator interface allows us to tap ctrl+c and know where we are

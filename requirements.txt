@@ -1,5 +1,5 @@
 george
 scikit-learn>=0.17
 lmfit==0.8.3
-xray
+xarray
 emcee

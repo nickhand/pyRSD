@@ -1,4 +1,4 @@
-import xray
+import xarray as xr
 import numpy as np
 import pandas as pd
         
@@ -89,7 +89,7 @@ def remap_label_indexers(indexes, indexers):
                 label = indexers[dim]
                 if not isinstance(label, slice):
                     _, label = index.get_nearest(dim, label)
-                toret[dim] = xray.core.indexing.convert_label_indexer(index.to_pandas(dim), label, dim, None)
+                toret[dim] = xr.core.indexing.convert_label_indexer(index.to_pandas(dim), label, dim, None)
                 
     return toret
     
@@ -218,7 +218,7 @@ class GridIndexer(object):
     
     Notes
     -----
-    *   setup is similar to ``xray`` package, with dimension names defined
+    *   setup is similar to ``xarray`` package, with dimension names defined
         for each axis of the data, as well as the corresponding coordinate
         grid
     *   we can also define multiple coordinates per axis element, which

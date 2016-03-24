@@ -11,7 +11,7 @@ class LBFGSResults(object):
     Class to hold the fitting results from an `scipy.optimize` L-BFGS-B 
     nonlinear optimization run.    
     """
-    def __init__(self, result, fit_params):
+    def __init__(self, data, fit_params):
         """
         Initialize with the `lmfit.Minimizer` object and the fitting parameters
         """              
@@ -20,10 +20,9 @@ class LBFGSResults(object):
         self.constrained_names = fit_params.constrained_names
         
         # store the results
-        x, f, d = result
-        self.min_chi2 = f
-        self.min_chi2_values = x
-        self.info = d
+        self.data = data
+        self.min_chi2 = data['curr_state'].F
+        self.min_chi2_values = data['curr_state'].X
         
         # constrained
         self.min_chi2_constrained_values = self._get_constrained_values(fit_params)
@@ -60,7 +59,7 @@ class LBFGSResults(object):
         """
         Save the relevant information of the class to a numpy ``npz`` file
         """
-        atts = ['free_names', 'constrained_names', 'min_chi2', 'info',
+        atts = ['free_names', 'constrained_names', 'min_chi2', 'data',
                 'min_chi2_values', 'min_chi2_constrained_values']
         d = {k:getattr(self, k) for k in atts}
         np.savez(filename, **d)
@@ -75,7 +74,7 @@ class LBFGSResults(object):
             for k, v in ff.iteritems():
                 setattr(toret, k, v)
         
-        for a in ['min_chi2', 'info', 'free_names', 'constrained_names']:
+        for a in ['min_chi2', 'free_names', 'constrained_names', 'data']:
             v = getattr(toret, a)
             setattr(toret, a, v.tolist())
         return toret

@@ -8,11 +8,8 @@ from string import Formatter
 
 from pyRSD.rsdfit.parameters import ParameterSet
 from pyRSD.rsdfit.util import rsdfit_parser, rsd_io
-from pyRSD.rsdfit import rsdfit
+from pyRSD.rsdfit import rsdfit, params_filename
 from mpi4py import MPI
-
-
-logger = logging.getLogger('taskmanager')
 
 #------------------------------------------------------------------------------
 # tools
@@ -108,14 +105,26 @@ class TaskManager(object):
     Task manager for running a set of `Algorithm` computations,
     possibly in parallel using MPI
     """
-    def __init__(self, comm, rsdfit_cmd, template, cpus_per_worker, 
-                    task_dims, task_values, log_level=logging.INFO, extras={}, update_values={}):
+    logger = logging.getLogger('TaskManager')
+    
+    def __init__(self, comm, 
+                       rsdfit_cmd, 
+                       template, 
+                       cpus_per_worker, 
+                       task_dims, 
+                       task_values, 
+                       log_level=logging.INFO, 
+                       extras={}, 
+                       theory_updates={}):
         """
         Parameters
         ----------
         comm : MPI communicator
             the global communicator that will be split and divided
             amongs the independent workers
+        rsdfit_cmd : str
+            the string specifying the `rsdfit` command to run; this can
+            contain string formatting keys
         template : str
             the name of the file holding the template parameter file, which
             will be updated for each task that is performed
@@ -137,32 +146,108 @@ class TaskManager(object):
             length equal to the total number of tasks -- if the keys are present
             in the config file, the string formatting will update the config
             file with the `ith` element of the list for the `ith` iteration
+        theory_updates : dict, optional
+            similar to `extras`, but for each task, the dictionary gives the
+            value of fiducial theory parameters to update
         """
-        logger.setLevel(log_level)
+        self.logger.setLevel(log_level)
         
         self.rsdfit_cmd      = rsdfit_cmd
         self.cpus_per_worker = cpus_per_worker
         self.task_dims       = task_dims
         self.task_values     = task_values
         self.extras          = extras
-        self.update_values   = update_values
+        self.theory_updates  = theory_updates
         
+        # read the template file and determine which params get updated
         tags = ['driver', 'data', 'theory', 'theory_extra', 'model']
         self.template = ParameterSet.from_file(template, tags=tags)
-        self._determine_template_kwargs()
+        self.determine_template_kwargs()
         
+        # MPI setup
         self.comm      = comm
         self.size      = comm.size
         self.rank      = comm.rank
         self.pool_comm = None
         
+        # the parser
         self.parser = rsdfit_parser()
-        self.model = None
                 
-    def _determine_template_kwargs(self):
+    def initialize_driver(self):
+        """
+        Initialize the `RSDFitDriver` object on all ranks
+        """
+        # update with first value
+        itask = 0
+        task = self.task_values[itask]
+
+        # master will parse the args
+        this_config = None; rsdfit_cmd = None
+        if self.comm.rank == 0:
+                  
+            # copy the template parameters
+            params = self.copy_template()
+            
+            # initialize a temporary file
+            with tempfile.NamedTemporaryFile(delete=False) as ff:
+                
+                this_config = ff.name
+                self.logger.debug("creating temporary file: %s" %this_config)
+                
+                # get the task kwargs
+                task_kwargs = self.get_task_kwargs(itask)
+                        
+                # write to file
+                self.write_parameter_file(params, ff, task_kwargs)
+
+            # update the rsdfit options
+            rsdfit_cmd = self.make_rsdfit_cmd(task_kwargs)
+        
+        # bcast the file name to all in the worker pool
+        this_config = self.comm.bcast(this_config, root=0)
+        rsdfit_cmd = self.comm.bcast(rsdfit_cmd, root=0)
+        self.temp_config = this_config
+
+        # get the args
+        options = rsdfit_cmd + ['-p', this_config]
+        self.logger.debug("calling rsdfit with arguments: %s" %str(options))
+        
+        args = None
+        if self.comm.size > 1:
+            if self.comm.rank == 0:
+                args = self.parser.parse_args(options)
+            args = self.comm.bcast(args, root=0)
+        else:
+            args = self.parser.parse_args(options)
+                      
+        # load the driver for everyone but root 
+        if self.comm.rank != 0:     
+            args = vars(args)
+            mode = args.pop('subparser_name')
+            self.driver = rsdfit.RSDFitDriver(self.pool_comm, mode, **args)
+        
+    def copy_template(self):
+        """
+        Return a copy of the template parameters
+        """
+        params = collections.OrderedDict()
+        for tag in self.template:
+            params[tag] = self.template[tag].copy()
+        return params
+        
+    def make_rsdfit_cmd(self, task_kwargs):
+        """
+        Return the updated `rsdfit` cmd, using the input `task_kwargs`
+        """
+        valid = {k:task_kwargs[k] for k in task_kwargs if k in self.rsdfit_cmd_kwargs}
+        return self.rsdfit_cmd.format(**valid).split()
+    
+    def determine_template_kwargs(self):
         """
         Check the `driver` and `data` template parameters for 
         string replacements, and store them
+        
+        Also, check if we need to update the command-line options
         """
         formatter = Formatter()
         
@@ -181,7 +266,7 @@ class TaskManager(object):
         if len(kwargs):
             self.rsdfit_cmd_kwargs = kwargs
         
-    def _params_to_file(self, params, ff, possible_kwargs):
+    def write_parameter_file(self, params, ff, task_kwargs):
         """
         Write the parameters to the temporary file
         """
@@ -192,15 +277,15 @@ class TaskManager(object):
             kwargs = self.template_kwargs[key]
             
             # do the string formatting if the key is present in template
-            valid = {k:possible_kwargs[k] for k in possible_kwargs if k in kwargs}
+            valid = {k:task_kwargs[k] for k in task_kwargs if k in kwargs}
             params[tag][name].value = v.format(**valid)
         
         # update any fiducial values
-        for k in possible_kwargs:
-            v = possible_kwargs[k]
+        for k in task_kwargs:
+            v = task_kwargs[k]
             name = '%s_%s' %(k, str(v))
-            if name in self.update_values:
-                toupdate = self.update_values[name]
+            if name in self.theory_updates:
+                toupdate = self.theory_updates[name]
                 for name in toupdate:                
                     if name not in params['theory']:
                         raise ValueError("cannot update value of theory parameter '%s'; does not exist" %name)
@@ -308,7 +393,7 @@ class TaskManager(object):
         # read any parameter value replacements from file
         h = """file providing parameter values stored by key to update on each iteration,
                 i.e., ``box_1 = {'nbar':3e-4}``"""
-        parser.add_argument('--update_values', default={}, type=replacements_from_file, help=h)
+        parser.add_argument('-th', '--theory_updates', default={}, type=replacements_from_file, help=h)
     
         h = "set the logging output to debug, with lots more info printed"
         parser.add_argument('--debug', help=h, action="store_const", dest="log_level", 
@@ -334,7 +419,7 @@ class TaskManager(object):
         
         return vars(args)
     
-    def _initialize_pool_comm(self):
+    def initialize_pool_comm(self):
         """
         Internal function that initializes the `MPI.Intracomm` used by the 
         pool of workers. This will be passed to the task function and used 
@@ -355,7 +440,7 @@ class TaskManager(object):
         leftover= (self.size - 1) - total_ranks
         if leftover and self.rank == 0:
             args = (self.cpus_per_worker, self.size-1, leftover)
-            logger.warning("with `cpus_per_worker` = %d and %d available ranks, %d ranks will do no work" %args)
+            self.logger.warning("with `cpus_per_worker` = %d and %d available ranks, %d ranks will do no work" %args)
             
         # crash if we only have one process or one worker
         if self.size <= self.workers:
@@ -364,6 +449,10 @@ class TaskManager(object):
             
         # ranks that will do work have a nonzero color now
         self._valid_worker = color > 0
+        
+        # track how many tasks each worker does
+        if self._valid_worker:
+            self._completed_tasks = 0
         
         # split the comm between the workers
         self.pool_comm = self.comm.Split(color, 0)
@@ -378,10 +467,13 @@ class TaskManager(object):
          
         try:
             # make the pool comm
-            self._initialize_pool_comm()
+            self.initialize_pool_comm()
     
             # the total numbe rof tasks
             num_tasks = len(self.task_values)
+            
+            # initialize the driver for everyone but master
+            self.initialize_driver()
     
             # master distributes the tasks
             if self.rank == 0:
@@ -391,7 +483,7 @@ class TaskManager(object):
                 closed_workers = 0
         
                 # loop until all workers have finished with no more tasks
-                logger.info("master starting with %d worker(s) with %d total tasks" %(self.workers, num_tasks))
+                self.logger.info("master starting with %d worker(s) with %d total tasks" %(self.workers, num_tasks))
                 while closed_workers < self.workers:
                     data = self.comm.recv(source=MPI.ANY_SOURCE, tag=MPI.ANY_TAG, status=status)
                     source = status.Get_source()
@@ -401,22 +493,22 @@ class TaskManager(object):
                     if tag == tags.READY:
                         if task_index < num_tasks:
                             self.comm.send(task_index, dest=source, tag=tags.START)
-                            logger.info("sending task `%s` to worker %d" %(str(self.task_values[task_index]), source))
+                            self.logger.info("sending task `%s` to worker %d" %(str(self.task_values[task_index]), source))
                             task_index += 1
                         else:
                             self.comm.send(None, dest=source, tag=tags.EXIT)
                     elif tag == tags.DONE:
                         results = data
-                        logger.debug("received result from worker %d" %source)
+                        self.logger.debug("received result from worker %d" %source)
                     elif tag == tags.EXIT:
                         closed_workers += 1
-                        logger.debug("worker %d has exited, closed workers = %d" %(source, closed_workers))
+                        self.logger.debug("worker %d has exited, closed workers = %d" %(source, closed_workers))
     
             # worker processes wait and execute single jobs
             elif self._valid_worker:
                 if self.pool_comm.rank == 0:
                     args = (self.rank, MPI.Get_processor_name(), self.pool_comm.size)
-                    logger.info("pool master rank is %d on %s with %d processes available" %args)
+                    self.logger.info("pool master rank is %d on %s with %d processes available" %args)
                 while True:
                     itask = -1
                     tag = -1
@@ -431,7 +523,7 @@ class TaskManager(object):
         
                     # do the work here
                     if tag == tags.START:
-                        result = self._run_rsdfit(itask)
+                        result = self.run_rsdfit(itask)
                         self.pool_comm.Barrier() # wait for everyone
                         if self.pool_comm.rank == 0:
                             self.comm.send(result, dest=0, tag=tags.DONE) # done this task
@@ -442,8 +534,8 @@ class TaskManager(object):
                 if self.pool_comm.rank == 0:
                     self.comm.send(None, dest=0, tag=tags.EXIT) # exiting
         except Exception as e:
-            logger.error("an exception has occurred on one of the ranks...all ranks exiting")
-            logger.error(traceback.format_exc())
+            self.logger.error("an exception has occurred on one of the ranks...all ranks exiting")
+            self.logger.error(traceback.format_exc())
             
             # bit of hack that forces mpi4py to exit all ranks
             # see https://groups.google.com/forum/embed/#!topic/mpi4py/RovYzJ8qkbc
@@ -451,16 +543,40 @@ class TaskManager(object):
         
         finally:
             # free and exit
-            logger.debug("rank %d process finished" %self.rank)
+            self.logger.debug("rank %d process finished" %self.rank)
             self.comm.Barrier()
             
             if self.rank == 0:
-                logger.info("master is finished; terminating")
+                self.logger.info("master is finished; terminating")
                 if self.pool_comm is not None:
                     self.pool_comm.Free()
+          
+                if os.path.exists(self.temp_config): 
+                    self.logger.debug("removing temporary file: %s" %self.temp_config)
+                    os.remove(self.temp_config)
             
             
-    def _run_rsdfit(self, itask):
+    def get_task_kwargs(self, itask):
+        """
+        This returns the keyword arguments that are possible for 
+        this task
+        """
+        task = self.task_values[itask]
+                  
+        # key/values for this task 
+        if len(self.task_dims) == 1:
+            task_kwargs = {self.task_dims[0] : task}
+        else:
+            task_kwargs = dict(zip(self.task_dims, task))
+            
+        # any extra key/value pairs for this tasks
+        if self.extras is not None:
+            for k in self.extras:
+                task_kwargs[k] = self.extras[k][itask]
+                
+        return task_kwargs
+    
+    def run_rsdfit(self, itask):
         """
         Run the algorithm once, using the parameters specified for this task
         iteration specified by `itask`
@@ -470,76 +586,65 @@ class TaskManager(object):
         itask : int
             the integer index of this task
         """
-        task = self.task_values[itask]
-
-        # if you are the pool's root, write out the temporary parameter file
-        this_config = None; rsdfit_cmd = None
-        if self.pool_comm.rank == 0:
-                  
-            params = collections.OrderedDict()
-            for tag in self.template:
-                params[tag] = self.template[tag].copy()
-            
-            # initialize a temporary file
-            with tempfile.NamedTemporaryFile(delete=False) as ff:
-                
-                this_config = ff.name
-                logger.debug("creating temporary file: %s" %this_config)
-                
-                # key/values for this task 
-                if len(self.task_dims) == 1:
-                    possible_kwargs = {self.task_dims[0] : task}
-                else:
-                    possible_kwargs = dict(zip(self.task_dims, task))
+        # get the possible keywords for this task
+        task_kwargs = self.get_task_kwargs(itask)
                     
-                # any extra key/value pairs for this tasks
-                if self.extras is not None:
-                    for k in self.extras:
-                        possible_kwargs[k] = self.extras[k][itask]
-                        
-                # write to file
-                self._params_to_file(params, ff, possible_kwargs)
-
-            # update the rsdfit options
-            valid = {k:possible_kwargs[k] for k in possible_kwargs if k in self.rsdfit_cmd_kwargs}
-            rsdfit_cmd = self.rsdfit_cmd.format(**valid).split()
+        # update the rsdfit options
+        rsdfit_cmd = self.make_rsdfit_cmd(task_kwargs)
         
-        # bcast the file name to all in the worker pool
-        this_config = self.pool_comm.bcast(this_config, root=0)
-        rsdfit_cmd = self.pool_comm.bcast(rsdfit_cmd, root=0)
-
-        # get the args
-        options = rsdfit_cmd + ['-p', this_config]
-        if self.pool_comm.rank == 0:
-            logger.debug("calling rsdfit with arguments: %s" %str(options))
-        
-        ns = None
-        if self.pool_comm.size > 1:
-            if self.pool_comm.rank == 0:
-                ns = self.parser.parse_args(options)
-            ns = self.pool_comm.bcast(ns, root=0)
-        else:
-            ns = self.parser.parse_args(options)
-                
-        # try to load and cache the model
-        if self.model is None:
-            i = -1
-            if '-m' in rsdfit_cmd:
-                i = rsdfit_cmd.index('-m') + 1
-            elif '--model' in rsdfit_cmd:
-                i = rsdfit_cmd.index('--model') + 1
+        # update the attributes of the RSDFitDriver
+        args = vars(self.parser.parse_args(rsdfit_cmd + ['-p', self.temp_config]))
+        for k in args:
+            setattr(self.driver, k, args[k])
             
-            if i != -1:    
-                filename = rsdfit_cmd[i]
-                if self.pool_comm.rank == 0:
-                    logger.info("loading model from '%s' before calling `rsdfit.run`" %filename)
-                self.model = rsd_io.load_model(filename)
+        # make a copy of the template args
+        params = self.copy_template()
         
-        # and run with with pool comm
-        rsdfit.run(ns, comm=self.pool_comm, model=self.model, exit=False)
-
-        # remove temporary files
-        if self.pool_comm.rank == 0:
-            if os.path.exists(this_config): 
-                logger.debug("removing temporary file: %s" %this_config)
-                os.remove(this_config)
+        # update data/driver and theory values        
+        update_data = False
+        for key in self.template_kwargs:
+            tag, name = key
+            v = params[tag][name].value
+            kwargs = self.template_kwargs[key]
+            
+            # do the string formatting if the key is present in template
+            valid = {k:task_kwargs[k] for k in task_kwargs if k in kwargs}
+            v = v.format(**valid)
+            
+            if tag == 'driver':
+                self.driver.algorithm.params.add(name, value=v)
+            elif tag == 'data':
+                self.driver.algorithm.data.params.add(name, value=v)
+                update_data = True
+                
+        # re-initialize the data
+        if update_data:
+            self.driver.algorithm.data.initialize()
+            
+        # update any fiducial values
+        fit_params = self.driver.algorithm.theory.fit_params
+        update_model = False
+        for k in task_kwargs:
+            v = task_kwargs[k]
+            name = '%s_%s' %(k, str(v))
+            if name in self.theory_updates:
+                toupdate = self.theory_updates[name]
+                for name in toupdate:                
+                    if name not in params['theory']:
+                        raise ValueError("cannot update value of theory parameter '%s'; does not exist" %name)
+                    
+                    fit_params[name].value = toupdate[name]
+                    fit_params[name].fiducial = toupdate[name]
+                    update_model = True
+        
+        # update the model values        
+        if update_model:
+            fit_params.update_values()
+            self.driver.algorithm.theory.update_model()
+        
+        # write the parameters to file
+        filename = os.path.join(self.folder, params_filename)
+        self.driver.algorithm.to_file(filename)
+            
+        # okay, now run
+        self.driver.run()

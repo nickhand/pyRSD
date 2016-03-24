@@ -227,13 +227,16 @@ class PowerData(Cache):
     def __init__(self, param_file):
         """
         Initialize and setup up the measurements 
-        """
-        Cache.__init__(self)
-        
+        """       
         # read the params from file
         self.params = ParameterSet.from_file(param_file, tags='data')
         self.mode = self.params.get('mode', 'pkmu') # either `pkmu` or `poles`
-        
+        self.initialize()
+    
+    def initialize(self):
+        """
+        Do the initialization steps after reading the params
+        """
         # read the data file and (optional) grid for binning effects
         self.read_data()
         

@@ -524,9 +524,9 @@ class FittingDriver(object):
             if provided, the values of the free parameters to compute the 
             gradient at; if not provided, the current values of free parameters 
             from `theory.fit_params` will be used
-        epsilon : float, optional
+        epsilon : float or array_like, optional
             the step-size to use in the finite-difference derivative calculation; 
-            default is 1e-4
+            default is `1e-4` -- can be different for each parameter
         pool : MPIPool, optional
             a MPI Pool object to distribute the calculations of derivatives to 
             multiple processes in parallel

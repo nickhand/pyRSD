@@ -67,6 +67,10 @@ def run(params, theory, pool=None, init_values=None):
     epsilon    = params.get('lbfgs_epsilon', 1e-4)
     use_priors = params.get('lbfgs_use_priors', True)
     options    = params.get('lbfgs_options', {})
+    
+    # sort epsilon is a dictionary of values
+    if isinstance(epsilon, dict):
+        epsilon = np.array([epsilon.get(k, 1e-4) for k in theory.free_names])
 
     # log some info
     if use_priors:

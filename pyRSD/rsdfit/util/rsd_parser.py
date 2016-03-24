@@ -110,21 +110,12 @@ def setup_restart_subparser(parent):
     
     # number of iterations (REQUIRED)
     h = 'the number of additional steps to run using the old chain'
-    subparser.add_argument('-i', help=h, required=True, type=positive_int, 
-                                default=0, dest='iterations')
+    subparser.add_argument('-i', help=h, type=positive_int, dest='iterations')
                                 
     # number of iterations (REQUIRED)
     h = 'the number of steps to consider burnin'
     subparser.add_argument('-b', help=h, type=positive_int, dest='burnin')
                                     
-    # arbitrary numbering of an output chain (OPTIONAL)
-    h = """An arbitrary number for the output chain. \n
-           By default, the chains are named `yyyy-mm-dd_KxM__i.txt` with
-           year, month and day being extracted, `K` being the number of
-           walkers, `M` being the number of steps, and `i` an 
-           automatically updated index."""
-    subparser.add_argument('--chain-number', help=h)
-    
     h = 'silence the standard output to the console'
     subparser.add_argument('--silent', help=h, action='store_true')
     

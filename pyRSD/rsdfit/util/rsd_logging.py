@@ -53,9 +53,12 @@ class FileLogger(object):
     will handle exceptions (user-supplied or otherwise) and convergence
     criteria from multiple chains
     """
-    def __init__(self, comm, rank):
+    logger = logging.getLogger("FileLogger")
+        
+    def __init__(self, rank, debug=False):
         self.rank = rank
-        self.comm = comm
+        self.debug = debug
+        if debug: self.logger.setLevel(logging.DEBUG)
         
         self.output_name = None
         self.restart     = None
@@ -83,18 +86,9 @@ class FileLogger(object):
         if exc_value is not None:
             self.exception = True
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
-            logging.error("traceback:\n%s" %trace)  
-            
+            self.logger.error("traceback:\n%s" %trace)  
+        
         try:
-            # setup the log directory
-            if self.comm.rank == 0:
-                output_dir, fname = self.output_name.rsplit(os.path.sep, 1)
-                log_dir = os.path.join(output_dir, 'logs')
-                if not os.path.exists(log_dir): 
-                    os.makedirs(log_dir)
-                
-            # make sure the logs directory is made
-            self.comm.Barrier()
             
             # now save the log to the logs dir
             copy_log(self.name, self.output_name, restart=self.restart)
@@ -105,18 +99,17 @@ class FileLogger(object):
         # if we made it this far, it's safe to delete the old results
         try:
             if os.path.exists(self.name):
-                logging.debug("removing temporary logging file: `%s`" %self.name)
+                self.logger.debug("removing temporary logging file: `%s`" %self.name)
                 os.remove(self.name)
             
             # only remove if we have no exceptions
             if exc_value is None:
                 if self.restart is not None and os.path.exists(self.restart):
-                    logging.debug("removing original restart file: `%s`" %self.restart)
+                    self.logger.debug("removing original restart file: `%s`" %self.restart)
                     os.remove(self.restart)
         except Exception as e:
             pass
         
-    
         return True
 
 def copy_log(temp_log_name, output_name, restart=None):

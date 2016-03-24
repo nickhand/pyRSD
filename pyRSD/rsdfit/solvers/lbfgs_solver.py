@@ -7,7 +7,6 @@ import functools
 import time
 
 logger = logging.getLogger('rsdfit.lbfgs_fitter')
-logger.addHandler(logging.NullHandler())
     
 def lnlike_objective(x=None):
     driver = get_rsdfit_driver()

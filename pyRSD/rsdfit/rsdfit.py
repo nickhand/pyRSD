@@ -228,8 +228,8 @@ class RSDFitDriver(object):
         debug = getattr(self, 'debug', False)
         with mpi_manager.MPIManager(self.comm, self.nchains, debug=debug) as mpi_master:
             
-            # log the output to a file
-            with rsd_logging.FileLogger(self.comm, mpi_master.rank) as logger:
+            # log all the results to a file
+            with rsd_logging.FileLogger(mpi_master.rank, debug=debug) as logger:
                 
                 # set the restart file for this rank
                 if self.mode == 'restart':

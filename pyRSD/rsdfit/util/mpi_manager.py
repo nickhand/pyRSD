@@ -25,6 +25,8 @@ class MPIManager(object):
     Class to serve as context manager to handle to MPI-related issues, 
     specifically, the managing of ``MPIPool`` and splitting of communicators
     """
+    logger = logging.getLogger("MPIManager")
+    
     def __init__(self, comm, nruns, debug=False):
         """
         Parameters
@@ -40,6 +42,7 @@ class MPIManager(object):
         self.comm  = comm
         self.nruns = nruns
         self.debug = debug
+        if debug: self.logger.setLevel(logging.DEBUG)
     
         # initialize comm for parallel runs
         self.par_runs_group = None
@@ -81,6 +84,7 @@ class MPIManager(object):
         # explicitly force non-master ranks in pool to wait
         if self.pool is not None and not self.pool.is_master():
             self.pool.wait()
+            self.logger.debug("exiting after pool closed")
             sys.exit(0)
         
         self.rank = 0
@@ -95,18 +99,20 @@ class MPIManager(object):
         """
         if exc_value is not None:
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
-            logging.error("traceback:\n%s" %trace)
+            self.logger.error("traceback:\n%s" %trace)
         
         # wait for all the processes, if we more than one
         if self.par_runs_comm is not None and self.par_runs_comm.size > 1:
             self.par_runs_comm.Barrier()
-    
+            
         # close and free the MPI stuff
-        if self.pool is not None:
-            self.pool.close()
+        self.logger.debug("beginning to close MPI variables...")
         if self.par_runs_group is not None:
             self.par_runs_group.Free()
         if self.par_runs_comm is not None:
             self.par_runs_comm.Free()
+        if self.pool is not None:
+            self.pool.close()
+        self.logger.debug('...MPI variables closed')
 
         return True

@@ -1,6 +1,3 @@
-import functools
-import copy
-
 from .. import numpy as np, os
 from . import MPILoggerAdapter, logging
 from . import params_filename, model_filename
@@ -123,40 +120,43 @@ class FittingDriver(object):
     
         return driver
         
-    @classmethod
-    def from_restart(cls, dirname, restart_file, iterations=None, **kwargs):
+    def set_restart(self, restart_file, iterations=None):
         """
-        Restart chain from a previous run, returning the driver with the results 
-        loaded from the specified chain file
+        Initialize the `restart` mode by loading the results from a previous
+        run
         
         Parameters
         ----------
-        dirname : str
-            the name of the directory holding the results
         restart_file : str
-            the name of the file holding the results from the chain to restart from
-        iterations : int
-            the number of additional iterations to run
+            the name of the file holding the results to restart from
+        iterations : int, optional
+            if `solver_type` is `mcmc`, this gives the the number of additional 
+            iterations to run
         """
-        # get the driver
-        driver = cls.from_directory(dirname, results_file=restart_file, **kwargs)
-        
         # tell driver we are starting from previous run
-        driver.params['init_from'].value = 'previous_run'
+        self.params['init_from'].value = 'previous_run'
+        
+        # set the results
+        self.results = restart_file
+        total_iterations = iterations + self.results.iterations
         
         # the solver name
-        solver_name = driver.params.get('solver_type', None).lower()
+        solver_name = self.params.get('solver_type', None).lower()
         if solver_name is None:
             raise ValueError("`solver_type` is `None` -- not sure how to restart")
-                
+             
         # set the number of iterations to the total sum we want to do
         if solver_name == 'mcmc':
             if iterations is None:
                 raise ValueError("please specify the number of iterations to run when restarting")
-            driver.params.add('iterations', value=iterations+driver.results.iterations)
-            driver.params.add('walkers', value=driver.results.walkers)
+            self.params.add('iterations', value=total_iterations)
+            self.params.add('walkers', value=self.results.walkers)
         
-        return driver
+        elif solver_name == 'nlopt':
+            options = self.params.get('lbfgs_options', {})
+            options['maxiter'] = total_iterations
+            self.params.add('lbfgs_options', value=options)
+            
     
     def to_file(self, filename, mode='w'):
         """
@@ -244,13 +244,10 @@ class FittingDriver(object):
                 self.theory.fit_params[name].analytic = False
                 
             solver = emcee_solver.run
-            objective = functools.partial(FittingDriver.lnprob, self)
-            
-            # also pass the chains comm
             kwargs['chains_comm'] = chains_comm
-              
+            
         # lbfgs
-        elif solver_name == 'lbfgs':
+        elif solver_name == 'nlopt':
             solver = lbfgs_solver.run
                         
             # use analytic approximation for bounds and priors
@@ -297,13 +294,12 @@ class FittingDriver(object):
             
         # get the solver and objective
         solver = bfgs_solver.run
-        objective = functools.partial(FittingDriver.nlopt_objective, self)
-        
+                
         # init values from fiducial
         init_values = self.theory.free_fiducial
         
         logger.info("using L-BFGS soler to find the maximum probability values to use as initialization")
-        results, exception = solver(params, copy.deepcopy(self.theory), objective, pool=pool, init_values=init_values)
+        results, exception = solver(params, self.theory, pool=pool, init_values=init_values)
         logger.info("...done compute maximum probability")
         
         values = results.min_chi2_values
@@ -486,10 +482,12 @@ class FittingDriver(object):
         # set the free parameters
         if theta is not None:
             in_bounds = self.theory.set_free_parameters(theta)
+        else:
+            in_bounds = all(p.within_bounds for p in self.theory.free)
             
-            # return -np.inf if parameters are out of bounds
-            if not in_bounds:
-                return -np.inf
+        # return -np.inf if any parameters are out of bounds
+        if not in_bounds:
+            return -np.inf
                 
         # check the prior
         lp = self.lnprior()
@@ -504,7 +502,7 @@ class FittingDriver(object):
             except:
                 import traceback
                 msg = "exception while computing log-likelihood:\n"
-                msg += "   current parameters:\n%s\n" %str(self.fit_params)
+                msg += "   current parameters:\n%s\n" %str(self.theory.fit_params)
                 msg += "   traceback:\n%s" %(traceback.format_exc())
                 raise RuntimeError(msg)
             

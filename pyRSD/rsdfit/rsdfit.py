@@ -170,8 +170,7 @@ class RSDFitDriver(object):
         elif self.mode == 'restart':
                     
             # load the driver from param file, optionally reading model from file
-            iterations = getattr(self, 'iterations', None)
-            driver = FittingDriver.from_restart(self.folder, self.restart_file, iterations=iterations, model_file=self.model)
+            driver = FittingDriver.from_directory(self.folder, model_file=self.model)
     
             # set driver values from command line
             if self.burnin is not None:
@@ -203,12 +202,12 @@ class RSDFitDriver(object):
         """
         kwargs = {}
         kwargs['walkers'] = getattr(results, 'walkers', None)
-        kwargs['iterations'] =  getattr(results, 'iterations', None)
         if self.restart_file is not None:
             kwargs['restart'] = self.restart_file
         
         fitter = self.algorithm.params['solver_type'].value
-        return rsd_io.create_output_file(self.folder, fitter, chain_number, **kwargs)
+        iterations =  getattr(results, 'iterations', 0)
+        return rsd_io.create_output_file(self.folder, fitter, chain_number, iterations, **kwargs)
     
     def run(self):
         """
@@ -235,7 +234,7 @@ class RSDFitDriver(object):
                 # set the restart file for this rank
                 if self.mode == 'restart':
                     logger.restart = self.restart_file = self.restart_files[mpi_master.rank]
-                    self.algorithm.results = self.restart_file
+                    self.algorithm.set_restart(self.restart_file, self.iterations)
 
                 # run the algorithm
                 kws = {'pool':mpi_master.pool, 'chains_comm':mpi_master.par_runs_comm}

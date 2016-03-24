@@ -110,7 +110,7 @@ def setup_restart_subparser(parent):
     
     # number of iterations (REQUIRED)
     h = 'the number of additional steps to run using the old chain'
-    subparser.add_argument('-i', help=h, type=positive_int, dest='iterations')
+    subparser.add_argument('-i', help=h, required=True, type=positive_int, dest='iterations')
                                 
     # number of iterations (REQUIRED)
     h = 'the number of steps to consider burnin'

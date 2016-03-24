@@ -321,13 +321,7 @@ class FittingDriver(object):
         
         # the model callable
         self._model_callable = self.theory.model_callable(self.data)
-                                        
-    @property
-    def fiducial(self):
-        """
-        Convenience function to return the fiducial values 
-        """
-        
+                                                
     @property
     def results(self):
         """

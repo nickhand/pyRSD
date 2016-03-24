@@ -5,9 +5,6 @@ from ... import os
 import argparse as ap
 import textwrap as tw
 
-logger = logging.getLogger('rsdfit.parser')
-logger.addHandler(logging.NullHandler())
-
 def existing_file(fname):
     """
     Check if the file exists. If not raise an error
@@ -266,17 +263,12 @@ def rsdfit_parser():
     # analyze subcommand
     setup_analyze_subparser(subparser)
                  
-    # set the parse_args functions
-    def parse_args(parser, args=None, namespace=None):
-        ns = ap.ArgumentParser.parse_args(parser, args=args, namespace=namespace)
-        return verify_arguments(ns)
-    
+    # set the parse_args functions    
     def parse_known_args(parser, args=None, namespace=None):
         ns, unknown = ap.ArgumentParser.parse_known_args(parser, args=args, namespace=namespace)
         ns = verify_arguments(ns)
         return ns, unknown
-        
-    parser.parse_args = lambda *args, **kwargs: parse_args(parser, *args, **kwargs)
+    
     parser.parse_known_args = lambda *args, **kwargs: parse_known_args(parser, *args, **kwargs)
     return parser
 
@@ -298,7 +290,7 @@ def verify_arguments(ns):
             ns.model = os.path.join(ns.folder, model_filename)
             if not os.path.exists(ns.model):
                 raise rsd_io.ConfigurationError("Restarting but cannot find existing model file to read")
-        logger.warning("Restarting from %s and using associated params.dat" %ns.restart_files[0])
+        logging.warning("Restarting from %s and using associated params.dat" %ns.restart_files[0])
     
     ## run from new  
     elif ns.subparser_name == "run":
@@ -311,9 +303,11 @@ def verify_arguments(ns):
             if os.path.exists(params_path):
                 # if the params.dat exists, and param files were given, 
                 # use the params.dat, and notify the user
+                print "ns.params = ", ns.params
                 if ns.params is not None:
-                    logger.warning("Appending to an existing folder: using the "
+                    logging.warning("Appending to an existing folder: using the "
                                    "`%s` instead of %s" %(ns.params, params_filename))
+                ns.params = params_path
             else:
                 if ns.params is None:
                     raise rsd_io.ConfigurationError(

@@ -57,7 +57,7 @@ def load_model(filename):
     
     return model
 
-def create_output_file(folder, solver_type, chain_number, walkers=0, iterations=0, restart=None):
+def create_output_file(folder, solver_type, chain_number, iterations, walkers=0, restart=None):
     """
     Automatically create a new name for the results file.
     
@@ -65,10 +65,10 @@ def create_output_file(folder, solver_type, chain_number, walkers=0, iterations=
     automatically generate names for the new chains according to the date,
     number of points chosen.
     """    
-    if solver_type == 'emcee':
+    if solver_type == 'mcmc':
         tag = "{}x{}".format(walkers, iterations)
     else:
-        tag = solver_type
+        tag = solver_type + '_%di' %iterations
         
     # output file
     if restart is None:
@@ -76,7 +76,10 @@ def create_output_file(folder, solver_type, chain_number, walkers=0, iterations=
     else:
         # need to extract the original chain number
         fields = os.path.basename(restart).split('_')
-        outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
+        if solver_type == 'mcmc':
+            outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
+        else:
+            outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[3])
         
     suffix = 0
     for files in os.listdir(folder):

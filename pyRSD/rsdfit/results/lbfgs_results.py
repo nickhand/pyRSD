@@ -5,7 +5,6 @@ import logging
 logger = logging.getLogger('pyRSD.analysis.lbfgs_results')
 logger.addHandler(logging.NullHandler())
 
-#-------------------------------------------------------------------------------
 class LBFGSResults(object):
     """
     Class to hold the fitting results from an `scipy.optimize` L-BFGS-B 
@@ -26,6 +25,13 @@ class LBFGSResults(object):
         
         # constrained
         self.min_chi2_constrained_values = self._get_constrained_values(fit_params)
+        
+    @property
+    def iterations(self):
+        """
+        The total number of iterations ran
+        """
+        return self.data['iteration']
         
     def verify_param_ordering(self, free_params, constrained_params):
         """

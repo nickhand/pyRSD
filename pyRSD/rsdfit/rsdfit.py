@@ -1,5 +1,7 @@
 from pyRSD import numpy as np, os
 from pyRSD.rsdfit import FittingDriver, params_filename, model_filename
+
+from pyRSD.rsdfit.solvers import set_rsdfit_driver
 from pyRSD.rsdfit.util import rsd_io, rsdfit_parser
 from pyRSD.rsdfit.util import rsd_logging, mpi_manager
 
@@ -140,8 +142,8 @@ class RSDFitDriver(object):
                 driver.to_file(os.path.join(self.folder, params_filename))
             
             # set driver values from command line
-            solver = driver.params['fitter'].value
-            if solver == 'emcee':
+            solver = driver.params['solver_type'].value
+            if solver == 'mcmc':
                 if self.walkers is None:
                     raise rsd_io.ConfigurationError("please specify the number of walkers to use")
                 if self.iterations is None:
@@ -168,7 +170,8 @@ class RSDFitDriver(object):
         elif self.mode == 'restart':
                     
             # load the driver from param file, optionally reading model from file
-            driver = FittingDriver.from_restart(self.folder, self.restart_file, self.iterations, model_file=self.model)
+            iterations = getattr(self, 'iterations', None)
+            driver = FittingDriver.from_restart(self.folder, self.restart_file, iterations=iterations, model_file=self.model)
     
             # set driver values from command line
             if self.burnin is not None:
@@ -204,7 +207,7 @@ class RSDFitDriver(object):
         if self.restart_file is not None:
             kwargs['restart'] = self.restart_file
         
-        fitter = self.algorithm.params['fitter'].value
+        fitter = self.algorithm.params['solver_type'].value
         return rsd_io.create_output_file(self.folder, fitter, chain_number, **kwargs)
     
     def run(self):
@@ -219,6 +222,9 @@ class RSDFitDriver(object):
             self.algorithm.run()
             return
     
+        # set the global algorithm for each rank
+        set_rsdfit_driver(self.algorithm)
+    
         # manage the MPI ranks
         debug = getattr(self, 'debug', False)
         with mpi_manager.MPIManager(self.comm, self.nchains, debug=debug) as mpi_master:
@@ -228,9 +234,9 @@ class RSDFitDriver(object):
                 
                 # set the restart file for this rank
                 if self.mode == 'restart':
-                    self.restart_file = self.restart_files[mpi_master.rank]
-                    logger.restart = self.restart_file
-                
+                    logger.restart = self.restart_file = self.restart_files[mpi_master.rank]
+                    self.algorithm.results = self.restart_file
+
                 # run the algorithm
                 kws = {'pool':mpi_master.pool, 'chains_comm':mpi_master.par_runs_comm}
                 logger.exception = self.algorithm.run(**kws)

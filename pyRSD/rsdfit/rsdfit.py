@@ -8,7 +8,6 @@ from pyRSD.rsdfit.util import rsd_logging, mpi_manager
 from mpi4py import MPI
 from emcee.utils import MPIPool
 
-
 def find_init_result(val):
     """
     Return the name of the file holding the maximum probability
@@ -74,7 +73,7 @@ class RSDFitDriver(object):
         self.initialize_algorithm()
     
     @classmethod
-    def create(cls, comm=None, model=None):
+    def create(cls, comm=None):
         """
         Parse the command-line options and
         return an initialized `RSDFitDriver`
@@ -92,8 +91,6 @@ class RSDFitDriver(object):
         
         # initialize the class and return
         args = vars(args)
-        if model is not None:
-            args['model'] = model
         mode = args.pop('subparser_name')
         return cls(comm, mode, **args)
         

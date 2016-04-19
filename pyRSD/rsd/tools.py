@@ -134,6 +134,18 @@ def hexadecapole(f):
         kern = 9./8.*(35*mus**4 - 30.*mus**2 + 3.)
         return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
     return wrapper
+
+def tetrahexadecapole(f):
+    """
+    Decorator to compute the tetrahexadecapole from a `self.power` function
+    """  
+    def wrapper(self, *args, **kwargs):
+        k = args[0]
+        mus = np.linspace(0., 1., 1001)
+        Pkmus = f(self, k, mus, **kwargs)
+        kern = 13./16.*(231*mus**6 - 315*mus**4 + 105*mus**2 - 5)
+        return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
+    return wrapper
     
 
 #-------------------------------------------------------------------------------
@@ -625,7 +637,8 @@ def window_convolved_xi(xi_data, W):
     return toret
     
     
-def convolve_multipoles(k, Pell, window, k_out=None):
+def convolve_multipoles(k, Pell, window, k_out=None, interpolate=True, 
+                        pk_smooth=0., xi_smooth=0., method=pygcl.IntegrationMethods.TRAPZ):
     """
     Convolve the input ell = 0, 2, 4 power multipoles, specified by `Pell`,
     with the specified window function.
@@ -655,7 +668,7 @@ def convolve_multipoles(k, Pell, window, k_out=None):
         raise ValueError("input `k_out` must have 3 columns for ell=0,2,4 poles")
     
     # make the hires version to avoid wiggles when convolving
-    if len(k) < 500:
+    if interpolate and len(k) < 500:
         k_hires = np.logspace(np.log10(k.min()), np.log10(k.max()), 500)
         poles_hires = []
         for i in range(Pell.shape[1]):
@@ -667,7 +680,7 @@ def convolve_multipoles(k, Pell, window, k_out=None):
     # FT the power multipoles    
     xi = np.empty((len(s), len(ells)))
     for i, ell in enumerate(ells): 
-        xi[:,i] = pygcl.pk_to_xi(ell, k, Pell[:,i], s, smoothing=0., method=pygcl.IntegrationMethods.TRAPZ)
+        xi[:,i] = pygcl.pk_to_xi(ell, k, Pell[:,i], s, smoothing=pk_smooth, method=method)
     
     # convolve the config space multipole
     xi_conv = window_convolved_xi(xi, window[:,1:])
@@ -675,7 +688,7 @@ def convolve_multipoles(k, Pell, window, k_out=None):
     # FT back to get convolved power pole
     toret = np.empty((len(k_out), len(ells)))
     for i, ell in enumerate(ells):
-        toret[:,i] = pygcl.xi_to_pk(ell, s, xi_conv[:,i], k_out[:,i], smoothing=0., method=pygcl.IntegrationMethods.TRAPZ)
+        toret[:,i] = pygcl.xi_to_pk(ell, s, xi_conv[:,i], k_out[:,i], smoothing=xi_smooth, method=method)
     
     return toret
  

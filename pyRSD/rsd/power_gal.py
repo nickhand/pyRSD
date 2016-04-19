@@ -555,10 +555,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         """
         scalar = np.isscalar(poles)
         if scalar: poles = [poles]
-        
-        if not all(ell in [0,2,4] for ell in poles):
-            raise ValueError("the only valid multipoles are ell = 0, 2, 4")
-            
+          
         mus = np.linspace(0., 1., Nmu)
         Pkmus = self.Pgal(k, mus)
         
@@ -580,21 +577,28 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     @tools.monopole
     def Pgal_mono(self, k, mu, **kwargs):
         """
-        The total redshift-space galaxy monopole moment
+        The total redshift-space galaxy monopole (ell=0) moment
         """
         return self.Pgal(k, mu, **kwargs)
 
     @tools.quadrupole
     def Pgal_quad(self, k, mu, **kwargs):
         """
-        The total redshift-space galaxy quadrupole moment
+        The total redshift-space galaxy quadrupole (ell=2) moment
         """
         return self.Pgal(k, mu, **kwargs)
 
     @tools.hexadecapole
     def Pgal_hexadec(self, k, mu, **kwargs):
         """
-        The total redshift-space galaxy hexadecapole moment
+        The total redshift-space galaxy hexadecapole (ell=4) moment
+        """
+        return self.Pgal(k, mu, **kwargs)
+        
+    @tools.tetrahexadecapole
+    def Pgal_tetrahex(self, k, mu, **kwargs):
+        """
+        The total redshift-space galaxy tetrahexadecapole (ell=6) moment
         """
         return self.Pgal(k, mu, **kwargs)
         

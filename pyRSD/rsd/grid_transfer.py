@@ -79,8 +79,8 @@ class PkmuGrid(object):
         Convienence method to return a ``PkmuGrid`` from a 
         ``nbodykit.PkmuResult`` instance
         """
-        coords = [pkmu.k_center, pkmu.mu_center]
-        return cls(coords, pkmu['k'].data, pkmu['mu'].data, pkmu['modes'].data)
+        coords = [pkmu.coords['k_cen'], pkmu.coords['mu_cen']]
+        return cls(coords, pkmu['k'], pkmu['mu'], pkmu['modes'])
     
     @classmethod
     def from_structured(cls, coords, data):

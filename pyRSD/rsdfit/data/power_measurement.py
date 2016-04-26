@@ -198,6 +198,8 @@ class PowerMeasurement(Cache):
                     return 'quadrupole'
                 elif self.ell == 4:
                     return 'hexadecapole'
+                elif self.ell == 6:
+                    return 'tetrahexadecapole'
                 
         raise NotImplementedError("confused about what label corresponds to this measurement")
         

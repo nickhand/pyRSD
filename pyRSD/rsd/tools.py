@@ -589,50 +589,66 @@ def sigma_from_bias(bias, z, linearPS):
 def window_convolved_xi(xi_data, W):
     """
     Compute the window-convolved configuration space multipoles, from
-    the ell = 0, 2, 4 unconvolved multipoles and the window
+    the ell = 0, 2, 4 (,6) unconvolved multipoles and the window
     
     Parameters
     ----------
-    xi_data : array_like, (Ns, 3)
+    xi_data : array_like, (Ns, 3 or 4)
         the unconvolved configuration space multipoles, with the three columns
-        being the ell = 0, 2, 4 multipoles, respectively
+        being the ell = 0, 2, 4 (,6) multipoles, respectively
     W : array_like, (Ns, Nl)
         the even-ell configuration space window function multipoles, 
         where Nl must be >= 5; the first column is the ell=0, second 
         is ell=2, etc
     """
-    ells = [0, 2, 4]
-    
-    # check the shape
     shape = xi_data.shape
-    if shape[-1] != 3:
-        raise ValueError("do not understand shape of `xi_data` in `window_convolved_xi`")
+    Nell = shape[-1]
+    if Nell == 3:
+        ells = [0, 2, 4]
+    elif Nell == 4:
+        ells = [0, 2, 4, 6]
+        have_window_ell10 = W.shape[1] == 6
+    else:
+        raise ValueError("`xi_data` should have 3 or 4 columns in `window_convolved_xi`")
+    
     if shape[0] != W.shape[0]:
         raise ValueError("shape mismatch in first dimension between `xi_data` and window")
     
     # loop over each ell 
     # each column in xi_data is a value in ells
     toret = np.empty(shape)
+    kern = np.empty(shape)
     
     for i, ell in enumerate(ells):
         
         # get the kernel for this ell
         if ell == 0:    
-            kern = W[:,:3] * np.array([1., 1./5, 1./9])
+            kern[:,:3] = W[:,:3] * np.array([1., 1./5, 1./9])
+            if Nell == 4: # tetraxhex
+                kern[:,3] = W[:,3] * 1./13. 
             
         elif ell == 2:
-            k20 = W[:,1]
-            k22 = (W[:,:3] * np.array([1., 2./7, 2./7])).sum(axis=-1)
-            k24 = (W[:,1:4] * np.array([2./7, 100./693, 25./143])).sum(axis=-1)
-            kern = np.vstack([k20, k22, k24]).T
-    
-        elif ell == 4:
-            k40 = W[:,2]
-            k42 = (W[:,1:4] * np.array([18./35, 20./77, 45./143])).sum(axis=-1)
-            k44 = (W[:,:5] * np.array([1., 20./77, 162./1001, 20./143, 490./2431])).sum(axis=-1)
-            kern = np.vstack([k40, k42, k44]).T
+            kern[:,0] = W[:,1]
+            kern[:,1] = np.einsum('...i,i...', W[:,:3], np.array([1., 2./7, 2./7]))
+            kern[:,2] = np.einsum('...i,i...', W[:,1:4], np.array([2./7, 100./693, 25./143]))
+            if Nell == 4: # tetraxhex
+                kern[:,3] = np.einsum('...i,i...', W[:,2:5], np.array([25./143, 14./143., 28./221.]))
         
-        toret[:,i] = (xi_data*kern).sum(axis=-1)
+        elif ell == 4:
+            kern[:,0] = W[:,2]
+            kern[:,1] = np.einsum('...i,i...', W[:,1:4], np.array([18./35, 20./77, 45./143]))
+            kern[:,2] = np.einsum('...i,i...', W[:,:5], np.array([1., 20./77, 162./1001, 20./143, 490./2431]))
+            
+            # tetraxhex
+            if Nell == 4: 
+                # include ell = 10 window
+                if not have_window_ell10:
+                    k =  np.array([45./143., 20./143., 252./2431., 4536./46189.])
+                else:
+                    k =  np.array([45./143., 20./143., 252./2431., 4536./46189., 630./4199.])
+                kern[:,3] = np.einsum('...i,i...', W[:,1:], k)
+                    
+        toret[:,i] = np.einsum('ij,ij->i', xi_data, kern)
         
     return toret
     
@@ -656,29 +672,38 @@ def convolve_multipoles(k, Pell, window, k_out=None, interpolate=True,
         multipoles
     k_out : array_like
         the array of desired output k values
-    """ 
-    ells = [0, 2, 4]
+    """
+    shape = Pell.shape
+    Nell = shape[-1]
+    if Nell == 3:
+        ells = [0, 2, 4]
+    elif Nell == 4:
+        ells = [0, 2, 4, 6]
+    else:
+        raise ValueError("please provide 3 or 4 input power multipoles as columns")
+    
+    # separation is the first window column
     s = window[:,0]
     
     # format the k_out
     if k_out is None: k_out = k
     if np.ndim(k_out) == 1:
-        k_out = np.repeat(k_out[:,None], 3, axis=1)
+        k_out = np.repeat(k_out[:,None], Nell, axis=1)
     if k_out.shape[-1] != len(ells):
-        raise ValueError("input `k_out` must have 3 columns for ell=0,2,4 poles")
+        raise ValueError("input `k_out` must have %d columns for ell=%s multipoles" %(Nell, str(ells)))
     
     # make the hires version to avoid wiggles when convolving
     if interpolate and len(k) < 500:
         k_hires = np.logspace(np.log10(k.min()), np.log10(k.max()), 500)
         poles_hires = []
-        for i in range(Pell.shape[1]):
+        for i in range(Nell):
             tck = interp.splrep(k, Pell[:,i], k=3, s=0)
             poles_hires.append(interp.splev(k_hires, tck))
         Pell = np.vstack(poles_hires).T
         k = k_hires.copy()
         
     # FT the power multipoles    
-    xi = np.empty((len(s), len(ells)))
+    xi = np.empty((len(s), Nell))
     for i, ell in enumerate(ells): 
         xi[:,i] = pygcl.pk_to_xi(ell, k, Pell[:,i], s, smoothing=pk_smooth, method=method)
     
@@ -686,7 +711,7 @@ def convolve_multipoles(k, Pell, window, k_out=None, interpolate=True,
     xi_conv = window_convolved_xi(xi, window[:,1:])
     
     # FT back to get convolved power pole
-    toret = np.empty((len(k_out), len(ells)))
+    toret = np.empty((len(k_out), Nell))
     for i, ell in enumerate(ells):
         toret[:,i] = pygcl.xi_to_pk(ell, s, xi_conv[:,i], k_out[:,i], smoothing=xi_smooth, method=method)
     

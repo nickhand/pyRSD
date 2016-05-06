@@ -152,7 +152,7 @@ class GalaxyPowerTheory(object):
         # now setup the model parameters; only the valid model kwargs are read
         allowable_model_params = rsd.GalaxySpectrum.allowable_kwargs
         for param in self.model_params.keys():
-            if param not in allowable_model_params:
+            if param not in allowable_model_params and param != '__version__':
                 del self.model_params[param] 
         
         # store the kmin, kmax

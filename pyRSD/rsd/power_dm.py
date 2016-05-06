@@ -126,7 +126,16 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
             if fnmatch.fnmatch(kw, 'use_*_model'):
                 setattr(self, kw, kwargs.pop(kw, True))
             
-        if len(kwargs):
+        # check the version        
+        version = kwargs.pop('__version__', self.__version__)
+        if self.__version__ != version:
+            msg = "trying to initialize a model of the wrong version:\n"
+            msg += '\tcurrent model version: %s\n' %(self.__version__)
+            msg += '\tdesired model version: %s\n' %(version)
+            raise ValueError(msg)
+        
+        # extra keywords
+        if len(kwargs):                    
             for k in kwargs:
                 print "warning: extra keyword `%s` is ignored" %k
         

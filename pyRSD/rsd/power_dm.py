@@ -131,7 +131,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         # check the version        
         version = kwargs.pop('__version__', self.__version__)
         if self.__version__ != version:
-            msg = "trying to initialize a model of the wrong version:\n"
+            msg = "trying to initialize a model of the wrong version\n"
             msg += '\tcurrent model version: %s\n' %(self.__version__)
             msg += '\tdesired model version: %s\n' %(version)
             raise ValueError(msg)
@@ -608,18 +608,36 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         return self.f**2 * toret
         
     @classmethod
-    def from_npy(self, filename):
+    def from_npy(cls, filename):
         """
         Load from a numpy `.npy` file
         """
-        return np.load(filename).tolist()
+        model = np.load(filename).tolist()
+        
+        # print a warning
+        version = model.__version__
+        if version != model.__class__.__version__:
+            msg = "warning: trying to load a model of the wrong version\n"
+            msg += '\tcurrent model version: %s\n' %(model.__class__.__version__)
+            msg += '\tloaded model version: %s\n' %(version)
+            print msg
+        return model
         
     @classmethod
-    def from_pickle(self, filename):
+    def from_pickle(cls, filename):
         """
         Load from a pickle file
         """
-        return pickle.load(open(filename, 'r'), protocol=-1)
+        model = pickle.load(open(filename, 'r'), protocol=-1)
+        
+        # print a warning
+        version = model.__version__
+        if version != model.__class__.__version__:
+            msg = "warning: trying to load a model of the wrong version\n"
+            msg += '\tcurrent model version: %s\n' %(model.__class__.__version__)
+            msg += '\tloaded model version: %s\n' %(version)
+            print msg
+        return model
         
     def to_npy(self, filename):
         """

@@ -102,6 +102,20 @@ class Parameter(PickeableCache, lmfit.Parameter):
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------
+    @property
+    def output_value(self):
+        """
+        Explicit value for output -- defaults to `value`
+        """
+        try:
+            return self._output_value
+        except:
+            return self.value
+    
+    @output_value.setter
+    def output_value(self, val):
+        self._output_value = val
+    
     @parameter
     def analytic(self, val):
         """
@@ -299,8 +313,11 @@ class Parameter(PickeableCache, lmfit.Parameter):
     #---------------------------------------------------------------------------
     # functions
     #---------------------------------------------------------------------------
-    def __call__(self):
-        return self.value
+    def __call__(self, output=False):
+        if not output:
+            return self.value
+        else:
+            return self.output_value
 
     def __repr__(self):
         s = []
@@ -347,7 +364,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
             
         return self.prior.draw(size=size)
     
-    def to_dict(self):
+    def to_dict(self, output=False):
         """
         Convert the `Parameter` object to a dictionary
         """
@@ -356,11 +373,14 @@ class Parameter(PickeableCache, lmfit.Parameter):
             if k == 'description': continue
             if k == 'prior':
                 val = getattr(self, 'prior_name')
+            elif k == 'value' and output:
+                val = getattr(self, 'output_value')
             else:
                 val = getattr(self, k)
-                
+        
             if val is not None:
                 toret[k] = val
+        
         for k in ['min', 'max']:
             if k in toret and not np.isfinite(toret[k]):
                 toret.pop(k)

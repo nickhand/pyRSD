@@ -19,6 +19,8 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     """
     The dark matter power spectrum in redshift space
     """
+    __version__ = '0.1.0'
+    
     # splines and interpolation variables
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
     spline = tools.RSDSpline

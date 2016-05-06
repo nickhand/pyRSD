@@ -237,7 +237,7 @@ class LBFGS(object):
         default['ftol']    = 1e-6
         default['xtol']    = 1e-4
         default['gtol']    = 1e-5
-        default['maxiter'] = 2000
+        default['maxiter'] = 500
         default['display'] = 2
         default['record']  = ['F', 'Gnorm']
 

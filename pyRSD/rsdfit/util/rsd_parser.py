@@ -303,7 +303,6 @@ def verify_arguments(ns):
             if os.path.exists(params_path):
                 # if the params.dat exists, and param files were given, 
                 # use the params.dat, and notify the user
-                print "ns.params = ", ns.params
                 if ns.params is not None:
                     logging.warning("Appending to an existing folder: using the "
                                    "`%s` instead of %s" %(ns.params, params_filename))

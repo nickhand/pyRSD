@@ -596,6 +596,32 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
         return self.f**2 * toret
         
+    @classmethod
+    def from_npy(self, filename):
+        """
+        Load from a numpy `.npy` file
+        """
+        return np.load(filename).tolist()
+        
+    @classmethod
+    def from_pickle(self, filename):
+        """
+        Load from a pickle file
+        """
+        return pickle.load(open(filename, 'r'), protocol=-1)
+        
+    def to_npy(self, filename):
+        """
+        Save to a numpy `.npy` file
+        """
+        np.save(filename, self)
+        
+    def from_pickle(self, filename):
+        """
+        Save to a pickle file. This is slower than `to_npy`, 
+        so that is the preferred serialization method
+        """
+        pickle.dump(self, open(filename, 'w'), protocol=-1)
         
     #---------------------------------------------------------------------------
     # utility functions

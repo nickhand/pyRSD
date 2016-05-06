@@ -132,7 +132,8 @@ class ParameterSet(lmfit.Parameters):
         # check the path
         if not os.path.exists(filename):
             raise IOError("no file found at path %s" %filename)
-            
+        
+        orig = {}   
         D = {} 
         old = ''
         # loop over each line
@@ -163,14 +164,19 @@ class ParameterSet(lmfit.Parameters):
             key = line[0].strip()
             
             # check for variables in the value
-            if '$' in line[1]: line[1] = tools.replace_vars(line[1], D)
-
+            save_orig = None
+            if '$' in line[1]: 
+                save_orig = eval(line[1].strip())
+                line[1] = tools.replace_vars(line[1], D)
+            
             # check for any functions calls in the line
             modules = tools.import_function_modules(line[1])
 
             # now save to the dict, eval'ing the line
             D[key] = tools.get_abspath(eval(line[1].strip(), globals().update(modules), D))
-        
+            if save_orig is not None:
+                orig[key] = save_orig
+                
         # now make the output
         valid_kwargs = ['name', 'value', 'vary', 'min', 'max', 'expr']
         for k, v in D.iteritems():
@@ -179,6 +185,9 @@ class ParameterSet(lmfit.Parameters):
             else:
                 v = Parameter(value=v)
             v.name = k
+            
+            if k in orig:
+                v.output_value = orig[k]
         
             # check for a possible key tag
             if len(tags):
@@ -236,11 +245,11 @@ class ParameterSet(lmfit.Parameters):
         for name, par in sorted(self.items()):
             key = name if self.tag is None else "{}.{}".format(self.tag, name)
             if as_dict:
-                par_dict = par.to_dict()
+                par_dict = par.to_dict(output=True)
                 if len(par_dict):
                     output.append("{} = {}".format(key, par_dict))
             else:
-                output.append("{} = {}".format(key, repr(par())))
+                output.append("{} = {}".format(key, repr(par(output=True))))
         
         f.write("%s\n" %("\n".join(output)))
         if footer: f.write("#{}\n\n".format("-"*79))

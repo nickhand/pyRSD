@@ -38,7 +38,8 @@ def _unpickle(cls, items, meta):
     try:
         toret.update_values()
     except:
-        pass
+         pass
+        
     return toret
 
 class ParameterSet(lmfit.Parameters):
@@ -325,6 +326,7 @@ class ParameterSet(lmfit.Parameters):
         """
         if self._updated[name]:
             return
+            
         par = self[name]
         if getattr(par, 'expr', None) is not None:
             if getattr(par, 'ast', None) is None:
@@ -332,7 +334,12 @@ class ParameterSet(lmfit.Parameters):
             if par.deps is not None:
                 for dep in par.deps:
                     self._update_parameter(dep)
-            par.value = self._asteval.run(par.ast)  
+            try:
+                par.value = self._asteval.run(par.ast, with_raise=True)  
+            except:
+                msg = "error evaluating '%s' for parameter '%s'" %(par.expr, name)
+                raise ValueError(msg)
+
         self._asteval.symtable[name] = par.value
         self._updated[name] = True
     

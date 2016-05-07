@@ -497,7 +497,7 @@ class LBFGS(object):
             if (zg / state['Gnorm'] < 0.01):
                 warn = "LBFGS iteration %d: the descent direction does not have a sufficient " %d['iteration']
                 warn += "projection into the gradient; using steepest descent at this step!"
-                self.logger.warning(warn)
+                self.logger.debug(warn)
                 z[:] = state['G'] / state['Gnorm']
                 zg = 1.
                 

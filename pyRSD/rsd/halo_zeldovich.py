@@ -631,33 +631,33 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         self.cosmo = cosmo
         
         # A0 power law
-        self._A0_amp   = 531.737
-        self._A0_alpha = 1.887
-        self._A0_beta  = 4.0062
+        self._A0_amp   = 780.
+        self._A0_alpha = 1.57
+        self._A0_beta  = 3.50
         self._A0_run   = 0.
         
         # R1 power law
-        self._R1_amp   = 1.687
-        self._R1_alpha = -0.504
-        self._R1_beta  = 0.1609
+        self._R1_amp   = 4.88
+        self._R1_alpha = -0.59
+        self._R1_beta  = 0.12
         self._R1_run   = 0.
         
         # R1h power law
-        self._R1h_amp   = 3.20
-        self._R1h_alpha = -0.992
-        self._R1h_beta  = -0.308
+        self._R1h_amp   = 8.00
+        self._R1h_alpha = -0.92
+        self._R1h_beta  = -0.36
         self._R1h_run   = 0.
         
         # R2h power law
-        self._R2h_amp   = 0.3806
-        self._R2h_alpha = 0.5034
-        self._R2h_beta  = 0.2093
-        self._R2h_run   = 0
+        self._R2h_amp   = 2.92
+        self._R2h_alpha = -1.07
+        self._R2h_beta  = -0.35
+        self._R2h_run   = 0.
         
         # R power law
-        self._R_amp   = 25.137
-        self._R_alpha = 0.552
-        self._R_beta  = 1.407
+        self._R_amp   = 14.7
+        self._R_alpha = 0.22
+        self._R_beta  = -0.18
         self._R_run   = 0
         
     #---------------------------------------------------------------------------

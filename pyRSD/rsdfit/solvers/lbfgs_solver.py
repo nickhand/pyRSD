@@ -66,6 +66,7 @@ def run(params, theory, pool=None, init_values=None):
     epsilon    = params.get('lbfgs_epsilon', 1e-4)
     use_priors = params.get('lbfgs_use_priors', True)
     options    = params.get('lbfgs_options', {})
+    options['test_convergence'] = params.get('test_convergence', True)
     
     # sort epsilon is a dictionary of values
     if isinstance(epsilon, dict):

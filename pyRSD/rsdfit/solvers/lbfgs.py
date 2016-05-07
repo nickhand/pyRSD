@@ -240,6 +240,7 @@ class LBFGS(object):
         default['maxiter'] = 500
         default['display'] = 2
         default['record']  = ['F', 'Gnorm']
+        default['test_convergence'] = True
 
         return default
         
@@ -278,6 +279,10 @@ class LBFGS(object):
         # exceed maximum iterations
         if self.data['iteration'] >= opt['maxiter']:
             self.data['status'] = -1
+            return self.data['status']
+        
+        # if not testing convergence, return
+        if not opt['test_convergence']:
             return self.data['status']
         
         # relative tolerance of parameters

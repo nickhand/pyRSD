@@ -305,7 +305,7 @@ def verify_arguments(ns):
                 # use the params.dat, and notify the user
                 if ns.params is not None:
                     logging.warning("Appending to an existing folder: using the "
-                                   "`%s` instead of %s" %(ns.params, params_filename))
+                                   "existing `%s` instead of `%s`" %(params_filename, ns.params))
                 ns.params = params_path
             else:
                 if ns.params is None:

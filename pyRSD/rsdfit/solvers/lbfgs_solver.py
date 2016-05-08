@@ -68,6 +68,9 @@ def run(params, theory, pool=None, init_values=None):
     options    = params.get('lbfgs_options', {})
     options['test_convergence'] = params.get('test_convergence', True)
     
+    if 'maxiter' in options and not options['test_convergence']:
+        logger.info("running LBFGS for %d iterations and then stopping" %options['maxiter'])
+    
     # sort epsilon is a dictionary of values
     if isinstance(epsilon, dict):
         epsilon = np.array([epsilon.get(k, 1e-4) for k in theory.free_names])

@@ -104,9 +104,14 @@ def transform_ipynb(df):
     
     # format the columns
     toret["best-fit"] = df['best_fit']
-    toret["median $\pm$ $1\sigma$"] = df.apply(median_plus_error_fmt, args=('ipynb',), axis=1)
-    toret["95% lower"] = df['median'] + df['lower_2sigma']
-    toret["95% upper"] = df['median'] + df['upper_2sigma']
+    
+    if not df['median'].isnull().all():
+        toret["median $\pm$ $1\sigma$"] = df.apply(median_plus_error_fmt, args=('ipynb',), axis=1)
+    
+        if not df['lower_2sigma'].isnull().all():
+            toret["95% lower"] = df['median'] + df['lower_2sigma']
+        if not df['upper_2sigma'].isnull().all():
+            toret["95% upper"] = df['median'] + df['upper_2sigma']
         
     # use the tex_name for an index if you can
     if 'tex_name' in df:
@@ -118,7 +123,7 @@ def transform_ipynb(df):
             toret = toret.set_index('index')
     toret.index.name = 'parameter'
 
-    return toret
+    return toret.sort_index()
     
    
 #------------------------------------------------------------------------------
@@ -201,11 +206,11 @@ class BestfitParameterSet(pd.DataFrame):
         data : numpy ndarray (structured or homogeneous), dict, or DataFrame
             Dict can contain Series, arrays, constants, or list-like objects
         index : Index or array-like
-            Index to use for resulting frame. Will default to np.arange(n) if
+            Index to use for resulting frame. Will default to numpy.arange(n) if
             no indexing information part of input data and no index provided
         columns : Index or array-like
             Column labels to use for resulting frame. Will default to
-            np.arange(n) if no column labels are provided
+            numpy.arange(n) if no column labels are provided
         dtype : dtype, default None
             Data type to force, otherwise infer
         copy : boolean, default False
@@ -273,7 +278,42 @@ class BestfitParameterSet(pd.DataFrame):
         toret = cls(df)
         if len(meta): toret.add_metadata(**meta)
         return toret
+    
+    @classmethod   
+    def from_nlopt(cls, r, **meta):
+        """
+        Initialize the `BestfitParameterSet` class from an `LBFGSResults`
+        instance from a nonlinear optimization fit using LBFGS
         
+        Parameters
+        ----------
+        r : LBFGSResults
+            an instance holding the best-fit parameters from an nlopt LBFGS fit
+        **meta : kwargs
+            any additional keywords to attach as meta-data
+        """
+        # initialize empty data frame
+        index = pd.Index(r.free_names+r.constrained_names)
+        columns = ['best_fit', 'median', 'lower_1sigma', 'upper_1sigma', 
+                    'lower_2sigma', 'upper_2sigma', 'free', 'scale', 
+                    'gt_1sigma', 'gt_2sigma', 'lt_1sigma', 'lt_2sigma']
+        toret = cls(columns=columns, index=index)
+        
+        # bestfits
+        toret.loc[r.free_names, 'best_fit'] = r.min_chi2_values
+        toret.loc[r.constrained_names, 'best_fit'] = r.min_chi2_constrained_values
+        
+        # free vs constrained
+        toret.loc[r.free_names, 'free'] = True
+        toret.loc[r.constrained_names, 'free'] = False
+        
+        # set the scale
+        toret['scale'] = 1.0
+
+        if len(meta): toret.add_metadata(**meta)
+        return toret
+
+
     @classmethod   
     def from_mcmc(cls, r, **meta):
         """
@@ -289,7 +329,11 @@ class BestfitParameterSet(pd.DataFrame):
         """
         # initialize empty data frame
         index = pd.Index(r.free_names+r.constrained_names)
-        toret = cls(index=index)
+        
+        columns = ['best_fit', 'median', 'lower_1sigma', 'upper_1sigma', 
+                    'lower_2sigma', 'upper_2sigma', 'free', 'scale', 
+                    'gt_1sigma', 'gt_2sigma', 'lt_1sigma', 'lt_2sigma']
+        toret = cls(columns=columns, index=index)
         
         # bestfits
         toret.loc[r.free_names, 'best_fit'] = r.max_lnprob_values()

@@ -95,7 +95,7 @@ def run(params, theory, pool=None, init_values=None):
     #--------------------------------------------------------------------------
     # run the algorithm, catching any errors
     #--------------------------------------------------------------------------
-    exception = False  
+    exception = None  
     
     # initialize the minimizer
     if isinstance(init_values, LBFGSResults):
@@ -108,13 +108,12 @@ def run(params, theory, pool=None, init_values=None):
     try:
         start = time.time()
         result = minimizer.run_nlopt(**options)
-    except KeyboardInterrupt:
+    except KeyboardInterrupt as exception:
         pass
-    except:
+    except Exception as exception:
         import traceback
         logger.warning("exception occured:\n%s" %traceback.format_exc())
-        exception = True
-        pass
+        
     stop = time.time()
     
     #--------------------------------------------------------------------------
@@ -134,7 +133,7 @@ def run(params, theory, pool=None, init_values=None):
         logger.info("   convergence message: %s" %d['status'])
         
     results = None
-    if not exception:
+    if not isinstance(exception, KeyboardInterrupt):
         results = LBFGSResults(d, theory.fit_params)
     return results, exception
 

@@ -266,7 +266,7 @@ class FittingDriver(object):
             logger.info("Calling the '{}' solve function".format(solver_name))
         self.results, exception = solver(self.params, self.theory, **kwargs)
         logger.info("...fitting complete")
-        
+
         return exception
         
     def finalize_fit(self, exception, results_file):
@@ -277,9 +277,10 @@ class FittingDriver(object):
         logger.info('Saving the results to `%s`' %results_file)
         self.results.to_npz(results_file)
         
-        if not exception:
+        # summarize if no exception
+        if exception is None or isinstance(exception, KeyboardInterrupt):
             self.results.summarize_fit()
-
+        
     def find_peak_probability(self, pool=None):
         """
         Find the peak of the probability distribution

@@ -248,6 +248,10 @@ class RSDFitDriver(object):
                 if result is not None:
                     logger.output_name = self.output_name(result, mpi_master.rank)
                     self.algorithm.finalize_fit(logger.exception, logger.output_name)
+                    
+                # finally raise the exception
+                if logger.exception:
+                    raise logger.exception
         
 def main():
     

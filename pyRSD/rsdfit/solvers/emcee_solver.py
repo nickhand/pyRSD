@@ -40,12 +40,11 @@ class ChainManager(object):
         self.nwalkers  = nwalkers
         self.theory    = theory
         self.comm      = comm
-        self.exception = False
+        self.exception = None
         
         # register the signal handlers and tags
         signal.signal(signal.SIGUSR1, initiate_exit)
         signal.signal(signal.SIGUSR2, initiate_exit)
-        signal.signal(signal.SIGINT, initiate_exit)
         signal.signal(signal.SIGQUIT, initiate_exit)
         self.tags = enum('CONVERGED', 'EXIT', 'CTRL_C')
         
@@ -99,6 +98,13 @@ class ChainManager(object):
             
     def __exit__(self, exc_type, exc_value, exc_traceback):
         
+        # emcee raises a RuntimeError -- check if it was actually a KeyboardInterrupt
+        # if isinstance(exc_value, RuntimeError):
+        #     tb = traceback.format_exc()
+        #     if 'KeyboardInterrupt' in tb:
+        #         exc_type = KeyboardInterrupt
+        #         exc_value = exc_type()
+                
         if isinstance(exc_value, KeyboardInterrupt):
             logger.warning("EMCEE: ctrl+c pressed - saving current state of chain")
             tag = self.tags.CTRL_C
@@ -111,10 +117,10 @@ class ChainManager(object):
             logger.warning("   traceback:\n%s" %trace)         
             tag = self.tags.EXIT
         
-        exceptions = (KeyboardInterrupt, ConvergenceException, ExitingException)
+        exceptions = (ConvergenceException, ExitingException)
         if exc_value is not None and not isinstance(exc_value, exceptions):
             logger.warning("EMCEE: setting exception to true before exiting")
-            self.exception = True
+            self.exception = exc_value
             
         # convergence exception
         if exc_value is not None:
@@ -353,7 +359,8 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     if old_results is not None:
         new_results = old_results + new_results
         
-    logger.warning("EMCEE: exiting EMCEE fitter with exception = %s" %str(manager.exception))
+    exception_raised = not isinstance(manager.exception, KeyboardInterrupt)
+    logger.warning("EMCEE: exiting EMCEE fitter with exception = %s" %str(exception_raised))
     return new_results, manager.exception
 
     

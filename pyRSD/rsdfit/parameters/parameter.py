@@ -148,6 +148,11 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         The parameter value
         """
+        
+        if isinstance(val, str) and '$' in val:
+            self.output_value = val
+            val = tools.replace_vars(val, {})
+        
         self.user_value = val
         self._val = val
         return self._getval()

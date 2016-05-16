@@ -133,7 +133,7 @@ def run(params, theory, pool=None, init_values=None):
         logger.info("   convergence message: %s" %d['status'])
         
     results = None
-    if not isinstance(exception, KeyboardInterrupt):
+    if exception is None or isinstance(exception, KeyboardInterrupt):
         results = LBFGSResults(d, theory.fit_params)
     return results, exception
 

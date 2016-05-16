@@ -5,6 +5,8 @@ from ... import os
 import argparse as ap
 import textwrap as tw
 
+logger = logging.getLogger('rsdfit.parser')
+
 def existing_file(fname):
     """
     Check if the file exists. If not raise an error
@@ -290,7 +292,7 @@ def verify_arguments(ns):
             ns.model = os.path.join(ns.folder, model_filename)
             if not os.path.exists(ns.model):
                 raise rsd_io.ConfigurationError("Restarting but cannot find existing model file to read")
-        logging.warning("Restarting from %s and using associated params.dat" %ns.restart_files[0])
+        logger.warning("Restarting from %s and using associated params.dat" %ns.restart_files[0])
     
     ## run from new  
     elif ns.subparser_name == "run":
@@ -304,7 +306,7 @@ def verify_arguments(ns):
                 # if the params.dat exists, and param files were given, 
                 # use the params.dat, and notify the user
                 if ns.params is not None:
-                    logging.warning("Appending to an existing folder: using the "
+                    logger.warning("Appending to an existing folder: using the "
                                    "existing `%s` instead of `%s`" %(params_filename, ns.params))
                 ns.params = params_path
             else:

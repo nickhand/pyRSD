@@ -1,5 +1,5 @@
 from pyRSD import numpy as np, os
-from pyRSD.rsdfit import FittingDriver, params_filename, model_filename
+from pyRSD.rsdfit import FittingDriver, params_filename, model_filename, logging
 
 from pyRSD.rsdfit.solvers import set_rsdfit_driver
 from pyRSD.rsdfit.util import rsd_io, rsdfit_parser
@@ -198,6 +198,13 @@ class RSDFitDriver(object):
         # add the console logger
         silent = getattr(self, 'silent', False)
         if not silent: rsd_logging.add_console_logger(self.comm.rank)
+        
+        # remove any stream handlers, if silent
+        if silent:
+            logger = logging.getLogger()
+            logger.handlers = [
+                h for h in logger.handlers if not isinstance(h, logging.StreamHandler)]
+            logger.addHandler(logging.NullHandler())
             
     def output_name(self, results, chain_number):
         """
@@ -255,6 +262,10 @@ class RSDFitDriver(object):
         
 def main():
     
+    # add a console logger
+    rsd_logging.add_console_logger(MPI.COMM_WORLD.rank)
+    
+    # create and run
     driver = RSDFitDriver.create()
     driver.run()
 

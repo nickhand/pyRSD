@@ -161,8 +161,8 @@ def setup_analyze_subparser(parent):
     
     # don't include fiducial lines on 1D posterior plots
     h = "don't include fiducial lines on 1D posterior plots"
-    subparser.add_argument('--no-fiducial', help=h, dest='show_fiducial', 
-                                action='store_false')
+    subparser.add_argument('--show-fiducial', help=h, dest='show_fiducial', 
+                                action='store_true', default=False)
                                 
     # the fraction of samples to consider burnin
     h = 'the fraction of samples to consider burnin'

@@ -83,24 +83,20 @@ class FileLogger(object):
                 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         
-        print "IN FILE LOGGER EXIT"
         if exc_value is not None:
             self.exception = True
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
             self.logger.error("traceback:\n%s" %trace)  
         
-        print "GOING TO COPY LOGS"
         try:
             # now save the log to the logs dir
             copy_log(self.name, self.output_name, restart=self.restart)
         except Exception as e:
-            print "ERROR COPYING: %s" %str(e)
             pass
             
             
         # if we made it this far, it's safe to delete the old results
         try:
-            print "REMOVING TEMP LOG"
             if os.path.exists(self.name):
                 self.logger.info("removing temporary logging file: `%s`" %self.name)
                 os.remove(self.name)
@@ -111,7 +107,6 @@ class FileLogger(object):
                     self.logger.info("removing original restart file: `%s`" %self.restart)
                     os.remove(self.restart)
         except Exception as e:
-            print "ERROR REMOVING OLD FILES: %s" %str(e)
             pass
         
         return True

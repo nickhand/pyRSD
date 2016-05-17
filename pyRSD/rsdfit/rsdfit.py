@@ -259,11 +259,6 @@ class RSDFitDriver(object):
                 # finally raise the exception
                 if logger.exception:
                     raise logger.exception
-                    
-            print "AFTER logging with statement"
-        
-        print "AFTER MPI with statement"
-
 def main():
     
     # add a console logger
@@ -273,7 +268,7 @@ def main():
     driver = RSDFitDriver.create()
     driver.run()
     
-    print "AFTER DRIVER.RUN"
+    # force the exit
     os._exit(0)
     
 if __name__ == "__main__":

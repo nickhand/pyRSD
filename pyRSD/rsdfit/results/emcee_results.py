@@ -511,7 +511,7 @@ class EmceeResults(object):
         """
         return self.lnprobs.max()
         
-    def max_lnprob_values(self, *names):
+    def max_lnprob_values(self):
         """
         Return the value of the free parameters at the iteration with the maximum
         probability
@@ -519,7 +519,7 @@ class EmceeResults(object):
         nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
         return self.chain[nwalker, niter, :]
         
-    def max_lnprob_constrained_values(self, *names):
+    def max_lnprob_constrained_values(self):
         """
         Return the value of the constrained parameters at the iteration 
         with the maximum probability
@@ -527,6 +527,35 @@ class EmceeResults(object):
         nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
         return self.constrained_chain[nwalker, niter, :]
                 
+    def values(self):
+        """
+        Convenience function to return the median values for the free parameters
+        as an array
+        """
+        return np.array([self[name].median for name in self.free_names])
+        
+    def constrained_values(self):
+        """
+        Convenience function to return the median values for the constrained 
+        parameters as an array
+        """
+        return np.array([self[name].median for name in self.constrained_names])
+        
+    def peak_values(self):
+        """
+        Convenience function to return the peak values for the free parameters
+        as an array
+        """
+        return np.array([self[name].peak for name in self.free_names])
+        
+    def peak_constrained_values(self):
+        """
+        Convenience function to return the peak values for the 
+        constrained parameters
+        as an array
+        """
+        return np.array([self[name].peak for name in self.constrained_names])
+        
     def plot_timeline(self, *names, **kwargs):
         """
         Plot the chain timeline for as many parameters as specified in the 
@@ -617,50 +646,59 @@ class EmceeResults(object):
             fig.savefig(outfile)
         return fig
         
-    def plot_2D_trace(self, param1, param2, outfile=None):
+    def plot_2D_trace(self, param1, param2, 
+                        thin=1,
+                        rename={}, 
+                        crosshairs={}, 
+                        outfile=None, 
+                        **kwargs):
         """
-        Plot the 2D traces of the given parameters, showing the 1 and 2 sigma
-        contours
+        Plot the 2D traces of the given parameters, using KDE via ``seaborn``
         
         Note: any iterations during the "burnin" period are excluded
         
         Parameters
         ----------
         param1 : str
-            The name of the first parameter
+            the name of the first parameter
         param2 : str
-            The name of the second parameter
+            the name of the second parameter
+        
         outfile : str, optional
-            If not `None`, save the resulting figure with the specified name
-            
-        Returns
-        -------
-        fig : matplotlib.Figure
-            The figure object
-        
+            if not `None`, save the resulting figure with the specified name
+                    
         """
-        import plotify as pfy
-        
-        fig = pfy.figure()
-        ax = fig.gca()
-        
+        import pandas as pd
+        import seaborn as sns
+          
         names = self.free_names + self.constrained_names
         if not all(name in names for name in [param1, param2]):
-            raise ValueError("Specified parameter names not valid")
+            raise ValueError("specified parameter names not valid")
             
-        trace1 = self[param1].flat_trace
-        trace2 = self[param2].flat_trace
+        # default names
+        rename.setdefault(param1, param1)
+        rename.setdefault(param2, param2)
         
-        ax = tools.plot_mcmc_trace(ax, trace1, trace2, True, colors='k')
-        ax.set_xlabel(param1, fontsize=16)
-        ax.set_ylabel(param2, fontsize=16)
+        # make the pandas Series of the flattened traces            
+        trace1 = self[param1].trace()[:, self.burnin::thin].flatten()
+        trace1 = pd.Series(trace1, name=rename[param1])
+        trace2 = self[param2].trace()[:, self.burnin::thin].flatten()
+        trace2 = pd.Series(trace2, name=rename[param2])
         
-        # plot the "mean"
-        ax.axvline(x=self[param1].mean, c="#888888", lw=1.5, alpha=0.4)
-        ax.axhline(y=self[param2].mean, c="#888888", lw=1.5, alpha=0.4)
+        # do the plot
+        kwargs.setdefault('space', 0)
+        kwargs.setdefault('size', 7)
+        g = sns.jointplot(trace1, trace2, kind="kde", **kwargs)
+        
+        # plot any cross-hairs
+        ax = g.ax_joint
+        if param1 in crosshairs:
+            ax.axvline(x=crosshairs[param1], c="#888888", lw=1.5, alpha=0.4)
+        if param2 in crosshairs:
+            ax.axhline(y=crosshairs[param2], c="#888888", lw=1.5, alpha=0.4)
         
         if outfile is not None:
-            fig.savefig(outfile)
+            g.savefig(outfile)
         return fig
 
     def summarize_fit(self):
@@ -677,19 +715,29 @@ class EmceeResults(object):
         
         # print the results to the logger
         logger.info("\n"+hdr+str(self))
+                
+    def as_dict(self, kind=None):
+        """
+        Return a dictionary of the values, either the `mean`,
+        `peak`, or `max_lnprob`
+        """
+        if kind is None or kind in ['mean', 'median']:
+            funcs = [self.values, self.constrained_values]
+        elif kind == 'peak':
+            funcs = [self.peak_values, self.peak_constrained_values]
+        elif kind == 'max_lnprob':
+            funcs = [self.max_lnprob_values, self.max_lnprob_constrained_values]
+        else:
+            raise ValueError("`kind` must be one of ['mean', 'peak', 'max_lnprob']")
         
-    def values(self):
-        """
-        Convenience function to return the median values for the free parameters
-        as an array
-        """
-        return np.array([self[name].median for name in self.free_names])
+        toret = {}
+        names = [self.free_names, self.constrained_names]
+        for n, f in zip(names, funcs):
+            d = dict(zip(n, f()))
+            toret.update(d)
+            
+        return toret
+            
         
-    def peak_values(self):
-        """
-        Convenience function to return the peak values for the free parameters
-        as an array
-        """
-        return np.array([self[name].peak for name in self.free_names])
 
     

@@ -5,7 +5,7 @@ import scipy.stats
 
 logger = logging.getLogger('rsdfit.emcee_results')
 logger.addHandler(logging.NullHandler())
-
+    
 class EmceeParameter(object):
     """
     Class to hold the parameter fitting result
@@ -738,6 +738,21 @@ class EmceeResults(object):
             toret.update(d)
             
         return toret
+        
+    def to_dataframe(self):
+        """
+        Return a pandas DataFrame, holding the flat traces as columns
+        """
+        import pandas as pd
+
+        d = {}
+        for p in self.free_names:
+            d[p] = self[p].flat_trace
+    
+        for p in self.constrained_names:
+            d[p] = self[p].flat_trace
+
+        return pd.DataFrame(d)
             
         
 

@@ -359,7 +359,9 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     if old_results is not None:
         new_results = old_results + new_results
         
-    exception_raised = not isinstance(manager.exception, KeyboardInterrupt)
+    exception_raised = False
+    if manager.exception is not None  and not isinstance(manager.exception, KeyboardInterrupt):
+        exception_raised = True
     logger.warning("EMCEE: exiting EMCEE fitter with exception = %s" %str(exception_raised))
     return new_results, manager.exception
 

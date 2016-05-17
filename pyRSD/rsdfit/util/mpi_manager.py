@@ -104,12 +104,16 @@ class MPIManager(object):
             trace = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback, limit=5))
             self.logger.error("traceback:\n%s" %trace)
         
+        print "IN MPI EXIT 1"
         # wait for all the processes, if we more than one
         if self.par_runs_comm is not None and self.par_runs_comm.size > 1:
             self.par_runs_comm.Barrier()
             
+        print "IN MPI EXIT 2"
         # close and free the MPI stuff
         self.logger.debug("beginning to close MPI variables...")
+        
+        print "IN MPI EXIT 3"
         if self.par_runs_group is not None:
             self.par_runs_group.Free()
         if self.par_runs_comm is not None:
@@ -118,4 +122,6 @@ class MPIManager(object):
             self.pool.close()
         self.logger.debug('...MPI variables closed')
 
+        
+        print "IN MPI EXIT 4"
         return True

@@ -221,6 +221,9 @@ class FittingDriver(object):
                         init_values[i] = self.theory.fit_params[key].fiducial
                     else:
                         raise ValueError("cannot initiate from previous result -- `%s` parameter missing" %key)
+            
+            # log the file name
+            logger.info("initializing run from previous result: '%s'" %start_from)
                         
         # restart from previous result
         elif init_from  == 'previous_run':   

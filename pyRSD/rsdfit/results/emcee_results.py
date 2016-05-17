@@ -25,6 +25,10 @@ class EmceeParameter(object):
     def __str__(self):
         return self.__repr__()
         
+    def _to_str(self, val):
+        args = (self.name+":", val)
+        return "<Parameter {:<15s} {:.4g}>".format(*args)
+    
 
     @property
     def fiducial(self):
@@ -278,6 +282,26 @@ class EmceeResults(object):
     def __iter__(self):
         return iter(self.free_names + self.constrained_names)
         
+    def to_str(self, max_lnprob=False):
+        
+        if not max_lnprob:
+            return self.__str__()
+        else:
+            
+            free_vals = self.max_lnprob_values()
+            free_params = [self[name]._to_str(v) for name, v in zip(self.free_names, free_vals)]
+            
+            constrained_vals = self.max_lnprob_constrained_values()
+            constrained_params = [self[name]._to_str(v) for name, v in zip(self.constrained_names, constrained_vals)]
+
+            # first get the parameters
+            toret = "Free parameters\n" + "_"*15 + "\n"
+            toret += "\n".join(free_params)
+        
+            toret += "\n\nConstrained parameters\n" + "_"*22 + "\n"
+            toret += "\n".join(constrained_params)
+            return toret
+
     def __str__(self):
         free_params = [self[name] for name in self.free_names]
         constrained_params = [self[name] for name in self.constrained_names]
@@ -502,7 +526,7 @@ class EmceeResults(object):
         """
         nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
         return self.constrained_chain[nwalker, niter, :]
-        
+                
     def plot_timeline(self, *names, **kwargs):
         """
         Plot the chain timeline for as many parameters as specified in the 

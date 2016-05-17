@@ -110,9 +110,10 @@ def get_mean_likelihood(info, trace, name):
         
     lnprobs     = info.combined_result.lnprobs.flatten()
     weights     = np.exp(info.min_minus_lkl+lnprobs)
-    lkl_mean, _ = np.histogram(trace, bins=info.bin_edges, normed=False, weights=weights)
+    lkl_mean, bin_edges = np.histogram(trace, bins=info.bins, normed=False, weights=weights)
+    bincenters = 0.5*(bin_edges[1:]+bin_edges[:-1])
     lkl_mean /= lkl_mean.max()
-    interp_lkl_mean, interp_grid = cubic_interpolation(lkl_mean, info.bincenters)
+    interp_lkl_mean, interp_grid = cubic_interpolation(lkl_mean, bincenters)
     info._mean_likelihoods[name] = (interp_grid, interp_lkl_mean)
     return info._mean_likelihoods[name]
     
@@ -184,8 +185,8 @@ def plot_1d_posteriors(info, tag, param_names, saved_subplots):
             try:
                 interp = get_mean_likelihood(info, trace, name)
                 ax.plot(interp[0], interp[1], ls='--', lw=info.line_width)
-            except:
-                logger.warning('could not find likelihood contour for %s' %info.ref_params[native_index])
+            except Exception as e:
+                logger.warning('could not find likelihood contour for %s' %info.ref_names[native_index])
                 
         if info.subplot:
             plot_name = 'posterior_1d_%s' %name
@@ -276,7 +277,7 @@ def plot_2d_posteriors(info, tag, param_names, saved_subplots):
                 interp = get_mean_likelihood(info, trace, name)
                 ax.plot(interp[0], interp[1], ls='--', lw=info.line_width)
             except:
-                logger.warning('could not find likelihood contour for %s' %info.ref_params[native_index])
+                logger.warning('could not find likelihood contour for %s' %info.ref_names[native_index])
                 
         # do the rest of the triangle plot
         for second_index in xrange(index):

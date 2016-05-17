@@ -146,8 +146,8 @@ def setup_analyze_subparser(parent):
                                                  
     # to remove the mean-likelihood line
     h = "remove the mean likelihood from the 1D posterior plots"
-    subparser.add_argument('--no-mean', help=h, dest='mean_likelihood', 
-                                action='store_false')
+    subparser.add_argument('--show-mean', help=h, dest='mean_likelihood', 
+                                action='store_false', default=False)
     
     # if you just want the covariance matrix, use this option
     h = "do not produce any plot, simply compute the posterior"

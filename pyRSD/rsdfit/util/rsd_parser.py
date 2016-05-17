@@ -330,8 +330,9 @@ def verify_arguments(ns):
                 os.makedirs(ns.folder)
 
     # create a logs directory if it doesn't exist
-    log_dir = os.path.join(ns.folder, 'logs')
-    if not os.path.exists(log_dir): 
-        os.makedirs(log_dir)
+    if hasattr(ns, 'folder'):
+        log_dir = os.path.join(ns.folder, 'logs')
+        if not os.path.exists(log_dir): 
+            os.makedirs(log_dir)
     
     return ns

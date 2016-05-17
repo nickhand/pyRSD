@@ -190,6 +190,10 @@ class RSDFitDriver(object):
             if 'nchains' not in self._config:
                 self._config.append('nchains')
             self.nchains = len(self.restart_files)
+        elif self.mode == 'analyze':
+            if 'nchains' not in self._config:
+                self._config.append('nchains')
+            self.nchains = 1
         
         # too many chains requested?
         if self.nchains > self.comm.size:

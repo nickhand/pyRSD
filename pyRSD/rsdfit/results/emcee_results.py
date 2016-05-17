@@ -670,14 +670,15 @@ class EmceeResults(object):
         """
         import pandas as pd
         import seaborn as sns
-          
+        from ..analysis import tex_names
+         
         names = self.free_names + self.constrained_names
         if not all(name in names for name in [param1, param2]):
             raise ValueError("specified parameter names not valid")
             
         # default names
-        rename.setdefault(param1, param1)
-        rename.setdefault(param2, param2)
+        rename.setdefault(param1, tex_names.get(param1, param1))
+        rename.setdefault(param2, tex_names.get(param2, param2))
         
         # make the pandas Series of the flattened traces            
         trace1 = self[param1].trace()[:, self.burnin::thin].flatten()
@@ -699,7 +700,7 @@ class EmceeResults(object):
         
         if outfile is not None:
             g.savefig(outfile)
-        return fig
+        return g
 
     def summarize_fit(self):
         """

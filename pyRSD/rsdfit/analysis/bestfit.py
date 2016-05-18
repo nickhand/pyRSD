@@ -8,6 +8,8 @@
 """
 import pandas as pd
 from ... import numpy
+from . import tex_names
+from .tools import format_scaled_param
 
 #------------------------------------------------------------------------------
 # format functions
@@ -145,6 +147,19 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
     red_chi2 = []
     for i, name in enumerate(names):
         df = data[i]
+        
+        # check tex name
+        if 'tex_name' not in df:
+            for n in df.index:
+                if n in tex_names:
+                    df.loc[n, 'tex_name'] = format_scaled_param(tex_names[n], 1.0 / df.loc[n, 'scale'])                        
+        
+        # check scale
+        if 'scale' in df and (df['scale'] != 1.0).sum():
+            df['index'] = df.index
+            df['index'] = df.apply(format_scale, axis=1)
+            df = df.set_index('index')
+        
         if params == 'free':
             if not 'free' in df:
                 raise ValueError('cannot output only `free` parameters with no `free` column')
@@ -161,7 +176,11 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
             out = BestfitParameterSet(index=df.index)
             
         # add the columms
-        out[name] = df.apply(median_plus_error_fmt, args=(fmt,), axis=1)
+        if not df['median'].isnull().all():
+            out[name] = df.apply(median_plus_error_fmt, args=(fmt,), axis=1)
+        else:
+            out[name] = df['best_fit']
+            
         if all(hasattr(df, col) for col in chi2_meta):
             red_chi2 = 2*df.min_minus_lkl/(df.Nb-df.Np)
             args = (2*df.min_minus_lkl, df.Nb, df.Np, red_chi2)
@@ -173,6 +192,9 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
     if "red_chi2" in out.index and "tex_name" in out:
         out.loc["red_chi2", 'tex_name'] = r'$\chi^2$/d.o.f.'
         
+    # sort by param name first 
+    out = out.sort_index()
+    
     # index by tex_name?
     if 'tex_name' in out:
         out = out.set_index(out['tex_name'])

@@ -686,93 +686,11 @@ class FittingDriver(object):
         Plot the model and data points for the measurements, plotting the 
         P(k, mu) and multipoles on separate figures
         """
-        import plotify as pfy
+        from .util import plot
         
-        # get the data - model pairs (k, model, data, err)
-        results = self.data_model_pairs()
+        # plot the fit comparison
+        ax = plot.plot_fit_comparison(self)
         
-        fig = pfy.figure()
-        fig.usetex = usetex
-        if self.mode == 'pkmu':
-            self._plot_pkmu(fig, results, self.data.combined_mu)
-        elif self.mode == 'poles':
-            self._plot_poles(fig, results, self.data.combined_ell)
-
-    def _plot_pkmu(self, fig, results, mus):
-        """
-        Plot the model and data points for any P(k,mu) measurements
-        """
-        import plotify as pfy
-        
-        ax = fig.gca()
-        ax.color_cycle = 'Paired'
-
-        # set up the normalization
-        f = self.theory.fit_params['f'].value
-        b1 = self.theory.fit_params['b1'].value
-        beta = f/b1
-        Pnw_kaiser = lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * self.theory.model.normed_power_lin_nw(k)
-
-        offset = -0.1
-        flat_slices = self.data.flat_slices
-        for i, result in enumerate(results):
-            label=r"$\mu = %.2f$" %(self.data[i].identifier)
-            
-            # unpack the result
-            k_data, data, errs, model = result
-            mu = mus[flat_slices[i]]
-            
-            # plot the model
-            norm = Pnw_kaiser(k_data, mu)
-            pfy.plot(k_data, model/norm + offset*i)
-            
-            # plot the measurement
-            norm = Pnw_kaiser(k_data, mu)
-            pfy.errorbar(k_data, data/norm + offset*i, errs/norm, zorder=2, label=label)
-
-        ncol = 1 if self.data.size < 4 else 2
-        ax.legend(loc=0, ncol=ncol)
-        ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
-        ax.ylabel.update(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
-        
-        args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
-        ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
-        
-    def _plot_poles(self, fig, results, ells):
-        """
-        Plot the model and data points for any multipole measurements
-        """
-        import plotify as pfy
-        ax = fig.gca()
-        ax.color_cycle = 'Paired'
-
-        # set up the normalization
-        f = self.theory.fit_params['f'].value
-        b1 = self.theory.fit_params['b1'].value
-        beta = f/b1
-        mono_kaiser = lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * self.theory.model.normed_power_lin_nw(k)
-
-        for i, result in enumerate(results):
-            
-            # unpack the result
-            k_data, data, errs, model = result
-            
-            # plot the model
-            norm = mono_kaiser(k_data)
-            pfy.plot(k_data, model/norm)
-            
-            # plot the measurement
-            label = self.data[i].label
-            norm = mono_kaiser(k_data)
-            pfy.errorbar(k_data, data/norm, errs/norm, zorder=2, label=label)
-
-        ell_str = ",".join([str(m.identifier) for m in self.data])
-        ax.legend(loc=0)
-        ax.xlabel.update(r"$k$ (h/Mpc)", fontsize=14)
-        ax.ylabel.update(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" %(ell_str), fontsize=16)
-        
-        args = (self.lnprob(), self.Np, self.Nb, self.reduced_chi2())
-        ax.title.update(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
-        
-    
-    
+        # set usetex
+        if usetex:
+            ax.figure.usetex = True

@@ -180,7 +180,7 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
             out[name] = df.apply(median_plus_error_fmt, args=(fmt,), axis=1)
         else:
             out[name] = df['best_fit']
-            
+        
         if all(hasattr(df, col) for col in chi2_meta):
             red_chi2 = 2*df.min_minus_lkl/(df.Nb-df.Np)
             args = (2*df.min_minus_lkl, df.Nb, df.Np, red_chi2)
@@ -194,15 +194,18 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
         
     # sort by param name first 
     out = out.sort_index()
+
+    # move red_chi2 column to first
+    if "red_chi2" in out.index:
+        index = out.index.values.tolist()
+        i = index.index("red_chi2")
+        first = index.pop(i) 
+        out = out.reindex([first] + index)
     
     # index by tex_name?
     if 'tex_name' in out:
         out = out.set_index(out['tex_name'])
 
-    # move red_chi2 column to first
-    index = out.index.values
-    out = out.reindex([index[-1]] + list(index[:-1]))
-    
     if fmt == 'latex':
         pd.set_option('max_colwidth', 1000)
         kwargs = {'escape':False, 'index_names':False, 'columns':names}

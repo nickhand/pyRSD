@@ -11,10 +11,16 @@ def pkmu_normalization(driver):
     callable : 
         the P(k,mu) function callable
     """
+    # get f, b1 from the fit params
     f = driver.theory.fit_params['f'].value
     b1 = driver.theory.fit_params['b1'].value
     beta = f/b1
-    return lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * driver.theory.model.normed_power_lin_nw(k)
+    
+    # freeze the power norm
+    m = driver.theory.model
+    power_norm = (m.sigma8_z / m.cosmo.sigma8())**2
+    
+    return lambda k, mu: (1. + beta*mu**2)**2 * b1**2 * power_norm*m.power_lin_nw(k)
 
 def poles_normalization(driver):
     """
@@ -27,12 +33,18 @@ def poles_normalization(driver):
     callable : 
         the P(k,ell=0) function callable
     """
+    # get f, b1 from the fit params
     f = driver.theory.fit_params['f'].value
     b1 = driver.theory.fit_params['b1'].value
     beta = f/b1
-    return lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * driver.theory.model.normed_power_lin_nw(k)
+    
+    # freeze the power norm
+    m = driver.theory.model
+    power_norm = (m.sigma8_z / m.cosmo.sigma8())**2
+    
+    return lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * power_norm*m.power_lin_nw(k)
 
-def plot_normalized_data(ax, driver, offset=0., use_labels=True, **kwargs):
+def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kwargs):
     """
     Plot the normalized data from the input `FittingDriver`
     
@@ -62,10 +74,11 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, **kwargs):
             raise ValueError("color list must have a length of %d" %driver.data.size)
     
     # get the normalization
-    if driver.mode == 'pkmu':
-        norm = pkmu_normalization(driver)
-    else:
-        norm = poles_normalization(driver)
+    if norm is None:
+        if driver.mode == 'pkmu':
+            norm = pkmu_normalization(driver)
+        else:
+            norm = poles_normalization(driver)
         
     # loop over the data
     for i, m in enumerate(driver.data): 
@@ -85,7 +98,7 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, **kwargs):
         ax.errorbar(m.k, m.power/n + offset*i, m.error/n, label=label, **kwargs)
 
 
-def plot_normalized_theory(ax, driver, offset=0., **kwargs):
+def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs):
     """
     Plot the normalized theory from the input `FittingDriver`
     
@@ -111,10 +124,16 @@ def plot_normalized_theory(ax, driver, offset=0., **kwargs):
             raise ValueError("color list must have a length of %d" %driver.data.size)
     
     # get the normalization
-    if driver.mode == 'pkmu':
-        norm = pkmu_normalization(driver)
-    else:
-        norm = poles_normalization(driver)
+    if norm is None:
+        if driver.mode == 'pkmu':
+            norm = pkmu_normalization(driver)
+        else:
+            norm = poles_normalization(driver)
+            
+    # check the label
+    labels = [""]*driver.data.size
+    if label:
+        labels[0] = label
         
     slices = driver.data.flat_slices
     theory = driver.combined_model    
@@ -129,6 +148,7 @@ def plot_normalized_theory(ax, driver, offset=0., **kwargs):
             
         # plot the theory
         if colors is not None: kwargs['color'] = colors[i]
+        kwargs['label'] = labels[i]
         ax.plot(m.k, theory[slices[i]]/n + offset*i, **kwargs)
         
 def add_axis_labels(ax, driver):

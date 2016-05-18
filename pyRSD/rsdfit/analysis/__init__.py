@@ -1,6 +1,3 @@
-from .driver import AnalysisDriver
-from .bestfit import BestfitParameterSet, to_comparison_table
-
 tex_names               = {}
 tex_names['Nsat_mult']  = r'$N_{s,\mathrm{mult}}$'
 tex_names['fsB']        = r'$f_{s_B}$'
@@ -27,7 +24,10 @@ tex_names['NsBsB']      = r'$N_{s_B s_B}$'
 tex_names['fsigma8']    = r'$f \sigma_8$'
 tex_names['b1_c']       = r'$b_{1, c}$'
 tex_names['b1']         = r'$b_1$'
-tex_names['b1_s']       = r'$b_{1,s}$',
-tex_names['sigma_so']   = r"$\sigma_{so}$",
-tex_names['f_so']       = r"$f_{so}$", 
+tex_names['b1_s']       = r'$b_{1,s}$'
+tex_names['sigma_so']   = r"$\sigma_{so}$"
+tex_names['f_so']       = r"$f_{so}$"
 tex_names['b1sigma8']   = r"$b_1 \sigma_8$"
+
+from .driver import AnalysisDriver
+from .bestfit import BestfitParameterSet, to_comparison_table

@@ -24,6 +24,9 @@ extra_model_params = {'b1_s': 'linear bias of satellites',
                     'b1_c': 'linear bias of centrals', 
                     'b1': 'the total linear bias', 
                     'fsigma8' : 'f(z)*sigma8(z) at z of measurement',
-                    'b1sigma8' : 'b1*sigma8(z) at z of measurement'}
+                    'b1sigma8' : 'b1*sigma8(z) at z of measurement', 
+                    'F_AP' : 'the AP parameter: alpha_par/alpha_perp',
+                    'alpha' : 'the isotropic dilation',
+                    'epsilon' : 'the anisotropic warping'}
                     
 from .power_gal import GalaxyPowerParameters, GalaxyPowerTheory

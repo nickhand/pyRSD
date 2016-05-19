@@ -97,7 +97,13 @@ class GalaxyPowerParameters(ParameterSet):
         # b1*sigma8 at z
         if 'b1' in self and 'sigma8_z' in self:
             self['b1sigma8'].expr = "b1*sigma8_z"
-        
+            
+        # AP related
+        if 'alpha_perp' in self and 'alpha_par' in self:
+            self['F_AP'].expr  = "alpha_par/alpha_perp"
+            self['alpha'].expr = "(alpha_perp**2 * alpha_par)**(1./3)"
+            self['epsilon'].expr  = "(alpha_perp/alpha_par)**(-1./3) - 1.0"
+            
     def to_dict(self):
         """
         Return a dictionary of (name, value) for each name that is in 
@@ -223,6 +229,16 @@ class GalaxyPowerTheory(object):
         # update
         self.fit_params.prepare_params()
         self.fit_params.update_values()
+        
+        # check for any fixed, constrained values
+        for name in self.fit_params:
+            p = self.fit_params[name]
+            
+            # if no dependencies are free, set vary = False, constrained = False
+            if p.constrained:
+                if not any(self.fit_params[dep].vary for dep in p.deps):
+                    p.vary = False
+                    p.constrained = False
             
     #---------------------------------------------------------------------------
     # properties

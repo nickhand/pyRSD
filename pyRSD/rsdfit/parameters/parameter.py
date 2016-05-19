@@ -263,7 +263,17 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         Parameter is constrained if the `Parameter.expr == None`
         """
-        return self.expr is not None
+        try:
+            return self._constrained
+        except:
+            return self.expr is not None
+        
+    @constrained.setter
+    def constrained(self, val):
+        """
+        Set the constrained value
+        """
+        self._constrained = val
             
     @property
     def lnprior(self):

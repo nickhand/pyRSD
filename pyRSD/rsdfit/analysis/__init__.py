@@ -28,6 +28,9 @@ tex_names['b1_s']       = r'$b_{1,s}$'
 tex_names['sigma_so']   = r"$\sigma_{so}$"
 tex_names['f_so']       = r"$f_{so}$"
 tex_names['b1sigma8']   = r"$b_1 \sigma_8$"
+tex_names['F_AP']   = r"$F_\mathrm{AP}$"
+tex_names['alpha']   = r"$\alpha$"
+tex_names['epsilon']   = r"$\epsilon$"
 
 from .driver import AnalysisDriver
 from .bestfit import BestfitParameterSet, to_comparison_table

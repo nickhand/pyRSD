@@ -646,62 +646,6 @@ class EmceeResults(object):
             fig.savefig(outfile)
         return fig
         
-    def plot_2D_trace(self, param1, param2, 
-                        thin=1,
-                        rename={}, 
-                        crosshairs={}, 
-                        outfile=None, 
-                        **kwargs):
-        """
-        Plot the 2D traces of the given parameters, using KDE via ``seaborn``
-        
-        Note: any iterations during the "burnin" period are excluded
-        
-        Parameters
-        ----------
-        param1 : str
-            the name of the first parameter
-        param2 : str
-            the name of the second parameter
-        
-        outfile : str, optional
-            if not `None`, save the resulting figure with the specified name
-                    
-        """
-        import pandas as pd
-        import seaborn as sns
-        from ..analysis import tex_names
-         
-        names = self.free_names + self.constrained_names
-        if not all(name in names for name in [param1, param2]):
-            raise ValueError("specified parameter names not valid")
-            
-        # default names
-        rename.setdefault(param1, tex_names.get(param1, param1))
-        rename.setdefault(param2, tex_names.get(param2, param2))
-        
-        # make the pandas Series of the flattened traces            
-        trace1 = self[param1].trace()[:, self.burnin::thin].flatten()
-        trace1 = pd.Series(trace1, name=rename[param1])
-        trace2 = self[param2].trace()[:, self.burnin::thin].flatten()
-        trace2 = pd.Series(trace2, name=rename[param2])
-        
-        # do the plot
-        kwargs.setdefault('space', 0)
-        kwargs.setdefault('size', 7)
-        g = sns.jointplot(trace1, trace2, kind="kde", **kwargs)
-        
-        # plot any cross-hairs
-        ax = g.ax_joint
-        if param1 in crosshairs:
-            ax.axvline(x=crosshairs[param1], c="#888888", lw=1.5, alpha=0.4)
-        if param2 in crosshairs:
-            ax.axhline(y=crosshairs[param2], c="#888888", lw=1.5, alpha=0.4)
-        
-        if outfile is not None:
-            g.savefig(outfile)
-        return g
-        
     def jointplot_2d(self, param1, param2, 
                         thin=1,
                         rename={}, 
@@ -857,21 +801,165 @@ class EmceeResults(object):
             
         return toret
         
-    def to_dataframe(self):
+    def chains(self, params=[], use_latex=False):
         """
-        Return a pandas DataFrame, holding the flat traces as columns
+        Return a pandas DataFrame holding the chains (flat traces) as 
+        columns for both the free and constrained parameters
+        
+        Note that any burnin is removed from the chains.
+        
+        Parameters
+        ----------
+        params : list, {'free', 'constrained'}, optional
+            return only a subset of the parameters
+        use_latex : bool, optional
+            If `True`, try to use any available latex names for the tick
+            labels; default is `False`
+        
+        Returns
+        -------
+        DataFrame : 
+            the DataFrame holding the flat traces for all parameters
         """
         import pandas as pd
+        from ..analysis import tex_names
+
+        # do free or constrained
+        if params == 'free':
+            params = self.free_names
+        elif params == 'constrained':
+            params = self.constrained_names
+        elif isinstance(params, str):
+            params = [params]
 
         d = {}
+        
+        # add the free chains
         for p in self.free_names:
-            d[p] = self[p].flat_trace
-    
+            if len(params) and p not in params:
+                continue
+                
+            if use_latex and p in tex_names:
+                d[tex_names[p]] = self[p].flat_trace
+            else:
+                d[p] = self[p].flat_trace        
+                
+        # add the constrained chains
         for p in self.constrained_names:
-            d[p] = self[p].flat_trace
-
+            if len(params) and p not in params:
+                continue
+                
+            if use_latex and p in tex_names:
+                d[tex_names[p]] = self[p].flat_trace
+            else:
+                d[p] = self[p].flat_trace
+        
         return pd.DataFrame(d)
+        
+        
+    def corr(self, params=[], use_latex=False):
+        """
+        Return a pandas DataFrame holding the correlation matrix, 
+        as computed from the ``chains`` DataFrame, for all
+        parameters
+        
+        Parameters
+        ----------
+        params : list, {'free', 'constrained'}, optional
+            return only a subset of the parameters
+        use_latex : bool, optional
+            If `True`, try to use any available latex names for the tick
+            labels; default is `False`
+        
+        Returns
+        -------
+        DataFrame (Np, Np) :  
+            the DataFrame holding the correlation between parameters
+        """
+        return self.chains(params=params, use_latex=use_latex).corr()
+        
+    def sorted_1d_corrs(self, params=[], use_latex=False, absval=False):
+        """
+        Return a pandas DataFrame holding the correlation matrix, 
+        as computed from the ``chains`` DataFrame, for all
+        parameters
+        
+        Parameters
+        ----------
+        params : list, {'free', 'constrained'}, optional
+            return only a subset of the parameters
+        use_latex : bool, optional
+            If `True`, try to use any available latex names for the tick
+            labels; default is `False`
+        
+        Returns
+        -------
+        DataFrame (Np, Np) :  
+            the DataFrame holding the correlation between parameters
+        """
+        # the 2D correlation matrix
+        corr = self.corr(params=params, use_latex=use_latex)
+        if absval: corr = corr.abs()
+        
+        # generate a mask for the upper triangle
+        mask = np.zeros_like(corr, dtype=np.bool)
+        mask[np.triu_indices_from(mask)] = True
+        
+        # set the upper triangle (including diag) to NaN
+        corr.values[mask] = np.nan
+        
+        # unstack
+        s = corr.unstack()
+        
+        # sort and remove the NaNs
+        so = s.sort_values(kind="quicksort", ascending=False)
+        so = so[~so.isnull()]
+        
+        # reset the index
+        so = so.reset_index()
+        so.columns = ['param_1', 'param_2', 'corr']
+        return so
+        
+
+    def plot_correlation(self, params=[], use_latex=True):
+        """
+        Plot the diagonal correlation matrix, using ``seaborn.heatmap``
+        
+        Parameters
+        ----------
+        params : list, {'free', 'constrained'}, optional
+            return only a subset of the parameters
+        use_latex : bool, optional
+            If `True`, try to use any available latex names for the tick
+            labels; default is `True`. You might want to set this to `False`
+            if you are trying to use mpld3
+        """
+        import seaborn as sns
+        sns.set(style="white")
+        f, ax = sns.plt.subplots(figsize=(11, 9))
+        
+        # Compute the correlation matrix
+        corr = self.corr(params=params, use_latex=True)
+        
+        # Generate a mask for the upper triangle
+        mask = np.zeros_like(corr, dtype=np.bool)
+        mask[np.triu_indices_from(mask)] = True
+        
+        # Generate a custom diverging colormap
+        cmap = sns.diverging_palette(220, 10, as_cmap=True)
+        
+        # Draw the heatmap with the mask and correct aspect ratio
+        sns.heatmap(corr, mask=mask, cmap=cmap, vmax=.3,
+                    square=True, linewidths=.5, cbar_kws={"shrink": .5}, ax=ax)
+                    
+        # format the ticks
+        for f in [sns.plt.xticks, sns.plt.yticks]:
+            locs, labels = f()
+            sns.plt.setp(labels, rotation=45, fontsize=10)
             
+        return ax
+        
+        
         
 
     

@@ -1,6 +1,5 @@
 from ... import numpy as np
 from .. import logging
-from . import tools
 import scipy.stats
 
 logger = logging.getLogger('rsdfit.emcee_results')

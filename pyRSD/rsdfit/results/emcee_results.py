@@ -701,6 +701,124 @@ class EmceeResults(object):
         if outfile is not None:
             g.savefig(outfile)
         return g
+        
+    def jointplot_2d(self, param1, param2, 
+                        thin=1,
+                        rename={}, 
+                        crosshairs={}, 
+                        **kwargs):
+        """
+        Plot the 2D traces of the given parameters, using KDE via ``seaborn.jointplot``
+        
+        Note: any iterations during the "burnin" period are excluded
+        
+        Parameters
+        ----------
+        param1 : str
+            the name of the first parameter
+        param2 : str
+            the name of the second parameter
+        thin : int, optional
+            thin the plotted array randomly by this amount
+        rename : dict, optional
+            dictionary giving a string to rename each variable; default
+            will try to use any latex names stored
+        crosshairs : dict, optional
+            values to show as horizontal or vertical lines
+        **kwargs : 
+            additional keyword arguments to pass to ``seaborn``         
+        """
+        import pandas as pd
+        import seaborn as sns
+        from ..analysis import tex_names
+         
+        names = self.free_names + self.constrained_names
+        if not all(name in names for name in [param1, param2]):
+            raise ValueError("specified parameter names not valid")
+            
+        # default names
+        rename.setdefault(param1, tex_names.get(param1, param1))
+        rename.setdefault(param2, tex_names.get(param2, param2))
+        
+        # make the pandas Series of the flattened traces            
+        trace1 = self[param1].trace()[:, self.burnin::thin].flatten()
+        trace1 = pd.Series(trace1, name=rename[param1])
+        trace2 = self[param2].trace()[:, self.burnin::thin].flatten()
+        trace2 = pd.Series(trace2, name=rename[param2])
+        
+        # do the plot
+        kwargs.setdefault('space', 0)
+        kwargs.setdefault('size', 7)
+        with sns.axes_style("ticks"):
+            g = sns.jointplot(trace1, trace2, kind="kde", **kwargs)
+        
+        # plot any cross-hairs
+        ax = g.ax_joint
+        if param1 in crosshairs:
+            ax.axvline(x=crosshairs[param1], c="#888888", lw=1.5, alpha=0.4)
+        if param2 in crosshairs:
+            ax.axhline(y=crosshairs[param2], c="#888888", lw=1.5, alpha=0.4)
+        
+        return g
+        
+        
+    def kdeplot_2d(self, param1, param2, 
+                        thin=1,
+                        rename={}, 
+                        crosshairs={}, 
+                        **kwargs):
+        """
+        Plot the 2D traces of the given parameters, using KDE via ``seaborn.kdeplot``
+        
+        Note: any iterations during the "burnin" period are excluded
+        
+        Parameters
+        ----------
+        param1 : str
+            the name of the first parameter
+        param2 : str
+            the name of the second parameter
+        thin : int, optional
+            thin the plotted array randomly by this amount
+        rename : dict, optional
+            dictionary giving a string to rename each variable; default
+            will try to use any latex names stored
+        crosshairs : dict, optional
+            values to show as horizontal or vertical lines
+        **kwargs : 
+            additional keyword arguments to pass to ``seaborn``         
+        """
+        import pandas as pd
+        import seaborn as sns
+        from ..analysis import tex_names
+         
+        names = self.free_names + self.constrained_names
+        if not all(name in names for name in [param1, param2]):
+            raise ValueError("specified parameter names not valid")
+            
+        # default names
+        rename.setdefault(param1, tex_names.get(param1, param1))
+        rename.setdefault(param2, tex_names.get(param2, param2))
+        
+        # make the pandas Series of the flattened traces            
+        trace1 = self[param1].trace()[:, self.burnin::thin].flatten()
+        trace1 = pd.Series(trace1, name=rename[param1])
+        trace2 = self[param2].trace()[:, self.burnin::thin].flatten()
+        trace2 = pd.Series(trace2, name=rename[param2])
+        
+        # do the plot
+        kwargs.setdefault('shade', True)
+        kwargs.setdefault('shade_lowest', False)
+        with sns.axes_style("ticks"):
+            ax = sns.kdeplot(trace1, trace2, **kwargs)
+        
+        # plot any cross-hairs
+        if param1 in crosshairs:
+            ax.axvline(x=crosshairs[param1], c="#888888", lw=1.5, alpha=0.4)
+        if param2 in crosshairs:
+            ax.axhline(y=crosshairs[param2], c="#888888", lw=1.5, alpha=0.4)
+        
+        return ax
 
     def summarize_fit(self):
         """

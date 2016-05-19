@@ -921,7 +921,7 @@ class EmceeResults(object):
         return so
         
 
-    def plot_correlation(self, params=[], use_latex=True):
+    def plot_correlation(self, params=[], use_latex=True, labelsize=10):
         """
         Plot the diagonal correlation matrix, using ``seaborn.heatmap``
         
@@ -955,7 +955,7 @@ class EmceeResults(object):
         # format the ticks
         for f in [sns.plt.xticks, sns.plt.yticks]:
             locs, labels = f()
-            sns.plt.setp(labels, rotation=45, fontsize=10)
+            sns.plt.setp(labels, rotation=45, fontsize=labelsize)
             
         return ax
         

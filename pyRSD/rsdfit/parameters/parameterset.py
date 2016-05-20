@@ -174,7 +174,7 @@ class ParameterSet(lmfit.Parameters):
             modules = tools.import_function_modules(line[1])
 
             # now save to the dict, eval'ing the line
-            D[key] = tools.get_abspath(eval(line[1].strip(), globals().update(modules), D))
+            D[key] = eval(line[1].strip(), globals().update(modules), D)
             if save_orig is not None:
                 orig[key] = save_orig
                 

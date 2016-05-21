@@ -10,8 +10,34 @@ import functools
 import itertools
 
 #-------------------------------------------------------------------------------
-# decorators and contexts
+# AP effect
 #-------------------------------------------------------------------------------  
+def k_AP(k_obs, mu_obs, alpha_perp, alpha_par):
+    """
+    Return the `true` k values, given an observed (k, mu).
+    
+    This corresponds to the `k` to evaluate P(k,mu) at when including
+    the AP effect
+    """
+    F = alpha_par / alpha_perp
+    if (F != 1.):
+        return (k_obs/alpha_perp)*(1 + mu_obs**2*(1./F**2 - 1))**(0.5)
+    else:
+        return k_obs/alpha_perp
+            
+def mu_AP(mu_obs, alpha_perp, alpha_par):
+    """
+    Return the `true` mu values, given an observed mu
+    
+    This corresponds to the `mu` to evaluate P(k,mu) at when including
+    the AP effect
+    """
+    F = alpha_par / alpha_perp
+    return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)
+
+#-------------------------------------------------------------------------------
+# decorators and contexts
+#-------------------------------------------------------------------------------      
 class LowKPowerMode():
     """
     Context for computing power in `low-k mode`, which sets (and then restores)
@@ -42,6 +68,24 @@ class LowKPowerMode():
             if hasattr(self.model, k):
                 setattr(self.model, k, v)
 
+def doublewrap(f):
+    """
+    A decorator decorator, allowing the decorator to be used as:
+    @decorator(with, arguments, and=kwargs)
+    or
+    @decorator
+    """
+    @functools.wraps(f)
+    def new_dec(*args, **kwargs):
+        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+            # actual decorated function
+            return f(args[0])
+        else:
+            # decorator arguments
+            return lambda realf: f(realf, *args, **kwargs)
+
+    return new_dec
+    
 def unpacked(method):
     """
     Decorator to avoid return lists/tuples of length 1
@@ -60,6 +104,7 @@ def align_input(f):
     """
     Decorator to align input by repeating any scalar entries
     """     
+    @functools.wraps(f)
     def wrapper(self, **kw):
         ii = [k for k in kw if not np.isscalar(kw[k])]
         if len(ii):
@@ -74,14 +119,64 @@ def align_input(f):
         
     return wrapper
     
+@doublewrap
+def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
+    """
+    Decorator to introduce the AP effect
+    """
+    @functools.wraps(f)
+    def wrap(self, *args, **kwargs):
+        args = list(args)
+        
+        # if model is AP locked, do the distortion and lock
+        if not hasattr(self, '_AP_lock'):
+            # determine alpha_par, alpha_perp            
+            alpha_par_  = alpha_par if alpha_par is not None else self.alpha_par
+            alpha_perp_  = alpha_perp if alpha_perp is not None else self.alpha_perp
+        
+            # the k,mu to evaluate P(k, mu)
+            k = k_AP(args[0], args[1], alpha_perp_, alpha_par_)
+            mu = mu_AP(args[1], alpha_perp_, alpha_par_)
+        
+            # evaluate at the AP (k,mu)
+            args[:2] = k, mu
+            
+            self._AP_lock = True
+            pkmu = f(self, *args, **kwargs)
+            del self._AP_lock
+        
+            # do the volume rescaling
+            pkmu /= (alpha_perp_**2 * alpha_par_)
+                
+        # if locked, the distortion was already added
+        else:
+            pkmu = f(self, *args, **kwargs)
+            
+        return pkmu
+
+    return wrap
+             
+
 def broadcast_kmu(f):
     """
-    Decorator to properly handle broadcasting of k, mu
-    """     
+    Decorator to properly handle broadcasting of k, mu. 
+    
+    This will call the decorator function with the fully
+    broadcasted values, such that the input arguments
+    have shape (Nk, Nmu)
+    
+    Notes
+    -----
+    This assumes the first two arguments of ``f()`` 
+    are `k` and `mu`
+    """ 
+    @functools.wraps(f)    
     def wrapper(self, *args, **kwargs):
         args = list(args)
         k = args[0]
         mu = args[1]
+        if isinstance(k, list): k = np.array(k)
+        if isinstance(mu, list): mu = np.array(mu)
         if np.isscalar(k): k = np.array([k])
         if np.isscalar(mu): mu = np.array([mu])
         args[0] = k; args[1] = mu
@@ -89,13 +184,15 @@ def broadcast_kmu(f):
         mu_dim = np.ndim(mu); k_dim = np.ndim(k)
         if mu_dim == 1 and k_dim == 1:
             if len(mu) != len(k):
-                args[0] = k[:, np.newaxis]
-                args[1] = mu[np.newaxis, :]
+                k = k[:, np.newaxis]
+                mu = mu[np.newaxis, :]
         else:
             if k_dim > 1:
-                args[1] =  mu[np.newaxis, :]
+                mu =  mu[np.newaxis, :]
             else:
-                args[0] = k[:, np.newaxis]
+                k = k[:, np.newaxis]
+        
+        args[:2] = np.broadcast_arrays(k, mu)
         return np.squeeze(f(self, *args, **kwargs))
         
     return wrapper
@@ -104,6 +201,7 @@ def monopole(f):
     """
     Decorator to compute the monopole from a `self.power` function
     """     
+    @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
         k = args[0]
         mus = np.linspace(0., 1., 101)
@@ -114,7 +212,8 @@ def monopole(f):
 def quadrupole(f):
     """
     Decorator to compute the quadrupole from a `self.power` function
-    """     
+    """ 
+    @functools.wraps(f)    
     def wrapper(self, *args, **kwargs):
         k = args[0]
         mus = np.linspace(0., 1., 101)
@@ -127,6 +226,7 @@ def hexadecapole(f):
     """
     Decorator to compute the hexadecapole from a `self.power` function
     """  
+    @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
         k = args[0]
         mus = np.linspace(0., 1., 1001)
@@ -139,6 +239,7 @@ def tetrahexadecapole(f):
     """
     Decorator to compute the tetrahexadecapole from a `self.power` function
     """  
+    @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
         k = args[0]
         mus = np.linspace(0., 1., 1001)

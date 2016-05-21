@@ -1225,7 +1225,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     # main user callables
     #---------------------------------------------------------------------------
     @tools.broadcast_kmu
-    def power(self, k_obs, mu_obs, flatten=False):
+    def power(self, k, mu, flatten=False):
         """
         Return the redshift space power spectrum at the specified value of mu, 
         including terms up to ``mu**self.max_mu``.
@@ -1239,52 +1239,80 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         
         Returns
         -------
-        Pkmu : float, array_like
+        pkmu : float, array_like
             The power model P(k, mu). If `mu` is a scalar, return dimensions
             are `(len(self.k), )`. If `mu` has dimensions (N, ), the return
             dimensions are `(len(k), N)`, i.e., each column corresponds is the
             model evaluated at different `mu` values. If `flatten = True`, then
             the returned array is raveled, with dimensions of `(N*len(self.k), )`
         """
-        verify_krange(k_obs, self.kmin, self.kmax)
-        
-        # determine the true k/mu values and broadcast them to final shape
-        mu = self.mu_true(mu_obs)
-        k = self.k_true(k_obs, mu_obs)
-        k, mu = np.broadcast_arrays(k, mu)
-        
-        # volume scaling
-        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
-        
-        toret = np.zeros(k.shape)
+        # verify that the observed k values are not out of range
+        verify_krange(k, self.kmin, self.kmax)
+                
+        # the return array
+        pkmu = np.zeros(k.shape)
         idx = k >= self.k0_low
-        
-        def _power(_k, _mu):
-            if self.max_mu == 0:
-                P_out = self.P_mu0(_k)
-            elif self.max_mu == 2:
-                P_out = self.P_mu0(_k) + _mu**2*self.P_mu2(_k)
-            elif self.max_mu == 4:
-                P_out = self.P_mu0(_k) + _mu**2*self.P_mu2(_k) + _mu**4*self.P_mu4(_k)
-            elif self.max_mu == 6:
-                P_out = self.P_mu0(_k) + _mu**2*self.P_mu2(_k) + _mu**4*self.P_mu4(_k) + _mu**6*self.P_mu6(_k)
-            elif self.max_mu == 8:
-                raise NotImplementedError("Cannot compute power spectrum including terms with order higher than mu^6")
-            return np.nan_to_num(vol_scaling*P_out)
         
         # k >= k0_low
         if idx.sum():
-            toret[idx] = _power(k[idx], mu[idx])
+            pkmu[idx] = self._power(k[idx], mu[idx])
             
         # k < k0_low
         if (~idx).sum():
             A = _power(self.k0_low, mu[~idx])
             with tools.LowKPowerMode(self):
-                norm = A / _power(self.k0_low, mu[~idx])
-                toret[~idx] = _power(k[~idx], mu[~idx]) * norm
+                norm = A / self._power(self.k0_low, mu[~idx])
+                pkmu[~idx] = self._power(k[~idx], mu[~idx]) * norm
 
-        if flatten: toret = np.ravel(toret, order='F')
-        return toret
+        if flatten: pkmu = np.ravel(pkmu, order='F')
+        return pkmu
+    
+    @tools.alcock_paczynski
+    def _P_mu0(self, k, mu):
+        """
+        Return the AP-distorted P[mu^0]
+        """
+        return self.P_mu0(k)
+        
+    @tools.alcock_paczynski
+    def _P_mu2(self, k, mu):
+        """
+        Return the AP-distorted mu^2 P[mu^2]
+        """
+        return mu**2 * self.P_mu2(k)
+        
+    @tools.alcock_paczynski
+    def _P_mu4(self, k, mu):
+        """
+        Return the AP-distorted mu^4 P[mu^4]
+        """
+        return mu**4 * self.P_mu4(k)
+        
+    @tools.alcock_paczynski
+    def _P_mu6(self, k, mu):
+        """
+        Return the AP-distorted mu^6 P[mu^6]
+        """
+        return mu**6 * self.P_mu6(k)
+        
+    
+    def _power(self, k, mu):
+        """
+        Return the power as sum of mu powers
+        """
+        
+        if self.max_mu > 6:
+            raise NotImplementedError("cannot compute power spectrum including terms with order higher than mu^6")
+            
+        toret = 0
+        funcs = [self._P_mu0, self._P_mu2, self._P_mu4, self._P_mu6]
+        
+        i = 0
+        while i <= (self.max_mu//2):
+            toret += funcs[i](k, mu)
+            i += 1
+            
+        return np.nan_to_num(toret)
     
     @tools.monopole
     def monopole(self, k, mu, **kwargs):

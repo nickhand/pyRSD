@@ -280,18 +280,16 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         return self.Pgal(k, 0.5)
             
     @tools.broadcast_kmu
-    def evaluate_fog(self, k_obs, mu_obs, sigma):
+    def evaluate_fog(self, k, mu, sigma):
         """
-        Compute the FOG damping, evaluating at `k` and `mu`. The 
-        `alpha_par` dependence here is just absorbed into the `sigma` parameter
+        Compute the AP-distorted FOG damping, evaluating at `k` and `mu`
         """    
-        k = self.k_true(k_obs, mu_obs)
-        mu = self.mu_true(mu_obs)
         return self.fog_function(k*mu*sigma)
     
     #---------------------------------------------------------------------------
     # centrals power spectrum
     #--------------------------------------------------------------------------- 
+    @tools.alcock_paczynski
     def Pgal_cAcA(self, k, mu, flatten=False):
         """
         The central type `A` galaxy auto spectrum, which is a 2-halo term only.
@@ -307,6 +305,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         toret = G**2 * self.power(k, mu) + self.N        
         return toret if not flatten else np.ravel(toret, order='F')
     
+    @tools.alcock_paczynski
     def Pgal_cAcB(self, k, mu, flatten=False):
          """
          The centrals galaxy cross spectrum, which is a 2-halo term only.
@@ -323,6 +322,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
          toret = G**2 * self.power(k, mu) + self.N
          return toret if not flatten else np.ravel(toret, order='F')
          
+    @tools.alcock_paczynski
     def Pgal_cBcB(self, k, mu, flatten=False):
         """
         The central type `B` galaxy auto spectrum, which is a 2-halo term only.
@@ -338,6 +338,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         toret = G**2*self.power(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
         
+    @tools.alcock_paczynski
     def Pgal_cc(self, k, mu, flatten=False):
         """
         The totals centrals galaxy spectrum, which is a 2-halo term only.
@@ -351,11 +352,11 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             pk = PcAcA + PcAcB + PcBcB
         
             # add in an optional SO correction
-            toret = self.Pgal_cc_so(pk, k, mu) + N
+            toret = self._Pgal_cc_so(pk, k, mu) + N
            
         return toret if not flatten else np.ravel(toret, order='F')
         
-    def Pgal_cc_so(self, Pcc, k, mu):
+    def _Pgal_cc_so(self, Pcc, k, mu):
         """
         The SO correction term to add to `Pgal_cc`
         """
@@ -367,7 +368,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             term1 = (1 - self.f_so)**2 * G**2 * Pcc
             term2 = 2*self.f_so*(1-self.f_so) * G*G2 * Pcc
             term3 = self.f_so**2 * G2**2 * Pcc
-            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs/(self.alpha_perp**2 * self.alpha_par)
+            term4 = 2*G*G2*self.f_so*self.fcB*self.NcBs
             return term1 + term2 + term3 + term4
             
         # just return the input Pcc
@@ -377,6 +378,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # central-satellite cross spectrum
     #---------------------------------------------------------------------------
+    @tools.alcock_paczynski
     def Pgal_cAs(self, k, mu, flatten=False):
         """
         The cross spectrum between centrals with no satellites and satellites. 
@@ -394,6 +396,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         toret = G_c*G_s*self.power(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
         
+    @tools.alcock_paczynski
     def Pgal_cBs(self, k, mu, flatten=False):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
@@ -404,10 +407,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         G_s = self.evaluate_fog(k, mu, self.sigma_s)
         
         # return
-        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
-        toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs*vol_scaling) + self.N
+        toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
+    @tools.alcock_paczynski
     def Pgal_cBs_2h(self, k, mu):
         """
         The 2-halo term for the cross spectrum of centrals with sats in 
@@ -419,6 +422,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
             
         return self.power(k, mu)
     
+    @tools.alcock_paczynski
     def Pgal_cs(self, k, mu, flatten=False):
         """
         The total central-satellite cross spectrum.
@@ -434,6 +438,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # satellites auto spectrum
     #---------------------------------------------------------------------------
+    @tools.alcock_paczynski
     def Pgal_sAsA(self, k, mu, flatten=False):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
@@ -448,7 +453,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # now return the power spectrum here
         toret = G**2 * self.power(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
-        
+    
+    @tools.alcock_paczynski    
     def Pgal_sAsB(self, k, mu, flatten=False):
         """
         The cross spectrum of satellites with and without no other sats in 
@@ -466,6 +472,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         toret = G_sA*G_sB*self.power(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
 
+    @tools.alcock_paczynski
     def Pgal_sBsB(self, k, mu, flatten=False):
         """
         The auto spectrum of satellits with other sats in the same halo.
@@ -474,10 +481,10 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # the FOG damping terms
         G = self.evaluate_fog(k, mu, self.sigma_sB)
         
-        vol_scaling = 1./(self.alpha_perp**2 * self.alpha_par)
-        toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB*vol_scaling) + self.N
+        toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
+    @tools.alcock_paczynski
     def Pgal_sBsB_2h(self, k, mu):
         """
         The 2-halo term for the auto spectrum of satellits with other sats 
@@ -488,6 +495,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
 
         return self.power(k, mu)
             
+    @tools.alcock_paczynski
     def Pgal_ss(self, k, mu, flatten=False):
         """
         The total satellites auto spectrum
@@ -504,6 +512,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     # total galaxy P(k,mu)
     #---------------------------------------------------------------------------
+    @tools.broadcast_kmu
+    @tools.alcock_paczynski
     def Pgal(self, k, mu, flatten=False, update={}):
         """
         The total redshift-space galaxy power spectrum, combining the individual

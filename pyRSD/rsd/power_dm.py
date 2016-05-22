@@ -1247,7 +1247,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
             the returned array is raveled, with dimensions of `(N*len(self.k), )`
         """
         # verify that the observed k values are not out of range
-        verify_krange(k, self.kmin, self.kmax)
+        verify_krange(k, self.k.min(), self.k.max())
                 
         # the return array
         pkmu = np.zeros(k.shape)

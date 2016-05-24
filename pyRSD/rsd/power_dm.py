@@ -19,7 +19,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     """
     The dark matter power spectrum in redshift space
     """
-    __version__ = '0.1.1'
+    __version__ = '0.1.2'
     
     # splines and interpolation variables
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
@@ -37,7 +37,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
                        interpolate=True,
                        load_dm_sims=None,
                        k0_low=5e-3,
-                       enhance_wiggles=True,
+                       enhance_wiggles=False,
                        linear_power_file=None,
                        Pdv_model_type='jennings',
                        **kwargs):
@@ -329,10 +329,10 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         """
         return val
             
-    @parameter
+    @parameter(default="sigma_lin")
     def sigma_v(self, val):
         """
-        The velocity dispersion at z = 0. If not provided, defaults to the 
+        The velocity dispersion at `z`. If not provided, defaults to the 
         linear theory prediction (as given by `self.sigma_lin`) [units: Mpc/h]
         """
         return val

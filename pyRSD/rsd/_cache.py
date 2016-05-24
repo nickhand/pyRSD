@@ -4,6 +4,24 @@ from collections import OrderedDict
 import inspect
 import fnmatch
 
+def doublewrap(f):
+    """
+    A decorator decorator, allowing the decorator to be used as:
+    @decorator(with, arguments, and=kwargs)
+    or
+    @decorator
+    """
+    @wraps(f)
+    def new_dec(*args, **kwargs):
+        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+            # actual decorated function
+            return f(args[0])
+        else:
+            # decorator arguments
+            return lambda realf: f(realf, *args, **kwargs)
+
+    return new_dec
+
 class Property(object):
     def __init__(self, fget=None, fset=None, fdel=None, doc=None):
         self.fget = fget
@@ -166,13 +184,13 @@ class CacheSchema(type):
 @CachedModel
 class Cache(object):
     
-    def __new__(typ, *args, **kwargs):
-        obj = object.__new__(typ, *args, **kwargs)
+    def __new__(cls, *args, **kwargs):
+        obj = object.__new__(cls)
         obj._cache = {}
         return obj
-
-    def __init__(self):
-        pass
+    
+    def __init__(self, *args, **kwargs):
+        super(Cache, self).__init__(*args, **kwargs)
 
 def obj_eq(new_val, old_val):
     equal = False
@@ -186,7 +204,8 @@ def obj_eq(new_val, old_val):
         pass
     return equal
 
-def parameter(f):
+@doublewrap
+def parameter(f, default=None):
     """
     Decorator to represent a model parameter that must
     be set by the user
@@ -214,8 +233,22 @@ def parameter(f):
     @wraps(f)
     def _get_property(self):
         if _name not in self.__dict__:
-            raise ValueError("required parameter '%s' has not yet been set" %name)
-        return self.__dict__[_name]
+            if default is not None:
+                if hasattr(self, default):
+                    return getattr(self, default)
+                else:
+                    args = (name, default)
+                    raise ValueError("required parameter '%s' has not yet been set and default '%s' does not exist" %args)
+            else:
+                raise ValueError("required parameter '%s' has not yet been set" %name)
+        else:    
+            return self.__dict__[_name]
+            
+    def _del_property(self):
+        if _name in self.__dict__:
+            self.__dict__.pop(_name)
+        else:
+            raise ValueError("cannot delete attribue '%s'" %name)
        
     prop = ParameterProperty(_get_property, _set_property, None)
     prop._deps = set() # track things that depend on this parameter

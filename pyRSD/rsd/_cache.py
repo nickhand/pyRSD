@@ -235,13 +235,15 @@ def parameter(f, default=None):
         if _name not in self.__dict__:
             if default is not None:
                 if hasattr(self, default):
-                    return getattr(self, default)
+                    val = getattr(self, default)
+                    return val
                 else:
                     args = (name, default)
                     raise ValueError("required parameter '%s' has not yet been set and default '%s' does not exist" %args)
             else:
                 raise ValueError("required parameter '%s' has not yet been set" %name)
         else:    
+            
             return self.__dict__[_name]
             
     def _del_property(self):

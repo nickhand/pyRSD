@@ -19,7 +19,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     """
     The dark matter power spectrum in redshift space
     """
-    __version__ = '0.1.2'
+    __version__ = '0.1.3'
     
     # splines and interpolation variables
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
@@ -117,7 +117,6 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         self.alpha_par         = 1.
         self.alpha_perp        = 1.
         self.small_scale_sigma = 0.
-        self.sigma_v           = self.sigma_lin
         self.sigma_v2          = 0.
         self.sigma_bv2         = 0.
         self.sigma_bv4         = 0.

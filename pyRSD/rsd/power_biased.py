@@ -34,7 +34,6 @@ class BiasedSpectrum(DarkMatterSpectrum):
         self.use_tidal_bias     = use_tidal_bias
         self.include_2loop      = False # don't violate galilean invariance, fool
         self.b1                 = 2.
-        self.sigma_v            = self.sigma_lin
         
         # correction models
         self.correct_mu2   = correct_mu2
@@ -284,7 +283,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         return BiasToSigmaRelation(self.z, self.cosmo, interpolate=self.interpolate)
              
-    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1", "sigma8_z")
+    @cached_property("sigma_v", "sigma_lin", "vel_disp_from_sims", "_ib1", "sigma8_z")
     def sigmav_halo(self):
         """
         The velocity dispersion for halos, possibly as a function of bias
@@ -294,7 +293,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         else:
             return self.sigma_v
             
-    @cached_property("sigma_v", "vel_disp_from_sims", "_ib1_bar", "sigma8_z")
+    @cached_property("sigma_v", "sigma_lin", "vel_disp_from_sims", "_ib1_bar", "sigma8_z")
     def sigmav_halo_bar(self):
         """
         The velocity dispersion for halos, possibly as a function of bias

@@ -131,7 +131,7 @@ def transform_ipynb(df):
 #------------------------------------------------------------------------------
 # main class/functions
 #------------------------------------------------------------------------------ 
-def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
+def to_comparison_table(names, data, filename=None, params=None, fmt='latex', add_reduced_chi2=True):
     """
     Write out a comparison table from multiple BestfitParameterSet instances
     """
@@ -181,7 +181,7 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
         else:
             out[name] = df['best_fit']
         
-        if all(hasattr(df, col) for col in chi2_meta):
+        if add_reduced_chi2 and all(hasattr(df, col) for col in chi2_meta):
             red_chi2 = 2*df.min_minus_lkl/(df.Nb-df.Np)
             args = (2*df.min_minus_lkl, df.Nb, df.Np, red_chi2)
             out.loc['red_chi2', name] = "$%d/(%d - %d) = %.2f$" %args
@@ -189,14 +189,14 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex'):
         if 'tex_name' in df and 'tex_name' not in out:
             out['tex_name'] = df['tex_name']
     
-    if "red_chi2" in out.index and "tex_name" in out:
+    if add_reduced_chi2 and "red_chi2" in out.index and "tex_name" in out:
         out.loc["red_chi2", 'tex_name'] = r'$\chi^2$/d.o.f.'
         
     # sort by param name first 
     out = out.sort_index()
 
     # move red_chi2 column to first
-    if "red_chi2" in out.index:
+    if add_reduced_chi2 and "red_chi2" in out.index:
         index = out.index.values.tolist()
         i = index.index("red_chi2")
         first = index.pop(i) 

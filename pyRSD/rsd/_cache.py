@@ -252,7 +252,7 @@ def parameter(f, default=None):
         else:
             raise ValueError("cannot delete attribue '%s'" %name)
        
-    prop = ParameterProperty(_get_property, _set_property, None)
+    prop = ParameterProperty(_get_property, _set_property, _del_property)
     prop._deps = set() # track things that depend on this parameter
     return prop
 

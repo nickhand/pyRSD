@@ -123,7 +123,7 @@ class LimitedMemoryInverseHessian(object):
         yy *= yy
         
         if (ys == 0. or yy == 0.):
-            raise LBFGSStepError
+            raise LBFGSStepError("no LBFGS step")
         
         # set the zero element, corresponding to this iteration
         self.s[0] = sk
@@ -516,9 +516,10 @@ class LBFGS(object):
             yk = state['G'] - d['prev_state']['G']
             try:
                 d['H'].update(sk, yk)
-            except LBFGSStepError:
+            except LBFGSStepError as e:
+                self.logger.warning("error taking the LBFGS step")
                 d['status'] = -5
-                break
+                pass
 
             d['iteration'] += 1
                     

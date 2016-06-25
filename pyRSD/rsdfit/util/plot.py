@@ -62,6 +62,8 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kw
     **kwargs : 
         additional keywords to pass to the ``errorbar()`` function
     """
+    kwargs['ls'] = ""
+    kwargs['capthick'] = 2
     label = ""
         
     # check for a color list
@@ -96,7 +98,7 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kw
             else:
                 label = m.label
         if colors is not None: kwargs['color'] = colors[i]
-        ax.errorbar(m.k, m.power/n + offset*i, m.error/n, ls='', capthick=2, label=label, **kwargs)
+        ax.errorbar(m.k, m.power/n + offset*i, m.error/n, label=label, **kwargs)
 
 
 def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs):

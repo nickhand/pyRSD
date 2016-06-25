@@ -1,4 +1,5 @@
 import fnmatch
+import contextlib
 
 from ._cache import Cache, parameter, interpolated_property, cached_property
 from . import tools, INTERP_KMIN, INTERP_KMAX
@@ -8,6 +9,7 @@ from ._integrals import Integrals
 from ._sim_loader import SimLoader
 from .simulation import SimulationPdv, SimulationP11
 from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11
+
 
 def verify_krange(k, kmin, kmax):
     if np.amin(k) < kmin:
@@ -146,6 +148,34 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------
+    @contextlib.contextmanager
+    def use_spt(self):
+        """
+        Context manager to turn off all models
+        """
+        from collections import OrderedDict
+        params = OrderedDict({'use_P00_model':False, 'use_P01_model':False, 
+                                'use_P11_model':False, 'use_Pdv_model':False, 
+                                'use_Phm_model':False})
+        
+        try:
+            
+            # save the original state
+            state = {k:getattr(self, k, None) for k in params}
+        
+            # update the state to low-k mode
+            for k,v in params.iteritems():
+                if hasattr(self, k):
+                    setattr(self, k, v)            
+            yield
+        except:
+            pass
+        finally:
+            # restore the original state
+            for k, v in state.iteritems():
+                if hasattr(self, k):
+                    setattr(self, k, v)
+                        
     @parameter
     def load_dm_sims(self, val):
         """
@@ -1259,7 +1289,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
         # k < k0_low
         if (~idx).sum():
             A = _power(self.k0_low, mu[~idx])
-            with tools.LowKPowerMode(self):
+            with self.use_spt():
                 norm = A / self._power(self.k0_low, mu[~idx])
                 pkmu[~idx] = self._power(k[~idx], mu[~idx]) * norm
 

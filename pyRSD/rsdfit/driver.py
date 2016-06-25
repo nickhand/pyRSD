@@ -681,7 +681,7 @@ class FittingDriver(object):
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
         ax.legend(loc=0, ncol=2)
             
-    def plot(self, usetex=False):
+    def plot(self, usetex=False, ax=None, colors=None, use_labels=True, **kws):
         """
         Plot the model and data points for the measurements, plotting the 
         P(k, mu) and multipoles on separate figures
@@ -689,7 +689,7 @@ class FittingDriver(object):
         from .util import plot
         
         # plot the fit comparison
-        ax = plot.plot_fit_comparison(self)
+        ax = plot.plot_fit_comparison(self, ax=ax, colors=colors, use_labels=use_labels, **kws)
         
         # set usetex
         if usetex:

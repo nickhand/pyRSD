@@ -1,4 +1,5 @@
-import plotify as pfy
+from matplotlib import pyplot as plt
+import seaborn as sns
 
 def pkmu_normalization(driver):
     """
@@ -70,8 +71,8 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kw
     elif 'c' in kwargs and isinstance(kwargs['c'], list):
         colors = kwargs['c']
     if colors is not None:
-        if len(colors) != driver.data.size:
-            raise ValueError("color list must have a length of %d" %driver.data.size)
+        if len(colors) < driver.data.size:
+            raise ValueError("color list must have a length of at least %d" %driver.data.size)
     
     # get the normalization
     if norm is None:
@@ -95,7 +96,7 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kw
             else:
                 label = m.label
         if colors is not None: kwargs['color'] = colors[i]
-        ax.errorbar(m.k, m.power/n + offset*i, m.error/n, label=label, **kwargs)
+        ax.errorbar(m.k, m.power/n + offset*i, m.error/n, ls='', capthick=2, label=label, **kwargs)
 
 
 def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs):
@@ -120,8 +121,8 @@ def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs)
     elif 'c' in kwargs and isinstance(kwargs['c'], list):
         colors = kwargs['c']
     if colors is not None:
-        if len(colors) != driver.data.size:
-            raise ValueError("color list must have a length of %d" %driver.data.size)
+        if len(colors) < driver.data.size:
+            raise ValueError("color list must have a length of at least %d" %driver.data.size)
     
     # get the normalization
     if norm is None:
@@ -161,7 +162,7 @@ def add_axis_labels(ax, driver):
         ax.set_ylabel(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
     else:
         ell_str = ",".join([str(m.identifier) for m in driver.data])
-        ax.ylabel.update(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" %(ell_str), fontsize=16)
+        ax.set_ylabel(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" %(ell_str), fontsize=16)
     
 def add_info_title(ax, driver):
     """
@@ -170,25 +171,26 @@ def add_info_title(ax, driver):
     args = (driver.lnprob(), driver.Np, driver.Nb, driver.reduced_chi2())
     ax.set_title(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
 
-def plot_fit_comparison(driver):
+def plot_fit_comparison(driver, ax=None, colors=None, use_labels=True, **kws):
     """
     Plot the model and data points for any P(k,mu) measurements
     """
     # use a Paired color
-    ax = pfy.gca()
-    ax.color_cycle = "Paired"
-    colors = ax.color_list
+    if ax is None:
+        ax = plt.gca()
+    if colors is None:
+        colors = sns.color_palette("Paired", 14)
     
     # offset
     offset = -0.1 if driver.mode == 'pkmu' else 0.
     
     # plot the theory
     c = colors[::2][:driver.data.size]
-    plot_normalized_theory(ax, driver, offset=offset, color=c)
+    plot_normalized_theory(ax, driver, offset=offset, color=c, **kws)
     
     # plot the data
     c = colors[1::2][:driver.data.size]
-    plot_normalized_data(ax, driver, offset=offset, use_labels=True, zorder=2, color=c)
+    plot_normalized_data(ax, driver, offset=offset, use_labels=use_labels, zorder=2, color=c, **kws)
 
     # format the axes
     add_axis_labels(ax, driver)

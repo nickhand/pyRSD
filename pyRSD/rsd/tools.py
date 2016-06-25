@@ -36,38 +36,8 @@ def mu_AP(mu_obs, alpha_perp, alpha_par):
     return (mu_obs/F) * (1 + mu_obs**2*(1./F**2 - 1))**(-0.5)
 
 #-------------------------------------------------------------------------------
-# decorators and contexts
+# decorators
 #-------------------------------------------------------------------------------      
-class LowKPowerMode():
-    """
-    Context for computing power in `low-k mode`, which sets (and then restores)
-    various parameters to use SPT below a default ``k`` value
-    """
-    from collections import OrderedDict
-    params = OrderedDict({'use_P00_model':False, 'use_P01_model':False, 
-                            'use_P11_model':False, 'use_Pdv_model':False, 
-                            'use_Phm_model':False})
-                
-    def __init__(self, model):
-        self.model = model
-        
-    def __enter__(self):
-        
-        # save the original state
-        self.state = {k:getattr(self.model, k, None) for k in self.params.keys()}
-        
-        # update the state to low-k mode
-        for k,v in self.params.iteritems():
-            if hasattr(self.model, k):
-                setattr(self.model, k, v)
-            
-    def __exit__(self, type, value, traceback):
-        
-        # restore the original state
-        for k, v in self.state.iteritems():
-            if hasattr(self.model, k):
-                setattr(self.model, k, v)
-
 def doublewrap(f):
     """
     A decorator decorator, allowing the decorator to be used as:

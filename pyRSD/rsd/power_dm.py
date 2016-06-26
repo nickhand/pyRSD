@@ -24,13 +24,13 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
     __version__ = '0.1.3'
     
     # splines and interpolation variables
-    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 200)
+    k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 250)
     spline = tools.RSDSpline
     spline_kwargs = {'bounds_error' : True, 'fill_value' : 0}
     
     def __init__(self, kmin=1e-3,
                        kmax=0.5,
-                       Nk=100,
+                       Nk=200,
                        z=0., 
                        cosmo_filename="planck1_WP.ini",
                        include_2loop=False,

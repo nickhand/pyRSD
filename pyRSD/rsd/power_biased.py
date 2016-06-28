@@ -450,8 +450,9 @@ class BiasedSpectrum(DarkMatterSpectrum):
             K20_a = self.K20_a(self.k)
             K20s_a = self.K20s_a(self.k)
             
+            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
             term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-            term2_mu2 =  -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P00_ss_no_stoch.total.mu0
+            term2_mu2 =  -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * P00_ss
             term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
             P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
             
@@ -463,7 +464,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
                 K20s_b = self.K20s_b(self.k)
                 
                 term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
-                term2_mu4 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
+                term2_mu4 = self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
                 P02_ss.total.mu4 = term1_mu4 + term2_mu4
         
         return P02_ss
@@ -601,6 +602,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         contributions here. 
         """
         b1, b1_bar = self._ib1, self._ib1_bar
+        b2_00, b2_00_bar = self.b2_00, self.b2_00_bar
         P22_ss = PowerTerm()
         
         # do mu^4 terms?
@@ -614,13 +616,14 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term1 = self.P22.no_velocity.mu4
             
             # add convolution to P22bar
-            term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.sigmasq_k(self.k)**2
+            term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.P00.total.mu0) * self.sigmasq_k(self.k)**2
             
             # b1 * P02_bar
             term3 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
             
             # sigma^4 x P00_ss
-            term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * self.P00_ss_no_stoch.total.mu0
+            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+            term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * P00_ss
             
             P22_ss.total.mu4 = term1 + term2 + term3 + term4
             
@@ -640,6 +643,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
         ((1+delta_h)v)^4, which contributes mu^4 and mu^6 terms, at 2-loop order.
         """
         b1, b1_bar = self._ib1, self._ib1_bar
+        b2_00, b2_00_bar = self.b2_00, self.b2_00_bar
         P04_ss = PowerTerm()
         
         # do mu^4 terms?
@@ -653,7 +657,8 @@ class BiasedSpectrum(DarkMatterSpectrum):
             term1 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu2
             
             # contribution here from P00_ss * vel^4
-            A = (1./12)*(self.f*self.k)**4 * self.P00_ss_no_stoch.total.mu0
+            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+            A = (1./12)*(self.f*self.k)**4 * P00_ss
             term2 = A*(3.*0.5*(sigsq**2 + sigsq_bar**2) + self.velocity_kurtosis)
             
             P04_ss.total.mu4 = term1 + term2

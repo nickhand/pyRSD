@@ -19,7 +19,17 @@ base_model_params = {'sigma8_z': 'mass variance at r = 8 Mpc/h at z',
                     'N' : 'constant offset to model, in (Mpc/h)^3', 
                     'f_so' : 'so vs fof fraction', 
                     'sigma_so' : 'so vs fof sigma',
-                    'sigma_v' : 'the velocity dispersions'}
+                    'sigma_v' : 'the velocity dispersions', 
+                    'A0_b2_00' : 'A0 for b2_00 fit',
+                    'A2_b2_00' : 'A2 for b2_00 fit',
+                    'A4_b2_00' : 'A4 for b2_00 fit',
+                    'A0_b2_01' : 'A0 for b2_01 fit',
+                    'A1_b2_01' : 'A1 for b2_01 fit',
+                    'A2_b2_01' : 'A2 for b2_01 fit',
+                    'A0_b2_12' : 'A0 for b2_12 fit',
+                    'A1_b2_12' : 'A1 for b2_12 fit',
+                    'A2_b2_12' : 'A2 for b2_12 fit',
+                }
 
 extra_model_params = {'b1_s': 'linear bias of satellites',
                     'b1_c': 'linear bias of centrals', 

@@ -41,6 +41,16 @@ class BiasedSpectrum(DarkMatterSpectrum):
         
         # set b1_bar, unless we are fixed
         if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
+        
+        self.A0_b2_00 = 0.
+        self.A2_b2_00 = 0.
+        self.A4_b2_00 = 0.
+        self.A0_b2_01 = 0.
+        self.A1_b2_01 = 0.
+        self.A2_b2_01 = 0.
+        self.A0_b2_12 = 0.
+        self.A1_b2_12 = 0.
+        self.A2_b2_12 = 0.
          
     #---------------------------------------------------------------------------
     # attributes
@@ -149,6 +159,42 @@ class BiasedSpectrum(DarkMatterSpectrum):
         The linear bias factor of the 2nd tracer.
         """
         return val
+        
+    @parameter
+    def A0_b2_00(self, val):
+        return val
+    
+    @parameter
+    def A2_b2_00(self, val):
+        return val
+        
+    @parameter
+    def A4_b2_00(self, val):
+        return val
+    
+    @parameter
+    def A0_b2_01(self, val):
+        return val
+    
+    @parameter
+    def A1_b2_01(self, val):
+        return val
+        
+    @parameter
+    def A2_b2_01(self, val):
+        return val
+        
+    @parameter
+    def A0_b2_12(self, val):
+        return val
+    
+    @parameter
+    def A1_b2_12(self, val):
+        return val
+        
+    @parameter
+    def A2_b2_12(self, val):
+        return val
 
     #---------------------------------------------------------------------------
     # simulation-calibrated model parameters
@@ -231,28 +277,87 @@ class BiasedSpectrum(DarkMatterSpectrum):
         """
         The quadratic, local bias used for the P00_ss term for the 1st tracer.
         """
-        return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_00')
+        #return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_00')
+        
+        b1 = self._ib1
+        return self.A4_b2_00*b1**4 + self.A2_b2_00*b1**2 + self.A0_b2_00
+        
+        
+        #A4_b2_00 = 0.05285907
+        #A2_b2_00 = 0.03364291
+        #A0_b2_00 = -0.60144696
+        #return A4_b2_00*b1**4 + A2_b2_00*b1**2 + A0_b2_00
         
     @cached_property("_ib1_bar", "z")
     def b2_00_bar(self):
         """
         The quadratic, local bias used for the P00_ss term for the 2nd tracer.
         """
-        return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_00')
+        #return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_00')
+        b1 = self._ib1_bar
+        return self.A4_b2_00*b1**4 + self.A2_b2_00*b1**2 + self.A0_b2_00
+        #A4_b2_00 = 0.05285907
+        #A2_b2_00 = 0.03364291
+        #A0_b2_00 = -0.60144696
+        #return A4_b2_00*b1**4 + A2_b2_00*b1**2 + A0_b2_00
     
     @cached_property("_ib1", "z")
     def b2_01(self):
         """
         The quadratic, local bias used for the P01_ss term for the 1st tracer.
         """
-        return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_01')        
+        #return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_01')        
+        
+        b1 = self._ib1
+        return self.A2_b2_01*b1**2 + self.A1_b2_01*b1 + self.A0_b2_01
+    
+        #A2_b2_01 = 0.70015254
+        #A1_b2_01 = -1.49494339
+        #A0_b2_01 = 0.45418692
+        #return A2_b2_01*b1**2 + A1_b2_01*b1 + A0_b2_01
     
     @cached_property("_ib1_bar", "z")
     def b2_01_bar(self):
         """
         The quadratic, local bias used for the P01_ss term for the 2nd tracer.
         """
-        return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_01')
+        #return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_01')
+        b1 = self._ib1_bar
+        return self.A2_b2_01*b1**2 + self.A1_b2_01*b1 + self.A0_b2_01
+        #A2_b2_01 = 0.70015254
+        #A1_b2_01 = -1.49494339
+        #A0_b2_01 = 0.45418692
+        #return A2_b2_01*b1**2 + A1_b2_01*b1 + A0_b2_01
+        
+        
+    @cached_property("_ib1", "z")
+    def b2_12(self):
+        """
+        The quadratic, local bias used for the P01_ss term for the 1st tracer.
+        """
+        return self.b2_01 + self.A0_b2_12
+        #return self.nonlinear_bias_fitter(b1=self._ib1, z=self.z, select='b2_01')        
+        #b1 = self._ib1
+        #return self.A2_b2_12*b1**2 + self.A1_b2_12*b1 + self.A0_b2_12
+        #A2_b2_12 =  0.84917313
+        #A1_b2_12 = -1.94067083
+        #A0_b2_12 = 1.89897959
+        #return A2_b2_12*b1**2 + A1_b2_12*b1 + A0_b2_12
+    
+    @cached_property("_ib1_bar", "z")
+    def b2_12_bar(self):
+        """
+        The quadratic, local bias used for the P01_ss term for the 2nd tracer.
+        """
+        return self.b2_01_bar + self.A0_b2_12
+        
+        #return self.nonlinear_bias_fitter(b1=self._ib1_bar, z=self.z, select='b2_01')
+        #b1 = self._ib1_bar
+        #return self.A2_b2_12*b1**2 + self.A1_b2_12*b1 + self.A0_b2_12
+        #A2_b2_12 =  0.84917313
+        #A1_b2_12 = -1.94067083
+        #A0_b2_12 = 1.89897959
+        #return A2_b2_12*b1**2 + A1_b2_12*b1 + A0_b2_12
     
     @cached_property("_ib1", "use_tidal_bias")
     def bs(self):
@@ -519,15 +624,29 @@ class BiasedSpectrum(DarkMatterSpectrum):
         ((1+delta_h)v)^3, which contributes mu^4 terms.
         """
         b1, b1_bar  = self._ib1, self._ib1_bar
+        b2_01, b2_01_bar = self.b2_12, self.b2_12_bar
+        
         P03_ss = PowerTerm()
         
         # do mu^4 term?
         if self.max_mu >= 4:
             
+            # get the integral attributes
+            K10  = self.K10(self.k)
+            K10s = self.K10s(self.k)
+            K11  = self.K11(self.k)
+            K11s = self.K11s(self.k)
+            
+            term1 = (b1*b1_bar) * self.P01.total.mu2
+            term2 = -self.Pdv*(b1*(1. - b1_bar) + b1_bar*(1. - b1))
+            term3 = self.f*((b2_01 + b2_01_bar)*K10 + (self.bs + self.bs_bar)*K10s )
+            term4 = self.f*((b1_bar*b2_01 + b1*b2_01_bar)*K11 + (b1_bar*self.bs + b1*self.bs_bar)*K11s)
+            P01_ss = term1 + term2 + term3 + term4
+            
             # velocites
             sigsq = self.sigmav_halo**2
             sigsq_bar = self.sigmav_halo_bar**2
-            P03_ss.total.mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P01_ss.total.mu2
+            P03_ss.total.mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * P01_ss
                 
         return P03_ss
             
@@ -538,11 +657,26 @@ class BiasedSpectrum(DarkMatterSpectrum):
         contributes mu^4 and mu^6 terms to the power expansion.
         """
         b1, b1_bar = self._ib1, self._ib1_bar
+        b2_01, b2_01_bar = self.b2_12, self.b2_12_bar
+        
         P12_ss = PowerTerm()
         
         # do mu^4 terms?
         if self.max_mu >= 4:
             Plin = self.normed_power_lin(self.k)
+            
+            # get the integral attributes
+            K10  = self.K10(self.k)
+            K10s = self.K10s(self.k)
+            K11  = self.K11(self.k)
+            K11s = self.K11s(self.k)
+            
+            term1 = (b1*b1_bar) * self.P01.total.mu2
+            term2 = -self.Pdv*(b1*(1. - b1_bar) + b1_bar*(1. - b1))
+            term3 = self.f*((b2_01 + b2_01_bar)*K10 + (self.bs + self.bs_bar)*K10s )
+            term4 = self.f*((b1_bar*b2_01 + b1*b2_01_bar)*K11 + (b1_bar*self.bs + b1*self.bs_bar)*K11s)
+            P01_ss = term1 + term2 + term3 + term4
+                        
             
             # the velocities
             sigsq = self.sigmav_halo**2
@@ -550,7 +684,7 @@ class BiasedSpectrum(DarkMatterSpectrum):
             
             term1_mu4 = self.P12.total.mu4
             term2_mu4 = -0.5*((b1 - 1) + (b1_bar - 1))*self.f**3*self.I03(self.k)
-            term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (self.P01_ss.total.mu2 - self.P01.total.mu2)
+            term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (P01_ss - self.P01.total.mu2)
             P12_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
                         
             # do mu^6 terms?

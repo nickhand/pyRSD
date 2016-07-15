@@ -62,8 +62,8 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kw
     **kwargs : 
         additional keywords to pass to the ``errorbar()`` function
     """
-    kwargs['ls'] = ""
-    kwargs['capthick'] = 2
+    kwargs.setdefault('ls', "")
+    kwargs.setdefault('capthick', 2)
     label = ""
         
     # check for a color list
@@ -116,6 +116,9 @@ def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs)
     **kwargs : 
         additional keywords to pass to the ``plot()`` function
     """
+    if 'capthick' in kwargs:
+        kwargs.pop('capthick')
+        
     # check for a color list
     colors = None
     if 'color' in kwargs and isinstance(kwargs['color'], list):

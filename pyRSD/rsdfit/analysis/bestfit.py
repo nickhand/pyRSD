@@ -167,9 +167,8 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex', ad
         elif params == 'constrained':
             df = df.loc[df.free == False]
         elif params is not None:
-            if not all(p in df.index for p in params):
-                raise ValueError("cannot trim by `params` -- some parameters not present")
-            df = df.loc[params]
+            trim = [p for p in params if p in df.index]
+            df = df.loc[trim]
         
         # initialize the output set, if we haven't yet
         if i == 0:

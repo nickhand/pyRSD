@@ -68,7 +68,7 @@ class LBFGSResults(object):
         atts = ['free_names', 'constrained_names', 'min_chi2', 'data',
                 'min_chi2_values', 'min_chi2_constrained_values']
         d = {k:getattr(self, k) for k in atts}
-        d['model_version'] = getattr(k, 'model_version', None)
+        d['model_version'] = getattr(self, 'model_version', None)
         np.savez(filename, **d)
         
     @classmethod

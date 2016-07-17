@@ -10,12 +10,12 @@
 from . import tools, distributions as dists
 from .. import lmfit
 from ... import numpy as np
-from ...rsd._cache import CachedModel, parameter, cached_property
+from ...rsd._cache import CacheSchema, parameter, cached_property
 import copy_reg
 
     
-@CachedModel
 class PickeableCache(object):
+    __metaclass__ = CacheSchema
     
     def __new__(cls, *args, **kwargs):
         

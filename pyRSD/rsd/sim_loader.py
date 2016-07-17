@@ -2,9 +2,9 @@ from ._cache import parameter, interpolated_property, cached_property, rename
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
     
 #-------------------------------------------------------------------------------
-class SimLoader(object):
+class SimLoaderMixin(object):
     """
-    Class to help deal with loading of power terms from simulations
+    A mixin class to help deal with loading of power terms from simulations
     """
     _loadable_power_terms = ["Pdv", "P00_mu0", "P01_mu2", "P11_mu2", "P11_mu4"]
     

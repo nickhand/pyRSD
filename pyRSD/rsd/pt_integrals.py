@@ -50,9 +50,9 @@ def normalize_ImnOneLoop(f):
     f.fget = wrapper
     return f
 
-class Integrals(object):
+class PTIntegralsMixin(object):
     """
-    Class to compute and store the necessary PT integrals for the dark 
+    A mixin class to compute and store the necessary PT integrals for the dark 
     matter redshift space power spectrum. 
     
     Notes

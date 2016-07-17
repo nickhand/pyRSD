@@ -5,8 +5,8 @@ from ._cache import Cache, parameter, interpolated_property, cached_property
 from . import tools, INTERP_KMIN, INTERP_KMAX
 from .. import pygcl, numpy as np, data as sim_data, os
 
-from ._integrals import Integrals
-from ._sim_loader import SimLoader
+from .pt_integrals import PTIntegralsMixin
+from .sim_loader import SimLoaderMixin
 from .simulation import SimulationPdv, SimulationP11
 from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11
 
@@ -17,7 +17,7 @@ def verify_krange(k, kmin, kmax):
     if np.amax(k) > kmax:
         raise ValueError("cannot compute power spectrum for k > %.2e; adjust `kmax` parameter" %kmax)
 
-class DarkMatterSpectrum(Cache, SimLoader, Integrals):
+class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     """
     The dark matter power spectrum in redshift space
     """
@@ -95,7 +95,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
             power spectrum, from which the transfer function in ``cosmo``
             will be initialized
         """   
-        SimLoader.__init__(self)
+        SimLoaderMixin.__init__(self)
         
         # set the input parameters
         self.interpolate       = interpolate
@@ -143,7 +143,7 @@ class DarkMatterSpectrum(Cache, SimLoader, Integrals):
                 print "warning: extra keyword `%s` is ignored" %k
         
         # finally, initialize the integrals    
-        Integrals.__init__(self)
+        PTIntegralsMixin.__init__(self)
                     
     #---------------------------------------------------------------------------
     # parameters

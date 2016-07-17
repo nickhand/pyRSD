@@ -10,8 +10,10 @@ from .sim_loader import SimLoaderMixin
 from .simulation import SimulationPdv, SimulationP11
 from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11
 
-
 def verify_krange(k, kmin, kmax):
+    """
+    Verify that the array min/max are valid
+    """
     if np.amin(k) < kmin:
         raise ValueError("cannot compute power spectrum for k < %.2e; adjust `kmin` parameter" %kmin)
     if np.amax(k) > kmax:
@@ -21,7 +23,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     """
     The dark matter power spectrum in redshift space
     """
-    __version__ = '0.1.4'
+    __version__ = '0.1.5'
     
     # splines and interpolation variables
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 250)

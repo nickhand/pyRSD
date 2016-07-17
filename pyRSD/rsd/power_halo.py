@@ -17,20 +17,6 @@ class HaloSpectrum(BiasedSpectrum):
         """
         return self.b1
 
-    @cached_property("b2_00")
-    def b2_00_bar(self):
-        """
-        The quadratic, local bias used for the P00_ss term.
-        """
-        return self.b2_00
-        
-    @cached_property("b2_01")
-    def b2_01_bar(self):
-        """
-        The quadratic, local bias used for the P01_ss term.
-        """
-        return self.b2_01
-
     @cached_property("bs")
     def bs_bar(self):
         """

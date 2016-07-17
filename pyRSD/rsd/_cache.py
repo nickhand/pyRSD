@@ -13,9 +13,9 @@ def doublewrap(f):
     """
     @wraps(f)
     def new_dec(*args, **kwargs):
-        if len(args) == 1 and len(kwargs) == 0 and callable(args[0]):
+        if len(args) == 1 and callable(args[0]):
             # actual decorated function
-            return f(args[0])
+            return f(args[0], **kwargs)
         else:
             # decorator arguments
             return lambda realf: f(realf, *args, **kwargs)
@@ -86,34 +86,6 @@ class InterpolatedProperty(CachedProperty):
     """
     pass
             
-def add_metaclass(metaclass):
-    """
-    Class decorator for creating a class with a metaclass, compatible
-    with python 2 and python 3
-    
-    This is copied from `six.with_metaclass`
-    """
-    def wrapper(cls):
-        orig_vars = cls.__dict__.copy()
-        slots = orig_vars.get('__slots__')
-        if slots is not None:
-            if isinstance(slots, str):
-                slots = [slots]
-            for slots_var in slots:
-                orig_vars.pop(slots_var)
-        orig_vars.pop('__dict__', None)
-        orig_vars.pop('__weakref__', None)
-        return metaclass(cls.__name__, cls.__bases__, orig_vars)
-    return wrapper
-    
-def CachedModel(cls):
-    """ 
-    Declares a model that will have its parameters registered and
-    cached, keeping track of dependencies
-    """
-    return add_metaclass(CacheSchema)(cls)
-
-
 class CacheSchema(type):
     """
     Metaclass to gather all `parameter` and `cached_property`
@@ -160,7 +132,7 @@ class CacheSchema(type):
             that depend on a given parameter
             """
             for param in deps:                
-               
+                
                 # search classes in order for the attribute
                 for cls in classes:
                     f = getattr(cls, param, None)
@@ -175,14 +147,22 @@ class CacheSchema(type):
                     invert_cachemap(name, f._parents)
                 # invalid parent property
                 else:
-                   raise ValueError("invalid parent property '%s' for cached property '%s'" %(param, name))
+                    if hasattr(f, '_deps'):
+                        f._deps.add(name)
+                    else:
+                        raise ValueError("invalid parent property '%s' for cached property '%s'" %(param, name))
                     
         # compute the inverse cache
         for name in cls._cachemap:
             invert_cachemap(name, cls._cachemap[name])
     
-@CachedModel
+
 class Cache(object):
+    """
+    The main class to do handle caching of parameters; this is the
+    class that should serve as the base class
+    """
+    __metaclass__ = CacheSchema
     
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
@@ -193,17 +173,23 @@ class Cache(object):
         super(Cache, self).__init__(*args, **kwargs)
 
 def obj_eq(new_val, old_val):
+    """
+    Test the equality of an old and new value
+    """
     equal = False
     try:
         if old_val is not None:
-            if numpy.isscalar(new_val) and numpy.isscalar(old_val):
-                equal = new_val == old_val
-            else:
-                equal = numpy.allclose(new_val, old_val)
+            try:
+                if numpy.isscalar(new_val) and numpy.isscalar(old_val):
+                    equal = new_val == old_val
+                else:
+                    equal = numpy.allclose(new_val, old_val)
+            except:
+                return new_val == old_val
     except:
         pass
     return equal
-
+    
 @doublewrap
 def parameter(f, default=None):
     """
@@ -233,17 +219,20 @@ def parameter(f, default=None):
     @wraps(f)
     def _get_property(self):
         if _name not in self.__dict__:
+            
             if default is not None:
-                if hasattr(self, default):
-                    val = getattr(self, default)
-                    return val
+                if isinstance(default, basestring):
+                    if hasattr(self, default):
+                        val = getattr(self, default)
+                        return val
+                    else:
+                        args = (name, default)
+                        raise ValueError("required parameter '%s' has not yet been set and default '%s' does not exist" %args)
                 else:
-                    args = (name, default)
-                    raise ValueError("required parameter '%s' has not yet been set and default '%s' does not exist" %args)
+                    return f(self, default)
             else:
                 raise ValueError("required parameter '%s' has not yet been set" %name)
         else:    
-            
             return self.__dict__[_name]
             
     def _del_property(self):

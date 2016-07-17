@@ -352,14 +352,12 @@ def Pmu4_correction_data():
     fname = _os.path.join(data_dir, 'simulation_fits/Pmu4_residual_data.pickle')
     return pd.read_pickle(fname)
     
-def nonlinear_bias_data():     
+def nonlinear_bias_data(kind, name):     
     """
-    Return a pandas DataFrame holding the training data used to 
-    calibrate the Gaussian process nonlinear biases `b2_00` and `b2_01`,
-    as measured from the runPB simulations
+    Return the polynomial coefficients for the different nonlinear bias fits
     """
-    fname = _os.path.join(data_dir, 'simulation_fits/nonlinear_biases_fits_runPB.pickle')
-    return pd.read_pickle(fname)
+    fname = _os.path.join(data_dir, 'simulation_fits/%s_fits_runPB.npz' %kind)
+    return np.load(fname)[name]
     
 def velocity_dispersion_data():
     """

@@ -268,6 +268,10 @@ class FittingDriver(object):
         else:
             logger.info("Calling the '{}' solve function".format(solver_name))
         self.results, exception = solver(self.params, self.theory, **kwargs)
+        
+        # store the model version in the results
+        self.results.model_version = self.theory.model.__version__
+        
         logger.info("...fitting complete")
 
         return exception

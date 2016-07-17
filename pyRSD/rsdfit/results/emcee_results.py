@@ -258,6 +258,7 @@ class EmceeResults(object):
                 'acceptance_fraction', 'autocorr_times','constrained_chain',
                 'burnin']
         d = {k:getattr(self, k) for k in atts}
+        d['model_version'] = getattr(k, 'model_version', None)
         np.savez(filename, **d)
         
     @classmethod

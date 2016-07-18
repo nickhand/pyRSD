@@ -270,7 +270,8 @@ class FittingDriver(object):
         self.results, exception = solver(self.params, self.theory, **kwargs)
         
         # store the model version in the results
-        self.results.model_version = self.theory.model.__version__
+        if self.results is not None:
+            self.results.model_version = self.theory.model.__version__
         
         logger.info("...fitting complete")
 

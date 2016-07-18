@@ -347,8 +347,6 @@ class EmceeResults(object):
         
         # reorder self.constrained_chain
         if self.constrained_names != constrained_params:
-            inds = [self.constrained_names.index(k) for k in constrained_params]
-            self.constrained_chain = self.constrained_chain[...,inds]
             reordered = True
         
         if reordered:
@@ -403,8 +401,8 @@ class EmceeResults(object):
             return
         
         # make the constrained chain from the other chain
-        shape = (self.walkers, self.iterations, len(self.constrained_names))
-        self.constrained_chain = np.zeros(shape)
+        shape = (self.walkers, self.iterations)
+        self.constrained_chain = np.empty(shape, dtype=fit_params.constrained_dtype)
         for niter in xrange(self.iterations):
             for nwalker, theta in enumerate(self.chain[:,niter,:]):
                 
@@ -417,7 +415,7 @@ class EmceeResults(object):
                                 
                 # set the constrained vals
                 constrained_vals = fit_params.constrained_values
-                self.constrained_chain[nwalker, niter, :] = constrained_vals
+                self.constrained_chain[nwalker, niter] = constrained_vals
                 
         # # check for any constrained values that are fixed and remove
         # tocat = ()
@@ -525,7 +523,7 @@ class EmceeResults(object):
         with the maximum probability
         """
         nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
-        return self.constrained_chain[nwalker, niter, :]
+        return self.constrained_chain[nwalker, niter]
                 
     def values(self):
         """

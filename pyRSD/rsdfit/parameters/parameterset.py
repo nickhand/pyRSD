@@ -389,6 +389,13 @@ class ParameterSet(lmfit.Parameters):
             setattr(self[name], k, v)
               
     @property
+    def free_dtype(self):
+        """
+        The list of 'free' data types for the structured array
+        """
+        return [self[k].dtype for k in self.free_names]
+    
+    @property
     def free_names(self):
         """
         Return the free parameter names. `Free` means that 
@@ -402,7 +409,7 @@ class ParameterSet(lmfit.Parameters):
         Return the free parameter values. `Free` means that 
         `Parameter.vary = True` and `Parameter.constrained = False`
         """
-        return np.array([self[k]() for k in self.free_names])
+        return [self[k]() for k in self.free_names]
     
     @property
     def free(self):
@@ -421,11 +428,19 @@ class ParameterSet(lmfit.Parameters):
         return [k for k in self if self[k].constrained]
     
     @property
+    def constrained_dtype(self):
+        """
+        The list of 'constrained' data types for the structured array
+        """
+        return [self[k].dtype for k in self.constrained_names]
+        
+    @property
     def constrained_values(self):
         """
         Return the constrained parameter values.
         """
-        return np.array([self[k]() for k in self.constrained_names])
+        data = tuple(self[k]() for k in self.constrained_names)
+        return np.array(data, dtype=self.constrained_dtype)
     
     @property
     def constrained(self):

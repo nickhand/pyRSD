@@ -103,6 +103,20 @@ class Parameter(PickeableCache, lmfit.Parameter):
     # parameters
     #---------------------------------------------------------------------------
     @property
+    def dtype(self):
+        """
+        The data type of the parameter
+        """
+        try:
+            return self._dtype
+        except AttributeError:
+            try:
+                self._dtype = (self.name, ('O', len(self.value)))
+            except:
+                self._dtype = (self.name, 'O')
+            return self._dtype
+        
+    @property
     def output_value(self):
         """
         Explicit value for output -- defaults to `value`

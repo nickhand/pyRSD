@@ -23,7 +23,6 @@ from .simulation import CrossStochasticityFits
 # nonliner biasing
 from .nonlinear_biasing import NonlinearBiasingMixin
 
-
 class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     """
     The power spectrum of two biased tracers, with linear biases `b1`
@@ -57,41 +56,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
          
     #---------------------------------------------------------------------------
     # attributes
-    #---------------------------------------------------------------------------                
-    @contextlib.contextmanager
-    def nonlinear_biasing(self, b2_00=None, b2_01=None):
-        """
-        Context manager to set the appropriate nonlinear biasing
-        """        
-        try:
-            
-            set_b2_00 = False
-            set_b2_01 = False
-            
-            # set the b2_00 nonlinear bias, if not set already
-            if b2_00 is not None:
-                if not hasattr(self, '_ib2_00'):
-                    self._ib2_00     = b2_00(self._ib1)
-                    self._ib2_00_bar = b2_00(self._ib1_bar)
-                    set_b2_00 = True
-                
-            # set the b2_01 nonlinear bias, if not set already
-            if b2_01 is not None:
-                if not hasattr(self, '_ib2_01'):
-                    self._ib2_01     = b2_01(self._ib1)
-                    self._ib2_01_bar = b2_01(self._ib1_bar)
-                    set_b2_01 = True
-                
-            # yield nothing
-            yield
-        except:
-            pass
-        finally:
-            if set_b2_00: 
-                del self._ib2_00, self._ib2_00_bar
-            if set_b2_01:
-                del self._ib2_01, self._ib2_01_bar
-                    
+    #---------------------------------------------------------------------------
     @parameter
     def correct_mu2(self, val):
         """
@@ -365,7 +330,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     #---------------------------------------------------------------------------
     # power term attributes
     #---------------------------------------------------------------------------                
-    @cached_property("_ib1", "P00", "use_Phm_model", "sigma8_z", "_ib2_00")
+    @cached_property("_ib1", "P00", "use_Phm_model", "sigma8_z", "b2_00_a")
     def Phm(self):
         """
         The halo - matter cross correlation for the 1st tracer
@@ -375,16 +340,17 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         if self.use_Phm_model:
             Phm.total.mu0 = self.Phm_hzpt_model(self._ib1, self.k)
         else:
+            # the bias values to use
+            b1, b2_00 = self._ib1, self.b2_00_a(self._ib1)
             
-            with self.nonlinear_biasing(b2_00=self.b2_00_a):
-                term1 = self._ib1*self.P00.total.mu0
-                term2 = self._ib2_00*self.K00(self.k)
-                term3 = self.bs*self.K00s(self.k)
-                Phm.total.mu0 = term1 + term2 + term3
+            term1 = b1*self.P00.total.mu0
+            term2 = b2_00*self.K00(self.k)
+            term3 = self.bs*self.K00s(self.k)
+            Phm.total.mu0 = term1 + term2 + term3
             
         return Phm
         
-    @cached_property("_ib1_bar", "P00", "use_Phm_model", "sigma8_z", "_ib2_00_bar")
+    @cached_property("_ib1_bar", "P00", "use_Phm_model", "sigma8_z", "b2_00_a")
     def Phm_bar(self):
         """
         The halo - matter cross correlation for the 2nd tracer
@@ -394,12 +360,13 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         if self.use_Phm_model:
             Phm.total.mu0 = self.Phm_hzpt_model(self._ib1_bar, self.k)
         else:
+            # the bias values to use
+            b1_bar, b2_00_bar = self._ib1_bar, self.b2_00_a(self._ib1_bar)
             
-            with self.nonlinear_biasing(b2_00=self.b2_00_a):
-                term1 = self._ib1_bar*self.P00.total.mu0
-                term2 = self._ib2_00_bar*self.K00(self.k)
-                term3 = self.bs_bar*self.K00s(self.k)
-                Phm.total.mu0 = term1 + term2 + term3
+            term1 = b1_bar*self.P00.total.mu0
+            term2 = b2_00_bar*self.K00(self.k)
+            term3 = self.bs_bar*self.K00s(self.k)
+            Phm.total.mu0 = term1 + term2 + term3
 
         return Phm
         
@@ -444,37 +411,22 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         	       
         return P00_ss_no_stoch
             
-    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01", "_ib2_01", '_ib2_01_bar')
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01", "b2_01_a")
     def P01_ss(self):
         """
         The correlation of the halo density and halo momentum fields, which 
         contributes mu^2 terms to the power expansion.
         """ 
-        with self.nonlinear_biasing(b2_01=self.b2_01_a):
-                   
-            P01_ss = PowerTerm()
+        P01_ss = PowerTerm()
 
-            # do mu^2 terms?
-            if self.max_mu >= 2:
-
-                # get the integral attributes
-                K10  = self.K10(self.k)
-                K10s = self.K10s(self.k)
-                K11  = self.K11(self.k)
-                K11s = self.K11s(self.k)
-            
-                term1 = (self._ib1*self._ib1_bar) * self.P01.total.mu2
-                term2 = -self.Pdv*(self._ib1*(1. - self._ib1_bar) + self._ib1_bar*(1. - self._ib1))
-                term3 = self.f*((self._ib2_01 + self._ib2_01_bar)*K10 + (self.bs + self.bs_bar)*K10s )
-                term4 = self.f*((self._ib1_bar*self._ib2_01 + self._ib1*self._ib2_01_bar)*K11 + \
-                            (self._ib1_bar*self.bs + self._ib1*self.bs_bar)*K11s)
-    
-                P01_ss.total.mu2 = term1 + term2 + term3 + term4
+        # do mu^2 terms?
+        if self.max_mu >= 2:    
+            P01_ss.total.mu2 = P01_mu2(self, self.b2_01_a)
             
         return P01_ss
         
     @cached_property("_ib1", "_ib1_bar", "max_mu", "P02", "P00_ss_no_stoch",
-                     "sigmav_halo", "sigmav_halo_bar", "_ib2_00", '_ib2_00_bar')
+                     "sigmav_halo", "sigmav_halo_bar", "b2_00_b", "b2_00_c")
     def P02_ss(self):
         """
         The correlation of the halo density and halo kinetic energy, which 
@@ -488,34 +440,36 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         # do mu^2 terms?
         if self.max_mu >= 2:
             
-            with self.nonlinear_biasing(b2_00=self.b2_00_c):
-                
-                # the velocities
-                sigsq = self.sigmav_halo**2
-                sigsq_bar = self.sigmav_halo_bar**2
+            # the nonlinear bias to use
+            b2_00, b2_00_bar = self.b2_00_c(b1), self.b2_00_c(b1_bar)
             
-                # get the integral attributes
-                K20_a = self.K20_a(self.k)
-                K20s_a = self.K20s_a(self.k)
-            
-                P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*self._ib2_00 + b1_bar*self._ib2_00_bar)*self.K00(self.k)
-                term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-                term2_mu2 =  -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * P00_ss
-                term3_mu2 = 0.5*self.f**2 * ( (self._ib2_00 + self._ib2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
-                P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
+            # the velocities
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
+        
+            # the PT integrals
+            K20_a = self.K20_a(self.k)
+            K20s_a = self.K20s_a(self.k)
+        
+            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+            term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
+            term2_mu2 =  -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * P00_ss
+            term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
+            P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
             
             # do mu^4 terms?
             if self.max_mu >= 4:
                 
-                with self.nonlinear_biasing(b2_00=self.b2_00_b):
+                # the nonlinear bias to use
+                b2_00, b2_00_bar = self.b2_00_b(b1), self.b2_00_b(b1_bar)
                                     
-                    # get the integral attributes
-                    K20_b = self.K20_b(self.k)
-                    K20s_b = self.K20s_b(self.k)
-                
-                    term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
-                    term2_mu4 = self.f**2 * ( (self._ib2_00 + self._ib2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
-                    P02_ss.total.mu4 = term1_mu4 + term2_mu4
+                # the PT integrals
+                K20_b = self.K20_b(self.k)
+                K20s_b = self.K20s_b(self.k)
+            
+                term1_mu4 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu4
+                term2_mu4 = self.f**2 * ( (b2_00 + b2_00_bar)*K20_b + (bs + bs_bar)*K20s_b )
+                P02_ss.total.mu4 = term1_mu4 + term2_mu4
         
         return P02_ss
             
@@ -562,68 +516,60 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         
         return P11_ss
         
-    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar", "_ib2_01", '_ib2_01_bar')
+    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
     def P03_ss(self):
         """
         The cross-corelation of halo density with the rank three tensor field
         ((1+delta_h)v)^3, which contributes mu^4 terms.
-        """
-        with self.nonlinear_biasing(b2_01=self.b2_01_b):
-            
-            b1, b1_bar  = self._ib1, self._ib1_bar
-            b2_01, b2_01_bar = self._ib2_01, self._ib2_01_bar
-        
-            P03_ss = PowerTerm()
-        
-            # do mu^4 term?
-            if self.max_mu >= 4:
-                                    
-                # velocites
-                sigsq = self.sigmav_halo**2
-                sigsq_bar = self.sigmav_halo_bar**2
-                P03_ss.total.mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P01_ss.total.mu2
+        """            
+        b1, b1_bar  = self._ib1, self._ib1_bar    
+        P03_ss = PowerTerm()
+    
+        # do mu^4 term?
+        if self.max_mu >= 4:
+                                
+            # velocites
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
+            P03_ss.total.mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * P01_mu2(self, self.b2_01_b)
                 
         return P03_ss
             
-    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar", "_ib2_01", '_ib2_01_bar')
+    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
     def P12_ss(self):
         """
         The correlation of halo momentum and halo kinetic energy density, which 
         contributes mu^4 and mu^6 terms to the power expansion.
         """
-        with self.nonlinear_biasing(b2_01=self.b2_01_b):
-            
-            b1, b1_bar = self._ib1, self._ib1_bar
-            b2_01, b2_01_bar = self._ib2_01, self._ib2_01_bar
+        b1, b1_bar = self._ib1, self._ib1_bar
+        P12_ss = PowerTerm()
+    
+        # do mu^4 terms?
+        if self.max_mu >= 4:
+            Plin = self.normed_power_lin(self.k)
+                                            
+            # the velocities
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
         
-            P12_ss = PowerTerm()
-        
-            # do mu^4 terms?
-            if self.max_mu >= 4:
-                Plin = self.normed_power_lin(self.k)
-                                                
-                # the velocities
-                sigsq = self.sigmav_halo**2
-                sigsq_bar = self.sigmav_halo_bar**2
+            term1_mu4 = self.P12.total.mu4
+            term2_mu4 = -0.5*((b1 - 1) + (b1_bar - 1))*self.f**3*self.I03(self.k)
+            term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (P01_mu2(self, self.b2_01_b) - self.P01.total.mu2)
+            P12_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
+                    
+            # do mu^6 terms?
+            if self.max_mu >= 6:
             
-                term1_mu4 = self.P12.total.mu4
-                term2_mu4 = -0.5*((b1 - 1) + (b1_bar - 1))*self.f**3*self.I03(self.k)
-                term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (self.P01_ss.total.mu2 - self.P01.total.mu2)
-                P12_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
-                        
-                # do mu^6 terms?
-                if self.max_mu >= 6:
-                
-                    # get the integral attributes
-                    I21 = self.I21(self.k)
-                    I30 = self.I30(self.k)
-                    J20 = self.J20(self.k)
-                
-                    P12_ss.total.mu6 = self.f**3 * (I21 - 0.5*(b1+b1_bar)*I30 + 2*self.k**2*J20*Plin)
+                # get the integral attributes
+                I21 = self.I21(self.k)
+                I30 = self.I30(self.k)
+                J20 = self.J20(self.k)
+            
+                P12_ss.total.mu6 = self.f**3 * (I21 - 0.5*(b1+b1_bar)*I30 + 2*self.k**2*J20*Plin)
         
         return P12_ss
             
-    @cached_property("P11_ss", "sigmav_halo", "sigmav_halo_bar", "_ib2_00", '_ib2_00_bar')
+    @cached_property("P11_ss", "sigmav_halo", "sigmav_halo_bar")
     def P13_ss(self):
         """
         The cross-correlation of halo momentum with the rank three tensor field
@@ -631,108 +577,100 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         """
         P13_ss = PowerTerm()
         
-        with self.nonlinear_biasing(b2_00=self.b2_00_d):
+        # velocities
+        sigsq = self.sigmav_halo**2
+        sigsq_bar = self.sigmav_halo_bar**2
+    
+        # the amplitude
+        A = -(self.f*self.k)**2
+    
+        # do mu^4 terms?
+        if self.max_mu >= 4:
         
-            # velocities
-            sigsq = self.sigmav_halo**2
-            sigsq_bar = self.sigmav_halo_bar**2
-        
-            # the amplitude
-            A = -(self.f*self.k)**2
-        
-            # do mu^4 terms?
-            if self.max_mu >= 4:
+            # using P11_ss mu^2 terms 
+            P13_ss.total.mu4 = 0.5*A*(sigsq + sigsq_bar)*self.P11_ss.total.mu2
+    
+            # do mu^6 terms?
+            if self.max_mu >= 6:
             
-                # using P11_ss mu^2 terms 
-                P13_ss.total.mu4 = 0.5*A*(sigsq + sigsq_bar)*self.P11_ss.total.mu2
-        
-                # do mu^6 terms?
-                if self.max_mu >= 6:
-                
-                    # using P11_ss mu^4 terms
-                    P13_ss.total.mu6 = 0.5*A*(sigsq + sigsq_bar)*self.P11_ss.total.mu4
+                # using P11_ss mu^4 terms
+                P13_ss.total.mu6 = 0.5*A*(sigsq + sigsq_bar)*self.P11_ss.total.mu4
         
         return P13_ss
             
-    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigmav_halo", 
-                    "sigmav_halo_bar", "_ib2_00", '_ib2_00_bar')
+    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar", "b2_00_d")
     def P22_ss(self):
         """
         The auto-corelation of halo kinetic energy density, which contributes
         mu^4, mu^6, mu^8 terms to the power expansion. There are no linear 
         contributions here. 
         """
-        with self.nonlinear_biasing(b2_00=self.b2_00_d):
-            
-            b1, b1_bar = self._ib1, self._ib1_bar
-            b2_00, b2_00_bar = self._ib2_00, self._ib2_00_bar
-            P22_ss = PowerTerm()
+        b1, b1_bar = self._ib1, self._ib1_bar
+        b2_00, b2_00_bar = self.b2_00_d(b1), self.b2_00_d(b1_bar)
+        P22_ss = PowerTerm()
+    
+        # do mu^4 terms?
+        if self.max_mu >= 4:
         
-            # do mu^4 terms?
-            if self.max_mu >= 4:
-            
-                # velocities in units of Mpc/h
-                sigsq = self.sigmav_halo**2
-                sigsq_bar = self.sigmav_halo_bar**2
+            # velocities in units of Mpc/h
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
 
-                # 1-loop P22bar
-                term1 = self.P22.no_velocity.mu4
+            # 1-loop P22bar
+            term1 = self.P22.no_velocity.mu4
+        
+            # add convolution to P22bar
+            term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.P00.total.mu0) * self.sigmasq_k(self.k)**2
+        
+            # b1 * P02_bar
+            term3 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
+        
+            # sigma^4 x P00_ss
+            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+            term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * P00_ss
+        
+            P22_ss.total.mu4 = term1 + term2 + term3 + term4
+        
+            # do mu^6 terms?
+            if self.max_mu >= 6:
             
-                # add convolution to P22bar
-                term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.P00.total.mu0) * self.sigmasq_k(self.k)**2
-            
-                # b1 * P02_bar
-                term3 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
-            
-                # sigma^4 x P00_ss
-                P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
-                term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * P00_ss
-            
-                P22_ss.total.mu4 = term1 + term2 + term3 + term4
-            
-                # do mu^6 terms?
-                if self.max_mu >= 6:
-                
-                    term1 = self.P22.no_velocity.mu6
-                    term2 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
-                    P22_ss.total.mu6 = term1 + term2
+                term1 = self.P22.no_velocity.mu6
+                term2 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * (0.5*(b1 + b1_bar)*self.P02.no_velocity.mu4)
+                P22_ss.total.mu6 = term1 + term2
                 
         return P22_ss
             
-    @cached_property("P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar", 
-                     "_ib2_00", '_ib2_00_bar')
+    @cached_property("P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar", "b2_00_d")
     def P04_ss(self):
         """
         The cross-correlation of halo density with the rank four tensor field
         ((1+delta_h)v)^4, which contributes mu^4 and mu^6 terms, at 2-loop order.
         """
-        with self.nonlinear_biasing(b2_00=self.b2_00_d):
-            
-            b1, b1_bar = self._ib1, self._ib1_bar
-            b2_00, b2_00_bar = self._ib2_00, self._ib2_00_bar
-            P04_ss = PowerTerm()
+        b1, b1_bar = self._ib1, self._ib1_bar
+        b2_00, b2_00_bar = self.b2_00_d(b1), self.b2_00_d(b1_bar)
+        P04_ss = PowerTerm()
+    
+        # do mu^4 terms?
+        if self.max_mu >= 4:
         
-            # do mu^4 terms?
-            if self.max_mu >= 4:
-            
-                # velocities in Mpc/h
-                sigsq = self.sigmav_halo**2
-                sigsq_bar = self.sigmav_halo_bar**2
-            
-                # contribution from P02[mu^2]
-                term1 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu2
-            
-                # contribution here from P00_ss * vel^4
-                P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
-                A = (1./12)*(self.f*self.k)**4 * P00_ss
-                term2 = A*(3.*0.5*(sigsq**2 + sigsq_bar**2) + self.velocity_kurtosis)
-            
-                P04_ss.total.mu4 = term1 + term2
+            # velocities in Mpc/h
+            sigsq = self.sigmav_halo**2
+            sigsq_bar = self.sigmav_halo_bar**2
         
-                # do mu^6 terms?
-                if self.max_mu >= 6:
-                    P04_ss.total.mu6 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu4
-            
+            # contribution from P02[mu^2]
+            term1 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu2
+        
+            # contribution here from P00_ss * vel^4
+            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+            A = (1./12)*(self.f*self.k)**4 * P00_ss
+            term2 = A*(3.*0.5*(sigsq**2 + sigsq_bar**2) + self.velocity_kurtosis)
+        
+            P04_ss.total.mu4 = term1 + term2
+    
+            # do mu^6 terms?
+            if self.max_mu >= 6:
+                P04_ss.total.mu6 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu4
+        
         return P04_ss
             
     @cached_property("k", "correct_mu2", "_ib1", "_ib1_bar", "sigma8_z", "f")
@@ -803,5 +741,28 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         The full halo power spectrum term with mu^6 angular dependence. Contributions
         from P12_ss, P13_ss, P22_ss.
         """
-            
         return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k)
+
+#------------------------------------------------------------------------------
+# Power Terms
+#------------------------------------------------------------------------------
+def P01_mu2(self, b2_01_func):
+    """
+    The correlation of the halo density and halo momentum fields, which 
+    contributes mu^2 terms to the power expansion.
+    """ 
+    # the bias values to use
+    b1, b1_bar = self._ib1, self._ib1_bar
+    b2_01, b2_01_bar = b2_01_func(b1), b2_01_func(b1_bar)
+    
+    # the relevant PT integrals
+    K10  = self.K10(self.k)
+    K10s = self.K10s(self.k)
+    K11  = self.K11(self.k)
+    K11s = self.K11s(self.k)
+
+    term1 = (b1*b1_bar) * self.P01.total.mu2
+    term2 = -self.Pdv*(b1*(1. - b1_bar) + b1_bar*(1. - b1))
+    term3 = self.f*((b2_01 + b2_01_bar)*K10 + (self.bs + self.bs_bar)*K10s )
+    term4 = self.f*((b1_bar*b2_01 + b1*b2_01_bar)*K11 + (b1_bar*self.bs + b1*self.bs_bar)*K11s)
+    return term1 + term2 + term3 + term4

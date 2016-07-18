@@ -13,9 +13,9 @@ class LBFGSResults(object):
     def __init__(self, data, fit_params):
         """
         Initialize with the `lmfit.Minimizer` object and the fitting parameters
-        """              
+        """                  
         # store the parameter names
-        self.free_names = fit_params.free_names
+        self.free_names        = fit_params.free_names
         self.constrained_names = fit_params.constrained_names
         
         # store the results
@@ -53,8 +53,6 @@ class LBFGSResults(object):
         
         # reorder ``min_chi2_constrained_values``
         if self.constrained_names != constrained_params:
-            inds = [self.constrained_names.index(k) for k in constrained_params]
-            self.min_chi2_constrained_values = self.min_chi2_constrained_values[inds]
             reordered = True
         
         if reordered:
@@ -130,8 +128,7 @@ class LBFGSResults(object):
             i = self.free_names.index(key)
             return self.min_chi2_values[i]
         elif key in self.constrained_names:
-            i = self.constrained_names.index(key)
-            return self.min_chi2_constrained_values[i]
+            return self.min_chi2_constrained_values[key]
         else:
             return getattr(self, key)
                     

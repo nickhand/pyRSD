@@ -110,10 +110,19 @@ class Parameter(PickeableCache, lmfit.Parameter):
         try:
             return self._dtype
         except AttributeError:
-            try:
-                self._dtype = (self.name, ('O', len(self.value)))
-            except:
-                self._dtype = (self.name, 'O')
+            
+            val = self.value
+            if np.isscalar(val):
+                if isinstance(val, float):
+                    self._dtype = (self.name, 'f')
+                else:
+                    self._dtype = (self.name, 'O')
+            else:
+                if isinstance(val[0], float):
+                    self._dtype = (self.name, ('f', len(val)))
+                else:
+                    self._dtype = (self.name, ('O', len(val)))
+                    
             return self._dtype
         
     @property

@@ -175,7 +175,9 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
         acc_frac = sampler.acceptance_fraction
         acor = sampler.acor
     except:
-        acc_frac = np.array([np.nan])        
+        acc_frac = np.array([np.nan]) 
+        acor = np.zeros(len(theory.free))
+            
     text += ["      acceptance_fraction ({}->{} (median {}))".format(acc_frac.min(), acc_frac.max(), np.median(acc_frac))]      
     for i, par in enumerate(theory.free):
         pos = chain[:,-last:,i].ravel()

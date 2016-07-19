@@ -372,10 +372,10 @@ class LBFGS(object):
             the value of the objective function at newX
         """
         # backtracking line search parameters
-        tau     = 0.5
-        c       = 1e-5
+        tau     = 0.9
+        c       = 1e-4
         rate    = 1.
-        maxiter = 100
+        maxiter = 500
         
         currF = self.data['curr_state']['F']
         newX = X.copy()

@@ -231,7 +231,10 @@ class EmceeResults(object):
         
         # other sampler attributes
         self.acceptance_fraction = sampler.acceptance_fraction
-        self.autocorr_times = sampler.acor
+        try:
+            self.autocorr_times = sampler.acor
+        except:
+            self.autocorr_times = np.zeros(len(self.free_names))
 
         # make the constrained chain
         self._make_constrained_chain(fit_params)
@@ -415,7 +418,8 @@ class EmceeResults(object):
                                 
                 # set the constrained vals
                 constrained_vals = fit_params.constrained_values
-                self.constrained_chain[nwalker, niter] = constrained_vals
+                for name in self.constrained_names:
+                    self.constrained_chain[name][nwalker, niter] = constrained_vals[name]
                 
         # # check for any constrained values that are fixed and remove
         # tocat = ()
@@ -443,7 +447,7 @@ class EmceeResults(object):
         # the constrained parameters
         if self.constrained_chain is not None:
             for i, name in enumerate(self.constrained_names):
-                self._results[name] = EmceeParameter(name, self.constrained_chain[...,i])
+                self._results[name] = EmceeParameter(name, self.constrained_chain[name])
                         
     #---------------------------------------------------------------------------
     # some convenience attributes

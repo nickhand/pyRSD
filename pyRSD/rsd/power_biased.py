@@ -425,7 +425,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             
         return P01_ss
         
-    @cached_property("_ib1", "_ib1_bar", "max_mu", "P02", "P00_ss_no_stoch",
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "P02", "P00",
                      "sigmav_halo", "sigmav_halo_bar", "b2_00_b", "b2_00_c")
     def P02_ss(self):
         """
@@ -516,7 +516,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         
         return P11_ss
         
-    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
     def P03_ss(self):
         """
         The cross-corelation of halo density with the rank three tensor field
@@ -535,7 +535,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                 
         return P03_ss
             
-    @cached_property("P01_ss", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
     def P12_ss(self):
         """
         The correlation of halo momentum and halo kinetic energy density, which 
@@ -598,7 +598,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         
         return P13_ss
             
-    @cached_property("P22", "Pdd", "P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar", "b2_00_d")
+    @cached_property("_ib1", "_ib1_bar", "P00", "P02", "P22", "sigmav_halo", "sigmav_halo_bar", "b2_00_d")
     def P22_ss(self):
         """
         The auto-corelation of halo kinetic energy density, which contributes
@@ -640,7 +640,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                 
         return P22_ss
             
-    @cached_property("P02", "P00_ss_no_stoch", "sigmav_halo", "sigmav_halo_bar", "b2_00_d")
+    @cached_property("_ib1", "_ib1_bar", "P00", "P02", "sigmav_halo", "sigmav_halo_bar", "b2_00_d")
     def P04_ss(self):
         """
         The cross-correlation of halo density with the rank four tensor field
@@ -718,8 +718,8 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         The full halo power spectrum term with mu^2 angular dependence. Contributions
         from P01_ss, P11_ss, and P02_ss.
         """
-        return self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + \
-                self.P02_ss.total.mu2 + self.mu2_model_correction.total.mu2
+        P_mu2 = self.P01_ss.total.mu2 + self.P11_ss.total.mu2 + self.P02_ss.total.mu2 
+        return P_mu2 + self.mu2_model_correction.total.mu2
 
 
     @interpolated_property("P11_ss", "P02_ss", "P12_ss", "P22_ss", "P03_ss",

@@ -40,6 +40,9 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         # initalize the dark matter power spectrum
         super(BiasedSpectrum, self).__init__(**kwargs)
         
+        # the nonlinear biasing class
+        NonlinearBiasingMixin.__init__(self)
+        
         # set the default parameters
         self.use_mean_bias      = use_mean_bias
         self.vel_disp_from_sims = vel_disp_from_sims

@@ -372,10 +372,10 @@ class LBFGS(object):
             the value of the objective function at newX
         """
         # backtracking line search parameters
-        tau     = 0.9
-        c       = 1e-4
+        tau     = 0.5
+        c       = 1e-5
         rate    = 1.
-        maxiter = 500
+        maxiter = 200
         
         currF = self.data['curr_state']['F']
         newX = X.copy()
@@ -494,6 +494,7 @@ class LBFGS(object):
             # check angle between gradient and step direction
             zNorm = np.linalg.norm(z)
             zg = np.dot(z, state['G']) / zNorm
+            
             if (zg / state['Gnorm'] < 0.01):
                 warn = "LBFGS iteration %d: the descent direction does not have a sufficient " %d['iteration']
                 warn += "projection (%.2e) into the gradient; using steepest descent at this step!" %(zg/state['Gnorm'])

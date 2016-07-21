@@ -3,7 +3,6 @@ from .. import numpy as np
 
 # tools
 from ._cache import parameter, cached_property, interpolated_property
-from ._noconflict import classmaker
 from .tools import RSDSpline, BiasToSigmaRelation
 
 # base model
@@ -27,9 +26,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     """
     The power spectrum of two biased tracers, with linear biases `b1`
     and `b1_bar` in redshift space
-    """
-    __metaclass__ = classmaker()
-    
+    """    
     def __init__(self, use_tidal_bias=False,
                        use_mean_bias=False,
                        vel_disp_from_sims=False,  

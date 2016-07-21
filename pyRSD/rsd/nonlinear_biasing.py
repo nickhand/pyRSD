@@ -71,7 +71,6 @@ class NonlinearBiasingMixin(object):
                 
             # set the defaults
             for i, d in enumerate(defaults):
-                print names[i]
                 if hasattr(self.__class__, names[i]):
                     setattr(self, names[i], d)
     

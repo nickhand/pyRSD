@@ -116,14 +116,14 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
             bacon, egg, sausauge = result.copy(), result.copy(), result.copy()
             for i, x in enumerate([bacon, egg, sausage]):
                 x.chain = np.copy(result.chain[:,inds,:][:, i::3, :])
-                x.constrained_chain = np.copy(result.constrained_chain[:,inds,:][:, i::3, :])
+                x.constrained_chain = np.copy(result.constrained_chain[:,inds][:, i::3])
                 x.lnprobs = np.copy(result.lnprobs[:,inds][:,i::3])
                 new_results.append(x)
             continue
         else:
             # ham contains chain without the burn-in, if there are any points
             result.chain = result.chain[:,inds,:]
-            result.constrained_chain = result.constrained_chain[:,inds,:]
+            result.constrained_chain = result.constrained_chain[:,inds]
             result.lnprobs = result.lnprobs[:,inds]
             new_results.append(result)
 
@@ -132,8 +132,14 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
         raise rsd_io.AnalyzeError("no sufficiently sized chains were found.")
 
     for r in new_results:
+        
+        # flatten to (XX, Np)
         x = r.chain.reshape((-1, len(r.free_names)))
-        y = r.constrained_chain.reshape((-1, len(r.constrained_names)))
+        
+        # flatten the structured array 
+        y = r.constrained_chain.flatten()
+        # grab only the constrained parameters that aren't vectors
+        y = np.vstack([y[name] for name in info.constrained_names]).T
         spam.append(np.hstack((x,y)))
         
     # Applying now new rules for scales, if the name is contained in the
@@ -271,6 +277,17 @@ def extract_parameter_names(info):
     constrained_names = [sorted(chain.constrained_names) for chain in info.chains]
     if not all(names == constrained_names[0] for names in constrained_names):
         raise rsd_io.AnalyzeError('mismatch in constrained parameters for loaded results to analyze')
+        
+    # find constrained parameters that are vector
+    info.vector_params = []
+    for name in constrained_names:
+        if info.chains[0].constrained_chain[name].dtype.subdtype is not None:
+            info.vector_params.append(name)
+                
+    # remove vector parameters
+    for name in info.vector_params:
+        i = constrained_params.index(name)
+        constrained_params.pop(i)
         
     # get the free and constrained param names
     info.free_names = free_names[0]

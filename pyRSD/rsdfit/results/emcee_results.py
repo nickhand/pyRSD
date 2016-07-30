@@ -527,7 +527,7 @@ class EmceeResults(object):
         with the maximum probability
         """
         nwalker, niter = np.unravel_index(self.lnprobs.argmax(), self.lnprobs.shape)
-        return self.constrained_chain[nwalker, niter]
+        return np.array(self.constrained_chain[nwalker, niter].tolist())
                 
     def values(self):
         """

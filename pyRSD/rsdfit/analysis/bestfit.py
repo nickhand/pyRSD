@@ -325,7 +325,7 @@ class BestfitParameterSet(pd.DataFrame):
         
         # bestfits
         toret.loc[r.free_names, 'best_fit'] = r.min_chi2_values
-        toret.loc[r.constrained_names, 'best_fit'] = r.min_chi2_constrained_values
+        toret.loc[r.constrained_names, 'best_fit'] = numpy.array([r.min_chi2_constrained_values[name] for name in r.constrained_names])
         
         # free vs constrained
         toret.loc[r.free_names, 'free'] = True

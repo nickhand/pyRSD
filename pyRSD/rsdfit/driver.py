@@ -1,3 +1,5 @@
+import contextlib
+
 from .. import numpy as np, os
 from . import MPILoggerAdapter, logging
 from . import params_filename, model_filename
@@ -630,6 +632,26 @@ class FittingDriver(object):
                 else:
                     raise ValueError("`method` keyword must be one of ['median', 'peak', 'max_lnprob']")
             self.theory.set_free_parameters(theta)
+            
+    @contextlib.contextmanager
+    def use_fit_results(self, method='median'):
+        """
+        Context manager to set the desired fit results, and then
+        restore the model state
+        """
+        # save the current state of the model
+        params = {k:getattr(self.theory.model, k) for k in self.theory.model._param_names}
+        cache = self.theory.model._cache.copy()
+            
+        # set the fit results and yield
+        self.set_fit_results(method=method)
+        yield
+
+        # restore the model to previous state
+        for k in params:
+            setattr(self.theory.model, k, params[k])
+        for k in cache:
+            self.theory.model._cache[k] = cache[k]
             
     def data_model_pairs(self):
         """

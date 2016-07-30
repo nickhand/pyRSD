@@ -28,9 +28,34 @@ tex_names['b1_s']       = r'$b_{1,s}$'
 tex_names['sigma_so']   = r"$\sigma_{so}$"
 tex_names['f_so']       = r"$f_{so}$"
 tex_names['b1sigma8']   = r"$b_1 \sigma_8$"
-tex_names['F_AP']   = r"$F_\mathrm{AP}$"
-tex_names['alpha']   = r"$\alpha$"
-tex_names['epsilon']   = r"$\epsilon$"
+tex_names['F_AP']       = r"$F_\mathrm{AP}$"
+tex_names['alpha']      = r"$\alpha$"
+tex_names['epsilon']    = r"$\epsilon$"
+
+tex_names['b2_00__0'] = r"$b_{2}^{00}\mathrm{[0]}$"
+tex_names['b2_00__2'] = r"$b_{2}^{00}\mathrm{[2]}$"
+tex_names['b2_00__4'] = r"$b_{2}^{00}\mathrm{[4]}$"
+tex_names['b2_00_a__0'] = r"$b_{2, a}^{00}\mathrm{[0]}$"
+tex_names['b2_00_a__2'] = r"$b_{2, a}^{00}\mathrm{[2]}$"
+tex_names['b2_00_a__4'] = r"$b_{2, a}^{00}\mathrm{[4]}$"
+tex_names['b2_00_b__0'] = r"$b_{2, b}^{00}\mathrm{[0]}$"
+tex_names['b2_00_b__2'] = r"$b_{2, b}^{00}\mathrm{[2]}$"
+tex_names['b2_00_b__4'] = r"$b_{2, b}^{00}\mathrm{[4]}$"
+tex_names['b2_00_c__0'] = r"$b_{2, c}^{00}\mathrm{[0]}$"
+tex_names['b2_00_c__2'] = r"$b_{2, c}^{00}\mathrm{[2]}$"
+tex_names['b2_00_c__4'] = r"$b_{2, c}^{00}\mathrm{[4]}$"
+tex_names['b2_00_d__0'] = r"$b_{2, d}^{00}\mathrm{[0]}$"
+tex_names['b2_00_d__2'] = r"$b_{2, d}^{00}\mathrm{[2]}$"
+tex_names['b2_00_d__4'] = r"$b_{2, d}^{00}\mathrm{[4]}$"
+tex_names['b2_01_a__0'] = r"$b_{2, a}^{01}\mathrm{[0]}$"
+tex_names['b2_01_a__1'] = r"$b_{2, a}^{01}\mathrm{[1]}$"
+tex_names['b2_01_a__2'] = r"$b_{2, a}^{01}\mathrm{[2]}$"
+tex_names['b2_01_b__0'] = r"$b_{2, b}^{01}\mathrm{[0]}$"
+tex_names['b2_01_b__1'] = r"$b_{2, b}^{01}\mathrm{[1]}$"
+tex_names['b2_01_b__2'] = r"$b_{2, b}^{01}\mathrm{[2]}$"
+
+
+
 
 from .driver import AnalysisDriver
 from .bestfit import BestfitParameterSet, to_comparison_table

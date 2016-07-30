@@ -639,8 +639,10 @@ class FittingDriver(object):
         Context manager to set the desired fit results, and then
         restore the model state
         """
+        m = self.theory.model
+        
         # save the current state of the model
-        params = {k:getattr(self.theory.model, k) for k in self.theory.model._param_names}
+        params = {k:getattr(m, k) for k in m._param_names if '__'+k in m.__dict__}
         cache = self.theory.model._cache.copy()
             
         # set the fit results and yield

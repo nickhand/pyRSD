@@ -161,35 +161,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         The linear bias factor of the 2nd tracer.
         """
         return val
-        
-    @parameter
-    def _ib2_00(self, val):
-        """
-        The b2_00 bias factor of the first tracer.
-        """
-        return val
-    
-    @parameter
-    def _ib2_00_bar(self, val):
-        """
-        The b2_00 bias factor of the 2nd tracer.
-        """
-        return val
-        
-    @parameter
-    def _ib2_01(self, val):
-        """
-        The b2_01 bias factor of the first tracer.
-        """
-        return val
-    
-    @parameter
-    def _ib2_01_bar(self, val):
-        """
-        The b2_01 bias factor of the 2nd tracer.
-        """
-        return val
-        
+                
     #---------------------------------------------------------------------------
     # simulation-calibrated model parameters
     #---------------------------------------------------------------------------                  

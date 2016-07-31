@@ -634,19 +634,16 @@ class FittingDriver(object):
             self.theory.set_free_parameters(theta)
             
     @contextlib.contextmanager
-    def use_fit_results(self, method='median'):
+    def restore_state(self):
         """
-        Context manager to set the desired fit results, and then
-        restore the model state
+        Context manager that will save and restore the 
+        state of the theory model upon exiting
         """
         m = self.theory.model
         
         # save the current state of the model
         params = {k:getattr(m, k) for k in m._param_names if '__'+k in m.__dict__}
         cache = self.theory.model._cache.copy()
-            
-        # set the fit results and yield
-        self.set_fit_results(method=method)
         yield
 
         # restore the model to previous state

@@ -571,20 +571,32 @@ class CovarianceMatrix(Cache):
         toret._data = toret._data/norm
         return toret
         
-    def plot(self, filename=None):
+    def plot(self, vmin=-1.0, vmax=1.0, include_diagonal=True):
         """
         Plot the correlation matrix (normalized covariance matrix), optionally
         saving if `filename != None`
         """
-        import plotify as pfy
-        pfy.clf()
+        import seaborn as sns        
+        sns.set(style="white")
+
+        # compute the correlation matrix
         corr = self.normalized.values
-        colormesh = pfy.pcolormesh(corr, vmin=-1, vmax=1)
-        pfy.colorbar(colormesh)
-        if filename is not None:
-            pfy.savefig(filename)
-    
-        return colormesh
+        
+        # generate a mask for the upper triangle, optionally
+        # masking the diagonal
+        mask = np.zeros_like(corr, dtype=np.bool)
+        k = 0 if not include_diagonal else 1
+        mask[np.triu_indices_from(mask, k=k)] = True
+        
+        # generate a custom diverging colormap
+        cmap = sns.diverging_palette(220, 10, as_cmap=True)
+        
+        # draw the heatmap with the mask and no labels
+        ax = sns.heatmap(corr, mask=mask, cmap=cmap, vmax=vmax, vmin=vmin, square=True,
+                    xticklabels=False, yticklabels=False)
+                                
+        return ax
+
 
 #--------------------------------------------------------------------------
 # covariance matrix for P(k,mu) measurements
@@ -761,7 +773,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
         Parameters
         ---------------
-        ax : plotify.Axes, optional
+        ax : Axes, optional
             Axes instance to plot to. If `None`, plot to the current axes
         mu : {float, int},
             If not `None`, only plot the diagonals for a single `mu` value, else
@@ -779,7 +791,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
                 subtract_gaussian : bool, (`False`)
                     Subtract out the Gaussian prediction
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         # get the current axes
         if ax is None: ax = pfy.gca()
 
@@ -854,7 +866,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         ---------------
         kbar : {float, int}
             The specific value of k to plot the covariances at
-        ax : plotify.Axes, optional
+        ax : Axes, optional
             Axes instance to plot to. If `None`, plot to the current axes
         mu : {float, int},
             the first mu value
@@ -869,11 +881,11 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
                 show_zero_line : bool, (`False`)
                     If `True`, plot a y=0 horizontal line
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         import scipy.stats
 
         # get the current axes
-        if ax is None: ax = pfy.gca()
+        if ax is None: ax = plt.gca()
 
         # setup the default options
         options.setdefault('show_diagonal', True)
@@ -933,7 +945,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             else:
                 args = (mu, mu_bar, kbar)
                 label = r"$\mu = {0}, \ \bar{{\mu}} = {1}, \ \bar{{k}} = {2:.3f}$ $h$/Mpc".format(*args)
-            pfy.plot(ks, toplot, label=label)
+            plt.plot(ks, toplot, label=label)
 
             # get the color to use
             this_color = ax.last_color
@@ -941,14 +953,14 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             # plot the diagonal element
             if options['show_diagonal']:
                 markerline, stemlines, baseline = ax.stem([kbar], [diag_element], linefmt=this_color)
-                pfy.plt.setp(markerline, 'markerfacecolor', this_color)
-                pfy.plt.setp(markerline, 'markeredgecolor', this_color)
+                plt.setp(markerline, 'markerfacecolor', this_color)
+                plt.setp(markerline, 'markeredgecolor', this_color)
 
             # plot a smoothed spline
             if options['show_binned']:
                 nbins = tools.histogram_bins(toplot)
                 y, binedges, w = scipy.stats.binned_statistic(ks, toplot, bins=nbins)
-                pfy.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
+                plt.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
 
         if options['show_zero_line']:
             ax.axhline(y=0, c='k', ls='--', alpha=0.6)
@@ -1133,7 +1145,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
 
         Parameters
         ---------------
-        ax : plotify.Axes, optional
+        ax : Axes, optional
             Axes instance to plot to. If `None`, plot to the current axes
         ell : int
             multipole number for the first axis
@@ -1152,9 +1164,10 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                 subtract_gaussian : bool, (`False`)
                     Subtract out the Gaussian prediction
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
+        
         # get the current axes
-        if ax is None: ax = pfy.gca()
+        if ax is None: ax = plt.gca()
 
         # setup the default options
         options.setdefault('show_gaussian', False)
@@ -1201,10 +1214,10 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                 label = r"$\ell = \bar{\ell} = %d$" %ell
             elif not options['label']:
                 label = r"$\ell = %d, \ \bar{\ell} = %d$" %(ell, ell_bar)
-            pfy.plot(this_slice.ks(), sigma/norm, label=label)
+            plt.plot(this_slice.ks(), sigma/norm, label=label)
             if options['show_gaussian']:
                 gauss_cov = this_slice.gaussian_covariance()
-                pfy.plot(this_slice.ks(), np.diag(gauss_cov)**0.5/norm, ls='--')
+                plt.plot(this_slice.ks(), np.diag(gauss_cov)**0.5/norm, ls='--')
 
             if np.isscalar(norm):
                 ax.x_log_scale()
@@ -1236,7 +1249,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         ---------------
         kbar : {float, int}
             The specific value of k to plot the covariances at
-        ax : plotify.Axes, optional
+        ax : Axes, optional
             Axes instance to plot to. If `None`, plot to the current axes
         ell : int
             multipole axis for the first axis
@@ -1251,11 +1264,11 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                 show_zero_line : bool, (`False`)
                     If `True`, plot a y=0 horizontal line
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         import scipy.stats
 
         # get the current axes
-        if ax is None: ax = pfy.gca()
+        if ax is None: ax = plt.gca()
 
         # setup the default options
         options.setdefault('show_diagonal', True)
@@ -1313,7 +1326,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                 args = (ell, ell_bar, kbar)
                 if not options['label']:
                     label = r"$\ell = %d, \ \bar{{\ell}} = %d, \ \bar{{k}} = %.3f$ $h$/Mpc" %args
-            pfy.plot(ks, toplot, label=label)
+            plt.plot(ks, toplot, label=label)
 
             # get the color to use
             this_color = ax.last_color
@@ -1321,14 +1334,14 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             # plot the diagonal element
             if options['show_diagonal']:
                 markerline, stemlines, baseline = ax.stem([kbar], [diag_element], linefmt=this_color)
-                pfy.plt.setp(markerline, 'markerfacecolor', this_color)
-                pfy.plt.setp(markerline, 'markeredgecolor', this_color)
+                plt.setp(markerline, 'markerfacecolor', this_color)
+                plt.setp(markerline, 'markeredgecolor', this_color)
 
             # plot a smoothed spline
             if options['show_binned']:
                 nbins = tools.histogram_bins(toplot)
                 y, binedges, w = scipy.stats.binned_statistic(ks, toplot, bins=nbins)
-                pfy.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
+                plt.plot(0.5*(binedges[1:]+binedges[:-1]), y, color=this_color)
 
         if options['show_zero_line']:
             ax.axhline(y=0, c='k', ls='--', alpha=0.6)

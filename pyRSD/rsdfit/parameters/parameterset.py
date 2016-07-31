@@ -13,7 +13,7 @@ import copy
 import copy_reg
 
 from . import tools, Parameter
-from .. import lmfit
+from ...extern import lmfit
 from ... import os, numpy as np
 
 class PickeableClass(type):

@@ -8,7 +8,7 @@
 """
 
 from . import tools, distributions as dists
-from .. import lmfit
+from ...extern import lmfit
 from ... import numpy as np
 from ...rsd._cache import CacheSchema, parameter, cached_property
 import copy_reg

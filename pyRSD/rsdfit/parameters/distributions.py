@@ -266,9 +266,9 @@ class Normal(DistributionBase):
         """
         Plot a normal prior to the current axes.
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         
-        ax = kwargs.pop('ax', pfy.gca())
+        ax = kwargs.pop('ax', plt.gca())
         lower, upper = self.limits()
         domain = np.linspace(lower, upper, 500)
         domain, mypdf = self.pdf(domain=domain)
@@ -498,9 +498,9 @@ class Uniform(DistributionBase):
         """
         Plot a uniform prior to the current axes.
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         
-        ax = kwargs.pop('ax', pfy.gca())
+        ax = kwargs.pop('ax', plt.gca())
         lower, upper = self.limits()
         if on_axis.lower() == 'x':
             kwargs['y'] = 1
@@ -708,12 +708,9 @@ class Trace(DistributionBase):
         """
         Plot the trace distribution to the current axes.
         """
-        try:
-            import plotify as pfy
-        except:
-            raise ImportError("`Plotify` plotting package required for `rsdfit`")
+        from matplotlib import pyplot as plt
             
-        ax = kwargs.pop('ax', pfy.gca())
+        ax = kwargs.pop('ax', plt.gca())
         domain, pdf = self.pdf()
         ax.plot(domain, pdf, **kwargs)
     #---------------------------------------------------------------------------

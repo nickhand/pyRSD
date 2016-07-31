@@ -578,7 +578,7 @@ class EmceeResults(object):
         fig : matplotlib.Figure
             The figure object
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         from matplotlib.ticker import MaxNLocator
         
         outfile = kwargs.get('outfile', None)
@@ -586,7 +586,7 @@ class EmceeResults(object):
         if N < 1:
             raise ValueError('Must specify at least one parameter name for timeline plot')
             
-        fig, axes = pfy.subplots(N, 1, sharex=True, figsize=(8, 9))
+        fig, axes = plt.subplots(N, 1, sharex=True, figsize=(8, 9))
         if N == 1: axes = [axes]
         for i, name in enumerate(names):
             param = self[name]

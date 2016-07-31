@@ -1,7 +1,6 @@
 params_filename = 'params.dat'
 model_filename = 'model.pickle'
 
-import lmfit
 import logging
 from .util.rsd_logging import MPILoggerAdapter
 

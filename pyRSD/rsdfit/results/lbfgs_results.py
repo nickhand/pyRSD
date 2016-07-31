@@ -12,7 +12,7 @@ class LBFGSResults(object):
     """
     def __init__(self, data, fit_params):
         """
-        Initialize with the `lmfit.Minimizer` object and the fitting parameters
+        Initialize
         """                  
         # store the parameter names
         self.free_names        = fit_params.free_names
@@ -147,6 +147,6 @@ class LBFGSResults(object):
                 
     def summarize_fit(self, *args, **kwargs):
         """
-        Summarize the fit by calling `lmfit.fit_report`
+        Summarize the fit by printing self
         """
         logger.info("\n" + self.__str__())

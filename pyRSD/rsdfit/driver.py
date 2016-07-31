@@ -1,5 +1,3 @@
-import contextlib
-
 from .. import numpy as np, os
 from . import MPILoggerAdapter, logging
 from . import params_filename, model_filename
@@ -633,24 +631,12 @@ class FittingDriver(object):
                     raise ValueError("`method` keyword must be one of ['median', 'peak', 'max_lnprob']")
             self.theory.set_free_parameters(theta)
             
-    @contextlib.contextmanager
-    def restore_state(self):
+    def preserve(self):
         """
-        Context manager that will save and restore the 
-        state of the theory model upon exiting
+        Context manager that preserves the state of the model
+        upon exiting the context by first saving and then restoring it
         """
-        m = self.theory.model
-        
-        # save the current state of the model
-        params = {k:getattr(m, k) for k in m._param_names if '__'+k in m.__dict__}
-        cache = self.theory.model._cache.copy()
-        yield
-
-        # restore the model to previous state
-        for k in params:
-            setattr(self.theory.model, k, params[k])
-        for k in cache:
-            self.theory.model._cache[k] = cache[k]
+        return self.theory.model.preserve()
             
     def data_model_pairs(self):
         """
@@ -681,7 +667,7 @@ class FittingDriver(object):
         Plot the residuals of the measurements with respect to the model, 
         model - measurement
         """
-        import plotify as pfy
+        from matplotlib import pyplot as plt
         
         # get the data - model pairs (k, model, data, err)
         results = self.data_model_pairs()
@@ -698,10 +684,10 @@ class FittingDriver(object):
                 lab = r"$\mu = %.2f$" %(self.data[i].identifier)
             else:
                 lab = r"$\ell = %d$" %(self.data[i].identifier)
-            pfy.plot(k, residual, "o", label=lab)
+            plt.plot(k, residual, "o", label=lab)
 
         # make it look nice
-        ax = pfy.gca()
+        ax = plt.gca()
         ax.axhline(y=0, c='k', ls='--')
         ax.set_xlabel("wavenumber k", fontsize=16)
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)

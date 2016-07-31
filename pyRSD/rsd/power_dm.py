@@ -151,6 +151,25 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     # parameters
     #---------------------------------------------------------------------------            
     @contextlib.contextmanager
+    def preserve(self):
+        """
+        Context manager that preserves the state of the model
+        upon exiting the context by first saving and then restoring it
+        """
+        m = self.theory.model
+        
+        # save the current state of the model
+        params = {k:getattr(m, k) for k in m._param_names if '__'+k in m.__dict__}
+        cache = self.theory.model._cache.copy()
+        yield
+
+        # restore the model to previous state
+        for k in params:
+            setattr(self.theory.model, k, params[k])
+        for k in cache:
+            self.theory.model._cache[k] = cache[k]
+            
+    @contextlib.contextmanager
     def use_spt(self):
         """
         Context manager to turn off all models

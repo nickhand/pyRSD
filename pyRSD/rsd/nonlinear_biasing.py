@@ -33,10 +33,14 @@ class NonlinearBiasingMixin(object):
             else:
                 raise ValueError("only nonlinear biases are 'b2_00' or 'b2_01'")
                 
+            # dictionary for storing defaults
+            self.nonlinear_bias_defaults = {}
+            
             # set the defaults
             for i, d in enumerate(defaults):
                 if hasattr(self.__class__, names[i]):
                     setattr(self, names[i], d)
+                    self.nonlinear_bias_defaults[names[i]] = d
     
     #--------------------------------------------------------------------------
     # b2_00_a

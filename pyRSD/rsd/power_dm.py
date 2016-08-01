@@ -155,19 +155,26 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Context manager that preserves the state of the model
         upon exiting the context by first saving and then restoring it
-        """
-        m = self.theory.model
-        
+        """        
         # save the current state of the model
-        params = {k:getattr(m, k) for k in m._param_names if '__'+k in m.__dict__}
-        cache = self.theory.model._cache.copy()
+        set_params = {}; unset_params = []
+        for k in self._param_names:
+            if '__'+k in self.__dict__:
+                set_params[k] = getattr(self, k)
+            else:
+                unset_params.append(k)
+        cache = self._cache.copy()
+        
         yield
 
         # restore the model to previous state
-        for k in params:
-            setattr(self.theory.model, k, params[k])
+        for k in set_params:
+            setattr(self, k, set_params[k])
+        for k in unset_params:
+            if '__'+k in self.__dict__:
+                delattr(self, k)
         for k in cache:
-            self.theory.model._cache[k] = cache[k]
+            self._cache[k] = cache[k]
             
     @contextlib.contextmanager
     def use_spt(self):

@@ -20,7 +20,7 @@ class PickeableCache(object):
     def __new__(cls, *args, **kwargs):
         
         # make the new instance
-        obj = object.__new__(cls, *args, **kwargs)
+        obj = object.__new__(cls)
         
         # add the cache dictionary
         obj._cache = {}

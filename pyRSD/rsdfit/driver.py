@@ -552,12 +552,11 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         
         # how to map
         if pool is None:
-            M = map
+            results = np.array([obj(t) for t in tasks]).reshape((-1, 2), order='F')
         else:
-            M = pool.map
+            results = np.array(pool.map(obj, tasks)).reshape((-1, 2), order='F')
             
         # compute the central finite-difference derivative
-        results = np.array(M(obj, tasks)).reshape((-1, 2), order='F')
         gradient = (results[:,0] - results[:,1]) / (2.*epsilon)
         
         # add in log prior prob and derivatives of log priors

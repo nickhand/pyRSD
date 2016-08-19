@@ -123,7 +123,6 @@ def replace_vars(s, D):
             s_out += str(D[var])
     return s_out
 
-
 def import_function_modules(line):
     """
     Find any function calls in the string specified by `line`, import the
@@ -139,8 +138,9 @@ def import_function_modules(line):
     # now import
     for function in function_finder.names:
         mod, _, function = function.rpartition('.')
-        mod = __import__(mod)
-        modules[mod.__name__] = mod
+        if len(mod):
+            mod = __import__(mod)
+            modules[mod.__name__] = mod
 
     return modules
     

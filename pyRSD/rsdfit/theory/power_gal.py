@@ -168,7 +168,7 @@ class GalaxyPowerTheory(object):
         self.set_model()
         
         # delete any empty parameters
-        for k in self.fit_params:
+        for k in list(self.fit_params):
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
 

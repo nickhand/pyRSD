@@ -424,8 +424,8 @@ class BiasToMassRelation(Cache):
             try:
                 M = brentq(objective, 1e-10, 1e4, args=(b1, rescaling))*mass_norm
             except Exception as e:
-                print s8, b1
-                print objective(1e-10, b1, rescaling), objective(1e4, b1, rescaling)
+                print(s8, b1)
+                print(objective(1e-10, b1, rescaling), objective(1e4, b1, rescaling))
                 raise Exception(e)
                 
             grid_vals.append(M)

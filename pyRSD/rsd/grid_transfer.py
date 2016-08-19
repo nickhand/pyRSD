@@ -1,6 +1,6 @@
 from .. import numpy as np
 from .tools import convolve_multipoles
-from _cache import Cache, parameter, cached_property
+from ._cache import Cache, parameter, cached_property
 from scipy.special import legendre
 
 #------------------------------------------------------------------------------

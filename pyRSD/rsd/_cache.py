@@ -157,13 +157,11 @@ class CacheSchema(type):
             invert_cachemap(name, cls._cachemap[name])
     
 
-class Cache(object):
+class Cache(object, metaclass=CacheSchema):
     """
     The main class to do handle caching of parameters; this is the
     class that should serve as the base class
-    """
-    __metaclass__ = CacheSchema
-    
+    """    
     def __new__(cls, *args, **kwargs):
         obj = object.__new__(cls)
         obj._cache = {}
@@ -221,7 +219,7 @@ def parameter(f, default=None):
         if _name not in self.__dict__:
             
             if default is not None:
-                if isinstance(default, basestring):
+                if isinstance(default, str):
                     if hasattr(self, default):
                         val = getattr(self, default)
                         return val

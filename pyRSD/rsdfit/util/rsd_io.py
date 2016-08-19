@@ -94,7 +94,7 @@ def create_output_file(folder, solver_type, chain_number, iterations, walkers=0,
         else:
             break
     outfile_name = os.path.join(folder, outname_base)+str(suffix)+'.npz'
-    print 'Creating %s\n' %outfile_name
+    print('Creating %s\n' %outfile_name)
      
     # touch the file so it exists and then return
     open(outfile_name, 'a').close()   

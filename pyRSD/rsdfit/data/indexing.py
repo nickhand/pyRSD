@@ -243,7 +243,7 @@ class GridIndexer(object):
         # index is a list of GridIndex objects for each axis
         self.index = []
         for i, dim in enumerate(dims):
-            if not isinstance(dim, (basestring, tuple, list)):
+            if not isinstance(dim, (str, tuple, list)):
                 raise TypeError("each dimension must be specified by str or tuple/list of str")
             self.index.append(GridIndex(dim, coords[i]))
             

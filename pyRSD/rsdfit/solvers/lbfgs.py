@@ -570,14 +570,14 @@ if __name__ == '__main__':
     for state in minimizer.minimize(display=3, record=['X', 'F']):
         pass
     stop = time.time()
-    print minimizer.history
-    print "done my LBFGS in %f" %(stop-start)
+    print(minimizer.history)
+    print("done my LBFGS in %f" %(stop-start))
     
     start = time.time()
     res = scipy.optimize.fmin_l_bfgs_b(func, x0=initial_values, args=(x_true,y_true), approx_grad=True)
     stop = time.time()
-    print "done scipy.optimize LBFGS in %f" %(stop-start)
-    print res
+    print("done scipy.optimize LBFGS in %f" %(stop-start))
+    print(res)
         
         
         

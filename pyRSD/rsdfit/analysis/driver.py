@@ -186,7 +186,7 @@ class AnalysisDriver(object):
         # save the combined output
         bestfit_path = os.path.join(self.folder, 'info', 'combined_result.npz')
         self.combined_result.to_npz(bestfit_path)
-        print self.combined_result
+        print(self.combined_result)
     
     #--------------------------------------------------------------------------
     # Properties

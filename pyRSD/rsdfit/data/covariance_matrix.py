@@ -378,7 +378,7 @@ class CovarianceMatrix(Cache):
         where `i` and `j` integers between `0` and `N`
         """
         # return the coordinates arrays if provided the name
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             if key in self._indexer.dims_flat:
                 for axis, dims in enumerate(self.dims):
                     if key in dims:

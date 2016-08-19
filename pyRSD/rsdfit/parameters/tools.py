@@ -2,14 +2,14 @@ from ... import os, sys
 import ast
 
 def get_abspath(value):
-    if isinstance(value, basestring) and os.path.exists(value):
+    if isinstance(value, str) and os.path.exists(value):
         return os.path.abspath(value)
     else:
         return value
 
 
 def is_floatable(val):
-    if isinstance(val, (basestring, bool)):
+    if isinstance(val, (str, bool)):
         return False
     try:
         float(val)

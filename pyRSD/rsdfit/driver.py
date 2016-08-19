@@ -22,13 +22,11 @@ def load_results(filename):
         result = LBFGSResults.from_npz(filename)
     return result
 
-class FittingDriver(object):
+class FittingDriver(object, metaclass=rsd_io.PickeableClass):
     """
     A class to handle the data analysis pipeline, merging together a model, 
     theory, and fitting algorithm
-    """
-    __metaclass__ = rsd_io.PickeableClass
-    
+    """    
     def __init__(self,
                     param_file, 
                     extra_param_file=None, 
@@ -370,7 +368,7 @@ class FittingDriver(object):
         Set the theoretical model
         """
         # set it
-        if isinstance(val, basestring):
+        if isinstance(val, str):
             logger.info("setting the theoretical model from file `%s`" %val, on=0)
         else:
             logger.info("setting the theoretical model from existing instance", on=0)

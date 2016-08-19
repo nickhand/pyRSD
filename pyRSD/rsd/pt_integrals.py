@@ -136,7 +136,7 @@ class PTIntegralsMixin(object):
         The internal driver class to compute the 1-loop I(m, n) integrals, 
         which integrate over `P_vv(q) P_dd(|k-q|)`
         """
-        return pygcl.ImnOneLoop(self._Pvv_0, self._Pdd_0)
+        return pygcl.ImnOneLoop(self._Pvv_0, self._Pdd_0, 1e-4)
 
     @cached_property("_Pvv_0")
     def _Imn1Loop_vvvv(self):

@@ -296,7 +296,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                 toret = self.bias_to_sigma_relation(s8_z, np.amax(b1s))
             else:
                 toret = 0.
-            print msg + "; returning sigmav = %.4e" %toret
+            print(msg + "; returning sigmav = %.4e" %toret)
             return toret
                         
     #---------------------------------------------------------------------------

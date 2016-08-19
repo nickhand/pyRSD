@@ -42,13 +42,11 @@ def _unpickle(cls, items, meta):
         
     return toret
 
-class ParameterSet(lmfit.Parameters):
+class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
     """
     A subclass of `lmfit.Parameters` that adds the ability to update values
     based on constraints in place
-    """
-    __metaclass__ = PickeableClass
-    
+    """    
     def __init__(self, *args, **kwargs):
         super(ParameterSet, self).__init__(*args, **kwargs)
 
@@ -84,10 +82,10 @@ class ParameterSet(lmfit.Parameters):
             either a string specifying the name of the parameter, or the
             integer index of the parameter in the collection 
         """
-        if not isinstance(key, (int, basestring)): 
-            raise KeyError("key must either be an integer or a basestring")
+        if not isinstance(key, (int, str)): 
+            raise KeyError("key must either be an integer or a str")
         
-        if isinstance(key, basestring):
+        if isinstance(key, str):
             if key not in self:
                 raise ValueError("no parameter with name `%s` in ParameterSet" %key)
             return self[key]()
@@ -122,7 +120,7 @@ class ParameterSet(lmfit.Parameters):
         tags : list, optional
             list of any parameter tags to specifically seach for
         """
-        if isinstance(tags, basestring):
+        if isinstance(tags, str):
             tags = [tags]
         if len(tags) > 1:
             toret = collections.defaultdict(cls)

@@ -185,7 +185,7 @@ class GalaxyPowerTheory(object):
     
         if not len(model):
             self.model = rsd.GalaxySpectrum(**kwargs)
-        elif isinstance(model[0], basestring):
+        elif isinstance(model[0], str):
             self.model = rsd_io.load_model(model[0])
             self.model.update(**kwargs)
         elif isinstance(model[0], rsd.GalaxySpectrum):

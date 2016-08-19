@@ -142,7 +142,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # extra keywords
         if len(kwargs):                    
             for k in kwargs:
-                print "warning: extra keyword `%s` is ignored" %k
+                print("warning: extra keyword `%s` is ignored" %k)
         
         # finally, initialize the integrals    
         PTIntegralsMixin.__init__(self)
@@ -677,7 +677,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             msg = "warning: trying to load a model of the wrong version\n"
             msg += '\tcurrent model version: %s\n' %(model.__class__.__version__)
             msg += '\tloaded model version: %s\n' %(version)
-            print msg
+            print(msg)
         return model
         
     @classmethod
@@ -693,7 +693,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             msg = "warning: trying to load a model of the wrong version\n"
             msg += '\tcurrent model version: %s\n' %(model.__class__.__version__)
             msg += '\tloaded model version: %s\n' %(version)
-            print msg
+            print(msg)
         return model
         
     def to_npy(self, filename):

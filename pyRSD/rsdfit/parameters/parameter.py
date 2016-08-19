@@ -14,9 +14,7 @@ from ...rsd._cache import CacheSchema, parameter, cached_property
 import copy_reg
 
     
-class PickeableCache(object):
-    __metaclass__ = CacheSchema
-    
+class PickeableCache(object, metaclass=CacheSchema):    
     def __new__(cls, *args, **kwargs):
         
         # make the new instance
@@ -397,7 +395,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         Get random values from the prior, of size `size`
         """
         if not self.has_prior:
-            print self
+            print(self)
             raise ValueError("for parameter `%s`, cannot draw from prior that does not exist" %self.name)
             
         return self.prior.draw(size=size)

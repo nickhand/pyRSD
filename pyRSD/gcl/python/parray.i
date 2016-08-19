@@ -5,16 +5,16 @@
 
 /* Allow Python sequences to be passed as arrays */
 %typemap(in) const parray& {
-    PyArrayObject* pyarray = (PyArrayObject*) PyArray_ContiguousFromObject($input, PyArray_DOUBLE, 1, 1);
+    PyArrayObject* pyarray = (PyArrayObject*) PyArray_ContiguousFromAny($input, NPY_DOUBLE, 1, 1);
     if(pyarray == NULL) {
         PyErr_SetString(PyExc_TypeError, "Expected a sequence of floats.");
         return NULL;
     }
 
-    int n = pyarray->dimensions[0];
+    int n = PyArray_DIM(pyarray, 0);
     $1 = new parray(n);
     for(int i = 0; i < n; i++)
-        (*$1)[i] = *(double *)(pyarray->data + i*pyarray->strides[0]);
+        (*$1)[i] = *(double *)((char*)(PyArray_DATA(pyarray)) + i * (PyArray_STRIDE(pyarray, 0)));
     Py_DECREF(pyarray);
 }
 %typemap(freearg) const parray& {
@@ -49,7 +49,7 @@
     npy_intp dims[1];
     dims[0] = (npy_intp) n;
     $result =  PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    memcpy(((PyArrayObject*) $result)->data, $1.data(), n*sizeof(double));
+    memcpy(PyArray_DATA((PyArrayObject*) $result), $1.data(), n*sizeof(double));
 }
 //%typemap(out) const array& {
 //    int n = $1->size();
@@ -66,7 +66,7 @@
     int n = $1->size();
     npy_intp dims[1] = { (npy_intp) n };
     PyObject* arrayobj = PyArray_SimpleNew(1, dims, NPY_DOUBLE);
-    memcpy(((PyArrayObject*) arrayobj)->data, $1->data(), n*sizeof(double));
+    memcpy(PyArray_DATA((PyArrayObject*) arrayobj), $1->data(), n*sizeof(double));
     $result = SWIG_Python_AppendOutput($result, arrayobj);
 }
 %typemap(freearg) parray& OUTPUT {

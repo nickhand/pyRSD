@@ -8,12 +8,12 @@ from .util.rsd_logging import MPILoggerAdapter
 from .driver import FittingDriver
 
 # import the specific modules as well
-import data
-import solvers
-import parameters
-import results
-import theory
-import util
+from . import data
+from . import solvers
+from . import parameters
+from . import results
+from . import theory
+from . import util
 
 
 __all__ = []

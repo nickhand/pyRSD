@@ -11,7 +11,7 @@ from . import tools, distributions as dists
 from ...extern import lmfit
 from ... import numpy as np
 from ...rsd._cache import CacheSchema, parameter, cached_property
-import copy_reg
+import copyreg
 
     
 class PickeableCache(object, metaclass=CacheSchema):    
@@ -24,7 +24,7 @@ class PickeableCache(object, metaclass=CacheSchema):
         obj._cache = {}
         
         # register the pickling
-        copy_reg.pickle(cls, _pickle, _unpickle)
+        copyreg.pickle(cls, _pickle, _unpickle)
         return obj
 
     def __init__(self):

@@ -1,12 +1,12 @@
 from ... import os, numpy as np
 from datetime import date
-import cPickle
-import copy_reg
+import pickle
+import copyreg
 import types
 
 class PickeableClass(type):
     def __init__(cls, name, bases, attrs):
-        copy_reg.pickle(types.MethodType, _pickle_method, _unpickle_method)
+        copyreg.pickle(types.MethodType, _pickle_method, _unpickle_method)
 
 def _pickle_method(method):
     func_name = method.im_func.__name__
@@ -30,16 +30,16 @@ def load_pickle(filename):
     pickled
     """
     try:
-        return cPickle.load(open(filename, 'r'))
+        return pickle.load(open(filename, 'r'))
     except Exception as e:
         raise ConfigurationError("Cannot load the pickle `%s`; original message: %s" %(filename, e))
     
 def save_pickle(obj, filename):
     """
-    Pickle an instance using `cPickle`
+    Pickle an instance using `pickle`
     """
     # make sure pool is None, so it is pickable
-    cPickle.dump(obj, open(filename, 'w'))
+    pickle.dump(obj, open(filename, 'w'))
     
 def load_model(filename):
     """

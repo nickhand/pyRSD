@@ -10,7 +10,7 @@
 import collections
 import string
 import copy
-import copy_reg
+import copyreg
 
 from . import tools, Parameter
 from ...extern import lmfit
@@ -18,7 +18,7 @@ from ... import os, numpy as np
 
 class PickeableClass(type):
     def __init__(cls, name, bases, attrs):
-        copy_reg.pickle(cls, _pickle, _unpickle)
+        copyreg.pickle(cls, _pickle, _unpickle)
 
 def _pickle(params):    
     items = [[k, params[k]] for k in params]

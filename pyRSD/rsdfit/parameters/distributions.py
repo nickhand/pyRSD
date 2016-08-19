@@ -86,7 +86,7 @@ class DistributionBase(object):
         
         # add the specific distribution parameters
         self.params = valid_distributions[self.name]
-        for k, v in params.iteritems():
+        for k, v in params.items():
             if v is None:
                 raise ValueError("`%s` attribute for `%s` prior distribution can not be `None`" %(k, self.name))
             setattr(self, k, v)

@@ -56,13 +56,13 @@ def compute_and_plot_posteriors(info):
     # plot the 1D posteriors first
     if info.plot:
         saved_subplots = set()
-        for tag, param_names in info.plot_params_1d.iteritems():
+        for tag, param_names in info.plot_params_1d.items():
             plot_1d_posteriors(info, tag, param_names, saved_subplots)
         
     # plot the 2D posteriors second
     if info.plot and info.plot_2d:
         saved_subplots = set()
-        for tag, param_names in info.plot_params_2d.iteritems():
+        for tag, param_names in info.plot_params_2d.items():
             plot_2d_posteriors(info, tag, param_names, saved_subplots)
                 
 def get_1d_histogram(info, trace, name):
@@ -280,7 +280,7 @@ def plot_2d_posteriors(info, tag, param_names, saved_subplots):
                 logger.warning('could not find likelihood contour for %s' %info.ref_names[native_index])
                 
         # do the rest of the triangle plot
-        for second_index in xrange(index):
+        for second_index in range(index):
             second_name = param_names[second_index]
             native_second_index = info.ref_names.index(second_name)
             scale = info.scales[native_second_index, native_second_index]

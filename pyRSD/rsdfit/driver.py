@@ -377,7 +377,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         # print out the model paramete
         params = self.theory.model.to_dict()
         msg = "running with model parameters:\n\n"
-        msg += "\n".join(["%-25s: %s" %(k, str(v)) for k,v in sorted(params.iteritems())])
+        msg += "\n".join(["%-25s: %s" %(k, str(v)) for k,v in sorted(params.items())])
         logger.info(msg, on=0)
         
         # model callable

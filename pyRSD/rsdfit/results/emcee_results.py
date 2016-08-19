@@ -406,7 +406,7 @@ class EmceeResults(object):
         # make the constrained chain from the other chain
         shape = (self.walkers, self.iterations)
         self.constrained_chain = np.empty(shape, dtype=fit_params.constrained_dtype)
-        for niter in xrange(self.iterations):
+        for niter in range(self.iterations):
             for nwalker, theta in enumerate(self.chain[:,niter,:]):
                 
                 # set the free parameters

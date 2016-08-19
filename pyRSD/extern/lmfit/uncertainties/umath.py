@@ -298,7 +298,7 @@ def ldexp(x, y):
             math.ldexp(aff_func.nominal_value, y),
             # Chain rule:
             dict((var, factor*deriv)
-                 for (var, deriv) in aff_func.derivatives.iteritems()))
+                 for (var, deriv) in aff_func.derivatives.items()))
     else:
         # This function was not called with an AffineScalarFunc
         # argument: there is no need to return numbers with uncertainties:
@@ -334,7 +334,7 @@ def frexp(x):
                 result[0],
                 # Chain rule:
                 dict((var, factor*deriv)
-                     for (var, deriv) in aff_func.derivatives.iteritems())),
+                     for (var, deriv) in aff_func.derivatives.items())),
             # The exponent is an integer and is supposed to be
             # continuous (small errors):
             result[1])

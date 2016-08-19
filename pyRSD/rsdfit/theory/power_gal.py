@@ -37,12 +37,12 @@ class GalaxyPowerParameters(ParameterSet):
         params = super(GalaxyPowerParameters, cls).from_file(filename, tags=tag)
                                    
         # add descriptions for the model params
-        for name, desc in cls.model_params.iteritems():
+        for name, desc in cls.model_params.items():
             if name in params and params[name] is not None:
                 params.update_param(name, description=desc)
                 
         # and the extra params
-        for name, desc in cls.extra_params.iteritems():
+        for name, desc in cls.extra_params.items():
             if name in params and params[name] is not None:
                 params.update_param(name, description=desc)
             else:
@@ -66,7 +66,7 @@ class GalaxyPowerParameters(ParameterSet):
         """
         Return the names of the valid parameters
         """
-        return self.model_params.keys() + self.extra_params.keys()
+        return list(self.model_params.keys()) + list(self.extra_params.keys())
             
     def is_valid(self, name):
         """
@@ -179,7 +179,7 @@ class GalaxyPowerTheory(object):
         from ..util import rsd_io
         
         # model kwargs
-        kwargs = {k:v() for k,v in self.model_params.iteritems()}
+        kwargs = {k:v() for k,v in self.model_params.items()}
         if self.kmin is not None: kwargs['kmin'] = self.kmin
         if self.kmax is not None: kwargs['kmax'] = self.kmax
     
@@ -208,7 +208,7 @@ class GalaxyPowerTheory(object):
         # now any extra params
         if self.extra_params is not None:
             f = open(filename, 'a')
-            vals = ["theory_extra.%s =  %s" %(k, repr(v)) for k, v in self.extra_params.iteritems()]
+            vals = ["theory_extra.%s =  %s" %(k, repr(v)) for k, v in self.extra_params.items()]
             f.write("%s\n\n" %("\n".join(vals)))
             f.close()
         

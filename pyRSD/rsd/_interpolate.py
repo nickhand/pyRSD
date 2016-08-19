@@ -209,7 +209,7 @@ def _ndim_coords_from_arrays(points, ndim=None):
         points = points[0]
     if isinstance(points, tuple):
         p = np.broadcast_arrays(*points)
-        for j in xrange(1, len(p)):
+        for j in range(1, len(p)):
             if p[j].shape != p[0].shape:
                 raise ValueError("coordinate arrays do not have the same shape")
         points = np.empty(p[0].shape + (len(points),), dtype=float)

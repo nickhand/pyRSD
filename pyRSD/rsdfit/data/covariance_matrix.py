@@ -139,7 +139,7 @@ class CovarianceMatrix(Cache):
         """
         if len(self.attrs):
             ff.write("%d\n" %len(self.attrs))
-            for k, v in self.attrs.iteritems():
+            for k, v in self.attrs.items():
                 if np.isscalar(v):
                     N = (0,)
                     cast = type(v).__name__
@@ -187,7 +187,7 @@ class CovarianceMatrix(Cache):
                 if shape == (0,):
                     toret[key] = dtype(ff.readline())
                 else:
-                    toret[key] = np.array([dtype(ff.readline()) for i in xrange(N_lines)]).reshape(shape)
+                    toret[key] = np.array([dtype(ff.readline()) for i in range(N_lines)]).reshape(shape)
 
         return toret
             
@@ -344,16 +344,16 @@ class CovarianceMatrix(Cache):
             
             # read the data
             N = int(ff.readline())
-            data = np.array([float(ff.readline()) for i in xrange(N*(N+1)/2)])
-            
+            data = np.array([float(ff.readline()) for i in range(N*(N+1)//2)])
+
             # and the dimension/coordinates
             dims = ff.readline().split()
             dims = np.squeeze(np.hsplit(np.array(dims), 2))
             if dims.ndim > 1:
-                dims = map(list, dims)
+                dims = [list(d) for d in dims]
             else:
                 dims = list(dims)
-            coords = np.array([map(float, ff.readline().split()) for i in xrange(N)])
+            coords = np.array([[float(x) for x in ff.readline().split()] for i in range(N)])
             coords = np.squeeze(np.hsplit(coords, 2))
             coords = [y.T.tolist() for y in coords]
             
@@ -417,7 +417,7 @@ class CovarianceMatrix(Cache):
         Slice the ``attrs``, returning a new `OrderedDict` instance
         """
         toret = OrderedDict()
-        for k, v in self.attrs.iteritems():
+        for k, v in self.attrs.items():
             if is_array_like(v, self.shape):
                 for axis, idx in enumerate(indices):
                     v = np.take(v, idx, axis=axis)

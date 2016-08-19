@@ -192,7 +192,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             state = {k:getattr(self, k, None) for k in params}
         
             # update the state to low-k mode
-            for k,v in params.iteritems():
+            for k,v in params.items():
                 if hasattr(self, k):
                     setattr(self, k, v)            
             yield
@@ -200,7 +200,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             pass
         finally:
             # restore the original state
-            for k, v in state.iteritems():
+            for k, v in state.items():
                 if hasattr(self, k):
                     setattr(self, k, v)
                         
@@ -734,7 +734,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Update the attributes. Checks that the current value is not equal to 
         the new value before setting.
         """
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             try:
                 setattr(self, k, v)
             except Exception as e:

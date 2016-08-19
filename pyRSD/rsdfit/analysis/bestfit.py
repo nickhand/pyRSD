@@ -265,7 +265,7 @@ class BestfitParameterSet(pd.DataFrame):
         Attach the keyword arguments to the `BestfitParameterSet` as attributes
         and keep track of names in `_user_metadata`
         """
-        for k, v in meta.iteritems():
+        for k, v in meta.items():
             self._user_metadata.append(k)
             setattr(self, k, v)
             

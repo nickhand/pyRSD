@@ -174,7 +174,7 @@ class GridIndex(object):
         if key is None and self.ndim > 1: 
             indexes = [self.to_pandas(d) for d in self.dims]
             names = [i.name for i in indexes]
-            return pd.MultiIndex.from_tuples(zip(*indexes), names=names)
+            return pd.MultiIndex.from_tuples(list(zip(*indexes)), names=names)
         if key is None: key = self.dims[0]
 
         return pd.Index(self.coords[key], name=key)

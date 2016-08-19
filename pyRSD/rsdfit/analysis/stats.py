@@ -66,7 +66,7 @@ def convergence(info):
     # chains should count more
     R = gelman_rubin_convergence(spam)
 
-    for i in xrange(info.number_parameters):
+    for i in range(info.number_parameters):
         if i == 0:
             logger.info(' R is %.6f' %R[i] + '\tfor %s' %info.ref_names[i])
         else:

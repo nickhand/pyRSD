@@ -147,7 +147,7 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
     for name in info.ref_names:
         index = info.ref_names.index(name)
         num = info.param_indices[name]
-        for i in xrange(len(spam)):
+        for i in range(len(spam)):
             spam[i][...,num] *= 1./info.scales[index, index]
 
     info.steps = steps

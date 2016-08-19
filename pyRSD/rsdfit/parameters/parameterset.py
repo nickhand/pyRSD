@@ -8,7 +8,6 @@
 """
 
 import collections
-import string
 import copy
 import copyreg
 
@@ -32,7 +31,7 @@ def _unpickle(cls, items, meta):
     toret = cls()
     for k in meta: setattr(toret, k, meta[k])
     toret.update(items)
-    for k, v in toret._registered_functions.iteritems():
+    for k, v in toret._registered_functions.items():
         toret.register_function(k, v)
     toret.prepare_params()
     try:
@@ -144,12 +143,12 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
             line = s[0]
             s = line.split('\\')
             if len(s) > 1:
-                old = string.join([old, s[0]])
+                old = " ".join([old, s[0]])
                 continue
             else:
-                line = string.join([old, s[0]])
+                line = " ".join([old, s[0]])
                 old = ''
-            for i in xrange(len(line)):
+            for i in range(len(line)):
                 if line[i] !=' ':
                     line = line[i:]
                     break            
@@ -178,7 +177,7 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
                 
         # now make the output
         valid_kwargs = ['name', 'value', 'vary', 'min', 'max', 'expr']
-        for k, v in D.iteritems():
+        for k, v in D.items():
             if isinstance(v, dict) and all(kw in Parameter.valid_keys for kw in v):
                 v = Parameter(**v)
             else:
@@ -383,7 +382,7 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         
         if name not in self:
             raise ValueError("Parameter `%s` not in this ParameterSet" %name)
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(self[name], k, v)
               
     @property

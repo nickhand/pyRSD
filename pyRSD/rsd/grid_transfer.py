@@ -106,10 +106,10 @@ class PkmuGrid(object):
         with open(filename, 'r') as ff:
             lines = ff.readlines()
             
-        Nk, Nmu = map(int, lines[0].split())
-        k_cen = np.array(map(float, lines[1:Nk+1]))
-        mu_cen = np.array(map(float, lines[Nk+1:Nk+Nmu+1]))
-        data = np.array([map(float, l.split()) for l in lines[Nk+Nmu+1:]]).reshape((Nk, Nmu, 3))
+        Nk, Nmu = [int(l) for l in lines[0].split()]
+        k_cen = np.array([float(l) for l in lines[1:Nk+1]])
+        mu_cen = np.array([float(l) for l in lines[Nk+1:Nk+Nmu+1]])
+        data = np.array([[float(ll) for ll in l.split()] for l in lines[Nk+Nmu+1:]]).reshape((Nk, Nmu, 3))
         
         return cls([k_cen, mu_cen], *np.rollaxis(data, 2))
         

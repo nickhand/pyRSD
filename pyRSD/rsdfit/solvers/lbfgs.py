@@ -430,7 +430,7 @@ class LBFGS(object):
         state = self.data['curr_state']
         q = state['G'].copy() # this is the memory that is returned
  
-        for i in xrange(k):
+        for i in range(k):
             a[i] = H['rho'][i] * np.dot(H['s'][i,:], q)
             q -= a[i] * H['y'][i,:]
             
@@ -441,7 +441,7 @@ class LBFGS(object):
         if it == 0:
             z /= state['Gnorm']
         
-        for i in reversed(xrange(k)):
+        for i in reversed(range(k)):
             beta = H['rho'][i] * np.dot(H['y'][i,:], z)
             z += H['s'][i, :] * (a[i] - beta)
             

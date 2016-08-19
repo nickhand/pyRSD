@@ -23,7 +23,7 @@ class DocFixer(type):
         if base.__doc__ is not None:
             cls.__doc__ = base.__doc__
         if base.__init__.__doc__ is not None:
-            cls.__init__.__func__.__doc__ = base.__init__.__doc__
+            cls.__init__.__doc__ = base.__init__.__doc__
 
 class PickalableSWIG:
  
@@ -45,8 +45,7 @@ def FindFilename(fname):
 
 #-------------------------------------------------------------------------------
 # Cosmology
-class Cosmology(gcl.Cosmology, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class Cosmology(gcl.Cosmology, PickalableSWIG, metaclass=DocFixer):
     
     def __init__(self, *args):
         
@@ -91,8 +90,7 @@ class Cosmology(gcl.Cosmology, PickalableSWIG):
             
 #-------------------------------------------------------------------------------
 # CorrelationFunction
-class CorrelationFunction(gcl.CorrelationFunction, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class CorrelationFunction(gcl.CorrelationFunction, PickalableSWIG, metaclass=DocFixer):
        
     def __init__(self, *args):
         self.args = args
@@ -105,8 +103,7 @@ class CorrelationFunction(gcl.CorrelationFunction, PickalableSWIG):
 
 #-------------------------------------------------------------------------------
 # Kaiser
-class Kaiser(gcl.Kaiser, PickalableSWIG):
-    __metaclass__ = DocFixer
+class Kaiser(gcl.Kaiser, PickalableSWIG, metaclass=DocFixer):
     
     def __init__(self, *args):
         self.args = args
@@ -119,8 +116,7 @@ class Kaiser(gcl.Kaiser, PickalableSWIG):
         
 #-------------------------------------------------------------------------------
 # NonlinearPS
-class NonlinearPS(gcl.NonlinearPS, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class NonlinearPS(gcl.NonlinearPS, PickalableSWIG, metaclass=DocFixer):
  
     def __init__(self, *args):
         args = list(args)
@@ -130,8 +126,7 @@ class NonlinearPS(gcl.NonlinearPS, PickalableSWIG):
         
 #-------------------------------------------------------------------------------
 # LinearPS
-class LinearPS(gcl.LinearPS, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class LinearPS(gcl.LinearPS, PickalableSWIG, metaclass=DocFixer):
     
     def __init__(self, *args):
         self.args = args
@@ -148,8 +143,7 @@ class LinearPS(gcl.LinearPS, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # Imn
-class Imn(gcl.Imn, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class Imn(gcl.Imn, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.Imn.__init__(self, *args)
@@ -157,8 +151,7 @@ class Imn(gcl.Imn, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # Jmn
-class Jmn(gcl.Jmn, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class Jmn(gcl.Jmn, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.Jmn.__init__(self, *args)
@@ -166,8 +159,7 @@ class Jmn(gcl.Jmn, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # Kmn
-class Kmn(gcl.Kmn, PickalableSWIG):
-    __metaclass__ = DocFixer  
+class Kmn(gcl.Kmn, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.Kmn.__init__(self, *args)
@@ -175,8 +167,7 @@ class Kmn(gcl.Kmn, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # ImnOneLoop
-class ImnOneLoop(gcl.ImnOneLoop, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class ImnOneLoop(gcl.ImnOneLoop, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.ImnOneLoop.__init__(self, *args)
@@ -184,8 +175,7 @@ class ImnOneLoop(gcl.ImnOneLoop, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # OneLoopPdd
-class OneLoopPdd(gcl.OneLoopPdd, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class OneLoopPdd(gcl.OneLoopPdd, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = (args[0],)
         gcl.OneLoopPdd.__init__(self, *args)
@@ -198,8 +188,7 @@ class OneLoopPdd(gcl.OneLoopPdd, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # OneLoopPdv
-class OneLoopPdv(gcl.OneLoopPdv, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class OneLoopPdv(gcl.OneLoopPdv, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = (args[0],)
         gcl.OneLoopPdv.__init__(self, *args)
@@ -211,8 +200,7 @@ class OneLoopPdv(gcl.OneLoopPdv, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # OneLoopPvv
-class OneLoopPvv(gcl.OneLoopPvv, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class OneLoopPvv(gcl.OneLoopPvv, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = (args[0],)
         gcl.OneLoopPvv.__init__(self, *args)
@@ -224,8 +212,7 @@ class OneLoopPvv(gcl.OneLoopPvv, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # OneLoopP22Bar
-class OneLoopP22Bar(gcl.OneLoopP22Bar, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class OneLoopP22Bar(gcl.OneLoopP22Bar, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = (args[0],)
         gcl.OneLoopP22Bar.__init__(self, *args)
@@ -237,8 +224,7 @@ class OneLoopP22Bar(gcl.OneLoopP22Bar, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # ZeldovichPS
-class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = list(args)
         self.args.pop(1) # remove the redshift
@@ -254,8 +240,7 @@ class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # ZeldovichP00
-class ZeldovichP00(gcl.ZeldovichP00, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class ZeldovichP00(gcl.ZeldovichP00, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.ZeldovichP00.__init__(self, *args)
@@ -263,8 +248,7 @@ class ZeldovichP00(gcl.ZeldovichP00, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # ZeldovichP01
-class ZeldovichP01(gcl.ZeldovichP01, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class ZeldovichP01(gcl.ZeldovichP01, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.ZeldovichP01.__init__(self, *args)
@@ -272,16 +256,14 @@ class ZeldovichP01(gcl.ZeldovichP01, PickalableSWIG):
 #-------------------------------------------------------------------------------
 
 # ZeldovichP11
-class ZeldovichP11(gcl.ZeldovichP11, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class ZeldovichP11(gcl.ZeldovichP11, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.ZeldovichP11.__init__(self, *args)
 
 #-------------------------------------------------------------------------------    
 # ZeldovichCF
-class ZeldovichCF(gcl.ZeldovichCF, PickalableSWIG):
-    __metaclass__ = DocFixer 
+class ZeldovichCF(gcl.ZeldovichCF, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
         self.args = args
         gcl.ZeldovichCF.__init__(self, *args)    

@@ -8,7 +8,7 @@
  creation date: 11/27/2014
 """
 import distutils
-from distutils.core import setup, Extension
+from numpy.distutils.core import setup, Extension
 import numpy
 import os
 import shutil
@@ -30,7 +30,7 @@ for root, dirs, files in os.walk(".", topdown=False):
 # setup the extension
 gcl_module = Extension('_gcl',
                          sources=['gcl.i'],
-                         swig_opts=['-c++', '-Wall'], 
+                         swig_opts=['-c++', '-Wall', '-py3'], 
                          include_dirs=[numpy.get_include()],
                          extra_link_args=["-L..", "-g", "-fPIC"],
                          extra_compile_args=["-fopenmp", "-O2"]

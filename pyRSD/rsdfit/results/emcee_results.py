@@ -270,8 +270,8 @@ class EmceeResults(object):
         Load a numpy ``npz`` file and return the corresponding ``EmceeResults`` object
         """
         toret = cls.__new__(cls)
-        with np.load(filename) as ff:
-            for k, v in ff.iteritems():
+        with np.load(filename, encoding='latin1') as ff:
+            for k, v in ff.items():
                 if k == 'burnin':
                     continue
                 setattr(toret, k, v)

@@ -30,35 +30,35 @@ except ImportError:
 class Interpreter:
     """mathematical expression compiler and interpreter.
 
-  This module compiles expressions and statements to AST representation,
-  using python's ast module, and then executes the AST representation
-  using a dictionary of named object (variable, functions).
+    This module compiles expressions and statements to AST representation,
+    using python's ast module, and then executes the AST representation
+    using a dictionary of named object (variable, functions).
 
-  The result is a restricted, simplified version of Python meant for
-  numerical caclulations that is somewhat safer than 'eval' because some
-  operations (such as 'import' and 'eval') are simply not allowed.  The
-  resulting language uses a flat namespace that works on Python objects,
-  but does not allow new classes to be defined.
+    The result is a restricted, simplified version of Python meant for
+    numerical caclulations that is somewhat safer than 'eval' because some
+    operations (such as 'import' and 'eval') are simply not allowed.  The
+    resulting language uses a flat namespace that works on Python objects,
+    but does not allow new classes to be defined.
 
-  Many parts of Python syntax are supported, including:
-     for loops, while loops, if-then-elif-else conditionals
-     try-except (including 'finally')
-     function definitions with def
-     advanced slicing:    a[::-1], array[-3:, :, ::2]
-     if-expressions:      out = one_thing if TEST else other
-     list comprehension   out = [sqrt(i) for i in values]
+    Many parts of Python syntax are supported, including:
+        for loops, while loops, if-then-elif-else conditionals
+        try-except (including 'finally')
+        function definitions with def
+        advanced slicing:    a[::-1], array[-3:, :, ::2]
+        if-expressions:      out = one_thing if TEST else other
+        list comprehension   out = [sqrt(i) for i in values]
 
-  The following Python syntax elements are not supported:
-      Import, Exec, Lambda, Class, Global, Generators,
-      Yield, Decorators
+    The following Python syntax elements are not supported:
+        Import, Exec, Lambda, Class, Global, Generators,
+        Yield, Decorators
 
-  In addition, while many builtin functions are supported, several
-  builtin functions are missing ('eval', 'exec', and 'getattr' for
-  example) that can be considered unsafe.
+    In addition, while many builtin functions are supported, several
+    builtin functions are missing ('eval', 'exec', and 'getattr' for
+    example) that can be considered unsafe.
 
-  If numpy is installed, many numpy functions are also imported.
+    If numpy is installed, many numpy functions are also imported.
 
-  """
+    """
 
     supported_nodes = ('arg', 'assert', 'assign', 'attribute', 'augassign',
                        'binop', 'boolop', 'break', 'call', 'compare',
@@ -84,24 +84,31 @@ class Interpreter:
         self.use_numpy = HAS_NUMPY and use_numpy
 
         symtable['print'] = self._printer
-        for sym in FROM_PY:
-            if sym in __builtins__:
-                symtable[sym] = __builtins__[sym]
 
-        for symname, obj in LOCALFUNCS.items():
-            symtable[symname] = obj
+        # add python symbols
+        py_symtable = dict((sym, __builtins__[sym]) for sym in FROM_PY
+                              if sym in __builtins__)
+        symtable.update(py_symtable)
 
-        for sym in FROM_MATH:
-            if hasattr(math, sym):
-                symtable[sym] = getattr(math, sym)
+        # add local symbols
+        local_symtable = dict((sym, obj) for (sym, obj) in LOCALFUNCS.items())
+        symtable.update(local_symtable)
 
+        # add math symbols
+        math_symtable = dict((sym, getattr(math, sym)) for sym in FROM_MATH
+                              if hasattr(math, sym))
+        symtable.update(math_symtable)
+
+        # add numpy symbols
         if self.use_numpy:
-            for sym in FROM_NUMPY:
-                if hasattr(numpy, sym):
-                    symtable[sym] = getattr(numpy, sym)
-            for name, sym in NUMPY_RENAMES.items():
-                if hasattr(numpy, sym):
-                    symtable[name] = getattr(numpy, sym)
+            numpy_symtable = dict((sym, getattr(numpy, sym)) for sym in FROM_NUMPY
+                              if hasattr(numpy, sym))
+            symtable.update(numpy_symtable)
+
+            npy_rename_symtable = dict((name, getattr(numpy, sym)) for name, sym
+                                   in NUMPY_RENAMES.items()
+                                   if hasattr(numpy, sym))
+            symtable.update(npy_rename_symtable)
 
         self.node_handlers = dict(((node, getattr(self, "on_%s" % node))
                                    for node in self.supported_nodes))
@@ -110,6 +117,25 @@ class Interpreter:
         self.node_handlers['tryexcept'] = self.node_handlers['try']
         self.node_handlers['tryfinally'] = self.node_handlers['try']
 
+        self.no_deepcopy = [key for key, val in symtable.items()
+                            if (callable(val)
+                                or 'numpy.lib.index_tricks' in repr(val))]
+
+    def user_defined_symbols(self):
+        """
+        Return a set of symbols that have been added to symtable after
+        construction. I.e. the symbols from self.symtable that are not in
+        self.no_deepcopy.
+
+        Returns
+        -------
+        unique_symbols : set
+            symbols in symtable that are not in self.no_deepcopy
+        """
+        sym_in_current = set(self.symtable.keys())
+        sym_from_construction = set(self.no_deepcopy)
+        unique_symbols = sym_in_current.difference(sym_from_construction)
+        return unique_symbols
 
     def unimplemented(self, node):
         "unimplemented nodes"
@@ -325,6 +351,9 @@ class Interpreter:
                 errmsg = "invalid symbol name (reserved word?) %s" % node.id
                 self.raise_exception(node, exc=NameError, msg=errmsg)
             sym = self.symtable[node.id] = val
+            if node.id in self.no_deepcopy:
+                self.no_deepcopy.pop(node.id)
+
         elif node.__class__ == ast.Attribute:
             if node.ctx.__class__ == ast.Load:
                 msg = "cannot assign to attribute %s" % node.attr
@@ -593,25 +622,27 @@ class Interpreter:
 
     def on_call(self, node):
         "function execution"
-        #  ('func', 'args', 'keywords', 'starargs', 'kwargs')
+        #  ('func', 'args', 'keywords'. Py<3.5 has 'starargs' and 'kwargs' too)
         func = self.run(node.func)
         if not hasattr(func, '__call__') and not isinstance(func, type):
             msg = "'%s' is not callable!!" % (func)
             self.raise_exception(node, exc=TypeError, msg=msg)
 
         args = [self.run(targ) for targ in node.args]
-        if node.starargs is not None:
-            args = args + self.run(node.starargs)
+        starargs = getattr(node, 'starargs', None)
+        if starargs is not None:
+            args = args + self.run(starargs)
 
         keywords = {}
         for key in node.keywords:
             if not isinstance(key, ast.keyword):
                 msg = "keyword error in function call '%s'" % (func)
                 self.raise_exception(node, msg=msg)
-
             keywords[key.arg] = self.run(key.value)
-        if node.kwargs is not None:
-            keywords.update(self.run(node.kwargs))
+
+        kwargs = getattr(node, 'kwargs', None)
+        if kwargs is not None:
+            keywords.update(self.run(kwargs))
 
         try:
             return func(*args, **keywords)
@@ -652,6 +683,8 @@ class Interpreter:
                                              args=args, kwargs=kwargs,
                                              vararg=node.args.vararg,
                                              varkws=node.args.kwarg)
+        if node.name in self.no_deepcopy:
+            self.no_deepcopy.pop(node.name)
 
 
 class Procedure(object):

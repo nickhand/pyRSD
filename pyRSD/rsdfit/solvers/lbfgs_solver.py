@@ -48,6 +48,7 @@ def run(params, theory, pool=None, init_values=None):
     
     Any kwargs passed will not be used
     """
+    exception = None  
     init_from = params['init_from'].value
     
     # draw initial values randomly from prior
@@ -94,9 +95,7 @@ def run(params, theory, pool=None, init_values=None):
     
     #--------------------------------------------------------------------------
     # run the algorithm, catching any errors
-    #--------------------------------------------------------------------------
-    exception = None  
-    
+    #--------------------------------------------------------------------------    
     # initialize the minimizer
     if isinstance(init_values, LBFGSResults):
         minimizer = lbfgs.LBFGS.from_restart(f, fprime, init_values.data)
@@ -108,11 +107,12 @@ def run(params, theory, pool=None, init_values=None):
     try:
         start = time.time()
         result = minimizer.run_nlopt(**options)
-    except KeyboardInterrupt as exception:
-        pass
-    except Exception as exception:
+    except KeyboardInterrupt as e:
+        exception = e
+    except Exception as e:
         import traceback
         logger.warning("exception occured:\n%s" %traceback.format_exc())
+        exception = e
         
     stop = time.time()
     

@@ -90,12 +90,12 @@ def replace_vars(s, D):
         s_in = s_in[i+1:]
 
         if len(s_in)==0:
-            raise ValueError, "trailing $"
+            raise ValueError("trailing $")
 
         elif s_in[0] == '(':
             i = s_in.find(')')
             if i==-1:
-                raise ValueError, "unmatched '('"
+                raise ValueError("unmatched '('")
             var = s_in[1:i]
 
             s_in = s_in[i+1:]

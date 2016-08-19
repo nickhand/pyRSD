@@ -602,7 +602,7 @@ class PowerData(Cache):
         else:
             if len(fit_range) != self.size:
                 raise ValueError("mismatch between supplied fitting ranges and data read")
-            self.kmin, self.kmax = zip(*fit_range)
+            self.kmin, self.kmax = list(zip(*fit_range))
                                 
     def rescale_inverse_covar(self):
         """

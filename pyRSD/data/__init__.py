@@ -3,9 +3,9 @@ Simulation data for dark matter power spectra at 3 redshifts, z = 0, 0.509, 0.98
 
 For more, see the detailed description of these simulations in Okumura et al. 2012.
 """
-from .. import data_dir, numpy as np, os as _os  
-import pandas as pd 
-    
+from .. import data_dir, numpy as np, os as _os
+import pandas as pd
+   
 __all__ = ['load',
            'P00_mu0_z_0_000',
            'P00_mu0_z_0_509',
@@ -357,6 +357,13 @@ def nonlinear_bias_data(kind, name):
     """
     fname = _os.path.join(data_dir, 'simulation_fits/%s_fits_runPB.npz' %kind)
     return np.load(fname)[name]
+    
+def vlah_nonlinear_bias_fits():     
+    """
+    Return the fits for the the Vlah et al. nonlinear biasing
+    """
+    fname = _os.path.join(data_dir, 'simulation_fits/nonlinear_biases_fits_runPB.pickle')
+    return pd.read_pickle(fname)
     
 def velocity_dispersion_data():
     """

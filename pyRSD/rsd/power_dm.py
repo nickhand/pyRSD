@@ -1,8 +1,9 @@
 import fnmatch
 import contextlib
+import warnings
 
 from ._cache import Cache, parameter, interpolated_property, cached_property
-from . import tools, INTERP_KMIN, INTERP_KMAX
+from . import tools, INTERP_KMIN, INTERP_KMAX, __version__
 from .. import pygcl, numpy as np, data as sim_data, os
 
 from .pt_integrals import PTIntegralsMixin
@@ -22,9 +23,7 @@ def verify_krange(k, kmin, kmax):
 class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     """
     The dark matter power spectrum in redshift space
-    """
-    __version__ = '0.2.0'
-    
+    """    
     # splines and interpolation variables
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 250)
     spline = tools.RSDSpline
@@ -96,7 +95,11 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             string specifying the name of a file which gives the linear 
             power spectrum, from which the transfer function in ``cosmo``
             will be initialized
-        """   
+        """
+        # set and save the model version automatically
+        self.__version__ = __version__
+                       
+        # mix in the sim loader class
         SimLoaderMixin.__init__(self)
         
         # set the input parameters
@@ -130,15 +133,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         for kw in self.allowable_kwargs:
             if fnmatch.fnmatch(kw, 'use_*_model'):
                 setattr(self, kw, kwargs.pop(kw, True))
-            
-        # check the version        
-        version = kwargs.pop('__version__', self.__version__)
-        if self.__version__ != version:
-            msg = "trying to initialize a model of the wrong version\n"
-            msg += '\tcurrent model version: %s\n' %(self.__version__)
-            msg += '\tdesired model version: %s\n' %(version)
-            raise ValueError(msg)
-        
+                    
         # extra keywords
         if len(kwargs):                    
             for k in kwargs:
@@ -664,50 +659,11 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
         return self.f**2 * toret
         
-    @classmethod
-    def from_npy(cls, filename):
-        """
-        Load from a numpy `.npy` file
-        """
-        model = np.load(filename).tolist()
-        
-        # print a warning
-        version = model.__version__
-        if version != model.__class__.__version__:
-            msg = "warning: trying to load a model of the wrong version\n"
-            msg += '\tcurrent model version: %s\n' %(model.__class__.__version__)
-            msg += '\tloaded model version: %s\n' %(version)
-            print(msg)
-        return model
-        
-    @classmethod
-    def from_pickle(cls, filename):
-        """
-        Load from a pickle file
-        """
-        model = pickle.load(open(filename, 'r'), protocol=-1)
-        
-        # print a warning
-        version = model.__version__
-        if version != model.__class__.__version__:
-            msg = "warning: trying to load a model of the wrong version\n"
-            msg += '\tcurrent model version: %s\n' %(model.__class__.__version__)
-            msg += '\tloaded model version: %s\n' %(version)
-            print(msg)
-        return model
-        
     def to_npy(self, filename):
         """
         Save to a numpy `.npy` file
         """
         np.save(filename, self)
-        
-    def from_pickle(self, filename):
-        """
-        Save to a pickle file. This is slower than `to_npy`, 
-        so that is the preferred serialization method
-        """
-        pickle.dump(self, open(filename, 'w'), protocol=-1)
         
     #---------------------------------------------------------------------------
     # utility functions

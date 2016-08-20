@@ -319,7 +319,7 @@ class NonlinearBiasFits(GeorgeSimulationDataSet):
     """
     def __init__(self):
         
-        data = sim_data.nonlinear_bias_data()        
+        data = sim_data.vlah_nonlinear_bias_fits()        
         independent = ['z', 'b1']
         dependent = ['b2_00', 'b2_01']
         theta = [[6.52899259, 6.17291945, 4.81539378], [5.76031228, 11.50416509, 1.92884161]]

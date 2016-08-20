@@ -32,6 +32,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                        vel_disp_from_sims=False,  
                        correct_mu2=False,
                        correct_mu4=False,
+                       use_vlah_biasing=False,
                        **kwargs):
         
         # initalize the dark matter power spectrum
@@ -48,8 +49,11 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         self.b1                 = 2.
         
         # correction models
-        self.correct_mu2   = correct_mu2
-        self.correct_mu4   = correct_mu4
+        self.correct_mu2 = correct_mu2
+        self.correct_mu4 = correct_mu4
+        
+        # whether to use Vlah et al nonlinear biasing
+        self.use_vlah_biasing = use_vlah_biasing
         
         # set b1_bar, unless we are fixed
         if (self.__class__.__name__ != "HaloSpectrum"): self.b1_bar = 2.
@@ -57,6 +61,13 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     #---------------------------------------------------------------------------
     # attributes
     #---------------------------------------------------------------------------
+    @parameter
+    def use_vlah_biasing(self, val):
+        """
+        Whether to use the nonlinear biasing scheme from Vlah et al. 2013
+        """           
+        return val
+        
     @parameter
     def correct_mu2(self, val):
         """

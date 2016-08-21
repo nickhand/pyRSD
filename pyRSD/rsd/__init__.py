@@ -26,6 +26,13 @@ def print_version():
 __all__ = ['power_dm', 'power_biased', 'power_halo', 'power_gal', 'grid_transfer', 'correlation']
 
 
+class OutdatedModelWarning(UserWarning):
+    """
+    The warning that will be thrown if the loaded model
+    is out-of-date
+    """
+    pass
+
 def load_model(filename):
     """
     Load a model from a npy
@@ -42,11 +49,11 @@ def load_model(filename):
     model = numpy.load(filename).tolist()
     
     # check the version
-    if hasattr(model, '__version__') and model.__version__ != __version__:
+    if not hasattr(model, '__version__') or model.__version__ != __version__:
         import warnings
         msg = "loading an outdated model:\n"
         msg += '\tcurrent model version: %s\n' %(__version__)
         msg += '\tloaded model version: %s\n' %(model.__version__)
-        warnings.warn(msg)
+        warnings.warn(msg, OutdatedModelWarning)
         
     return model

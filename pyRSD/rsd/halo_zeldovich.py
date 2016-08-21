@@ -423,7 +423,7 @@ class HaloZeldovichP01(HaloZeldovichPS):
         """
         The Zel'dovich power spectrum
         """
-        return pygcl.ZeldovichP01(self.cosmo, self.z, True)
+        return pygcl.ZeldovichP01(self.cosmo, self.z, False)
         
     @parameter
     def f(self, val):
@@ -563,7 +563,7 @@ class HaloZeldovichP11(HaloZeldovichPS):
         """
         The Zel'dovich power spectrum
         """
-        return pygcl.ZeldovichP11(self.cosmo, self.z, True)
+        return pygcl.ZeldovichP11(self.cosmo, self.z, False)
         
     @parameter
     def f(self, val):

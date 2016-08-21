@@ -19,7 +19,7 @@
 class Imn {
 public: 
     
-    Imn(const PowerSpectrum& P_L, double epsrel = 1e-4);
+    Imn(const PowerSpectrum& P_L, double epsrel = 1e-3);
     
     /* Evaluate integral at a single k */
     double Evaluate(double k, int m, int n) const;

@@ -6,7 +6,7 @@ class ZeldovichPS {
 public:
     
     ZeldovichPS(const Cosmology& C, double z, bool approx_lowk=false);
-    ZeldovichPS(const Cosmology& C, bool approx_lowk, double sigma8_z, double k0_low, 
+    ZeldovichPS(const Cosmology& C, bool approx_lowk, double z, double sigma8_z, double k0_low, 
                 double sigmasq, const parray& X0, const parray& X, const parray& Y);
     virtual ~ZeldovichPS();
     
@@ -22,6 +22,7 @@ public:
     virtual double LowKApprox(double k) const;
     
     const double& GetSigma8AtZ() const;
+    const double& GetRedshift() const;
     const Cosmology& GetCosmology() const;
     const bool& GetApproxLowKFlag() const;
     const double& GetK0Low() const;

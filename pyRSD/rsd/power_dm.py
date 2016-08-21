@@ -137,10 +137,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # extra keywords
         if len(kwargs):                    
             for k in kwargs:
-                print("warning: extra keyword `%s` is ignored" %k)
-        
-        # finally, initialize the integrals    
-        PTIntegralsMixin.__init__(self)
+                warning.warn("extra keyword `%s` is ignored" %k)
                     
     def initialize(self):
         """

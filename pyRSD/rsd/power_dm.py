@@ -142,6 +142,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # finally, initialize the integrals    
         PTIntegralsMixin.__init__(self)
                     
+    def initialize(self):
+        """
+        Initialize the underlying splines, etc of the model
+        """
+        k = 0.5*(self.kmin+self.kmax)
+        return self.power(k, 0.5)
+    
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------            

@@ -59,14 +59,7 @@ class ZeroShotNoise(object):
 
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.model.N = self._N
-    
-
-def compute_component_spectra(x, model, k, mu):
-    
-    params, name = x
-    model.update(**params)
-    return getattr(model, name)(k, mu)
-    
+        
 class GalaxySpectrum(power_biased.BiasedSpectrum):
     """
     The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`

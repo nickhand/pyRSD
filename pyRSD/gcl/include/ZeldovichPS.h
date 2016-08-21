@@ -18,7 +18,7 @@ public:
        
     // constructors
     ZeldovichPS(const Cosmology& C, double z, bool approx_lowk=false);
-    ZeldovichPS(const Cosmology& C, bool approx_lowk, double z, double sigma8_z, double k0_low,
+    ZeldovichPS(const Cosmology& C, bool approx_lowk, double sigma8_z, double k0_low,
                   double sigma_sq, const parray& X0, const parray& XX, const parray& YY);
     virtual ~ZeldovichPS();
     
@@ -37,7 +37,6 @@ public:
     // get references to various attributes
     const Cosmology& GetCosmology() const { return C; }
     const double& GetSigma8AtZ() const { return sigma8_z; }
-    const double& GetRedshift() const { return z; }
     const bool& GetApproxLowKFlag() const { return approx_lowk; }
     const double& GetK0Low() const { return k0_low; }
     parray GetXZel() const { return XX; }
@@ -46,7 +45,7 @@ public:
     const double& GetSigmaSq() const { return sigma_sq; }
              
     // set sigma8(z)
-    // convenience tracking so we don't recompute XX, YY, sigma_sq if sigma8_z changes
+    // convenience tracking so we don't recompute XX, YY, sigma_sq if sigma8, z change
     void SetSigma8AtZ(double sigma8_z);
          
 protected:
@@ -55,7 +54,6 @@ protected:
     const Cosmology& C;
     
     // keep track of redshift, sigma8 for easy scaling
-    double z; 
     double sigma8_z;
     
     // linear power spectrum
@@ -64,6 +62,7 @@ protected:
     // low k approximation 
     bool approx_lowk;
     double k0_low;
+    
     
     double nc, dlogr, logrc;
     

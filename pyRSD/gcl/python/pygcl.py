@@ -234,7 +234,7 @@ class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG, metaclass=DocFixer):
         args = self.args
         if len(args) == 1:
             args += (self.GetApproxLowKFlag(), )
-        args += (self.GetRedshift(), self.GetSigma8AtZ(), self.GetK0Low(), self.GetSigmaSq(), self.GetX0Zel(), self.GetXZel(), self.GetYZel())
+        args += (self.GetSigma8AtZ(), self.GetK0Low(), self.GetSigmaSq(), self.GetX0Zel(), self.GetXZel(), self.GetYZel())
         return {'args': args}
 
 #-------------------------------------------------------------------------------

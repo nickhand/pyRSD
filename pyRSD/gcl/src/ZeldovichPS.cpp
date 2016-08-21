@@ -13,25 +13,26 @@ static const int NMAX = 15;
 /* Zeldovich base class */
 /*----------------------------------------------------------------------------*/
 ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_, bool approx_lowk_) 
-    : C(C_), z(z_), sigma8_z(C_.Sigma8_z(z_)), Plin(C_, z_), approx_lowk(approx_lowk_), k0_low(5e-3)
+    : C(C_), sigma8_z(C_.Sigma8_z(z_)), Plin(C_, z_), approx_lowk(approx_lowk_), k0_low(5e-3)
 {    
     // initialize the R array
     InitializeR();
 
-    // compute integrals at z = z with 
-    double norm = pow2(sigma8_z/C.Sigma8_z(z));
+    // compute integrals at z = 0 first
+    LinearPS P_L(C_, 0.);
+    double norm = pow2(sigma8_z/C.sigma8());
     
     // the integrals we need
-    sigma_sq = norm*Plin.VelocityDispersion();    
-    X0 = norm*Plin.X_Zel(r);
+    sigma_sq = norm*P_L.VelocityDispersion();    
+    X0 = norm*P_L.X_Zel(r);
     XX = X0 + 2.*sigma_sq;
-    YY = norm*Plin.Y_Zel(r); 
+    YY = norm*P_L.Y_Zel(r); 
 }
 
 
-ZeldovichPS::ZeldovichPS(const Cosmology& C_, bool approx_lowk_, double z_, double sigma8_z_, double k0_low_,
+ZeldovichPS::ZeldovichPS(const Cosmology& C_, bool approx_lowk_, double sigma8_z_, double k0_low_,
                          double sigmasq, const parray& X0_, const parray& XX_, const parray& YY_) 
-                        : C(C_), z(z_), sigma8_z(sigma8_z_), Plin(C_, z_), approx_lowk(approx_lowk_), 
+                        : C(C_), sigma8_z(sigma8_z_), Plin(C_, 0.), approx_lowk(approx_lowk_), 
                          k0_low(k0_low_), sigma_sq(sigmasq), X0(X0_), XX(XX_), YY(YY_)
 {
     InitializeR();

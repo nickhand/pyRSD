@@ -13,14 +13,12 @@ class HaloZeldovichPS(Cache):
     interpolation_grid['sigma8_z'] = np.linspace(0.3, 1.0, 100)
     interpolation_grid['k'] = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 300)
 
-    def __init__(self, z, sigma8_z, interpolate=False, enhance_wiggles=False):
+    def __init__(self, sigma8_z, interpolate=False, enhance_wiggles=False):
         """
         Parameters
         ----------
-        redshift : float
-            results computed using the linear power spectrum at this redshift
         sigma8_z : float
-            the desired sigma8 to compute the power at
+            The desired sigma8 to compute the power at
         interpolate : bool, optional
             Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
@@ -29,7 +27,6 @@ class HaloZeldovichPS(Cache):
             of pure HZPT
         """    
         # the model parameters
-        self.z               = z
         self.sigma8_z        = sigma8_z
         self.interpolate     = interpolate
         self.enhance_wiggles = enhance_wiggles
@@ -63,14 +60,6 @@ class HaloZeldovichPS(Cache):
         """
         return val
         
-    @parameter
-    def z(self, val):
-        """
-        The redshift that the linear power spectrum is evaluated at when 
-        computing the Zel'dovich integrals
-        """
-        return val
-    
     @parameter
     def sigma8_z(self, val):
         """
@@ -137,17 +126,16 @@ class HaloZeldovichPS(Cache):
     #---------------------------------------------------------------------------
     # cached properties
     #---------------------------------------------------------------------------
-    @cached_property("z")
+    @cached_property()
     def interpolation_table(self):
         """
         Evaluate the Zeldovich power for storing in the interpolation table.
         
         Notes
         -----
-        This DOES depend on redshift because the shape of the linear power
-        spectrum changes with `z`, so the Zel'dovich integrals must be 
-        re-computed when z changes
-        """
+        This does not depend on redshift, as we are interpolating as a function
+        of sigma8(z)
+        """ 
         original_s8z = self.sigma8_z
         
         # the interpolation grid points
@@ -299,60 +287,50 @@ class HaloZeldovichP00(HaloZeldovichPS):
     """
     The dark matter auto-spectrum P00 using Halo-Zel'dovich Perturbation Theory
     """ 
-    def __init__(self, cosmo, z, sigma8_z, interpolate=False, enhance_wiggles=False):
+    def __init__(self, cosmo, sigma8_z, interpolate=False, enhance_wiggles=False):
         """
         Parameters
         ----------
         cosmo : pygcl.Cosmology
-            the cosmology object
-        z : float
-            the redshift
+            The cosmology object
         sigma8_z : float
-            the desired sigma8 to compute the power at
+            The desired sigma8 to compute the power at
         interpolate : bool, optional
-            whether to return Zel'dovich power from the interpolation table
+            Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         enhance_wiggles : bool, optional (`False`)
             using the Hy1 model from arXiv:1509.02120, enhance the wiggles
             of pure HZPT
         """   
-        self.cosmo = cosmo
-        kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
-        super(HaloZeldovichP00, self).__init__(z, sigma8_z, **kwargs)
+        # initialize the Pzel object
+        self.Pzel = pygcl.ZeldovichP00(cosmo, 0)
         
-    @cached_property("cosmo", "z")
-    def Pzel(self):
-        """
-        The Zel'dovich power spectrum
-        """
-        return pygcl.ZeldovichP00(self.cosmo, self.z, True)
+        # initialize the base class
+        kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
+        super(HaloZeldovichP00, self).__init__(sigma8_z, **kwargs)
+        self.cosmo = cosmo
         
 class HaloZeldovichCF00(HaloZeldovichPS):
     """
     The dark matter correlation function using Halo-Zel'dovich Perturbation Theory
     """ 
-    def __init__(self, cosmo, z, sigma8_z):
+    def __init__(self, cosmo, sigma8_z):
         """
         Parameters
         ----------
         cosmo : pygcl.Cosmology
-            the cosmology object
-        z : float
-            the redshift
+            The cosmology object
         sigma8_z : float
-            the desired sigma8(z) to compute the power at
+            The desired sigma8 to compute the power at
         """   
-        self.cosmo = cosmo
+        # initialize the Pzel object
+        self.Pzel = pygcl.ZeldovichCF(cosmo, 0)
+        
+        # initialize the base class
         kwargs = {'interpolate':False, 'enhance_wiggles':False}
         super(HaloZeldovichCF00, self).__init__(sigma8_z, **kwargs)
-                    
-    @cached_property("cosmo", "z")
-    def Pzel(self):
-        """
-        The Zel'dovich correlation function
-        """
-        return pygcl.ZeldovichCF(self.cosmo, self.z, True)
-    
+        self.cosmo = cosmo
+                       
     def __broadband__(self, r):
         """
         The broadband power correction as given by Eq. 7 in arXiv:1501.07512.
@@ -394,14 +372,12 @@ class HaloZeldovichP01(HaloZeldovichPS):
     """
     The dark matter density - radial momentum cross correlation P01 using HZPT
     """ 
-    def __init__(self, cosmo, z, sigma8_z, f, interpolate=False, enhance_wiggles=False):
+    def __init__(self, cosmo, sigma8_z, f, interpolate=False, enhance_wiggles=False):
         """
         Parameters
         ----------
         cosmo : pygcl.Cosmology
             The cosmology object
-        z : float
-            the redshift
         sigma8_z : float
             The desired sigma8 to compute the power at
         f : float
@@ -412,19 +388,18 @@ class HaloZeldovichP01(HaloZeldovichPS):
         enhance_wiggles : bool, optional (`False`)
             using the Hy1 model from arXiv:1509.02120, enhance the wiggles
             of pure HZPT
-        """ 
-        self.cosmo = cosmo
-        self.f     = f 
-        kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
-        super(HaloZeldovichP01, self).__init__(z, sigma8_z, **kwargs)
-
-    @cached_property("cosmo", "z")
-    def Pzel(self):
-        """
-        The Zel'dovich power spectrum
-        """
-        return pygcl.ZeldovichP01(self.cosmo, self.z, False)
+        """  
+        # initialize the Pzel object
+        self.Pzel = pygcl.ZeldovichP01(cosmo, 0.)
         
+        # initialize the base class
+        kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
+        super(HaloZeldovichP01, self).__init__(sigma8_z, **kwargs)
+         
+        # set the parameters
+        self.cosmo = cosmo
+        self.f = f
+    
     @parameter
     def f(self, val):
         """
@@ -522,14 +497,12 @@ class HaloZeldovichP11(HaloZeldovichPS):
     The 1-loop SPT model for the vector contribution to P11[mu4] should be
     added to the power returned by this class to model the full P11[mu4]
     """ 
-    def __init__(self, cosmo, z, sigma8_z, f, interpolate=False, enhance_wiggles=False):
+    def __init__(self, cosmo, sigma8_z, f, interpolate=False, enhance_wiggles=False):
         """
         Parameters
         ----------
         cosmo : pygcl.Cosmology
             The cosmology object
-        z : float
-            the redshift
         sigma8_z : float
             The desired sigma8 to compute the power at
         f : float
@@ -538,11 +511,16 @@ class HaloZeldovichP11(HaloZeldovichPS):
             Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         """   
-        self.cosmo = cosmo
-        self.f     = f
+        # initialize the Pzel object
+        self.Pzel = pygcl.ZeldovichP11(cosmo, 0.)
+        
+        # initialize the base class
         kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
-        super(HaloZeldovichP11, self).__init__(z, sigma8_z, **kwargs)
-
+        super(HaloZeldovichP11, self).__init__(sigma8_z, **kwargs)
+        
+        self.cosmo = cosmo
+        self.f = f
+        
         # A0
         self._A0_amp   = 656
         self._A0_alpha = 3.95
@@ -558,13 +536,6 @@ class HaloZeldovichP11(HaloZeldovichPS):
         self._R1h_alpha = -0.045
         self._R1h_beta  = 0.87
                       
-    @cached_property("cosmo", "z")
-    def Pzel(self):
-        """
-        The Zel'dovich power spectrum
-        """
-        return pygcl.ZeldovichP11(self.cosmo, self.z, False)
-        
     @parameter
     def f(self, val):
         """
@@ -633,26 +604,31 @@ class HaloZeldovichPhm(HaloZeldovichPS):
     """
     The halo-matter cross-correlation Phm, using HZPT
     """ 
-    def __init__(self, cosmo, z, sigma8_z, interpolate=False, enhance_wiggles=False):
+    def __init__(self, cosmo, sigma8_z, interpolate=False, enhance_wiggles=False):
         """
         Parameters
         ----------
         cosmo : pygcl.Cosmology
-            the cosmology object
-        z : float
-            the redshift
+            The cosmology object
         sigma8_z : float
-            the desired sigma8 to compute the power at
+            The desired sigma8 to compute the power at
         interpolate : bool, optional (`False`)
-            whether to return Zel'dovich power from the interpolation table
+            Whether to return Zel'dovich power from the interpolation table
             using sigma8 as the index variable
         enhance_wiggles : bool, optional (`False`)
             using the Hy1 model from arXiv:1509.02120, enhance the wiggles
             of pure HZPT
-        """                   
-        self.cosmo = cosmo
+        """   
+        # initialize the Pzel object
+        if not hasattr(self, 'Pzel'):
+            self.Pzel = pygcl.ZeldovichP00(cosmo, 0.)
+                
+        # initialize the base class
         kwargs = {'interpolate':interpolate, 'enhance_wiggles':enhance_wiggles}
-        super(HaloZeldovichPhm, self).__init__(z, sigma8_z, **kwargs)
+        super(HaloZeldovichPhm, self).__init__(sigma8_z, **kwargs)
+        
+        # save the cosmology too
+        self.cosmo = cosmo
         
         # A0 power law
         self._A0_amp   = 780.
@@ -683,13 +659,6 @@ class HaloZeldovichPhm(HaloZeldovichPS):
         self._R_alpha = 0.22
         self._R_beta  = -0.18
         self._R_run   = 0
-        
-    @cached_property("cosmo", "z")
-    def Pzel(self):
-        """
-        The Zel'dovich power spectrum
-        """
-        return pygcl.ZeldovichP00(self.cosmo, self.z, True)
         
     #---------------------------------------------------------------------------
     # parameters

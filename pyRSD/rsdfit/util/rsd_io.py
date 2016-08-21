@@ -49,7 +49,8 @@ def load_model(filename):
         raise ConfigurationError('cannot load model from file `%s`; does not exist' %filename)
     _, ext = os.path.splitext(filename)
     if ext == '.npy':
-        model = np.load(filename).tolist()
+        from ...rsd import load_model
+        model = load_model(filename)
     elif ext == '.pickle':
         model = load_pickle(filename)
     else:

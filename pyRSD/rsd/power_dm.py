@@ -150,7 +150,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     # parameters
     #---------------------------------------------------------------------------            
     @contextlib.contextmanager
-    def preserve(self):
+    def preserve(self, **kwargs):
         """
         Context manager that preserves the state of the model
         upon exiting the context by first saving and then restoring it
@@ -163,6 +163,10 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             else:
                 unset_params.append(k)
         cache = self._cache.copy()
+        
+        # set any kwargs passed
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
         
         yield
 
@@ -1006,9 +1010,9 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             sigsq_eff = sigma_lin**2 + sigma_12**2
         
             if self.include_2loop:
-                P12.with_velocity.mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff*self.P01.total.mu2
+                P12.with_velocity.mu4 = -0.5*(self.f*self.k)**2 * sigsq_eff * self.P01.total.mu2
             else:
-                P12.with_velocity.mu4 = -self.f*(self.f*self.k)**2 * sigsq_eff*Plin
+                P12.with_velocity.mu4 = -self.f*(self.f*self.k)**2 * sigsq_eff * Plin
         
             # total mu^4 is velocity + no velocity terms
             P12.total.mu4 = P12.with_velocity.mu4 + P12.no_velocity.mu4
@@ -1167,9 +1171,8 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         sigma_13_v  = self.sigma_bv2 * self.cosmo.h() / (self.f*self.conformalH) 
         sigsq_eff_vector = sigma_lin**2 + sigma_13_v**2
         
-        if self.include_2loop:
-            sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH) 
-            sigsq_eff_scalar = sigma_lin**2 + sigma_13_s**2
+        sigma_13_s  = self.sigma_v2 * self.cosmo.h() / (self.f*self.conformalH) 
+        sigsq_eff_scalar = sigma_lin**2 + sigma_13_s**2
             
         # do mu^4 terms?
         if self.max_mu >= 4:

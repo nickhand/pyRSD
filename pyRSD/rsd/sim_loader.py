@@ -42,7 +42,7 @@ class SimLoaderMixin(object):
     #---------------------------------------------------------------------------
     # UTILITY FUNCTIONS    
     #---------------------------------------------------------------------------
-    def get_loaded_data(self, name, k):
+    def _get_loaded_data(self, name, k):
         """
         Evaluate the spline for the given loaded name
         """
@@ -51,7 +51,7 @@ class SimLoaderMixin(object):
         return self._loaded_data[name](k)
         
     #---------------------------------------------------------------------------
-    def load(self, name, k, P):
+    def _load(self, name, k, P):
         """
         Load data into a given power attribute, as specified by power_term
         and mu_term.
@@ -63,7 +63,7 @@ class SimLoaderMixin(object):
         setattr(self, name+'_loaded', True)
         
     #---------------------------------------------------------------------------
-    def unload(self, name):
+    def _unload(self, name):
         """
         Delete the given power attribute, as specified by power_term.
         """ 

@@ -38,7 +38,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        transfer_fit="CLASS",
                        max_mu=4,
                        interpolate=True,
-                       load_dm_sims=None,
                        k0_low=5e-3,
                        enhance_wiggles=False,
                        linear_power_file=None,
@@ -78,10 +77,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         
         interpolate: bool, optional
             Whether to return interpolated results for underlying power moments
-            
-        load_dm_sims : str or `None`, optional
-            load the DM simulation measurements for a set of builtin simulations;
-            must be one of ``['teppei_lowz', 'teppei_midz', 'teppei_highz']``
         
         k0_low : float, optional (`5e-3`)
             below this wavenumber, evaluate any power in "low-k mode", which
@@ -109,7 +104,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         self.max_mu            = max_mu
         self.include_2loop     = include_2loop
         self.z                 = z 
-        self.load_dm_sims      = load_dm_sims
         self.kmin              = kmin
         self.kmax              = kmax
         self.Nk                = Nk
@@ -137,7 +131,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # extra keywords
         if len(kwargs):                    
             for k in kwargs:
-                warning.warn("extra keyword `%s` is ignored" %k)
+                warnings.warn("extra keyword `%s` is ignored" %k)
                 
         # mix in the PT intergrals mixin
         PTIntegralsMixin.__init__(self)
@@ -210,39 +204,34 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                 if hasattr(self, k):
                     setattr(self, k, v)
                         
-    @parameter
+    @contextlib.contextmanager
     def load_dm_sims(self, val):
         """
-        Load simulation data for the dark matter terms
+        Context manager to load simulation data for certain dark matter terms
         """
-        # try to unload any load sim data
-        if val is None:
-            names = ['P00_mu0', 'P01_mu2', 'P11_mu4', 'Pdv']
-            for name in names:
-                if getattr(self, name+'_loaded'):
-                    self.unload(name)
-        
-        else:
-            allowed = ['teppei_lowz', 'teppei_midz', 'teppei_highz']
-            if val not in allowed:
-                raise ValueError("Allowed simulations to load are %s" %allowed)
+        allowed = ['teppei_lowz', 'teppei_midz', 'teppei_highz']
+        if val not in allowed:
+            raise ValueError("Allowed simulations to load are %s" %allowed)
+    
+        z_tags = {'teppei_lowz' : '000', 'teppei_midz' : '509', 'teppei_highz' : '989'}
+        z_tag = z_tags[val]
             
-            z_tags = {'teppei_lowz' : '000', 'teppei_midz' : '509', 'teppei_highz' : '989'}
-            z_tag = z_tags[val]
-                
+        # preserve the state
+        with self.preserve():
+        
             # get the data
             P00_mu0_data = getattr(sim_data, 'P00_mu0_z_0_%s' %z_tag)()
             P01_mu2_data = getattr(sim_data, 'P01_mu2_z_0_%s' %z_tag)()
             P11_mu4_data = getattr(sim_data, 'P11_mu4_z_0_%s' %z_tag)()
             Pdv_mu0_data = getattr(sim_data, 'Pdv_mu0_z_0_%s' %z_tag)()
-            
-            self.load('P00_mu0', P00_mu0_data[:,0], P00_mu0_data[:,1])
-            self.load('P01_mu2', P01_mu2_data[:,0], P01_mu2_data[:,1])
-            self.load('P11_mu4', P11_mu4_data[:,0], P11_mu4_data[:,1])
-            self.load('Pdv', Pdv_mu0_data[:,0], Pdv_mu0_data[:,1])
-            
-        return val
         
+            self._load('P00_mu0', P00_mu0_data[:,0], P00_mu0_data[:,1])
+            self._load('P01_mu2', P01_mu2_data[:,0], P01_mu2_data[:,1])
+            self._load('P11_mu4', P11_mu4_data[:,0], P11_mu4_data[:,1])
+            self._load('Pdv', Pdv_mu0_data[:,0], Pdv_mu0_data[:,1])
+            
+            yield
+                    
     @parameter
     def interpolate(self, val):
         """

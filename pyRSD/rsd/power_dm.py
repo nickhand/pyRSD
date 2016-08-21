@@ -312,7 +312,8 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Redshift to evaluate power spectrum at
         """
         # update the dependencies
-        models = ['P11_sim_model', 'Pdv_sim_model']
+        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 
+                    'P11_sim_model', 'Pdv_sim_model']
         self._update_models('z', models, val)
         
         return val
@@ -500,30 +501,30 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return self.cosmo.H_z(self.z) / (1. + self.z)
     
-    @cached_property("cosmo")
+    @cached_property("cosmo_filename", "z")
     def power_lin(self):
         """
-        A 'pygcl.LinearPS' object holding the linear power spectrum at z = 0
+        A 'pygcl.LinearPS' object holding the linear power spectrum at z = z
         """
-        return pygcl.LinearPS(self.cosmo, 0.)
+        return pygcl.LinearPS(self.cosmo, self.z)
             
-    @cached_property("cosmo_filename")
+    @cached_property("cosmo_filename", "z")
     def power_lin_nw(self):
         """
-        A 'pygcl.LinearPS' object holding the linear power spectrum at z = 0, 
+        A 'pygcl.LinearPS' object holding the linear power spectrum at z = z, 
         using the Eisenstein-Hu no-wiggle transfer function
         """
         cosmo = pygcl.Cosmology(self.cosmo_filename, pygcl.Cosmology.EH_NoWiggle)
-        return pygcl.LinearPS(cosmo, 0.)
+        return pygcl.LinearPS(cosmo, self.z)
                 
-    @cached_property("sigma8_z", "cosmo")
+    @cached_property("sigma8_z", "cosmo", "z")
     def _power_norm(self):
         """
         The factor needed to normalize the linear power spectrum 
         in `power_lin` to the desired sigma_8, as specified by `sigma8_z`,
         and the desired redshift `z`
         """
-        return (self.sigma8_z / self.cosmo.sigma8())**2  
+        return (self.sigma8_z / self.cosmo.Sigma8_z(self.z))**2  
         
     @cached_property("_power_norm", "_sigma_lin_unnormed")
     def sigma_lin(self):
@@ -536,7 +537,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     @cached_property("power_lin")
     def _sigma_lin_unnormed(self):
         """
-        The dark matter velocity dispersion at z = 0, as evaluated in 
+        The dark matter velocity dispersion at z = z, as evaluated in 
         linear theory [units: Mpc/h]. This is not properly normalized
         """
         return np.sqrt(self.power_lin.VelocityDispersion())
@@ -588,7 +589,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The class holding the HZPT model for the P00 dark matter term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP00(self.cosmo, self.sigma8_z, **kw)
+        return HaloZeldovichP00(self.cosmo, self.z, self.sigma8_z, **kw)
     
     @cached_property("cosmo")
     def P01_hzpt_model(self):
@@ -596,7 +597,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The class holding the HZPT model for the P01 dark matter term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP01(self.cosmo, self.sigma8_z, self.f, **kw)
+        return HaloZeldovichP01(self.cosmo, self.z, self.sigma8_z, self.f, **kw)
     
     @cached_property("cosmo")
     def P11_hzpt_model(self):
@@ -604,7 +605,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The class holding the HZPT model for the P11 dark matter term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP11(self.cosmo, self.sigma8_z, self.f, **kw)
+        return HaloZeldovichP11(self.cosmo, self.z, self.sigma8_z, self.f, **kw)
     
     @cached_property("power_lin")
     def P11_sim_model(self):

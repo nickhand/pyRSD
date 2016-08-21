@@ -131,7 +131,9 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         Redshift to evaluate power spectrum at
         """
         # update the dependencies
-        models = ['P11_sim_model', 'Pdv_sim_model', 'bias_to_sigma_relation']
+        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 
+                  'Phm_hzpt_model', 'bias_to_sigma_relation',
+                  'P11_sim_model', 'Pdv_sim_model']
         self._update_models('z', models, val)
 
         return val
@@ -220,7 +222,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         The class holding the Halo Zeldovich model for the Phm term
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichPhm(self.cosmo, self.sigma8_z, **kw)
+        return HaloZeldovichPhm(self.cosmo, self.z, self.sigma8_z, **kw)
         
     @cached_property("use_mean_bias", "b1", "b1_bar")
     def _ib1(self):

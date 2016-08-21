@@ -158,7 +158,7 @@ double Kmn::Evaluate(double k, int m, int n, bool tidal, int part) const {
         case 8:
             return ComputeIntegral(k10s, P_L, k, epsrel);
         case 9:
-            return ComputeIntegral(k11s, P_L, k, epsrel);
+            return ComputeIntegral(k11s, P_L, k, epsrel, false, QMAX);
         case 12:
             if (part == 0) 
                 return ComputeIntegral(k20_a, P_L, k, epsrel);

@@ -60,7 +60,13 @@ class PTIntegralsMixin(object):
     The class is written such that the computationally-expensive parts do not 
     depend on changes in sigma8(z) so the integrals can be renormalized to 
     the correct sigma8(z) with an overall scaling
-    """        
+    """
+    def __init__(self):
+        
+        # make sure power spectrum redshift is 0
+        msg = "Integrals: input linear power spectrum must be defined at z = 0"
+        assert self.power_lin.GetRedshift() == 0., msg
+        
     #---------------------------------------------------------------------------
     # one-loop power spectra
     #---------------------------------------------------------------------------

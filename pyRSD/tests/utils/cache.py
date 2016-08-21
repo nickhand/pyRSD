@@ -96,7 +96,7 @@ class cache_manager():
             self.save_model = True
         
         # initialize the model
-        if not self.save_model:
+        if self.save_model:
             self.logger.info("initializing new model")
             self.model.initialize()
         

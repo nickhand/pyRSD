@@ -2,7 +2,7 @@ INTERP_KMIN = 5e-6
 INTERP_KMAX = 1.0
 
 # compute the RSD model version with git string
-from astropy_helpers.git_helpers import get_git_devstr
+from ..extern.astropy_helpers.git_helpers import get_git_devstr
 from .. import pkg_dir
 __version__ = '0.2.0' + '-' + get_git_devstr(sha=True, path=pkg_dir)[:7]
 

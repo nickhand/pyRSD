@@ -23,7 +23,7 @@ def verify_krange(k, kmin, kmax):
 class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     """
     The dark matter power spectrum in redshift space
-    """    
+    """        
     # splines and interpolation variables
     k_interp = np.logspace(np.log10(INTERP_KMIN), np.log10(INTERP_KMAX), 250)
     spline = tools.RSDSpline
@@ -145,7 +145,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     
     #---------------------------------------------------------------------------
     # parameters
-    #---------------------------------------------------------------------------            
+    #---------------------------------------------------------------------------
     @contextlib.contextmanager
     def preserve(self, **kwargs):
         """
@@ -182,10 +182,11 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Context manager to turn off all models
         """
         from collections import OrderedDict
-        params = OrderedDict({'use_P00_model':False, 'use_P01_model':False, 
-                                'use_P11_model':False, 'use_Pdv_model':False, 
-                                'use_Phm_model':False})
-        
+        params = OrderedDict()
+        for kw in self.allowable_kwargs:
+            if fnmatch.fnmatch(kw, 'use_*_model'):
+                params[kw] = False
+                        
         try:
             
             # save the original state
@@ -215,22 +216,24 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     
         z_tags = {'teppei_lowz' : '000', 'teppei_midz' : '509', 'teppei_highz' : '989'}
         z_tag = z_tags[val]
+                    
+        # get the data
+        P00_mu0_data = getattr(sim_data, 'P00_mu0_z_0_%s' %z_tag)()
+        P01_mu2_data = getattr(sim_data, 'P01_mu2_z_0_%s' %z_tag)()
+        P11_mu4_data = getattr(sim_data, 'P11_mu4_z_0_%s' %z_tag)()
+        Pdv_mu0_data = getattr(sim_data, 'Pdv_mu0_z_0_%s' %z_tag)()
+    
+        self._load('P00_mu0', P00_mu0_data[:,0], P00_mu0_data[:,1])
+        self._load('P01_mu2', P01_mu2_data[:,0], P01_mu2_data[:,1])
+        self._load('P11_mu4', P11_mu4_data[:,0], P11_mu4_data[:,1])
+        self._load('Pdv', Pdv_mu0_data[:,0], Pdv_mu0_data[:,1])
             
-        # preserve the state
-        with self.preserve():
+        yield
         
-            # get the data
-            P00_mu0_data = getattr(sim_data, 'P00_mu0_z_0_%s' %z_tag)()
-            P01_mu2_data = getattr(sim_data, 'P01_mu2_z_0_%s' %z_tag)()
-            P11_mu4_data = getattr(sim_data, 'P11_mu4_z_0_%s' %z_tag)()
-            Pdv_mu0_data = getattr(sim_data, 'Pdv_mu0_z_0_%s' %z_tag)()
-        
-            self._load('P00_mu0', P00_mu0_data[:,0], P00_mu0_data[:,1])
-            self._load('P01_mu2', P01_mu2_data[:,0], P01_mu2_data[:,1])
-            self._load('P11_mu4', P11_mu4_data[:,0], P11_mu4_data[:,1])
-            self._load('Pdv', Pdv_mu0_data[:,0], Pdv_mu0_data[:,1])
-            
-            yield
+        self._unload('P00_mu0')
+        self._unload('P01_mu2')
+        self._unload('P11_mu4')
+        self._unload('Pdv')
                     
     @parameter
     def interpolate(self, val):
@@ -564,6 +567,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Whether to use interpolated sim results for Pdv
         """
         return val
+    
+    @parameter
+    def use_Pvv_model(self, val):
+        """
+        Whether to use Jenning model for Pvv or SPT
+        """
+        return val
         
     @parameter
     def Pdv_model_type(self, val):
@@ -781,7 +791,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         # check for any user-loaded values
         if self.Pdv_loaded:
-            return self.get_loaded_data('Pdv', self.k)
+            return self._get_loaded_data('Pdv', self.k)
         else:
             if self.use_Pdv_model:
                 if self.Pdv_model_type == 'jennings':
@@ -792,13 +802,16 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                 norm = self._power_norm
                 return (-self.f)*norm*(self.power_lin(self.k) + norm*self._Pdv_0(self.k))
     
-    @cached_property("k", "f", "z", "_power_norm")
+    @cached_property("k", "f", "z", "_power_norm", "use_Pvv_model")
     def Pvv(self):
         """
         The 1-loop auto-correlation of velocity divergence.
         """
-        norm = self._power_norm
-        return self.f**2 * norm*(self.power_lin(self.k) + norm*self._Pvv_0(self.k))
+        if self.use_Pvv_model:
+            return self.Pvv_jennings(self.k)
+        else:
+            norm = self._power_norm
+            return self.f**2 * norm*(self.power_lin(self.k) + norm*self._Pvv_0(self.k))
     
     @cached_property("k", "z", "sigma8_z", "use_P00_model", "power_lin", 
                      "P00_mu0_loaded", "enhance_wiggles")
@@ -811,7 +824,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             
         # check and return any user-loaded values
         if self.P00_mu0_loaded:
-            P00.total.mu0 = self.get_loaded_data('P00_mu0', self.k)
+            P00.total.mu0 = self._get_loaded_data('P00_mu0', self.k)
         else:
                 
             # use the DM model
@@ -842,7 +855,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             
             # check and return any user-loaded values
             if self.P01_mu2_loaded:
-                P01.total.mu2 = self.get_loaded_data('P01_mu2', self.k)
+                P01.total.mu2 = self._get_loaded_data('P01_mu2', self.k)
             else:
             
                 # use the DM model
@@ -875,7 +888,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             
             # check and return any user-loaded values
             if self.P11_mu2_loaded:
-                Pvec = self.get_loaded_data('P11_mu2', self.k)
+                Pvec = self._get_loaded_data('P11_mu2', self.k)
                 P11.vector.mu2 = P11.total.mu2 = Pvec
                 P11.vector.mu4 = -Pvec
             else:
@@ -897,7 +910,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                   
                 # check and return any user-loaded values
                 if self.P11_mu4_loaded:
-                    P11.total.mu4 = self.get_loaded_data('P11_mu4', self.k)
+                    P11.total.mu4 = self._get_loaded_data('P11_mu4', self.k)
                 else:
                     
                     # use HZPT?

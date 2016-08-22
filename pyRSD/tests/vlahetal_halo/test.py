@@ -238,22 +238,19 @@ def test_P11_mu4(model, binning):
         params['stochasticity'] = params['stochasticity'](model.k)
         model.sigma_v = params.pop('sigma_v') / 100. / model.f
                 
-        # preserve model
-        with model.preserve():
-            
-            # don't use Jennings Pvv for now
-            model.use_Pvv_model = False
-            
-            # model
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = model.P11.total.mu4
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.P11_ss.total.mu4 / norm, label="model", c='r')
+        # note that this won't agree exactly...we are using Jennings
+        # Pvv here
         
-            # PT
-            with model.use_spt():
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.P11_ss.total.mu4 / norm, label=r"PT: $b_1$+$b_2$", c='b')
+        # model
+        with model.load_dm_sims(sim_tags[iz]):
+            norm = model.P11.total.mu4
+            with model.cache_override(**params):
+                plt.plot(model.k, model.P11_ss.total.mu4 / norm, label="model", c='r')
+    
+        # PT
+        with model.use_spt():
+            with model.cache_override(**params):
+                plt.plot(model.k, model.P11_ss.total.mu4 / norm, label=r"PT: $b_1$+$b_2$", c='b')
                 
         ax.legend(loc=0, fontsize=14)
         savefig(fig, __file__, *output_paths('test_P11_mu4', z=z, mass=mass_bin))
@@ -291,7 +288,6 @@ def test_higher_order_mu4(model, binning):
         # update the params
         params['stochasticity'] = params['stochasticity'](model.k)
         model.sigma_v = params.pop('sigma_v') / 100. / model.f
-        model.use_Pvv_model = True
         
         # plot model 
         with model.load_dm_sims(sim_tags[iz]):

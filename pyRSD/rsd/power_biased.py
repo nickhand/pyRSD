@@ -518,7 +518,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                 
         return P03_ss
             
-    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "Pdv", "P01", "P12", "sigmav_halo", "sigmav_halo_bar", "b2_01_b")
     def P12_ss(self):
         """
         The correlation of halo momentum and halo kinetic energy density, which 
@@ -535,7 +535,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             sigsq = self.sigmav_halo**2
             sigsq_bar = self.sigmav_halo_bar**2
         
-            term1_mu4 = self.P12.total.mu4
+            term1_mu4 = self.P12.no_velocity.mu4 - 0.5*(self.f*self.k)**2 * 0.5*(sigsq + sigsq_bar) * self.P01.total.mu2
             term2_mu4 = -0.5*((b1 - 1) + (b1_bar - 1))*self.f**3*self.I03(self.k)
             term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (P01_mu2(self, self.b2_01_b) - self.P01.total.mu2)
             P12_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4

@@ -95,8 +95,8 @@ class CacheSchema(type):
     def __init__(cls, clsname, bases, attrs):
                                     
         # keep track of allowable kwargs of main class
-        attrs, varargs, varkw, defaults = inspect.getargspec(cls.__init__)
-        cls.allowable_kwargs = set(attrs[1:])
+        sig = inspect.signature(cls.__init__)
+        cls.allowable_kwargs = set(sig.parameters) - {'self'}
         
         # attach the registry attributes
         cls._cachemap = OrderedDict()

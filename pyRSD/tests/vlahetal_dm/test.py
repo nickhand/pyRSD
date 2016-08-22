@@ -1,108 +1,13 @@
-from .. import unittest, pytest
-from .. import pyplot as plt, cache_manager
-import os
+"""
+This module will reproduce the plots in Vlah et al. 2012., as
+a test of :class:`DarkMatterSpectrum`
+"""
+from . import model, redshift
+from . import get_sigma_bv2, get_sigma_v2, get_sigma_bv4
+from ..utils import new_axes, savefig, teardown_module
 
-redshifts = [0., 0.509, 0.989, 2.070]
+from matplotlib import pyplot as plt
 
-@pytest.fixture(scope='module', params=redshifts)
-def redshift(request):
-    return request.param
-
-@pytest.fixture(scope='module')
-def model(redshift):
-        
-    from pyRSD.rsd import DarkMatterSpectrum
-    
-    # inititalize the model
-    config                   = {}
-    config['include_2loop']  = True
-    config['transfer_fit']   = 'CLASS'
-    config['cosmo_filename'] = 'teppei_sims.ini'
-    config['max_mu']         = 6
-    config['use_P00_model']  = False
-    config['use_P01_model']  = False
-    config['use_P11_model']  = False
-    config['use_Pdv_model']  = False
-    config['interpolate']    = False
-    config['z']              = redshift
-    m = DarkMatterSpectrum(**config)
-    
-    # load the model
-    with cache_manager(m, "vlahetal_dm.npy") as model:
-        
-        # set klims
-        model.kmin = 0.01
-        model.kmax = 0.5
-        
-        # update redshift-dependent quantities
-        model.z        = redshift
-        model.sigma8_z = model.cosmo.Sigma8_z(redshift)
-        model.f        = model.cosmo.f_z(redshift)
-    
-    return model
-
-#------------------------------------------------------------------------------
-# TOOLS
-#------------------------------------------------------------------------------
-def get_sigma_bv2(z):
-    """
-    Return the value of `sigma_bv2` based on the input redshift
-    """
-    sigmas = [375., 356., 282., 144.]
-    return sigmas[redshifts.index(z)]
-    
-def get_sigma_v2(z):
-    """
-    Return the value of `sigma_v2` based on the input redshift
-    """
-    sigmas = [209., 198., 159., 80.]
-    return sigmas[redshifts.index(z)]
-
-def get_sigma_bv4(z):
-    """
-    Return the value of `sigma_bv4` based on the input redshift
-    """
-    sigmas = [432., 382., 315., 144.]
-    return sigmas[redshifts.index(z)]
-    
-def new_axes(ylabel, xlims, ylims, nticks=5):
-    """
-    Return a new, formatted axes
-    """
-    from matplotlib.ticker import AutoMinorLocator
-    plt.clf()
-    ax = plt.gca()
-    
-    # axes limits
-    ax.set_xlim(xlims)
-    ax.set_ylim(ylims)
-
-    # axes labels
-    ax.set_xlabel(r"$k$ [$h$/Mpc]", fontsize=14)
-    ax.set_ylabel(ylabel, fontsize=14)
-    
-    # add minor ticks
-    ax.xaxis.set_minor_locator(AutoMinorLocator(nticks))
-    ax.yaxis.set_minor_locator(AutoMinorLocator(nticks))
-    
-    return plt.gcf(), ax
-
-def savefig(fig, testname, z, dpi=200):
-    """
-    Save the input figure
-    """
-    # the output dir
-    currdir = os.path.split(__file__)[0]
-    d = os.path.join(currdir, 'figures', testname)
-    if not os.path.exists(d): os.makedirs(d)
-        
-    # save
-    filename = os.path.join(d, 'z_%.3f.jpg' %z)
-    fig.savefig(filename, dpi=dpi)
-
-#------------------------------------------------------------------------------
-# TESTS
-#------------------------------------------------------------------------------
 def test_P00(redshift, model):
     """
     Reproduce Figure 1.
@@ -131,7 +36,7 @@ def test_P00(redshift, model):
     plt.plot(model.k, model.P00_hzpt_model.__zeldovich__(model.k) / norm, **kws)
     
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P00', redshift)
+    savefig(fig, __file__, 'test_P00', 'z_%.3f.jpg' %redshift)
         
 def test_P01(redshift, model):
     """
@@ -143,7 +48,7 @@ def test_P01(redshift, model):
     ylabel = r"$P_{01}^\mathrm{DM} \ / P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
     # normalization
     A = 2*model.f
@@ -162,7 +67,7 @@ def test_P01(redshift, model):
     plt.plot(model.k, A*model.P01_hzpt_model.__zeldovich__(model.k) / norm, **kws)
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P01', redshift)
+    savefig(fig, __file__, 'test_P01', 'z_%.3f.jpg' %redshift)
 
 def test_scalar_P11(redshift, model):
     """
@@ -174,7 +79,7 @@ def test_scalar_P11(redshift, model):
     ylabel = r"$P_{11}^\mathrm{DM}[\mu^4] \ / P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
     
     # 1-loop results
     with model.preserve(include_2loop=False):
@@ -192,7 +97,7 @@ def test_scalar_P11(redshift, model):
         plt.plot(model.k, A*model.normed_power_lin(model.k) / norm, **kws)
 
         ax.legend(loc=0, fontsize=16)
-        savefig(fig, 'test_scalar_P11', redshift)
+        savefig(fig, __file__, 'test_scalar_P11', 'z_%.3f.jpg' %redshift)
         
 def test_P11(redshift, model):
     """
@@ -204,7 +109,7 @@ def test_P11(redshift, model):
     ylabel = r"$P_{11}^\mathrm{DM} \ \mathrm{[Mpc/h]^3}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
     # 1-loop scalar
     with model.preserve(include_2loop=False):
@@ -226,7 +131,7 @@ def test_P11(redshift, model):
     plt.loglog(model.k, model.f**2*model.normed_power_lin(model.k), **kws)
 
     ax.legend(loc=0, fontsize=16, ncol=2)
-    savefig(fig, 'test_P11', redshift)
+    savefig(fig, __file__, 'test_P11', 'z_%.3f.jpg' %redshift)
         
 def test_P02(redshift, model):
     """
@@ -238,7 +143,7 @@ def test_P02(redshift, model):
     ylabel = r"$P^\mathrm{DM}_{02} \ / \ (f \sigma_v k)^2 P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
     # normalization
     norm = (model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
@@ -259,7 +164,7 @@ def test_P02(redshift, model):
         plt.semilogx(model.k, P02_isotropic/norm, label=r'1-loop isotropic, no $\sigma^2$', c='r')
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P02', redshift)
+    savefig(fig, __file__, 'test_P02', 'z_%.3f.jpg' %redshift)
         
 def test_P12(redshift, model):
     """
@@ -271,7 +176,7 @@ def test_P12(redshift, model):
     ylabel = r"$P^\mathrm{DM}_{12} \ / \ f^3 (\sigma_v k)^2 P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims, nticks=4)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims, nticks=4)
 
     # normalization
     norm = model.f*(model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
@@ -292,7 +197,7 @@ def test_P12(redshift, model):
         plt.semilogx(model.k, model.P12.total.mu4/norm, **kws)
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P12', redshift)
+    savefig(fig, __file__, 'test_P12', 'z_%.3f.jpg' %redshift)
 
 def test_P22(redshift, model):
     """
@@ -304,7 +209,7 @@ def test_P22(redshift, model):
     ylabel = r"$P^\mathrm{DM}_{22} \ / \ (f^2 \sigma_v k)^2 P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
         
     # normalization
     norm = (model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
@@ -321,7 +226,7 @@ def test_P22(redshift, model):
     plt.loglog(model.k, abs(model.P22.total.mu6/norm), label=r"2-loop, $P_{22}[\mu^6]$", c='b', ls='--')
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P22', redshift)
+    savefig(fig, __file__, 'test_P22', 'z_%.3f.jpg' %redshift)
         
 def test_P03_and_P13(redshift, model):
     """
@@ -333,7 +238,7 @@ def test_P03_and_P13(redshift, model):
     ylabel = r"$P^\mathrm{DM}_{ij} \ / \ k^2 \sigma_v^2 P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
         
     # plot P03
     model.sigma_v2 = get_sigma_v2(redshift)
@@ -353,7 +258,7 @@ def test_P03_and_P13(redshift, model):
         plt.semilogx(model.k, model.P03.total.mu4/norm1, **kws)
     
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P03_and_P13', redshift)
+    savefig(fig, __file__, 'test_P03_and_P13', 'z_%.3f.jpg' %redshift)
     
 def test_P13_and_P04(redshift, model):
     """
@@ -365,10 +270,9 @@ def test_P13_and_P04(redshift, model):
     ylabel = r"$P^\mathrm{DM}_{ij} \ / \ k^2 \sigma_v^2 P_\mathrm{NW}$"
 
     # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
     
     # setup    
-    model.include_2loop = True
     model.sigma_v2 = get_sigma_v2(redshift)
     model.sigma_bv2 = get_sigma_bv2(redshift)
     model.sigma_bv4 = get_sigma_bv4(redshift)
@@ -379,19 +283,4 @@ def test_P13_and_P04(redshift, model):
     plt.loglog(model.k, abs(model.P04.total.mu4)/norm, label=r"2-loop, $P_{04}[\mu^4]$", c='g')
     
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, 'test_P13_and_P04', redshift)
-    
-def teardown_module(module):
-    
-    thismod = module.__name__.split('.')[-1]
-    remote_dir = os.path.join("/project/projectdirs/m779/www/nhand/pyRSDTests", thismod)
-    
-    cmd = "rsync -e ssh -avzl --progress --delete"
-    cmd += " --exclude='.*'"
-    
-    # add the directories and run the command
-    host = 'edison'
-    cmd += " figures/* nhand@%s:%s/" %(host, remote_dir)
-    ret = os.system(cmd)
-    
-    print ("teardown_module   module:%s" % module.__name__)
+    savefig(fig, __file__, 'test_P13_and_P04', 'z_%.3f.jpg' %redshift)

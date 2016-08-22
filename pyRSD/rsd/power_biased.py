@@ -2,7 +2,7 @@ import contextlib
 from .. import numpy as np
 
 # tools
-from ._cache import parameter, cached_property, interpolated_property
+from ._cache import parameter, cached_property, interpolated_property, CachedProperty
 from .tools import RSDSpline, BiasToSigmaRelation
 
 # base model
@@ -61,6 +61,35 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     #---------------------------------------------------------------------------
     # attributes
     #---------------------------------------------------------------------------
+    @contextlib.contextmanager
+    def cache_override(self, b2_00=None, b2_01=None, **kws):
+        """
+        Context manager to handle overriding the cache for specific attributes
+        """
+        self._cache_overrides = {}
+        
+        if b2_00 is not None:
+            assert np.isscalar(b2_00)
+            props = ['b2_00_a', 'b2_00_b', 'b2_00_c', 'b2_00_d']
+            for prop in props:
+                self._cache_overrides[prop] = lambda b1: b2_00
+                
+        if b2_01 is not None:
+            assert np.isscalar(b2_01)
+            props = ['b2_01_a', 'b2_01_b']
+            for prop in props:
+                self._cache_overrides[prop] = lambda b1: b2_01
+                
+        for k in kws:
+            prop = getattr(self.__class__, k, None)
+            if prop is None or not isinstance(prop, CachedProperty):
+                raise ValueError("'%s' is not a valid cached property" %k)
+            self._cache_overrides[k] = kws[k]
+            
+        yield
+        
+        del self._cache_overrides
+
     @parameter
     def use_vlah_biasing(self, val):
         """
@@ -456,7 +485,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         
         return P02_ss
             
-    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11")
+    @cached_property("_ib1", "_ib1_bar", "max_mu", "P11", "Pvv")
     def P11_ss(self):
         """
         The auto-correlation of the halo momentum field, which 
@@ -488,7 +517,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                 term1_mu4 = 0.5*(b1 + b1_bar)*self.P11.total.mu4
                 
                 # second term is B11 coming from P11
-                term2_mu4 = -0.5*((b1 - 1) + (b1_bar-1)) * self.Pvv_jennings(self.k)
+                term2_mu4 = -0.5*((b1 - 1) + (b1_bar-1)) * self.Pvv
                 
                 # third term is mu^4 part of C11 (at 2-loop)
                 I1 = self.Ivvdd_h02(self.k)

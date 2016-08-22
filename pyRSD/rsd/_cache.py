@@ -253,8 +253,16 @@ def cached_property(*parents):
         
         @wraps(f)
         def _get_property(self):
+            
+            # check for user overrides
+            if name in getattr(self, "_cache_overrides", {}):
+                return self._cache_overrides[name]
+            
+            # add to cache 
             if name not in self._cache:
                 self._cache[name] = f(self)
+            
+            # return the cached value
             return self._cache[name]
         
         def _del_property(self):

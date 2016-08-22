@@ -603,7 +603,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             term1 = self.P22.no_velocity.mu4
         
             # add convolution to P22bar
-            term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.P00.total.mu0) * self.sigmasq_k(self.k)**2
+            term2 = 0.5*(self.f*self.k)**4 * (b1*b1_bar * self.Pdd) * self.sigmasq_k(self.k)**2
         
             # b1 * P02_bar
             term3 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)

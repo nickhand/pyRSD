@@ -8,6 +8,8 @@ from scipy.optimize import brentq
 
 import functools
 import itertools
+import threading
+import inspect
 
 #-------------------------------------------------------------------------------
 # AP effect
@@ -89,20 +91,34 @@ def align_input(f):
         
     return wrapper
     
+# global AP effect lock
+APLock = threading.Lock()
+
 @doublewrap
 def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
     """
-    Decorator to introduce the AP effect
+    Decorator to introduce the AP effect by rescaling input
+    `k` and `mu`
+    
+    The first three arguments to `f` should be `self`, `k`, `mu`
     """
+    valid = ['self', 'k', 'mu']
+    sig = inspect.signature(f)
+    for i, (name, arg) in enumerate(sig.parameters.items()):
+        if i > 2: break
+        if arg.name != valid[i]:
+            raise ValueError("to apply AP effect, the signature of the function '%s' should be %s" %(f.__name__, str(valid)))
+    
     @functools.wraps(f)
     def wrap(self, *args, **kwargs):
         args = list(args)
         
         # if model is AP locked, do the distortion and lock
-        if not hasattr(self, '_AP_lock'):
+        if not APLock.locked():
+            
             # determine alpha_par, alpha_perp            
             alpha_par_  = alpha_par if alpha_par is not None else self.alpha_par
-            alpha_perp_  = alpha_perp if alpha_perp is not None else self.alpha_perp
+            alpha_perp_ = alpha_perp if alpha_perp is not None else self.alpha_perp
         
             # the k,mu to evaluate P(k, mu)
             k = k_AP(args[0], args[1], alpha_perp_, alpha_par_)
@@ -111,12 +127,14 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
             # evaluate at the AP (k,mu)
             args[:2] = k, mu
             
-            self._AP_lock = True
-            pkmu = f(self, *args, **kwargs)
-            del self._AP_lock
+            # evaluate with the AP lock
+            with APLock:
+                
+                # get the power spectrum
+                pkmu = f(self, *args, **kwargs)
         
-            # do the volume rescaling
-            pkmu /= (alpha_perp_**2 * alpha_par_)
+                # do the volume rescaling
+                pkmu /= (alpha_perp_**2 * alpha_par_)
                 
         # if locked, the distortion was already added
         else:

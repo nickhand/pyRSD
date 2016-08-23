@@ -558,20 +558,21 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     
         # do mu^4 terms?
         if self.max_mu >= 4:
-            Plin = self.normed_power_lin(self.k)
                                             
             # the velocities
             sigsq = self.sigmav_halo**2
             sigsq_bar = self.sigmav_halo_bar**2
         
             term1_mu4 = self.P12.no_velocity.mu4 - 0.5*(self.f*self.k)**2 * 0.5*(sigsq + sigsq_bar) * self.P01.total.mu2
-            term2_mu4 = -0.5*((b1 - 1) + (b1_bar - 1))*self.f**3*self.I03(self.k)
+            term2_mu4 = -0.5*((b1 - 1.) + (b1_bar - 1.))*self.f**3*self.I03(self.k)
             term3_mu4 = -0.25*(self.f*self.k)**2 * (sigsq + sigsq_bar) * (P01_mu2(self, self.b2_01_b) - self.P01.total.mu2)
             P12_ss.total.mu4 = term1_mu4 + term2_mu4 + term3_mu4
                     
             # do mu^6 terms?
             if self.max_mu >= 6:
             
+                Plin = self.normed_power_lin(self.k)
+                
                 # get the integral attributes
                 I21 = self.I21(self.k)
                 I30 = self.I30(self.k)
@@ -764,7 +765,10 @@ def Phh_mu0(self, b2_00_func):
     b1, b1_bar = self._ib1, self._ib1_bar
     b2_00, b2_00_bar = b2_00_func(b1), b2_00_func(b1_bar)
     
-    return b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+    term1 = b1*b1_bar * self.P00.total.mu0
+    term2 = (b1*b2_00_bar + b1_bar*b2_00)*self.K00(self.k)
+    term3 = (self.bs*b2_00_bar + self.bs_bar*b2_00)*self.K00s(self.k)
+    return term1 + term2 + term3
     
 
 def P01_mu2(self, b2_01_func):

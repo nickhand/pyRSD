@@ -25,7 +25,7 @@ public:
                       EH,               /* Eisenstein & Hu 1998 (astro-ph/9709112) */
                       EH_NoWiggle,        
                       BBKS,             /* Bardeen, Bond, Kaiser, Szalay 1986*/
-                      FromFile
+                      FromArrays
     };
     
         
@@ -34,19 +34,13 @@ public:
     // analytic transfer function
     Cosmology(const std::string& param_file, TransferFit tf);
     // transfer function from file
-    Cosmology(const std::string& param_file, const std::string& tkfile);
+    Cosmology(const std::string& param_file, const parray& ki, const parray& Tk);
     // construct given parrays for ki, Ti
-    Cosmology(const std::string& param_file, TransferFit tf, double sigma8, const std::string& tkfile, const parray& k, const parray& Tk);
+    Cosmology(const std::string& param_file, TransferFit tf, double sigma8, const parray& k, const parray& Tk);
     // construct from a linear power spectrum file
-    static Cosmology* FromPower(const std::string& param_file, const std::string& pkfile);
+    static Cosmology* FromPower(const std::string& param_file, const parray& k, const parray& Pk);
     
     ~Cosmology();
-    
-    // functions for setting the type of transfer TransferFit to use
-    void SetTransferFunction(TransferFit tf, const std::string& tkfile = "");
-    
-    // load the transfer file from file
-    void LoadTransferFunction(const std::string& tkfile, int kcol = 1, int tcol = 2);
     
     // normalize the transfer function
     void NormalizeTransferFunction(double sigma8);
@@ -67,19 +61,20 @@ public:
     // accessors
     inline TransferFit GetTransferFit() const { return transfer_fit_; }
     inline const std::string& GetParamFile() const { return param_file_; }
-    inline const std::string& GetTransferFile() const { return transfer_file_; }
     inline parray GetDiscreteK() const { return ki; }
     inline parray GetDiscreteTk() const { return Ti; }
     
     // evaluate at k in h/Moc
     double EvaluateTransfer(double k) const;
+    
+    void LoadTransferFunction(const parray& kin, const parray& Tin);
       
 private:
         
     double sigma8_;      /* power spectrum variance smoothed at 8 Mpc/h */
     double delta_H_;     /* normalization of linear power spectrum at z = 0 */
     TransferFit transfer_fit_;   /* the transfer fit method */
-    std::string param_file_, transfer_file_;
+    std::string param_file_;
     
     parray ki, Ti;
     double k0, T0, T0_nw;        // k and T(k) of left-most data point

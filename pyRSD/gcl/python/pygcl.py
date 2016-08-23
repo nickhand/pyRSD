@@ -57,37 +57,29 @@ class Cosmology(gcl.Cosmology, PickalableSWIG, metaclass=DocFixer):
         gcl.Cosmology.__init__(self, *newargs)
     
     def __getstate__(self):
-        args = [self.GetParamFile(), self.GetTransferFit(), self.sigma8(), self.GetTransferFile(), 
+        args = [self.GetParamFile(), self.GetTransferFit(), self.sigma8(),
                 self.GetDiscreteK(), self.GetDiscreteTk()]
         
-        for i in [0, 3]:
-            s = args[i].split(data_dir+'/params/')
-            if len(s) == 2: args[i] = s[-1]
+        s = args[0].split(data_dir+'/params/')
+        if len(s) == 2: args[0] = s[-1]
         return {'args': args} 
     
     @classmethod
-    def from_power(cls, param_file, pkfile):
-        # class the underlying c++ method
-        toret = cls.FromPower(FindFilename(param_file), pkfile)
-        # promote the class to pygcl.Cosmology
+    def from_power(cls, param_file, k, Pk):
+        toret = cls.FromPower(FindFilename(param_file), k, Pk)
         toret.__class__ = Cosmology
         return toret
         
     @classmethod
-    def from_file(cls, param_file, tkfile):
-        return cls(FindFilename(param_file), FindFilename(tkfile))
+    def from_file(cls, param_file, k, Tk):
+        return cls(FindFilename(param_file), k, Tk)
             
     def __getitem__(self, key):
         if hasattr(self, key):
             f = getattr(self, key)
             if callable(f): return f()
         raise KeyError("Sorry, cannot return parameter '%s' in dict-like fashion" %key)
-        
-    def LoadTransferFunction(self, tkfile, kcol=1, tcol=2):
-        # find the correct filename, searching the data directory too
-        tkfile = FindFilename(tkfile)
-        return gcl.Cosmology.LoadTransferFunction(self, tkfile, kcol, tcol)
-            
+                    
 #-------------------------------------------------------------------------------
 # CorrelationFunction
 class CorrelationFunction(gcl.CorrelationFunction, PickalableSWIG, metaclass=DocFixer):

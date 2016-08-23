@@ -438,7 +438,8 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         A `pygcl.Cosmology` object holding the cosmological parameters
         """
         if self.linear_power_file is not None:
-            return pygcl.Cosmology.from_power(self.cosmo_filename, self.linear_power_file)
+            k, Pk = np.loadtxt(self.linear_power_file, unpack=True)
+            return pygcl.Cosmology.from_power(self.cosmo_filename, k, Pk)
         else:
             return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit_int)
                       

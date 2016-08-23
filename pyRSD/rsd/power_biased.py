@@ -32,7 +32,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
                        vel_disp_from_sims=False,  
                        correct_mu2=False,
                        correct_mu4=False,
-                       use_vlah_biasing=False,
+                       use_vlah_biasing=True,
                        **kwargs):
         
         # initalize the dark matter power spectrum

@@ -79,14 +79,16 @@ class NonlinearBiasingMixin(object):
     @parameter
     def nonlinear_bias_types(self, val):
         """
-        The type of nonlinear biasing to use
+        A dict storing the types of nonlinear biasing to use
         """
         return val
         
     @parameter
     def use_vlah_biasing(self, val):
         """
-        Whether to use the nonlinear biasing scheme from Vlah et al. 2013
+        Whether to use the nonlinear biasing scheme from Vlah et al. 2013,
+        which amounts to a single `b2_00` and `b2_01` functional form
+        as a function of linear bias
         """ 
         if val:
             kws = {k:'vlah' for k in self.nonlinear_biases}
@@ -97,11 +99,29 @@ class NonlinearBiasingMixin(object):
         
     def update_nonlinear_biasing(self, **kws):
         """
-        Update the nonlinear biasing types
+        Update the dict stored in :attr:`nonlinear_bias_type`
         """
-        d = self.nonlinear_bias_types.copy()
-        d.update(**kws)
-        self.nonlinear_bias_types = d
+        d = kws.copy()
+        
+        # set all b2_00
+        if 'b2_00' in kws:
+            val = kws.pop('b2_00')
+            for tag in ['a', 'b', 'c', 'd']: 
+                d['b2_00_'+tag] = val
+        
+        # set all b2_01
+        if 'b2_01' in kws:
+            val = kws.pop('b2_01')
+            for tag in ['a', 'b']: 
+                d['b2_01_'+tag] = val
+        
+        extra = [k for k in d if k not in self.nonlinear_biases]
+        if len(extra):
+            raise ValueError("wrong keywords for nonlinear biasing: %s" %str(extra))
+            
+        x = self.nonlinear_bias_types.copy()
+        x.update(**d)
+        self.nonlinear_bias_types = x
     
     #--------------------------------------------------------------------------
     # b2_00_a

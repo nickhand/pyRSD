@@ -64,7 +64,7 @@ VERSION             = '1.0'
 
 #-------------------------------------------------------------------------------   
 pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
-            'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl.so']
+            'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl*.so']
 setup(  cmdclass={'install': MyInstall, 'develop':MyDevelop, 'clean' : MyClean},
         name=DISTNAME,
         description=DESCRIPTION,

@@ -38,6 +38,18 @@ static double S2(double u, double v) {
     return (2*(6 + u2*u2 - 6*v2 + v2*v2 + u2*(-6 + 4*v2)))/(3*pow2(u2 - v2));
 }
 
+// h03 from Zvonimir's notation (overall factor of k^{-2} not included)
+static double h03(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return 2*(-1 + u2)*(-1 + v2) / pow2(u2 - v2);
+}
+
+// h04 from Zvonimir's notation (overall factor of k^{-2} not included)
+static double h04(double u, double v) {
+    double u2 = u*u, v2 = v*v;
+    return 2*(1 + v2 + u2*(1-3*v2)) / pow2(u2 - v2);
+}
+
 // k00(\vec{k}, \vec{q})
 static double k00(double u, double v) {
     return F2(u, v);
@@ -79,23 +91,19 @@ static double k11s(double u, double v) {
 }
     
 static double k20_a(double u, double v) {
-    double u2 = u*u, v2 = v*v;
-    return (2*(-1 + u2)*(-1 + v2))/pow2(u2 - v2);
+    return h03(u, v);
 }
 
 static double k20s_a(double u, double v) {
-    double u2 = u*u, v2 = v*v;
-    return S2(u, v)*(2*(-1 + u2)*(-1 + v2))/pow2(u2 - v2);
+    return S2(u, v)*h03(u, v);
 }
     
 static double k20_b(double u, double v) {
-    double u2 = u*u, v2 = v*v;
-    return (1 + u2 + v2 - 3*u2*v2) / pow2(u2 - v2);
+    return h04(u, v);
 }
 
 static double k20s_b(double u, double v) {
-    double u2 = u*u, v2 = v*v;
-    return S2(u, v)*(1 + u2 + v2 - 3*u2*v2) / pow2(u2 - v2);
+    return S2(u, v)*h04(u, v);
 }
 
 // the Kmn integrand

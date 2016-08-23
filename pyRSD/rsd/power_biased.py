@@ -456,17 +456,17 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             b2_00, b2_00_bar = self.b2_00_c(b1), self.b2_00_c(b1_bar)
             
             # the velocities
-            sigsq = self.sigmav_halo**2
+            sigsq     = self.sigmav_halo**2
             sigsq_bar = self.sigmav_halo_bar**2
         
             # the PT integrals
-            K20_a = self.K20_a(self.k)
+            K20_a  = self.K20_a(self.k)
             K20s_a = self.K20s_a(self.k)
         
-            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
-            term1_mu2 = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
-            term2_mu2 =  -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * P00_ss
-            term3_mu2 = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
+            # the individual terms
+            term1_mu2        = 0.5*(b1 + b1_bar) * self.P02.no_velocity.mu2            
+            term2_mu2        = -0.5*(self.f*self.k)**2 * (sigsq + sigsq_bar) * Phh_mu0(self, self.b2_00_c)
+            term3_mu2        = 0.5*self.f**2 * ( (b2_00 + b2_00_bar)*K20_a + (bs + bs_bar)*K20s_a )
             P02_ss.total.mu2 = term1_mu2 + term2_mu2 + term3_mu2
             
             # do mu^4 terms?
@@ -638,8 +638,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             term3 = -0.25*(self.k*self.f)**2 * (sigsq + sigsq_bar) * ( 0.5*(b1 + b1_bar)*self.P02.no_velocity.mu2)
         
             # sigma^4 x P00_ss
-            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
-            term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * P00_ss
+            term4 = 0.125*(self.k*self.f)**4 * (sigsq**2 + sigsq_bar**2) * Phh_mu0(self, self.b2_00_d)
         
             P22_ss.total.mu4 = term1 + term2 + term3 + term4
         
@@ -673,8 +672,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             term1 = -0.125*(b1 + b1_bar)*(self.f*self.k)**2 * (sigsq + sigsq_bar) * self.P02.no_velocity.mu2
         
             # contribution here from P00_ss * vel^4
-            P00_ss = b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
-            A = (1./12)*(self.f*self.k)**4 * P00_ss
+            A = (1./12)*(self.f*self.k)**4 * Phh_mu0(self, self.b2_00_d)
             term2 = A*(3.*0.5*(sigsq**2 + sigsq_bar**2) + self.velocity_kurtosis)
         
             P04_ss.total.mu4 = term1 + term2
@@ -756,8 +754,19 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         return self.P12_ss.total.mu6 + 1./8*self.f**4 * self.I32(self.k)
 
 #------------------------------------------------------------------------------
-# Power Terms
+# individual power functions
 #------------------------------------------------------------------------------
+def Phh_mu0(self, b2_00_func):
+    """
+    The 1-loop SPT halo density field auto-correlation
+    """ 
+    # the bias values to use
+    b1, b1_bar = self._ib1, self._ib1_bar
+    b2_00, b2_00_bar = b2_00_func(b1), b2_00_func(b1_bar)
+    
+    return b1*b1_bar * self.P00.total.mu0 + (b1*b2_00 + b1_bar*b2_00_bar)*self.K00(self.k)
+    
+
 def P01_mu2(self, b2_01_func):
     """
     The correlation of the halo density and halo momentum fields, which 

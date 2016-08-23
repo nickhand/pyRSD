@@ -320,9 +320,20 @@ class NonlinearBiasFits(GeorgeSimulationDataSet):
     def __init__(self):
         
         data = sim_data.vlah_nonlinear_bias_fits()        
-        independent = ['z', 'b1']
-        dependent = ['b2_00', 'b2_01']
-        theta = [[6.52899259, 6.17291945, 4.81539378], [5.76031228, 11.50416509, 1.92884161]]
+        independent = ['b1']
+        dependent = ['b2_00_a', 'b2_00_b', 'b2_00_c', 'b2_00_d', 'b2_01_a', 'b2_01_b']
+        theta = [None]*6
+        
+        # best-fit thetas for b2_00 (see 1ad8705b0 in SimCalibrations/NonlinearBiases)
+        theta[0] = [ 114.83271418,   45.4136823 ] # b2_00_a
+        theta[1] = [ 78.74803514,  13.7686103 ]   # b2_00_b
+        theta[2] = [ 519.43798005,   73.94048349] # b2_00_c
+        theta[3] = [ 31.32395946,  11.08334321]   # b2_00_d
+        
+        # best-fit thetas for b2_01 (see 3084b38de in SimCalibrations/NonlinearBiases)
+        theta[-2] = [ 7.48162433,  0.87971185]   # b2_01_a
+        theta[-1] = [ 14.06494712,  12.08894434] # b2_01_b
+        
         super(NonlinearBiasFits, self).__init__(independent, dependent, data, theta, use_errors=True)
         
 class AutoStochasticityFits(GeorgeSimulationData):

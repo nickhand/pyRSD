@@ -89,13 +89,6 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         yield
         
         del self._cache_overrides
-
-    @parameter
-    def use_vlah_biasing(self, val):
-        """
-        Whether to use the nonlinear biasing scheme from Vlah et al. 2013
-        """           
-        return val
         
     @parameter
     def correct_mu2(self, val):

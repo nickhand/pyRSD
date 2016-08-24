@@ -140,29 +140,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     def __getstate__(self):
         """
         Custom pickling that removes `lru_cache` objects from
-        the cache and restores the underlying function, which
-        will ensure pickling succeeds
+        the cache, which will ensure pickling succeeds
         """
-        lru_caches = []
-        for k, v in self._cache.items():
-            if isinstance(v, functools._lru_cache_wrapper):
-                self._cache[k] = v.__wrapped__
-                lru_caches.append((k, v.cache_info().maxsize))
-        self.__dict__['lru_caches'] = lru_caches
+        for k in list(self._cache):
+            if isinstance(self._cache[k], functools._lru_cache_wrapper):
+                self._cache.pop(k)
         
         return self.__dict__
     
-    def __setstate__(self, d):
-        """
-        Restore any `lru_cache` objects after unpickling
-        """
-        self.__dict__ = d
-        lru_caches = self.__dict__.pop('lru_caches', [])
-        for k, size in lru_caches:
-            if k in self._cache:
-                f = self._cache[k]
-                self._cache[k] = functools.lru_cache(maxsize=size)(f)
-
     def initialize(self):
         """
         Initialize the underlying splines, etc of the model

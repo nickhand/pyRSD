@@ -277,6 +277,10 @@ def cached_property(*parents, lru_cache=False, maxsize=128):
         prop = CachedProperty(_get_property, None, _del_property)
         prop._parents = list(parents) # the dependencies of this property
         prop._deps = set()
+        
+        prop._lru_cache = lru_cache
+        prop._maxsize   = maxsize
+        
         return prop
     return cache
 

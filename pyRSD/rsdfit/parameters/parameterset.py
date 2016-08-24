@@ -91,7 +91,7 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         else:
             if key >= len(self): 
                 raise KeyError("ParameterSet only has size %d" %len(self))
-            key = self.keys()[key]
+            key = list(self.keys())[key]
             return self[key]()
 
     def __repr__(self):
@@ -398,7 +398,7 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         Return the free parameter names. `Free` means that 
         `Parameter.vary = True` and `Parameter.constrained = False`
         """
-        return [k for k in self if self[k].vary and not self[k].constrained]
+        return [k for k in sorted(self) if self[k].vary and not self[k].constrained]
     
     @property
     def free_values(self):

@@ -246,7 +246,7 @@ def parameter(f, default=None):
     prop._deps = set() # track things that depend on this parameter
     return prop
 
-def cached_property(*parents):
+def cached_property(*parents, lru_cache=False, maxsize=128):
     """
     Decorator to represent a model parameter will be cached
     and automatically updated if any of its dependencies change
@@ -263,7 +263,10 @@ def cached_property(*parents):
             
             # add to cache 
             if name not in self._cache:
-                self._cache[name] = f(self)
+                val = f(self)
+                if lru_cache and callable(val):
+                    val = functools.lru_cache(maxsize=maxsize)(val)
+                self._cache[name] = val
             
             # return the cached value
             return self._cache[name]

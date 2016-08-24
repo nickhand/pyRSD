@@ -15,17 +15,17 @@ def _get_nonlinear_biasing_function(self, kind, tag, coeffs):
     t = self.nonlinear_bias_types.get(name, None)
     
     # default is the GP fit
-    if t is None:
+    if t is None or t == name or t == 'vlah' and name.endswith('_a'):
         return functools.partial(self.nonlinear_bias_fitter, select=name)
     # use one b2_00 and one b2_01
     elif t == 'vlah':
-        return functools.partial(self.nonlinear_bias_fitter, select=kind+'_a')
+        return getattr(self, kind+'_a')
     # polynomials
     elif t == 'poly':
         return np.poly1d(coeffs)
     # map to other term
     elif t in self.nonlinear_biases:
-        return functools.partial(self.nonlinear_bias_fitter, select=t)
+        return getattr(self, t)
     else:
         raise ValueError("do not understand '%s' biasing type for '%s'" %(t, name))
 
@@ -139,7 +139,7 @@ class NonlinearBiasingMixin(object):
     def b2_00_a__4(self, val):
         return val
         
-    @cached_property("b2_00_a__0", "b2_00_a__2", "b2_00_a__4", "nonlinear_bias_types")
+    @cached_property("b2_00_a__0", "b2_00_a__2", "b2_00_a__4", "nonlinear_bias_types", lru_cache=True, maxsize=100)
     def b2_00_a(self):
         """
         The nonlinear bias term that enters into Phm
@@ -231,7 +231,7 @@ class NonlinearBiasingMixin(object):
     def b2_01_a__2(self, val):
         return val
         
-    @cached_property("b2_01_a__0", "b2_01_a__1", "b2_01_a__2", "nonlinear_bias_types")
+    @cached_property("b2_01_a__0", "b2_01_a__1", "b2_01_a__2", "nonlinear_bias_types", lru_cache=True, maxsize=100)
     def b2_01_a(self):
         """
         The nonlinear bias term that enters into P01[mu2]

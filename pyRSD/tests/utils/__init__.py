@@ -50,6 +50,7 @@ def teardown_module(module):
     # add the directories and run the command
     host = 'edison'
     cmd += " figures/* nhand@%s:%s/" %(host, remote_dir)
+    print("executing command:", cmd)
     ret = os.system(cmd)
     
     print("teardown_module   module:%s" % module.__name__)

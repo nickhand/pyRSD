@@ -1,5 +1,5 @@
 from .. import numpy
-from functools import wraps
+import functools
 from collections import OrderedDict
 import inspect
 import fnmatch
@@ -11,7 +11,7 @@ def doublewrap(f):
     or
     @decorator
     """
-    @wraps(f)
+    @functools.wraps(f)
     def new_dec(*args, **kwargs):
         if len(args) == 1 and callable(args[0]):
             # actual decorated function
@@ -217,7 +217,7 @@ def parameter(f, default=None):
                 self._cache.pop(dep, None)
         return val
         
-    @wraps(f)
+    @functools.wraps(f)
     def _get_property(self):
         if _name not in self.__dict__:
             
@@ -246,7 +246,7 @@ def parameter(f, default=None):
     prop._deps = set() # track things that depend on this parameter
     return prop
 
-def cached_property(*parents):
+def cached_property(*parents, lru_cache=False, maxsize=128):
     """
     Decorator to represent a model parameter will be cached
     and automatically updated if any of its dependencies change
@@ -254,7 +254,7 @@ def cached_property(*parents):
     def cache(f):
         name = f.__name__
         
-        @wraps(f)
+        @functools.wraps(f)
         def _get_property(self):
             
             # check for user overrides
@@ -263,14 +263,17 @@ def cached_property(*parents):
             
             # add to cache 
             if name not in self._cache:
-                self._cache[name] = f(self)
+                val = f(self)
+                if lru_cache and callable(val):
+                    val = functools.lru_cache(maxsize=maxsize)(val)
+                self._cache[name] = val
             
             # return the cached value
             return self._cache[name]
         
         def _del_property(self):
             self._cache.pop(name, None)
-                        
+                                    
         prop = CachedProperty(_get_property, None, _del_property)
         prop._parents = list(parents) # the dependencies of this property
         prop._deps = set()
@@ -292,7 +295,7 @@ def interpolated_property(*parents, **kwargs):
     def cache(f):
         name = f.__name__
         
-        @wraps(f)
+        @functools.wraps(f)
         def _get_property(self):
             
             # the spline isn't in the cache, make the spline

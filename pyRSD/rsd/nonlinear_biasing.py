@@ -42,7 +42,7 @@ class NonlinearBiasingMixin(object):
     linear bias parameter
     """
     nonlinear_biases = ['b2_00_a', 'b2_00_b', 'b2_00_c', 'b2_00_d', 'b2_01_a', 'b2_01_b']
-    
+        
     def __init__(self):
         
         # nonlinear biasing types (initialized to None)
@@ -138,7 +138,7 @@ class NonlinearBiasingMixin(object):
     def b2_00_a__4(self, val):
         return val
         
-    @cached_property("b2_00_a__0", "b2_00_a__2", "b2_00_a__4", "nonlinear_bias_types")
+    @cached_property("b2_00_a__0", "b2_00_a__2", "b2_00_a__4", "nonlinear_bias_types", lru_cache=True, maxsize=20)
     def b2_00_a(self):
         """
         The nonlinear bias term that enters into Phm
@@ -230,7 +230,7 @@ class NonlinearBiasingMixin(object):
     def b2_01_a__2(self, val):
         return val
         
-    @cached_property("b2_01_a__0", "b2_01_a__1", "b2_01_a__2", "nonlinear_bias_types")
+    @cached_property("b2_01_a__0", "b2_01_a__1", "b2_01_a__2", "nonlinear_bias_types", lru_cache=True, maxsize=20)
     def b2_01_a(self):
         """
         The nonlinear bias term that enters into P01[mu2]

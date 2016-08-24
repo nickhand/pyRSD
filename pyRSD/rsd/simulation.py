@@ -7,7 +7,6 @@ import itertools
 import pandas as pd
 from sklearn import preprocessing
 import george
-import functools
 
 #-------------------------------------------------------------------------------
 # simulation measurements, interpolated with a gaussian process
@@ -218,7 +217,6 @@ class GeorgeSimulationData(Cache):
         gp.compute(self.x_scaled, **kws)
         return gp
     
-    @functools.lru_cache(maxsize=20)
     @tools.align_input
     @tools.unpacked
     def __call__(self, **indep_vars):

@@ -154,7 +154,9 @@ class AnalysisDriver(object):
         # overrides the command line options
         if kwargs['optional_plot_file']:
             plot_file_vars = {'analyze': self}
-            execfile(kwargs['optional_plot_file'], plot_file_vars)
+            with open(kwargs['optional_plot_file'], 'r') as f:
+                code = compile(f.read(), kwargs['optional_plot_file'], 'exec')
+                exec(code, plot_file_vars)
             
         self.prepared = False
         self.ticks_defined = False

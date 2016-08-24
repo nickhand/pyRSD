@@ -89,11 +89,9 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
 
         basename = os.path.basename(chain_file)
         if index == 0:
-            exec "logger.info('Scanning file %-{0}s' % chain_file)".format(
-                max_name_length)
+            exec("logger.info('Scanning file %-{0}s' % chain_file)".format(max_name_length))
         else:
-            exec "logger.info('%{0}s%-{1}s' % ('', basename))".format(
-                empty_length, total_length-empty_length)
+            exec("logger.info('%{0}s%-{1}s' % ('', basename))".format(empty_length, total_length-empty_length))
 
         if info.burnin is None:
             local_min_minus_lkl = -result.lnprobs.mean(axis=0)
@@ -342,7 +340,7 @@ def extract_parameter_names(info):
         boundaries.append(bounds)
         ref_names.append(name)
         scale = 1.
-        if name in info.scales.iterkeys():
+        if name in info.scales.keys():
             scale = info.scales[name]
         scales.append(scale)
 

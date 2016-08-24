@@ -4,7 +4,12 @@ INTERP_KMAX = 1.0
 # compute the RSD model version with git string
 from ..extern.astropy_helpers.git_helpers import get_git_devstr
 from .. import pkg_dir
-__version__ = '0.2.0' + '-' + get_git_devstr(sha=True, path=pkg_dir)[:7]
+
+# compute the version
+__version__ = '0.2.0'
+_githash = get_git_devstr(sha=True, show_warning=False, path=pkg_dir)[:7]
+if _githash:
+    __version__ += ".dev." + _githash 
 
 # import model classes
 from .power_dm import DarkMatterSpectrum

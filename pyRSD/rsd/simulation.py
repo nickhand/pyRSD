@@ -228,10 +228,11 @@ class GeorgeSimulationData(Cache):
         indep_vars : keywords
             the independent variables to evaluate at
         """
-        if len(args) == 1 and len(self.independent) == 1:
-            indep_vars[self.independent[0]] = args[0]
-        else:
-            raise ValueError("please pass variables as keywords")
+        if len(args):
+            if len(args) == 1 and len(self.independent) == 1:
+                indep_vars[self.independent[0]] = args[0]
+            else:
+                raise ValueError("please pass variables as keywords")
             
         for p in self.independent:
             if p not in indep_vars:

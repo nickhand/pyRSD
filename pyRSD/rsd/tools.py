@@ -77,7 +77,7 @@ def align_input(f):
     Decorator to align input by repeating any scalar entries
     """     
     @functools.wraps(f)
-    def wrapper(self, **kw):
+    def wrapper(self, *args, **kw):
         ii = [k for k in kw if not np.isscalar(kw[k])]
         if len(ii):
             if len(ii) > 1:
@@ -87,7 +87,7 @@ def align_input(f):
             for k in kw:
                 if k not in ii:
                     kw[k] = np.repeat(kw[k], N)
-        return f(self, **kw)
+        return f(self, *args, **kw)
         
     return wrapper
     

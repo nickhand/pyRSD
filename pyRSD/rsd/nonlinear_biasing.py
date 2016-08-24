@@ -5,6 +5,7 @@ linear bias
 from ._cache import parameter, cached_property
 from .. import numpy as np, data as sim_data
 from .simulation import NonlinearBiasFits
+import functools
 
 def _get_nonlinear_biasing_function(self, kind, tag, coeffs):
     """
@@ -15,16 +16,16 @@ def _get_nonlinear_biasing_function(self, kind, tag, coeffs):
     
     # default is the GP fit
     if t is None:
-        return lambda b1: self.nonlinear_bias_fitter(b1=b1, select=name)
+        return functools.partial(self.nonlinear_bias_fitter, select=name)
     # use one b2_00 and one b2_01
     elif t == 'vlah':
-        return lambda b1: self.nonlinear_bias_fitter(b1=b1, select=kind+'_a')
+        return functools.partial(self.nonlinear_bias_fitter, select=kind+'_a')
     # polynomials
     elif t == 'poly':
         return np.poly1d(coeffs)
     # map to other term
     elif t in self.nonlinear_biases:
-        return lambda b1: self.nonlinear_bias_fitter(b1=b1, select=t)
+        return functools.partial(self.nonlinear_bias_fitter, select=t)
     else:
         raise ValueError("do not understand '%s' biasing type for '%s'" %(t, name))
 
@@ -138,7 +139,7 @@ class NonlinearBiasingMixin(object):
     def b2_00_a__4(self, val):
         return val
         
-    @cached_property("b2_00_a__0", "b2_00_a__2", "b2_00_a__4", "nonlinear_bias_types", lru_cache=True, maxsize=20)
+    @cached_property("b2_00_a__0", "b2_00_a__2", "b2_00_a__4", "nonlinear_bias_types")
     def b2_00_a(self):
         """
         The nonlinear bias term that enters into Phm
@@ -230,7 +231,7 @@ class NonlinearBiasingMixin(object):
     def b2_01_a__2(self, val):
         return val
         
-    @cached_property("b2_01_a__0", "b2_01_a__1", "b2_01_a__2", "nonlinear_bias_types", lru_cache=True, maxsize=20)
+    @cached_property("b2_01_a__0", "b2_01_a__1", "b2_01_a__2", "nonlinear_bias_types")
     def b2_01_a(self):
         """
         The nonlinear bias term that enters into P01[mu2]

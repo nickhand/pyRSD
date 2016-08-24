@@ -219,7 +219,7 @@ class GeorgeSimulationData(Cache):
     
     @tools.align_input
     @tools.unpacked
-    def __call__(self, **indep_vars):
+    def __call__(self, *args, **indep_vars):
         """
         Evaluate the Gaussian processes at the specified independent variables
         
@@ -228,6 +228,11 @@ class GeorgeSimulationData(Cache):
         indep_vars : keywords
             the independent variables to evaluate at
         """
+        if len(args) == 1 and len(self.independent) == 1:
+            indep_vars[self.independent[0]] = args[0]
+        else:
+            raise ValueError("please pass variables as keywords")
+            
         for p in self.independent:
             if p not in indep_vars:
                 raise ValueError("please specify the `%s` independent variable" %p)
@@ -257,7 +262,7 @@ class GeorgeSimulationDataSet(object):
             self._data[dep] = GeorgeSimulationData(independent, data, theta[i], dependent_col=dep, **kwargs)
             
     @tools.unpacked
-    def __call__(self, select=None, **indep_vars):
+    def __call__(self, *args, select=None, **indep_vars):
         
         # determine which parameters we are returning
         if select is None:
@@ -267,7 +272,7 @@ class GeorgeSimulationDataSet(object):
         else:
             raise ValueError("do not understand `select` keyword")
             
-        return [self._data[par](**indep_vars) for par in select]
+        return [self._data[par](*args, **indep_vars) for par in select]
         
 
 class Pmu4ResidualCorrection(GeorgeSimulationData):

@@ -559,6 +559,18 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         # compute the central finite-difference derivative
         gradient = (results[:,0] - results[:,1]) / (2.*epsilon)
         
+        # test for inf
+        has_inf = np.isinf(gradient)
+        if has_inf.any():
+            bad = np.array(self.theory.free_names)[has_inf].tolist()
+            raise ValueError("inf values detected in the gradient for: %s" %str(bad))
+            
+        # test for NaN
+        has_nan = np.isnan(gradient)
+        if has_nan.any():
+            bad = np.array(self.theory.free_names)[has_nan].tolist()
+            raise ValueError("NaN values detected in the gradient for: %s" %str(bad))
+            
         # add in log prior prob and derivatives of log priors
         if use_priors: 
             gradient += -self.theory.dlnprior

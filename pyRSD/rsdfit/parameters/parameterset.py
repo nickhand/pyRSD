@@ -271,6 +271,11 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         Prepare the parameters by parsing the dependencies. We initialize the 
         ``ast`` classes in order to evaluate any constrained parameters
         """
+        # add a "deps_on" set to each value
+        for name in self:
+            self[name].deps_on = set()
+        
+        # parse
         for name, par in self.items():
             if par.expr is not None:
                 par.ast = self._asteval.parse(par.expr)
@@ -281,6 +286,8 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
                 for symname in self._namefinder.names:
                     if (symname in self and symname not in par.deps):
                         par.deps.append(symname)
+                        self[symname].deps_on.add(name)
+                        
         self._prepared = True
         
     def update_fiducial(self):

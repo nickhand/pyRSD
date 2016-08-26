@@ -271,9 +271,10 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         Prepare the parameters by parsing the dependencies. We initialize the 
         ``ast`` classes in order to evaluate any constrained parameters
         """
-        # add a "deps_on" set to each value
+        # add a set to track the children of each parameter
+        # where children are other parameters that depend on the current one
         for name in self:
-            self[name].deps_on = set()
+            self[name].children = set()
         
         # parse
         for name, par in self.items():
@@ -286,7 +287,7 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
                 for symname in self._namefinder.names:
                     if (symname in self and symname not in par.deps):
                         par.deps.append(symname)
-                        self[symname].deps_on.add(name)
+                        self[symname].children.add(name)
                         
         self._prepared = True
         

@@ -1,6 +1,10 @@
 INTERP_KMIN = 5e-6
 INTERP_KMAX = 1.0
 
+# global AP effect lock
+import threading
+APLock = threading.Lock()
+
 # compute the RSD model version with git string
 from ..extern.astropy_helpers.git_helpers import get_git_devstr
 from .. import pkg_dir
@@ -19,7 +23,6 @@ from .power_gal import GalaxySpectrum
 from .grid_transfer import PkmuTransfer, PolesTransfer, PkmuGrid
 from .power_extrapolator import ExtrapolatedPowerSpectrum
 from .correlation import SmoothedXiMultipoles
-
 
 def print_version():
     """

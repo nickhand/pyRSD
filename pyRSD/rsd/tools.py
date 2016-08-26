@@ -1,4 +1,5 @@
 from .. import pygcl, numpy as np
+from . import APLock
 from ._cache import Cache, parameter, cached_property
 from ._interpolate import RegularGridInterpolator, InterpolationDomainError
 
@@ -8,7 +9,6 @@ from scipy.optimize import brentq
 
 import functools
 import itertools
-import threading
 import inspect
 
 #-------------------------------------------------------------------------------
@@ -91,9 +91,6 @@ def align_input(f):
         
     return wrapper
     
-# global AP effect lock
-APLock = threading.Lock()
-
 @doublewrap
 def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
     """

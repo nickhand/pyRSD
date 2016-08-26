@@ -5,8 +5,8 @@ from ... import os, sys
 
 class Filter(logging.Filter):
     def filter(self, record):
-        on = record.on
-        comm = record.comm
+        on = getattr(record, 'on', None)
+        comm = getattr(record, 'comm', None)
         if on is None or on == comm.rank:
             return True
         return False
@@ -42,6 +42,7 @@ class MPILoggerAdapter(logging.LoggerAdapter):
             d['hostname'] = hostname.split('.')[0]
             return ((format % d) + msg, kwargs)
         else:
+            on   = kwargs.pop('on', None)
             return (msg, kwargs)
     def setLevel(self, level):
         self.logger.setLevel(level)

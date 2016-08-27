@@ -340,19 +340,15 @@ class GalaxyPowerTheory(object):
         valid_model : bool
             return `True/False` flag indicating if we were able
             to successfully set the free parameters and update the model
-        """        
-        # set the parameters
-        for val, name in zip(theta, self.free_names):
-            self.fit_params[name].value = val
-           
+        """                   
         # only set and update the model when all free params are 
         # within max/min bounds and uniform prior bounds
-        if not all(p.within_bounds for p in self.free):
+        if not all(p.within_bounds(theta[i]) for i,p in enumerate(self.free)):
             return False
-                    
+                            
         # try to update
         try:
-            self.fit_params.update_values()
+            self.fit_params.update_values(**dict(zip(self.free_names, theta)))
         except Exception as e:
             import traceback
             msg = "exception while trying to update free parameters:\n"
@@ -419,7 +415,7 @@ class GalaxyPowerTheory(object):
             par = self.fit_params[name]
 
             # check bounds
-            if par.bounded and not par.within_bounds:
+            if par.bounded and not par.within_bounds():
                 doing_okay = False
                 args = par.name, par.value, par.min, par.max
                 msg = '{}={} is outside of reasonable limits [{}, {}]'.format(*args)

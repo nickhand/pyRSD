@@ -7,10 +7,6 @@ import functools
 import time
 
 logger = logging.getLogger('rsdfit.lbfgs_fitter')
-    
-def lnlike_objective(x=None):
-    driver = get_rsdfit_driver()
-    return driver.lnlike(x)
 
 def InitializeFromPrior(params):
     """
@@ -21,7 +17,7 @@ def InitializeFromPrior(params):
         for i, value in enumerate(p0):
             params[i].value = value
 
-        if all(p.within_bounds for p in params):
+        if all(p.within_bounds() for p in params):
            break
 
     return p0
@@ -37,7 +33,7 @@ def InitializeWithScatter(params, x, scatter):
         for i, value in enumerate(p0):
             params[i].value = value
 
-        if all(p.within_bounds for p in params):
+        if all(p.within_bounds() for p in params):
            break
 
     return p0

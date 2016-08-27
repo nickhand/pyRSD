@@ -1,7 +1,6 @@
 from pyRSD import numpy as np, os
 from pyRSD.rsdfit import FittingDriver, params_filename, model_filename, logging
-
-from pyRSD.rsdfit.solvers import set_rsdfit_driver
+from pyRSD.rsdfit import GlobalFittingDriver
 from pyRSD.rsdfit.util import rsd_io, rsdfit_parser
 from pyRSD.rsdfit.util import rsd_logging, mpi_manager
 
@@ -236,7 +235,7 @@ class RSDFitDriver(object):
             return
     
         # set the global algorithm for each rank
-        set_rsdfit_driver(self.algorithm)
+        GlobalFittingDriver.set(self.algorithm)
     
         # manage the MPI ranks
         debug = getattr(self, 'debug', False)

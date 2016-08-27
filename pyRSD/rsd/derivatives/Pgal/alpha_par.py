@@ -1,5 +1,4 @@
 from . import PgalDerivative
-from pyRSD.rsd import APLock
 
 class dPgal_dalpha_par(PgalDerivative):
     """
@@ -17,9 +16,8 @@ class dPgal_dalpha_par(PgalDerivative):
         term1 = - m.Pgal(k, mu) / apar
         
         # central finite difference derivative wrt to k,mu
-        with APLock:
-            gradk  = (m.Pgal(k+epsilon, mu) - m.Pgal(k-epsilon, mu)) / (2.*epsilon)
-            gradmu = (m.Pgal(k, mu+epsilon) - m.Pgal(k, mu-epsilon)) / (2.*epsilon)
+        gradk  = (m.Pgal(k+epsilon, mu) - m.Pgal(k-epsilon, mu)) / (2.*epsilon)
+        gradmu = (m.Pgal(k, mu+epsilon) - m.Pgal(k, mu-epsilon)) / (2.*epsilon)
          
         # derivative of AP remapping   
         apar2 = apar**2; aperp2 = aperp**2

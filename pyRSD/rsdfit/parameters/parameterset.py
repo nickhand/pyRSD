@@ -313,16 +313,50 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
             if self[k].expr is None:
                 self[k].value = v
                 
-    def update_values(self):
+    def update_values(self, *args, **kwargs):
         """
         Update the values of all parameters, checking that dependencies are
         evaluated as needed.
+        
+        Parameters
+        ----------
+        *args : tuple of str
+            the parameter names for which we want to update the parameter constraints
+        **kwargs :
+            update the values of these parameters, and then update the constraints
+            then depend on these parameters, only if the value of the parameters
+            changed
         """    
         if not self._prepared:
             raise RuntimeError("cannot call ``update`` before calling ``prepare_params``")
-        self._updated = dict([(name, False) for name in self])
-        for name in self:
-            self._update_parameter(name)
+        
+        # update constraints for certain names
+        changed = list(args)
+        if any(name not in self for name in changed):
+            raise ValueError("cannot update parameters not in the ParameterSet")
+            
+        # update parameter values and then update constraints
+        if len(kwargs):
+            for k,v in kwargs.items():
+                if k not in self:
+                    raise ValueError("cannot update value for parameter '%s'" %k)
+                if v != self[k].value:
+                    self[k].value = v
+                    changed.append(k)
+                    
+        # default is to update all
+        if not len(changed) and not len(kwargs):
+            changed += list(self)
+        
+        # now update
+        try:
+            self._updated = dict([(name, False) for name in self])
+            for name in changed:
+                self._update_parameter(name)
+        except:
+            pass
+        finally:
+            del self._updated
         
     def _update_parameter(self, name):
         """
@@ -331,7 +365,7 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         """
         if self._updated[name]:
             return
-            
+           
         par = self[name]
         if getattr(par, 'expr', None) is not None:
             if getattr(par, 'ast', None) is None:
@@ -347,6 +381,11 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
 
         self._asteval.symtable[name] = par.value
         self._updated[name] = True
+        
+        # update the children too!
+        for child in par.children:
+            if not self._updated[child]:
+                self._update_parameter(child)
     
     #---------------------------------------------------------------------------
     # convenient functions/attributes

@@ -173,11 +173,22 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                 unset_params.append(k)
         cache = self._cache.copy()
         
+        # current model params
+        model_params = {}
+        for k in self.allowable_kwargs:
+            model_params[k] = getattr(self, k)
+        
         # set any kwargs passed
         for k in kwargs:
+            if k not in self.allowable_kwargs:
+                raise ValueError("keywords to this function must be in `allowable_kwargs`")
             setattr(self, k, kwargs[k])
         
         yield
+        
+        # restore model params
+        for k in model_params:
+            setattr(self, k, model_params[k])
 
         # restore the model to previous state
         for k in set_params:

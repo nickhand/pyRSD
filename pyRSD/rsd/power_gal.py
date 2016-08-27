@@ -3,6 +3,8 @@ from . import power_biased, tools
 from .. import numpy as np, sys
 from scipy.special import legendre
 from scipy.integrate import simps
+import contextlib
+
 
 #-------------------------------------------------------------------------------
 # finger-of-god models
@@ -107,6 +109,17 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         self.use_so_correction = use_so_correction
         self.f_so              = 0.
         self.sigma_so          = 0.
+        
+    @contextlib.contextmanager
+    def use_cache(self):
+        """
+        Cache repeated calls to functions defined in this class, assuming
+        constant `k` and `mu` input values
+        """
+        # turn on the cache by providing scratch space
+        self._scratch = {}
+        yield
+        del self._scratch
         
     #---------------------------------------------------------------------------
     # parameters
@@ -283,66 +296,81 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # centrals power spectrum
     #--------------------------------------------------------------------------- 
     @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_cAcA_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_cAcA
+        """
+        self.b1 = self.b1_bar = self.b1_cA 
+        return self.power(k, mu)
+        
+    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cAcA(self, k, mu, flatten=False):
         """
         The central type `A` galaxy auto spectrum, which is a 2-halo term only.
         """ 
-        # set the linear biases first
-        self.b1 = self.b1_bar = self.b1_cA
-        
         # FOG damping
         with SOCorrection(self) as socorr:
             G = self.evaluate_fog(k, mu, socorr.sigma_c)
 
-        # now return the power spectrum here
-        toret = G**2 * self.power(k, mu) + self.N        
+        toret = G**2 * self.Pgal_cAcA_2h(k, mu) + self.N        
         return toret if not flatten else np.ravel(toret, order='F')
     
     @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_cAcB_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_cAcB
+        """
+        self.b1     = self.b1_cA
+        self.b1_bar = self.b1_cB 
+        return self.power(k, mu)
+        
+    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cAcB(self, k, mu, flatten=False):
          """
          The centrals galaxy cross spectrum, which is a 2-halo term only.
          """
-         # set the linear biases first
-         self.b1     = self.b1_cA
-         self.b1_bar = self.b1_cB
-
-         # FOG damping
          with SOCorrection(self) as socorr:
              G = self.evaluate_fog(k, mu, socorr.sigma_c)
 
-         # now return the power spectrum here
-         toret = G**2 * self.power(k, mu) + self.N
+         toret = G**2 * self.Pgal_cAcB_2h(k, mu) + self.N
          return toret if not flatten else np.ravel(toret, order='F')
          
     @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_cBcB_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_cBcB
+        """
+        self.b1 = self.b1_bar = self.b1_cB
+        return self.power(k, mu)
+        
+    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cBcB(self, k, mu, flatten=False):
         """
         The central type `B` galaxy auto spectrum, which is a 2-halo term only.
         """        
-        # set the linear biases first
-        self.b1 = self.b1_bar = self.b1_cB
-
-        # FOG damping
         with SOCorrection(self) as socorr:
             G = self.evaluate_fog(k, mu, socorr.sigma_c)
 
-        # now return the power spectrum here
-        toret = G**2*self.power(k, mu) + self.N
+        toret = G**2 * self.Pgal_cBcB_2h(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cc(self, k, mu, flatten=False):
         """
         The totals centrals galaxy spectrum, which is a 2-halo term only.
         """
-        with ZeroShotNoise(self) as N:
-        
-            # sum the individual components of Pcc                    
+        with ZeroShotNoise(self) as N:                  
             PcAcA = (1.-self.fcB)**2 * self.Pgal_cAcA(k, mu)
             PcAcB = 2*self.fcB*(1-self.fcB)*self.Pgal_cAcB(k, mu)
             PcBcB = self.fcB**2 * self.Pgal_cBcB(k, mu)
-            pk = PcAcA + PcAcB + PcBcB
+            pk    = PcAcA + PcAcB + PcBcB
         
             # add in an optional SO correction
             toret = self._Pgal_cc_so(pk, k, mu) + N
@@ -356,8 +384,8 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
         # add the correction
         if self.use_so_correction:
             
-            G = self.evaluate_fog(k, mu, self.sigma_c)
-            G2 = self.evaluate_fog(k, mu, self.sigma_so)
+            G     = self.evaluate_fog(k, mu, self.sigma_c)
+            G2    = self.evaluate_fog(k, mu, self.sigma_so)
             term1 = (1 - self.f_so)**2 * G**2 * Pcc
             term2 = 2*self.f_so*(1-self.f_so) * G*G2 * Pcc
             term3 = self.f_so**2 * G2**2 * Pcc
@@ -372,58 +400,62 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # central-satellite cross spectrum
     #---------------------------------------------------------------------------
     @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_cAs_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_cAs
+        """
+        self.b1     = self.b1_cA
+        self.b1_bar = self.b1_s 
+        return self.power(k, mu)
+    
+    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cAs(self, k, mu, flatten=False):
         """
         The cross spectrum between centrals with no satellites and satellites. 
         This is a 2-halo term only. 
-        """
-        # set the linear biases first
-        self.b1     = self.b1_cA
-        self.b1_bar = self.b1_s
-        
-        # the FOG damping
+        """        
         G_c = self.evaluate_fog(k, mu, self.sigma_c)
         G_s = self.evaluate_fog(k, mu, self.sigma_s)
         
-        # now return the power spectrum here
-        toret = G_c*G_s*self.power(k, mu) + self.N
+        toret = G_c*G_s * self.Pgal_cAs_2h(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
+                
+    @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_cBs_2h(self, k, mu):
+        """
+        The 2-halo term for the cross spectrum of centrals with sats in 
+        the same halo and satellites.
+        """
+        self.b1     = self.b1_cB
+        self.b1_bar = self.b1_s 
+        return self.power(k, mu)
         
     @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cBs(self, k, mu, flatten=False):
         """
         The cross spectrum of centrals with sats in the same halo and satellites.
         This has both a 1-halo and 2-halo term only.
         """
-        # the FOG damping
         G_c = self.evaluate_fog(k, mu, self.sigma_c)
         G_s = self.evaluate_fog(k, mu, self.sigma_s)
         
         # return
         toret = G_c*G_s * (self.Pgal_cBs_2h(k, mu) + self.NcBs) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
-    
+        
     @tools.alcock_paczynski
-    def Pgal_cBs_2h(self, k, mu):
-        """
-        The 2-halo term for the cross spectrum of centrals with sats in 
-        the same halo and satellites.
-        """
-        # set the linear biases first
-        self.b1     = self.b1_cB
-        self.b1_bar = self.b1_s
-            
-        return self.power(k, mu)
-    
-    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_cs(self, k, mu, flatten=False):
         """
         The total central-satellite cross spectrum.
         """
         with ZeroShotNoise(self) as N:
-                    
-            PcAs = (1. - self.fcB)*self.Pgal_cAs(k, mu)
-            PcBs = self.fcB*self.Pgal_cBs(k, mu)
+            PcAs  = (1. - self.fcB)*self.Pgal_cAs(k, mu)
+            PcBs  = self.fcB*self.Pgal_cBs(k, mu)
             toret = PcAs + PcBs + N
         
         return toret if not flatten else np.ravel(toret, order='F')
@@ -432,63 +464,72 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     # satellites auto spectrum
     #---------------------------------------------------------------------------
     @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_sAsA_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_sAsA
+        """
+        self.b1 = self.b1_bar = self.b1_sA
+        return self.power(k, mu)
+        
+    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_sAsA(self, k, mu, flatten=False):
         """
         The auto spectrum of satellites with no other sats in same halo. This 
         is a 2-halo term only.
         """            
-        # set the linear biases first
-        self.b1 = self.b1_bar = self.b1_sA
-        
-        # the FOG damping
         G = self.evaluate_fog(k, mu, self.sigma_sA)
         
-        # now return the power spectrum here
-        toret = G**2 * self.power(k, mu) + self.N
+        toret = G**2 * self.Pgal_sAsA_2h(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
     
-    @tools.alcock_paczynski    
+    @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_sAsB_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_sAsB
+        """
+        self.b1     = self.b1_sA
+        self.b1_bar = self.b1_sB 
+        return self.power(k, mu)
+        
+    @tools.alcock_paczynski  
+    @tools.cacheable  
     def Pgal_sAsB(self, k, mu, flatten=False):
         """
         The cross spectrum of satellites with and without no other sats in 
         same halo. This is a 2-halo term only.
         """        
-        # set the linear biases first
-        self.b1     = self.b1_sA
-        self.b1_bar = self.b1_sB
-        
-        # the FOG damping
         G_sA = self.evaluate_fog(k, mu, self.sigma_sA)
         G_sB = self.evaluate_fog(k, mu, self.sigma_sB)
         
-        # now return the power spectrum here
-        toret = G_sA*G_sB*self.power(k, mu) + self.N
+        toret = G_sA*G_sB * self.Pgal_sAsB_2h(k, mu) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
 
     @tools.alcock_paczynski
+    @tools.cacheable
+    def Pgal_sBsB_2h(self, k, mu):
+        """
+        The 2-halo term for Pgal_sBsB
+        """
+        self.b1 = self.b1_bar = self.b1_sB
+        return self.power(k, mu)
+        
+    @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_sBsB(self, k, mu, flatten=False):
         """
         The auto spectrum of satellits with other sats in the same halo.
         This has both a 1-halo and 2-halo term only.
         """
-        # the FOG damping terms
         G = self.evaluate_fog(k, mu, self.sigma_sB)
         
         toret = G**2 * (self.Pgal_sBsB_2h(k, mu) + self.NsBsB) + self.N
         return toret if not flatten else np.ravel(toret, order='F')
-    
-    @tools.alcock_paczynski
-    def Pgal_sBsB_2h(self, k, mu):
-        """
-        The 2-halo term for the auto spectrum of satellits with other sats 
-        in the same halo.
-        """
-        # set the linear biases first
-        self.b1 = self.b1_bar = self.b1_sB
-
-        return self.power(k, mu)
             
     @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal_ss(self, k, mu, flatten=False):
         """
         The total satellites auto spectrum
@@ -507,6 +548,7 @@ class GalaxySpectrum(power_biased.BiasedSpectrum):
     #---------------------------------------------------------------------------
     @tools.broadcast_kmu
     @tools.alcock_paczynski
+    @tools.cacheable
     def Pgal(self, k, mu, flatten=False, update={}):
         """
         The total redshift-space galaxy power spectrum, combining the individual

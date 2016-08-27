@@ -10,7 +10,20 @@ from scipy.optimize import brentq
 import functools
 import itertools
 import inspect
+import hashlib
 
+def get_hash_key(*args):
+    
+    combined = combined = hashlib.sha256()
+    for a in args:          
+        if isinstance(a, str):
+            h = hashlib.sha1(a.encode())
+        else:
+            b = a.view(np.uint8)
+            h = hashlib.sha1(b)
+        combined.update(h.digest())
+    return combined.hexdigest()
+    
 #-------------------------------------------------------------------------------
 # AP effect
 #-------------------------------------------------------------------------------  
@@ -91,6 +104,29 @@ def align_input(f):
         
     return wrapper
     
+def cacheable(f):
+    """
+    Decorator to optionally cache the function return value
+    
+    If the class has a :attr:`_scratch` that is a dictionary, 
+    this decorator will cache the function return value, 
+    using the input arguments and function name as the hash key
+    """
+    @functools.wraps(f)
+    def wrap(self, *args, **kws):
+
+        scratch = getattr(self, '_scratch', None)
+        if scratch is not None and isinstance(scratch, dict):
+            hashkey = get_hash_key(f.__name__, *args)
+            if hashkey not in scratch:
+                scratch[hashkey] = f(self, *args, **kws)
+            return scratch[hashkey]    
+        
+        ret = f(self, *args, **kws)
+        return ret
+    
+    return wrap
+    
 @doublewrap
 def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
     """
@@ -112,7 +148,7 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
         
         # if model is AP locked, do the distortion and lock
         if not APLock.locked():
-            
+
             # determine alpha_par, alpha_perp            
             alpha_par_  = alpha_par if alpha_par is not None else self.alpha_par
             alpha_perp_ = alpha_perp if alpha_perp is not None else self.alpha_perp

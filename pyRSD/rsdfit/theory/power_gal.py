@@ -100,9 +100,9 @@ class GalaxyPowerParameters(ParameterSet):
             
         # AP related
         if 'alpha_perp' in self and 'alpha_par' in self:
-            self['F_AP'].expr  = "alpha_par/alpha_perp"
-            self['alpha'].expr = "(alpha_perp**2 * alpha_par)**(1./3)"
-            self['epsilon'].expr  = "(alpha_perp/alpha_par)**(-1./3) - 1.0"
+            self['F_AP'].expr    = "alpha_par/alpha_perp"
+            self['alpha'].expr   = "(alpha_perp**2 * alpha_par)**(1./3)"
+            self['epsilon'].expr = "(alpha_perp/alpha_par)**(-1./3) - 1.0"
             
     def to_dict(self):
         """

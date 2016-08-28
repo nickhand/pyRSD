@@ -113,8 +113,8 @@ class LimitedMemoryInverseHessian(object):
         and `rho` arrays and updating the value of `H0k`
         """
         # move everything down one element
-        self.s[:] = np.roll(self.s, 1, axis=0)
-        self.y[:] = np.roll(self.y, 1, axis=0)
+        self.s[:]   = np.roll(self.s, 1, axis=0)
+        self.y[:]   = np.roll(self.y, 1, axis=0)
         self.rho[:] = np.roll(self.rho, 1)
         
         # updates for rho and H0k
@@ -123,6 +123,10 @@ class LimitedMemoryInverseHessian(object):
         yy *= yy
         
         if (ys == 0. or yy == 0.):
+            logging.info("sk = ", sk)
+            logging.info("yk = ", yk)
+            logging.info("ys = ", ys)
+            logging.info("yy = ", yy)
             raise LBFGSStepError("no LBFGS step")
         
         # set the zero element, corresponding to this iteration
@@ -159,7 +163,7 @@ class LBFGS(object):
             a list of additional keywords to pass to `f` and `fprime`
         M : int, optional 
             the number of previous iterations to use in determining the 
-            optimal LBFGS step; default is `100`
+            optimal LBFGS step
         """
         self.f       = f
         self.fprime  = fprime
@@ -173,8 +177,8 @@ class LBFGS(object):
         for k in default:
             self.options.setdefault(k, default[k])
 
-        self.p0     = p0.copy()
-        self.N      = len(self.p0)
+        self.p0 = p0.copy()
+        self.N  = len(self.p0)
         
         if self.M <= 0:
             raise ValueError("LBFGS parameter `M` must be a positive integer")
@@ -342,7 +346,7 @@ class LBFGS(object):
                     2: 'Tolerance reached: deltaF/F < ftol.',
                     3: 'Tolerance reached: Gnorm < gtol.',
                    -4: 'Linesearch failed; maximum number of iterations exceeded -- exiting.',
-                   -5: 'Algorithm has not moved for some weird reason -- exiting',
+                   -5: 'Algorithm has not moved for some weird reason',
                     0: 'Algorithm has not yet converged, with no errors so far'}
         return reasons[self.data['status']]
         
@@ -372,10 +376,10 @@ class LBFGS(object):
             the value of the objective function at newX
         """
         # backtracking line search parameters
-        tau     = 0.5
+        tau     = 0.2
         c       = 1e-5
         rate    = 1.
-        maxiter = 200
+        maxiter = 500
         
         currF = self.data['curr_state']['F']
         newX = X.copy()
@@ -518,7 +522,7 @@ class LBFGS(object):
             try:
                 d['H'].update(sk, yk)
             except LBFGSStepError as e:
-                self.logger.warning("error taking the LBFGS step")
+                self.logger.warning("error taking the LBFGS step: %s" %str(e))
                 d['status'] = -5
                 pass
 

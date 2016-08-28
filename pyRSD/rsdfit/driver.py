@@ -13,6 +13,8 @@ from ..rsd.derivatives import PgalGradient
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
+NMU = 41
+
 def load_results(filename):
     """
     Load a result from file
@@ -555,7 +557,19 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         except AttributeError:
             
             k = self.data.combined_k
-            mu = self.data.combined_mu
+            if self.mode == 'poles':
+                mu = np.linspace(0., 1., NMU)
+                
+                # broadcast to the right shape
+                k     = k[:, np.newaxis]
+                mu    = mu[np.newaxis, :]
+                k, mu = np.broadcast_arrays(k, mu)
+                k     = k.ravel(order='F')
+                mu    = mu.ravel(order='F')
+                
+            else:
+                mu = self.data.combined_mu
+                
             self._pkmu_gradient = PgalGradient(self.model, self.theory.fit_params, k, mu)
             return self._pkmu_gradient
                     
@@ -599,13 +613,24 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         # get the gradient of Pgal wrt the parameters
         gradient = self.pkmu_gradient(theta, epsilon=epsilon)
         
-        # transform to derivative of lnlike
-        if self.mode == 'pkmu':
-            diff = self.data.combined_power - self.combined_model
-            grad_lnlike = np.dot(np.dot(self.data.covariance.inverse, diff), gradient.T)
-            grad_minus_lnlike = -1 * grad_lnlike
-        else:
-            raise NotImplementedError() 
+        # do multipoles integration of the gradient
+        if self.mode == 'poles':
+            from scipy.special import legendre
+            from scipy.integrate import simps
+                        
+            # reshape the arrays
+            k        = self.pkmu_gradient.k.reshape(-1, NMU, order='F')
+            mu       = self.pkmu_gradient.mu.reshape(-1, NMU, order='F')
+            gradient = gradient.reshape(self.Np, -1, NMU, order='F')
+            
+            # do the integration over mu
+            kern     = np.asarray([(2*ell+1.)*legendre(ell)(mu[i]) for i, ell in enumerate(self.data.combined_ell)])
+            gradient = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
+            
+        # transform from model gradient to log likelihood gradient
+        diff = self.data.combined_power - self.combined_model
+        grad_lnlike = np.dot(np.dot(self.data.covariance.inverse, diff), gradient.T)
+        grad_minus_lnlike = -1 * grad_lnlike
             
         # test for inf
         has_inf = np.isinf(grad_minus_lnlike)

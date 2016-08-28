@@ -30,20 +30,30 @@ def get_Pgal_derivative(name):
     return registry[name]
     
     
-from .fcB   import dPgal_dfcB
-from .fsB   import dPgal_dfsB
-from .fs    import dPgal_dfs
-from .NcBs  import dPgal_dNcBs
-from .NsBsB import dPgal_dNsBsB
-from .nuisance import dPgal_dNsat_mult, dPgal_df1h_sBsB
+from .alpha_perp import dPgal_dalpha_perp
+from .alpha_par  import dPgal_dalpha_par
+from .fcB        import dPgal_dfcB
+from .fsB        import dPgal_dfsB
+from .fs         import dPgal_dfs
+from .NcBs       import dPgal_dNcBs
+from .NsBsB      import dPgal_dNsBsB
+from .f_so       import dPgal_df_so
+from .sigma_c    import dPgal_dsigma_c
+from .sigma_so   import dPgal_dsigma_so
+from .nuisance   import dPgal_dNsat_mult, dPgal_df1h_sBsB
 
 
 __all__ = [ 'get_Pgal_derivative',
+            'dPgal_dalpha_perp',
+            'dPgal_dalpha_par',
             'dPgal_dfcB', 
             'dPgal_dfsB',
             'dPgal_dfs', 
             'dPgal_dNcBs',
             'dPgal_dNsBsB',
             'dPgal_dNsat_mult',
-            'dPgal_df1h_sBsB'
+            'dPgal_df1h_sBsB',
+            'dPgal_df_so',
+            'dPgal_dsigma_c',
+            'dPgal_dsigma_so'
           ]

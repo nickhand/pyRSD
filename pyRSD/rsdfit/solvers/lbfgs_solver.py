@@ -84,10 +84,10 @@ def run(params, theory, pool=None, init_values=None):
      
     # determine the objective functions
     if use_priors:
-        f = functools.partial(objectives.neg_lnprob)
+        f = functools.partial(objectives.minus_lnprob)
     else:
-        f = functools.partial(objectives.neg_lnlike)
-    fprime = functools.partial(objectives.gradient, epsilon=epsilon, pool=pool, use_priors=use_priors)
+        f = functools.partial(objectives.minus_lnlike)
+    fprime = functools.partial(objectives.grad_minus_lnlike, epsilon=epsilon, pool=pool, use_priors=use_priors)
     
     #--------------------------------------------------------------------------
     # run the algorithm, catching any errors

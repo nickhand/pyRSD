@@ -9,6 +9,7 @@ from .solvers import *
 from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
 from ..rsd import GalaxySpectrum
+from ..rsd.derivatives import PgalGradient
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
@@ -484,7 +485,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         if theta is not None:
             in_bounds = self.theory.set_free_parameters(theta)
         else:
-            in_bounds = all(p.within_bounds for p in self.theory.free)
+            in_bounds = all(p.within_bounds() for p in self.theory.free)
             
         # return -np.inf if any parameters are out of bounds
         if not in_bounds:
@@ -508,10 +509,59 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
                 raise RuntimeError(msg)
             
             return lp + lnlike
-                        
-    def gradient(self, obj, theta=None, epsilon=1e-4, pool=None, use_priors=True):
+                                
+    def minus_lnlike(self, theta=None, use_priors=False):
         """
-        Return the vector of the gradient of the specified objective function 
+        Return the negative log-likelihood, optionally including priors
+        
+        Parameters
+        ----------
+        theta : array_like, optional
+            if provided, the values of the free parameters to compute the probability
+            at; it not provided, use the current values of free parameters from 
+            `theory.fit_params`
+        use_priors : bool, optional
+            whether to include the log priors in the objective function when 
+            minimizing the negative log probability
+        """
+        # set the free parameters
+        if theta is not None:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                return -self.null_lnlike - self.lnprior()
+        else:
+            theta = self.theory.free_values
+        
+        # value at theta
+        prob = -self.lnlike()
+        if use_priors:
+            prob += -self.lnprior()
+            
+        return prob
+            
+    #---------------------------------------------------------------------------
+    # gradient calculations
+    #---------------------------------------------------------------------------
+    @property
+    def pkmu_gradient(self):
+        """
+        Return the pkmu gradient
+        """
+        try:
+            return self._pkmu_gradient
+        except AttributeError:
+            
+            k = self.data.combined_k
+            mu = self.data.combined_mu
+            self._pkmu_gradient = PgalGradient(self.model, self.theory.fit_params, k, mu)
+            return self._pkmu_gradient
+                    
+    def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True):
+        """
+        Return the vector of the gradient of the negative log likelihood,
         with respect to the free parameters, optionally evaluating at `theta`
         
         This uses a central-difference finite-difference approximation to 
@@ -546,69 +596,38 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         else:
             theta = self.theory.free_values
         
-        # the increments to take
-        increments = np.identity(self.Np) * epsilon
-        tasks = np.concatenate([theta+increments, theta-increments], axis=0)
+        # get the gradient of Pgal wrt the parameters
+        gradient = self.pkmu_gradient(theta, epsilon=epsilon)
         
-        # how to map
-        if pool is None:
-            results = np.array([obj(t) for t in tasks]).reshape((-1, 2), order='F')
+        # transform to derivative of lnlike
+        if self.mode == 'pkmu':
+            diff = self.data.combined_power - self.combined_model
+            grad_lnlike = np.dot(np.dot(self.data.covariance.inverse, diff), gradient.T)
+            grad_minus_lnlike = -1 * grad_lnlike
         else:
-            results = np.array(pool.map(obj, tasks)).reshape((-1, 2), order='F')
+            raise NotImplementedError() 
             
-        # compute the central finite-difference derivative
-        gradient = (results[:,0] - results[:,1]) / (2.*epsilon)
-        
         # test for inf
-        has_inf = np.isinf(gradient)
+        has_inf = np.isinf(grad_minus_lnlike)
         if has_inf.any():
             bad = np.array(self.theory.free_names)[has_inf].tolist()
             raise ValueError("inf values detected in the gradient for: %s" %str(bad))
             
         # test for NaN
-        has_nan = np.isnan(gradient)
+        has_nan = np.isnan(grad_minus_lnlike)
         if has_nan.any():
             bad = np.array(self.theory.free_names)[has_nan].tolist()
             raise ValueError("NaN values detected in the gradient for: %s" %str(bad))
             
         # add in log prior prob and derivatives of log priors
         if use_priors: 
-            gradient += -self.theory.dlnprior
+            grad_minus_lnlike += -1 * self.theory.dlnprior
             
-        return gradient
+        return grad_minus_lnlike
         
-    def neg_lnlike(self, theta=None, use_priors=False):
-        """
-        Return the negative log-likelihood, optionally including priors
-        
-        Parameters
-        ----------
-        theta : array_like, optional
-            if provided, the values of the free parameters to compute the probability
-            at; it not provided, use the current values of free parameters from 
-            `theory.fit_params`
-        use_priors : bool, optional
-            whether to include the log priors in the objective function when 
-            minimizing the negative log probability
-        """
-        # set the free parameters
-        if theta is not None:
-            in_bounds = self.theory.set_free_parameters(theta)
-            
-            # if parameters are out of bounds, return the log-likelihood
-            # for a null model + the prior results (which hopefully are restrictive)
-            if not in_bounds:
-                return -self.null_lnlike - self.lnprior()
-        else:
-            theta = self.theory.free_values
-        
-        # value at theta
-        prob = -self.lnlike()
-        if use_priors:
-            prob += -self.lnprior()
-            
-        return prob
-            
+    #---------------------------------------------------------------------------
+    # setting results
+    #---------------------------------------------------------------------------
     def set_fiducial(self):
         """
         Set the fiducial values as the current values of the free parameters

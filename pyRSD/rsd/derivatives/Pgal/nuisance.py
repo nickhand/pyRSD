@@ -33,6 +33,16 @@ class dPgal_df1h_cBs(PgalDerivative):
     def eval(m, pars, k, mu):
         return 0.
         
+class dPgal_dlog10_fso(PgalDerivative):
+    """
+    The partial derivative of `Pgal` with respect to `log10_fso`
+    """
+    param = 'log10_fso'
+    
+    @staticmethod
+    def eval(m, pars, k, mu):
+        return 0.
+        
 
 
     

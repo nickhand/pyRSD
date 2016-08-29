@@ -2,7 +2,6 @@ import numpy
 import logging
 import functools
 
-from pyRSD.rsdfit import GlobalFittingDriver
 from . import get_Pgal_derivative, get_constraint_derivative
 
 def compute(name, m, pars, k, mu):
@@ -58,7 +57,8 @@ def _call_Pgal_from_driver(k, mu, theta):
     instance
     
     This is defined at the module level so we can pickle it
-    """                            
+    """
+    from pyRSD.rsdfit import GlobalFittingDriver                   
     driver = GlobalFittingDriver.get()
     driver.theory.set_free_parameters(theta)
     return driver.model.Pgal(k, mu)
@@ -89,11 +89,11 @@ class PgalGradient(object):
             try:
                 d = compute(name, self.model, self.pars, self.k, self.mu)[:]
             except Exception as e:
-                logging.info("numerical derivative for parameter '%s' not available; %s" %(name, str(e)))
+                logging.info("analytic derivative for parameter '%s' not available; %s" %(name, str(e)))
                 self.numerical_names.append(name)
                 self.numerical_indices.append(i)
         
-    def __call__(self, theta, epsilon=1e-4, pool=None):
+    def __call__(self, theta, epsilon=1e-6, pool=None):
         """
         Evaluate the gradient of `Pgal(k,mu)` with respect to
         the input parameters

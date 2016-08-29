@@ -1306,7 +1306,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             
         # k < k0_low
         if (~idx).sum():
-            A = _power(self.k0_low, mu[~idx])
+            A = self._power(self.k0_low, mu[~idx])
             with self.use_spt():
                 norm = A / self._power(self.k0_low, mu[~idx])
                 pkmu[~idx] = self._power(k[~idx], mu[~idx]) * norm
@@ -1342,7 +1342,38 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return mu**6 * self.P_mu6(k)
         
-    
+    @tools.alcock_paczynski
+    def derivative_k(self, k, mu):
+        """
+        Return the derivative of :func:`power` with
+        respect to `k`
+        """
+        toret = 0
+        funcs = [self.P_mu0, self.P_mu2, self.P_mu4, self.P_mu6]
+        
+        i = 0
+        while i <= (self.max_mu//2):
+            toret += mu**(2*i) * funcs[i].derivative()(k)
+            i += 1
+            
+        return toret
+        
+    @tools.alcock_paczynski
+    def derivative_mu(self, k, mu):
+        """
+        Return the derivative of :func:`power` with
+        respect to `mu`
+        """
+        toret = 0
+        funcs = [self.P_mu0, self.P_mu2, self.P_mu4, self.P_mu6]
+        
+        i = 0
+        while i <= (self.max_mu//2):
+            toret += (2.*i) * mu**(2*i-1) * funcs[i](k)
+            i += 1
+            
+        return toret
+        
     def _power(self, k, mu):
         """
         Return the power as sum of mu powers

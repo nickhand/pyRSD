@@ -520,7 +520,7 @@ class LBFGS(object):
             except LBFGSStepError as e:
                 self.logger.warning("error taking the LBFGS step: %s" %str(e))
                 d['status'] = -5
-                break
+                pass
 
             d['iteration'] += 1
                     

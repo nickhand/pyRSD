@@ -123,10 +123,6 @@ class LimitedMemoryInverseHessian(object):
         yy *= yy
         
         if (ys == 0. or yy == 0.):
-            logging.info("sk = ", sk)
-            logging.info("yk = ", yk)
-            logging.info("ys = ", ys)
-            logging.info("yy = ", yy)
             raise LBFGSStepError("no LBFGS step")
         
         # set the zero element, corresponding to this iteration
@@ -377,7 +373,7 @@ class LBFGS(object):
         """
         # backtracking line search parameters
         tau     = 0.2
-        c       = 1e-5
+        c       = 1e-4
         rate    = 1.
         maxiter = 500
         
@@ -524,7 +520,7 @@ class LBFGS(object):
             except LBFGSStepError as e:
                 self.logger.warning("error taking the LBFGS step: %s" %str(e))
                 d['status'] = -5
-                pass
+                break
 
             d['iteration'] += 1
                     

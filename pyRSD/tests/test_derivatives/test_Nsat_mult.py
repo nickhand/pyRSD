@@ -1,6 +1,6 @@
 from . import numdifftools, numpy
 import pytest
-from pyRSD.rsd.derivatives import compute
+from pyRSD.rsd.derivatives.gradient import compute
     
 @pytest.fixture(scope='module', params=[True, False])
 def socorr(request):

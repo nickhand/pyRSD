@@ -1,5 +1,5 @@
 from . import numdifftools, numpy
-from pyRSD.rsd.derivatives import compute
+from pyRSD.rsd.derivatives.gradient import compute
     
     
 def test_total(driver):

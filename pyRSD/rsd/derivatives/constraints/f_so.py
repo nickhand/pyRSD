@@ -1,7 +1,7 @@
 from . import ConstraintDerivative
 import numpy
 
-class fsoConstraint(ConstraintDerivative):
+class f_soConstraint(ConstraintDerivative):
     """
     Class to represent the derivative of the constraint
     for the `f_so` parameter
@@ -10,7 +10,7 @@ class fsoConstraint(ConstraintDerivative):
     expr = "10**log10_fso"
     
     def __init__(self, x, y):
-        super(fsoConstraint, self).__init__(x, y)
+        super(f_soConstraint, self).__init__(x, y)
         
     def deriv_log10_fso(self, m, pars, k, mu):
         """

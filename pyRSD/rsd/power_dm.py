@@ -10,7 +10,7 @@ from .. import pygcl, numpy as np, data as sim_data, os
 from .pt_integrals import PTIntegralsMixin
 from .sim_loader import SimLoaderMixin
 from .simulation import SimulationPdv, SimulationP11
-from .halo_zeldovich import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11
+from .hzpt import InterpolatedHZPTModels
 
 def verify_krange(k, kmin, kmax):
     """
@@ -263,10 +263,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Whether we want to interpolate any underlying models
         """
-        # set the dependencies
-        models = ['P00_hzpt_model', 'P01_hzpt_model']
-        self._update_models('interpolate', models, val)
-        
+        self.hzpt.interpolate = val
         return val
         
     @parameter
@@ -274,10 +271,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Whether to enhance the wiggles over the default HZPT model
         """
-        # set the dependencies
-        models = ['P00_hzpt_model', 'P01_hzpt_model']
-        self._update_models('enhance_wiggles', models, val)
-        
+        self.hzpt.enhance_wiggles = val
         return val
     
     @parameter
@@ -374,8 +368,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         linear power spectrum
         """
         # update the dependencies
-        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 
-                    'P11_sim_model', 'Pdv_sim_model']
+        models = ['hzpt', 'P11_sim_model', 'Pdv_sim_model']
         self._update_models('sigma8_z', models, val)
         
         return val
@@ -386,7 +379,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The growth rate, defined as the `dlnD/dlna`.
         """
         # update the dependencies
-        models = ['P01_hzpt_model', 'P11_hzpt_model', 'Pdv_sim_model', 'P11_sim_model']
+        models = ['hzpt', 'Pdv_sim_model', 'P11_sim_model']
         self._update_models('f', models, val)
         
         return val
@@ -610,29 +603,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         return val
 
     @cached_property("cosmo")
-    def P00_hzpt_model(self):
+    def hzpt(self):
         """
-        The class holding the HZPT model for the P00 dark matter term
-        """
-        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP00(self.cosmo, self.sigma8_z, **kw)
-    
-    @cached_property("cosmo")
-    def P01_hzpt_model(self):
-        """
-        The class holding the HZPT model for the P01 dark matter term
+        The class holding the (possibly interpolated) HZPT models
         """
         kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP01(self.cosmo, self.sigma8_z, self.f, **kw)
-    
-    @cached_property("cosmo")
-    def P11_hzpt_model(self):
-        """
-        The class holding the HZPT model for the P11 dark matter term
-        """
-        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichP11(self.cosmo, self.sigma8_z, self.f, **kw)
-    
+        return InterpolatedHZPTModels(self.cosmo, self.sigma8_z, self.f, **kw)
+        
     @cached_property("power_lin")
     def P11_sim_model(self):
         """
@@ -659,16 +636,16 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         s8 = self.sigma8_z / D
        
         # z = 0 results
-        self.P00_hzpt_model.sigma8_z = s8
-        P00_z0 = self.P00_hzpt_model(k)
+        self.hzpt.P00.sigma8_z = s8
+        P00_z0 = self.hzpt.P00(k)
         
         # redshift scaling
         z_scaling = 3. / (D + D**2 + D**3)
         
         # reset sigma8_z
-        self.P00_hzpt_model.sigma8_z = self.sigma8_z
+        self.hzpt.P00.sigma8_z = self.sigma8_z
         g = (a0 * P00_z0**0.5 + a1 * P00_z0**2) / (a2 + a3 * P00_z0)
-        toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
+        toret = (g - P00_z0) / z_scaling**2 + self.hzpt.P00(k)
         return - self.f * toret
         
     def Pvv_jennings(self, k):
@@ -681,16 +658,16 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         s8 = self.sigma8_z / D
         
         # z = 0 results
-        self.P00_hzpt_model.sigma8_z = s8
-        P00_z0 = self.P00_hzpt_model(k)
+        self.hzpt.P00.sigma8_z = s8
+        P00_z0 = self.hzpt.P00(k)
         
         # redshift scaling
         z_scaling = 3. / (D + D**2 + D**3)
         
         # reset sigma8_z
-        self.P00_hzpt_model.sigma8_z = self.sigma8_z
+        self.hzpt.P00.sigma8_z = self.sigma8_z
         g = (a0 * P00_z0**0.5 + a1 * P00_z0**2) / (a2 + a3 * P00_z0)
-        toret = (g - P00_z0) / z_scaling**2 + self.P00_hzpt_model(k)
+        toret = (g - P00_z0) / z_scaling**2 + self.hzpt.P00(k)
         return self.f**2 * toret
         
     def to_npy(self, filename):
@@ -853,7 +830,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                 
             # use the DM model
             if self.use_P00_model:
-                P00.total.mu0 = self.P00_hzpt_model(self.k)
+                P00.total.mu0 = self.hzpt.P00(self.k)
             # use pure PT
             else:
                 # the necessary integrals 
@@ -884,7 +861,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             
                 # use the DM model
                 if self.use_P01_model:
-                    P01.total.mu2 = self.P01_hzpt_model(self.k)
+                    P01.total.mu2 = self.hzpt.P01(self.k)
                 # use pure PT
                 else:                
                     # the necessary integrals 
@@ -939,7 +916,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                     
                     # use HZPT?
                     if self.use_P11_model:
-                        P11.total.mu4 = self.P11_hzpt_model(self.k) - self.f**2 * self.I31(self.k)
+                        P11.total.mu4 = self.hzpt.P11(self.k) - self.f**2 * self.I31(self.k)
                     else:
                         # compute the scalar mu^4 contribution
                         if self.include_2loop:

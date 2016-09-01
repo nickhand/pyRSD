@@ -9,9 +9,6 @@ from .tools import RSDSpline, BiasToSigmaRelation
 from .power_dm import DarkMatterSpectrum
 from .power_dm import PowerTerm
 
-# halo zeldovich models
-from .halo_zeldovich import HaloZeldovichPhm
-
 # simulation fits
 from .simulation import VelocityDispersionFits
 from .simulation import Pmu2ResidualCorrection
@@ -110,43 +107,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         Evaluate cross-spectra using the geometric mean of the biases 
         """           
         return val
-        
-    @parameter
-    def interpolate(self, val):
-        """
-        Whether we want to interpolate any underlying models
-        """
-        # set the dependencies
-        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 'Phm_hzpt_model']
-        self._update_models('interpolate', models, val)
-        
-        return val
-        
-    @parameter
-    def enhance_wiggles(self, val):
-        """
-        Whether to enhance the wiggles over the default HZPT model
-        """
-        # set the dependencies
-        models = ['P00_hzpt_model', 'P01_hzpt_model', 'Phm_hzpt_model']
-        self._update_models('enhance_wiggles', models, val)
-        
-        return val
-        
-    @parameter
-    def sigma8_z(self, val):
-        """
-        The value of Sigma8 (mass variances within 8 Mpc/h at z) to compute 
-        the power spectrum at, which gives the normalization of the 
-        linear power spectrum
-        """
-        # update the dependencies
-        models = ['P00_hzpt_model', 'P01_hzpt_model', 'P11_hzpt_model', 
-                    'P11_sim_model', 'Pdv_sim_model', 'Phm_hzpt_model']
-        self._update_models('sigma8_z', models, val)
-
-        return val
-    
+                            
     @parameter
     def z(self, val):
         """
@@ -235,15 +196,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             
     #---------------------------------------------------------------------------
     # cached properties
-    #---------------------------------------------------------------------------
-    @cached_property("cosmo")
-    def Phm_hzpt_model(self):
-        """
-        The class holding the Halo Zeldovich model for the Phm term
-        """
-        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
-        return HaloZeldovichPhm(self.cosmo, self.sigma8_z, **kw)
-        
+    #---------------------------------------------------------------------------        
     @cached_property("use_mean_bias", "b1", "b1_bar")
     def _ib1(self):
         """
@@ -343,7 +296,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         Phm = PowerTerm()
         
         if self.use_Phm_model:
-            Phm.total.mu0 = self.Phm_hzpt_model(self._ib1, self.k)
+            Phm.total.mu0 = self.hzpt.Phm(b1=self._ib1, k=self.k)
         else:
             # the bias values to use
             b1, b2_00 = self._ib1, self.b2_00_a(self._ib1)
@@ -363,7 +316,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         Phm = PowerTerm()
         
         if self.use_Phm_model:
-            Phm.total.mu0 = self.Phm_hzpt_model(self._ib1_bar, self.k)
+            Phm.total.mu0 = self.hzpt.Phm(b1=self._ib1_bar, k=self.k)
         else:
             # the bias values to use
             b1_bar, b2_00_bar = self._ib1_bar, self.b2_00_a(self._ib1_bar)

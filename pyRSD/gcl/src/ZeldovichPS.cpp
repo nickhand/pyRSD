@@ -1,11 +1,12 @@
 #include "ZeldovichPS.h"
 #include "LinearPS.h"
+#include "Spline.h"
 
 using namespace Common;
 
-static const int NUM_PTS = 1024;
-static const double RMIN = 1e-2;
-static const double RMAX = 1e5;
+static const int NUM_PTS = 2048;
+static const double RMIN = 1e-10;
+static const double RMAX = 1e10;
 static const int NMAX = 15;
 
 
@@ -117,10 +118,9 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const
     
     parray a(NUM_PTS);
     parray kmesh(NUM_PTS);
+    parray total(NUM_PTS);
 
     // logspaced between RMIN and RMAX
-    double this_Pk = 0.;
-    double toadd;   
     for (int n = 0; n <= NMAX; n++) {
         
         // the order of the Bessel function
@@ -140,19 +140,18 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const
         double kr = fftlogger.KR();
         double logkc = log10(kr) - logrc;
         
-        for (int j = 1; j <= NUM_PTS; j++) 
-            kmesh[j-1] = pow(10., (logkc+(j-nc)*dlogr));
-             
-        // sum it up
-        double out;
-        nearest_interp_1d(NUM_PTS, (double*)(kmesh), (double*)(a), 1, &k, &out);
-        toadd = factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out; 
-        
-        this_Pk += toadd;   
-        if (fabs(toadd/this_Pk) < 0.005) break;
+        if (n == 0) {
+            for (int j = 1; j <= NUM_PTS; j++) 
+                kmesh[j-1] = pow(10., (logkc+(j-nc)*dlogr));
+        }        
+        // sum up 
+        for (int j = 0; j < NUM_PTS; j++) { 
+            total[j] += a[j];
+        }        
     }
-        
-    return this_Pk;
+    
+    auto spl = CubicSpline(kmesh, total);
+    return factor * sqrt(0.5*M_PI) * spl(k) * pow(k, -1.5);
 }
 
 void ZeldovichPS::Fprim(parray&, const parray&, double) const 

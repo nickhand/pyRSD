@@ -84,13 +84,13 @@ def get_constraint_derivative(par, *args):
     return registry[hash(key)](par, *args)
     
 from .fcB   import fcBConstraint
-from .fso   import fsoConstraint
+from .f_so   import f_soConstraint
 from .NcBs  import NcBsConstraint
 from .NsBsB import NsBsBConstraint
 
 __all__ = [ 'get_constraint_derivative',
             'fcBConstraint', 
-            'fsoConstraint',
+            'f_soConstraint',
             'NcBsConstraint', 
             'NsBsBConstraint'
           ]

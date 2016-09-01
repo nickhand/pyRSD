@@ -93,7 +93,7 @@ class PgalGradient(object):
                 self.numerical_names.append(name)
                 self.numerical_indices.append(i)
         
-    def __call__(self, theta, epsilon=1e-6, pool=None):
+    def __call__(self, theta, epsilon=1e-6, pool=None, numerical=False):
         """
         Evaluate the gradient of `Pgal(k,mu)` with respect to
         the input parameters
@@ -109,7 +109,7 @@ class PgalGradient(object):
         pool : MPIPool, optional
             a MPI Pool object to distribute the calculations of derivatives to 
             multiple processes in parallel
-        """
+        """        
         # the result value
         toret = numpy.zeros((len(theta), len(self.k)))
     
@@ -118,7 +118,7 @@ class PgalGradient(object):
         
             # loop over each free parameter
             for i, name in enumerate(self.pars.free_names):
-                if name in self.numerical_names:
+                if numerical or name in self.numerical_names:
                     continue
                 
                 # the analytic derivative
@@ -128,7 +128,10 @@ class PgalGradient(object):
         # the increments to take
         try:
             increments = numpy.identity(len(theta)) * epsilon
-            ii = self.numerical_indices
+            if not numerical:
+                ii = self.numerical_indices
+            else:
+                ii = Ellipsis
             tasks = numpy.concatenate([(theta+increments)[ii], (theta-increments)[ii]], axis=0)
 
             # how to map

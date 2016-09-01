@@ -573,7 +573,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             self._pkmu_gradient = PgalGradient(self.model, self.theory.fit_params, k, mu)
             return self._pkmu_gradient
                     
-    def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True):
+    def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True, numerical=False):
         """
         Return the vector of the gradient of the negative log likelihood,
         with respect to the free parameters, optionally evaluating at `theta`
@@ -611,7 +611,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             theta = self.theory.free_values
         
         # get the gradient of Pgal wrt the parameters
-        gradient = self.pkmu_gradient(theta, epsilon=epsilon)
+        gradient = self.pkmu_gradient(theta, epsilon=epsilon, numerical=numerical)
         
         # do multipoles integration of the gradient
         if self.mode == 'poles':

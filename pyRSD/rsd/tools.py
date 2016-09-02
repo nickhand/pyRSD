@@ -103,6 +103,17 @@ def align_input(f):
         return f(self, *args, **kw)
         
     return wrapper
+
+# global cache space
+_global_cache = None
+
+def cache_on():
+    global _global_cache
+    _global_cache = {}
+    
+def cache_off():
+    global _global_cache
+    _global_cache = None
     
 def cacheable(f):
     """
@@ -114,13 +125,13 @@ def cacheable(f):
     """
     @functools.wraps(f)
     def wrap(self, *args, **kws):
-
-        scratch = getattr(self, '_scratch', None)
-        if scratch is not None and isinstance(scratch, dict):
-            hashkey = get_hash_key(f.__name__, *args)
-            if hashkey not in scratch:
-                scratch[hashkey] = f(self, *args, **kws)
-            return scratch[hashkey]    
+        
+        if _global_cache is not None and isinstance(_global_cache, dict):            
+            name = "%s.%s" %(self.__class__.__name__, f.__name__)
+            hashkey = get_hash_key(name, *args)
+            if hashkey not in _global_cache:
+                _global_cache[hashkey] = f(self, *args, **kws)
+            return _global_cache[hashkey]    
         
         ret = f(self, *args, **kws)
         return ret
@@ -200,7 +211,6 @@ def broadcast_kmu(f):
         if isinstance(mu, list): mu = np.array(mu)
         if np.isscalar(k): k = np.array([k])
         if np.isscalar(mu): mu = np.array([mu])
-        args[0] = k; args[1] = mu
         
         mu_dim = np.ndim(mu); k_dim = np.ndim(k)
         if mu_dim == 1 and k_dim == 1:

@@ -636,14 +636,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         s8 = self.sigma8_z / D
        
         # z = 0 results
-        self.hzpt.P00.sigma8_z = s8
+        self.hzpt._P00.sigma8_z = s8
         P00_z0 = self.hzpt.P00(k)
         
         # redshift scaling
         z_scaling = 3. / (D + D**2 + D**3)
         
         # reset sigma8_z
-        self.hzpt.P00.sigma8_z = self.sigma8_z
+        self.hzpt._P00.sigma8_z = self.sigma8_z
         g = (a0 * P00_z0**0.5 + a1 * P00_z0**2) / (a2 + a3 * P00_z0)
         toret = (g - P00_z0) / z_scaling**2 + self.hzpt.P00(k)
         return - self.f * toret
@@ -658,14 +658,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         s8 = self.sigma8_z / D
         
         # z = 0 results
-        self.hzpt.P00.sigma8_z = s8
+        self.hzpt._P00.sigma8_z = s8
         P00_z0 = self.hzpt.P00(k)
         
         # redshift scaling
         z_scaling = 3. / (D + D**2 + D**3)
         
         # reset sigma8_z
-        self.hzpt.P00.sigma8_z = self.sigma8_z
+        self.hzpt._P00.sigma8_z = self.sigma8_z
         g = (a0 * P00_z0**0.5 + a1 * P00_z0**2) / (a2 + a3 * P00_z0)
         toret = (g - P00_z0) / z_scaling**2 + self.hzpt.P00(k)
         return self.f**2 * toret

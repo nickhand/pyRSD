@@ -211,7 +211,7 @@ class GalaxySpectrum(BiasedSpectrum):
         """
         Return the FOG function
         """
-        return FOGKernel.factory(self.fog_model)
+        return FOGKernel.factory(self, self.fog_model)
         
     @cached_property('fcB', 'b1_cB', 'b1_cA')
     def b1_c(self):
@@ -240,7 +240,7 @@ class GalaxySpectrum(BiasedSpectrum):
     # centrals power spectrum
     #--------------------------------------------------------------------------- 
     @tools.alcock_paczynski
-    def PcAcA(self, k, mu, flatten=False):
+    def Pgal_cAcA(self, k, mu, flatten=False):
         """
         The auto power spectrum of type A centrals
         """
@@ -248,7 +248,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def PcAcB(self, k, mu, flatten=False):
+    def Pgal_cAcB(self, k, mu, flatten=False):
         """
         The cross power spectrum of type A and type B centrals
         """
@@ -256,7 +256,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def PcBcB(self, k, mu, flatten=False):
+    def Pgal_cBcB(self, k, mu, flatten=False):
         """
         The auto power spectrum of type B centrals
         """
@@ -264,7 +264,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def Pcc(self, k, mu, flatten=False):
+    def Pgal_cc(self, k, mu, flatten=False):
         """
         The auto power spectrum of all centrals
         """
@@ -275,7 +275,7 @@ class GalaxySpectrum(BiasedSpectrum):
     # central-satellite cross spectrum
     #---------------------------------------------------------------------------
     @tools.alcock_paczynski
-    def PcAs(self, k, mu, flatten=False):
+    def Pgal_cAs(self, k, mu, flatten=False):
         """
         The cross power spectrum of type A centrals and satellites
         """
@@ -283,7 +283,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def PcBs(self, k, mu, flatten=False):
+    def Pgal_cBs(self, k, mu, flatten=False):
         """
         The cross power spectrum of type B centrals and satellites
         """
@@ -291,7 +291,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def Pcs(self, k, mu, flatten=False):
+    def Pgal_cs(self, k, mu, flatten=False):
         """
         The cross power spectrum of centrals and satellites
         """
@@ -302,7 +302,7 @@ class GalaxySpectrum(BiasedSpectrum):
     # satellites auto spectrum
     #---------------------------------------------------------------------------
     @tools.alcock_paczynski
-    def PsAsA(self, k, mu, flatten=False):
+    def Pgal_sAsA(self, k, mu, flatten=False):
         """
         The auto power spectrum of type A satellites
         """
@@ -310,7 +310,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def PsAsB(self, k, mu, flatten=False):
+    def Pgal_sAsB(self, k, mu, flatten=False):
         """
         The cross power spectrum of type A and type B satellites
         """
@@ -318,7 +318,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def PsBsB(self, k, mu, flatten=False):
+    def Pgal_sBsB(self, k, mu, flatten=False):
         """
         The auto power spectrum of type B satellites
         """
@@ -326,7 +326,7 @@ class GalaxySpectrum(BiasedSpectrum):
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def Pss(self, k, mu, flatten=False):
+    def Pgal_ss(self, k, mu, flatten=False):
         """
         The auto power spectrum of all satellites
         """

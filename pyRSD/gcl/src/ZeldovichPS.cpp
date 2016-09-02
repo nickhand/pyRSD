@@ -4,7 +4,7 @@
 
 using namespace Common;
 
-static const int NUM_PTS = 1024;
+static const int NUM_PTS = 2048;
 static const double RMIN = 1e-10;
 static const double RMAX = 1e10;
 static const int NMAX = 15;

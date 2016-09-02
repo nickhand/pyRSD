@@ -211,7 +211,7 @@ class GalaxySpectrum(BiasedSpectrum):
         """
         Return the FOG function
         """
-        return FOGKernel.factory(self, self.fog_model)
+        return FOGKernel.factory(self.fog_model)
         
     @cached_property('fcB', 'b1_cB', 'b1_cA')
     def b1_c(self):

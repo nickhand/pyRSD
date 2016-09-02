@@ -20,7 +20,6 @@ class HaloZeldovichBase(Cache):
         """    
         self.zeldovich = zel
         self.enhance_wiggles = enhance_wiggles
-        self.cosmo = self.zeldovich.GetCosmology()
         
         # default base parameters
         self._A0_amp    = 763.74
@@ -52,13 +51,6 @@ class HaloZeldovichBase(Cache):
         """
         if val <= 0.: raise ValueError("`sigma8_z` must be positive")
         self.zeldovich.SetSigma8AtZ(val)
-        return val
-        
-    @parameter
-    def cosmo(self, val):
-        """
-        The cosmology of the input linear power spectrum
-        """
         return val
         
     #---------------------------------------------------------------------------

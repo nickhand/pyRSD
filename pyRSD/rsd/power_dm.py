@@ -263,7 +263,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Whether we want to interpolate any underlying models
         """
-        self.hzpt.interpolate = val
+        self._update_models('interpolate', ['hzpt'], val)
         return val
         
     @parameter
@@ -271,7 +271,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Whether to enhance the wiggles over the default HZPT model
         """
-        self.hzpt.enhance_wiggles = val
+        self._update_models('enhance_wiggles', ['hzpt'], val)
         return val
     
     @parameter
@@ -1319,6 +1319,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return mu**6 * self.P_mu6(k)
         
+    @tools.broadcast_kmu
     @tools.alcock_paczynski
     def derivative_k(self, k, mu):
         """
@@ -1335,6 +1336,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             
         return toret
         
+    @tools.broadcast_kmu
     @tools.alcock_paczynski
     def derivative_mu(self, k, mu):
         """

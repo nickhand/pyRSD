@@ -49,8 +49,8 @@ class Pcc(GalaxyPowerTerm):
             
         # use an SO correction
         else:
-            G1 = self.FOG(k, mu, self.model.sigma_c)
-            G2 = self.FOG(k, mu, self.model.sigma_so)
+            G1 = self.model.FOG(k, mu, self.model.sigma_c)
+            G2 = self.model.FOG(k, mu, self.model.sigma_so)
             
             term1 = (G1*(1-self.model.f_so))**2 * Pk
             term2 = 2*self.model.f_so*(1-self.model.f_so) * G1*G2 * Pk
@@ -74,10 +74,10 @@ class Pcc(GalaxyPowerTerm):
         
             Pk = super(Pcc, self).__call__(k, mu)
         
-            G1      = self.FOG(k, mu, self.model.sigma_c)
-            G2      = self.FOG(k, mu, self.model.sigma_so)
-            G1prime = self.FOG.derivative_k(k, mu, self.model.sigma_c)
-            G2prime = self.FOG.derivative_k(k, mu, self.model.sigma_so)
+            G1      = self.model.FOG(k, mu, self.model.sigma_c)
+            G2      = self.model.FOG(k, mu, self.model.sigma_so)
+            G1prime = self.model.FOG.derivative_k(k, mu, self.model.sigma_c)
+            G2prime = self.model.FOG.derivative_k(k, mu, self.model.sigma_so)
             
             f_so = self.model.f_so
             toret = ((G1*(1-f_so))**2 + 2*f_so*(1-f_so) + (G2*f_so)**2) * dk
@@ -102,10 +102,10 @@ class Pcc(GalaxyPowerTerm):
         else:
             Pk = super(Pcc, self).__call__(k, mu)
         
-            G1      = self.FOG(k, mu, self.model.sigma_c)
-            G2      = self.FOG(k, mu, self.model.sigma_so)
-            G1prime = self.FOG.derivative_mu(k, mu, self.model.sigma_c)
-            G2prime = self.FOG.derivative_mu(k, mu, self.model.sigma_so)
+            G1      = self.model.FOG(k, mu, self.model.sigma_c)
+            G2      = self.model.FOG(k, mu, self.model.sigma_so)
+            G1prime = self.model.FOG.derivative_mu(k, mu, self.model.sigma_c)
+            G2prime = self.model.FOG.derivative_mu(k, mu, self.model.sigma_so)
             
             f_so = self.model.f_so
             toret = ((G1*(1-f_so))**2 + 2*f_so*(1-f_so) + (G2*f_so)**2) * dmu

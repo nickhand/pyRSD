@@ -9,5 +9,5 @@ class dPgal_dNsBsB(PgalDerivative):
     @staticmethod
     def eval(m, pars, k, mu):
         
-        G = m.evaluate_fog(k, mu, m.sigma_sB)
+        G = m.FOG(k, mu, m.sigma_sB)
         return (m.fs*m.fsB*G)**2

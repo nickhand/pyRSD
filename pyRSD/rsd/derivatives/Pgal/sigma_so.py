@@ -1,5 +1,4 @@
 from . import PgalDerivative
-from .fog_kernels import get_fog_derivative
 import numpy
 
 class dPgal_dsigma_so(PgalDerivative):
@@ -14,9 +13,9 @@ class dPgal_dsigma_so(PgalDerivative):
         if not m.use_so_correction:
             return numpy.zeros(len(k))
         
-        G      = m.evaluate_fog(k, mu, m.sigma_c)
-        G2     = m.evaluate_fog(k, mu, m.sigma_so)        
-        Gprime = k*mu * get_fog_derivative(m.fog_model, k*mu*m.sigma_so)
+        G      = m.FOG(k, mu, m.sigma_c)
+        G2     = m.FOG(k, mu, m.sigma_so)        
+        Gprime = m.FOG.derivative_sigma(k, mu, m.sigma_so)
 
         with m.preserve(use_so_correction=False):
             

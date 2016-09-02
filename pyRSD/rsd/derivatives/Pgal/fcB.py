@@ -14,8 +14,8 @@ class dPgal_dfcB(PgalDerivative):
         
         # additional term from SO correction
         if m.use_so_correction:
-            G  = m.evaluate_fog(k, mu, m.sigma_c)
-            G2 = m.evaluate_fog(k, mu, m.sigma_so)            
+            G  = m.FOG(k, mu, m.sigma_c)
+            G2 = m.FOG(k, mu, m.sigma_so)            
             term1 *= (((1 - m.f_so)*G)**2 + 2*m.f_so*(1-m.f_so)*G*G2 + (m.f_so*G2)**2)
             term1 += 2*G*G2*m.f_so*m.NcBs
             

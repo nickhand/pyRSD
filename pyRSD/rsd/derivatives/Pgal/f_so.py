@@ -20,8 +20,8 @@ class dPgal_df_so(PgalDerivative):
         Pcc = PcAcA + PcAcB + PcBcB
         
         # the SO correction
-        G = m.evaluate_fog(k, mu, m.sigma_c)
-        G2 = m.evaluate_fog(k, mu, m.sigma_so)
+        G = m.FOG(k, mu, m.sigma_c)
+        G2 = m.FOG(k, mu, m.sigma_so)
         term1 = -2 * (1. - m.f_so) * G**2 * Pcc
         term2 = 2 * (1 - 2*m.f_so) * G*G2 * Pcc
         term3 = 2 * m.f_so * G2**2 * Pcc

@@ -1,4 +1,5 @@
 from . import PgalDerivative
+from pyRSD.rsd.tools import k_AP, mu_AP
 import numpy
 
 class dPgal_df_so(PgalDerivative):
@@ -19,12 +20,16 @@ class dPgal_df_so(PgalDerivative):
         PcBcB = m.fcB**2 * m.Pgal_cBcB(k, mu)
         Pcc = PcAcA + PcAcB + PcBcB
         
+        # FOG
+        kprime = k_AP(k, mu, m.alpha_perp, m.alpha_par)
+        muprime = mu_AP(mu, m.alpha_perp, m.alpha_par)
+        G1 = m.FOG(kprime, muprime, m.sigma_c)
+        G2 = m.FOG(kprime, muprime, m.sigma_so)
+        
         # the SO correction
-        G = m.FOG(k, mu, m.sigma_c)
-        G2 = m.FOG(k, mu, m.sigma_so)
-        term1 = -2 * (1. - m.f_so) * G**2 * Pcc
-        term2 = 2 * (1 - 2*m.f_so) * G*G2 * Pcc
+        term1 = -2 * (1. - m.f_so) * G1**2 * Pcc
+        term2 = 2 * (1 - 2*m.f_so) * G1*G2 * Pcc
         term3 = 2 * m.f_so * G2**2 * Pcc
-        term4 = 2*G*G2*m.fcB*m.NcBs
+        term4 = 2*G1*G2*m.fcB*m.NcBs
 
         return (1-m.fs)**2 * (term1 + term2 + term3 + term4)

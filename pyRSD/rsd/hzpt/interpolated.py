@@ -134,7 +134,7 @@ class InterpolatedHZPTModels(object):
         
         for model in ['P00', 'P01', 'P11', 'Phm']:
             if self._hasattr(model):
-                m = getattr(self, model)
+                m = getattr(self, '_'+model)
                 m.sigma8_z = val
                 
     @property
@@ -152,7 +152,7 @@ class InterpolatedHZPTModels(object):
         self._f = val
         for model in ['P01', 'P11']:
             if self._hasattr(model):
-                m = getattr(self, model)
+                m = getattr(self, '_'+model)
                 m.f = val
                 
     @property
@@ -171,7 +171,7 @@ class InterpolatedHZPTModels(object):
         
         for model in ['P00', 'P01', 'P11', 'Phm']:
             if self._hasattr(model):
-                m = getattr(self, model)
+                m = getattr(self, '_'+model)
                 m.enhance_wiggles = val
         
     

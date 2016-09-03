@@ -5,16 +5,17 @@ def memoize(f):
     """
     Memoization decorator for power terms
     """
-    f._cache = {}
-    
     @functools.wraps(f)
     def wrap(self, k):
         
+        if not hasattr(self, '_cache'):
+            self._cache = {}
+        
         name = "%s.%s" %(self.__class__.__name__, f.__name__)
         hashkey = get_hash_key(name, k)
-        if hashkey not in f._cache:
-            f._cache[hashkey] = f(self, k)
-        return f._cache[hashkey]  
+        if hashkey not in self._cache:
+            self._cache[hashkey] = f(self, k)
+        return self._cache[hashkey]  
         
     return wrap  
 

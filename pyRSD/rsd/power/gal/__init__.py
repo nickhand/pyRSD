@@ -39,4 +39,4 @@ class Pgal(GalaxyPowerTerm):
         
         return toret
         
-from .power import GalaxySpectrum
+from .power_gal import GalaxySpectrum

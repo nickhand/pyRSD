@@ -16,10 +16,9 @@ if _githash:
     __version__ += ".dev." + _githash 
 
 # import model classes
-from .power_dm     import DarkMatterSpectrum
-from .power_biased import BiasedSpectrum
-from .power_halo   import HaloSpectrum
-from .power_gal    import GalaxySpectrum
+from .power.dm     import DarkMatterSpectrum
+from .power.biased import BiasedSpectrum, HaloSpectrum
+from .power.gal    import GalaxySpectrum
 
 from .grid_transfer import PkmuTransfer, PolesTransfer, PkmuGrid
 from .power_extrapolator import ExtrapolatedPowerSpectrum

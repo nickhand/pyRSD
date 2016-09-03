@@ -1,4 +1,4 @@
-from ._cache import parameter, interpolated_property, cached_property, rename
+from ._cache import parameter
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
     
 #-------------------------------------------------------------------------------

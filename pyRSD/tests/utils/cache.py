@@ -80,13 +80,16 @@ class cache_manager():
         
         # try to load the model 
         path = os.path.join(cache_dir, self.filename)
+
         if os.path.exists(path):
-  
             with warnings.catch_warnings(record=True) as w:
-                model = load_model(path)
-                if len(w) and issubclass(w[-1].category, OutdatedModelWarning):
+                exception = False
+                try: model = load_model(path)
+                except: exception = True
+                    
+                if exception or len(w) and issubclass(w[-1].category, OutdatedModelWarning):
                     self.logger.info("the model in the cache is out of date")
-                    self.logger.info(str(w[-1].message))
+                    if len(w): self.logger.info(str(w[-1].message))
                     self.save_model = True
                 else:
                     self.model = model

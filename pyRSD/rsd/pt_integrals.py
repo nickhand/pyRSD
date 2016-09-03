@@ -1,6 +1,6 @@
 from functools import wraps
 from .. import pygcl, numpy as np
-from ._cache import parameter, interpolated_property, cached_property
+from ._cache import parameter, interpolated_function, cached_property
 from .tools import RSDSpline as spline
 from . import INTERP_KMIN, INTERP_KMAX
 
@@ -11,27 +11,20 @@ def normalize_Jmn(f):
     """
     Decorator to properly normalize Jmn integrals
     """   
-    fget = f.fget
-    def wrapper(self):
-        def normalized_spline(k):
-            return self._power_norm * fget(self)(k)
-        return normalized_spline
+    @wraps(f)
+    def wrapper(self, k):
+        return self._power_norm * f(self, k)
         
-    f.fget = wrapper
-    return f
+    return wrapper
 
 def normalize_Imn(f):
     """
     Decorator to properly normalize Imn integrals
     """   
-    fget = f.fget
-    def wrapper(self):
-        def normalized_spline(k):
-            return self._power_norm**2 * fget(self)(k)
-        return normalized_spline
-        
-    f.fget = wrapper
-    return f
+    @wraps(f)
+    def wrapper(self, k):
+        return self._power_norm**2 * f(self, k)
+    return wrapper
 
 normalize_Kmn = normalize_Imn
     
@@ -39,16 +32,12 @@ def normalize_ImnOneLoop(f):
     """
     Decorator to properly normalize one loop Imn integrals
     """
-    fget = f.fget
-    def wrapper(self):
+    @wraps(f)
+    def wrapper(self, k):
         norm = self._power_norm
-        def normalized_spline(k):
-            terms = fget(self)
-            return norm**2*terms[0](k) + norm**3*terms[1](k) + norm**4*terms[2](k)
-        return normalized_spline
-        
-    f.fget = wrapper
-    return f
+        terms = f(self, k)
+        return norm**2*terms[0] + norm**3*terms[1] + norm**4*terms[2]
+    return wrapper
 
 class PTIntegralsMixin(object):
     """
@@ -149,287 +138,288 @@ class PTIntegralsMixin(object):
     #---------------------------------------------------------------------------
     # Jmn integrals as a function of input k
     #---------------------------------------------------------------------------
-    @normalize_Jmn
-    @interpolated_property("_Jmn")
-    def J00(self, k):
+    @interpolated_function("_Jmn")
+    def _unnormalized_J00(self, k):
         """J(m=0,n=0) perturbation theory integral"""
         return self._Jmn(k, 0, 0)
+    J00 = normalize_Jmn(_unnormalized_J00)
 
-    @normalize_Jmn
-    @interpolated_property("_Jmn")
-    def J01(self, k):
+    @interpolated_function("_Jmn")
+    def _unnormalized_J01(self, k):
         """J(m=0,n=1) perturbation theory integral"""
         return self._Jmn(k, 0, 1)
+    J01 = normalize_Jmn(_unnormalized_J01)
 
-    @normalize_Jmn
-    @interpolated_property("_Jmn")
-    def J10(self, k):
+    @interpolated_function("_Jmn")
+    def _unnormalized_J10(self, k):
         """J(m=1,n=0) perturbation theory integral"""
         return self._Jmn(k, 1, 0)
+    J10 = normalize_Jmn(_unnormalized_J10)
 
-    @normalize_Jmn
-    @interpolated_property("_Jmn")
-    def J11(self, k):
+    @interpolated_function("_Jmn")
+    def _unnormalized_J11(self, k):
         """J(m=1,n=1) perturbation theory integral"""
         return self._Jmn(k, 1, 1)
+    J11 = normalize_Jmn(_unnormalized_J11)
            
-    @normalize_Jmn
-    @interpolated_property("_Jmn")
-    def J02(self, k):
+    @interpolated_function("_Jmn")
+    def _unnormalized_J02(self, k):
         """J(m=0,n=2) perturbation theory integral"""
         return self._Jmn(k, 0, 2)
+    J02 = normalize_Jmn(_unnormalized_J02)
     
-    @normalize_Jmn
-    @interpolated_property("_Jmn")        
-    def J20(self, k):
+    @interpolated_function("_Jmn")        
+    def _unnormalized_J20(self, k):
         """J(m=2,n=0) perturbation theory integral"""
         return self._Jmn(k, 2, 0)
+    J20 = normalize_Jmn(_unnormalized_J20)
             
     #---------------------------------------------------------------------------
     # Imn integrals as a function of k
-    #---------------------------------------------------------------------------   
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I00(self, k):
+    #---------------------------------------------------------------------------
+    @interpolated_function("_Imn")
+    def _unnormalized_I00(self, k):
         """I(m=0,n=0) perturbation theory integral"""
         return self._Imn(k, 0, 0)
+    I00 = normalize_Imn(_unnormalized_I00)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I01(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I01(self, k):
         """I(m=0,n=1) perturbation theory integral"""
         return self._Imn(k, 0, 1)
+    I01 = normalize_Imn(_unnormalized_I01)
 
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I02(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I02(self, k):
         """I(m=0,n=2) perturbation theory integral"""
         return self._Imn(k, 0, 2)
+    I02 = normalize_Imn(_unnormalized_I02)
         
-    @normalize_Imn
-    @interpolated_property("_Imn")    
-    def I03(self, k):
+    @interpolated_function("_Imn")    
+    def _unnormalized_I03(self, k):
         """I(m=0,n=3) perturbation theory integral"""
         return self._Imn(k, 0, 3)
+    I03 = normalize_Imn(_unnormalized_I03)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I10(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I10(self, k):
         """I(m=1,n=0) perturbation theory integral"""
         return self._Imn(k, 1, 0)
+    I10 = normalize_Imn(_unnormalized_I10)
 
-    @normalize_Imn
-    @interpolated_property("_Imn")    
-    def I11(self, k):
+    @interpolated_function("_Imn")    
+    def _unnormalized_I11(self, k):
         """I(m=1,n=1) perturbation theory integral"""
         return self._Imn(k, 1, 1)
+    I11 = normalize_Imn(_unnormalized_I11)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")    
-    def I12(self, k):
+    @interpolated_function("_Imn")    
+    def _unnormalized_I12(self, k):
         """I(m=1,n=2) perturbation theory integral"""
         return self._Imn(k, 1, 2)
+    I12 = normalize_Imn(_unnormalized_I12)
 
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I13(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I13(self, k):
         """I(m=1,n=3) perturbation theory integral"""
         return self._Imn(k, 1, 3)
+    I13 = normalize_Imn(_unnormalized_I13)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I20(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I20(self, k):
         """I(m=2,n=0) perturbation theory integral"""
         return self._Imn(k, 2, 0)
+    I20 = normalize_Imn(_unnormalized_I20)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I21(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I21(self, k):
         """I(m=2,n=1) perturbation theory integral"""
         return self._Imn(k, 2, 1)
+    I21 = normalize_Imn(_unnormalized_I21)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I22(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I22(self, k):
         """I(m=2,n=2) perturbation theory integral"""
         return self._Imn(k, 2, 2)
+    I22 = normalize_Imn(_unnormalized_I22)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I23(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I23(self, k):
         """I(m=2,n=3) perturbation theory integral"""
         return self._Imn(k, 2, 3)
+    I23 = normalize_Imn(_unnormalized_I23)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I30(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I30(self, k):
         """I(m=3,n=0) perturbation theory integral"""
         return self._Imn(k, 3, 0)
+    I30 = normalize_Imn(_unnormalized_I30)
         
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I31(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I31(self, k):
         """I(m=3,n=1) perturbation theory integral"""
         return self._Imn(k, 3, 1)
+    I31 = normalize_Imn(_unnormalized_I31)
     
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I32(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I32(self, k):
         """I(m=3,n=2) perturbation theory integral"""
         return self._Imn(k, 3, 2)
+    I32 = normalize_Imn(_unnormalized_I32)
         
-    @normalize_Imn
-    @interpolated_property("_Imn")
-    def I33(self, k):
+    @interpolated_function("_Imn")
+    def _unnormalized_I33(self, k):
         """I(m=3,n=3) perturbation theory integral"""
         return self._Imn(k, 3, 3)
+    I33 = normalize_Imn(_unnormalized_I33)
 
     #---------------------------------------------------------------------------
     # Kmn integrals
     #---------------------------------------------------------------------------
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K00(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K00(self, k):
         """K(m=0,n=0) perturbation theory integral"""
         return self._Kmn(k, 0, 0)
+    K00 = normalize_Kmn(_unnormalized_K00)
     
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K00s(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K00s(self, k):
         """K(m=0,n=0,s=True) perturbation theory integral"""
         return self._Kmn(k, 0, 0, True)
+    K00s = normalize_Kmn(_unnormalized_K00s)
      
-    @normalize_Kmn
-    @interpolated_property("_Kmn")         
-    def K01(self, k):
+    @interpolated_function("_Kmn")         
+    def _unnormalized_K01(self, k):
         """K(m=0,n=1) perturbation theory integral"""
         return self._Kmn(k, 0, 1)
+    K01 = normalize_Kmn(_unnormalized_K01)
 
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K01s(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K01s(self, k):
         """K(m=0,n=1,s=True) perturbation theory integral"""
         return self._Kmn(k, 0, 1, True)
+    K01s = normalize_Kmn(_unnormalized_K01s)
             
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K02s(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K02s(self, k):
         """K(m=0,n=2,s=True) perturbation theory integral"""
         return self._Kmn(k, 0, 2, True)
+    K02s = normalize_Kmn(_unnormalized_K02s)
        
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K10(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K10(self, k):
         """K(m=1,n=0) perturbation theory integral"""
         return self._Kmn(k, 1, 0)
+    K10 = normalize_Kmn(_unnormalized_K10)
 
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K10s(self, k):
+
+    @interpolated_function("_Kmn")
+    def _unnormalized_K10s(self, k):
         """K(m=1,n=0,s=True) perturbation theory integral"""
         return self._Kmn(k, 1, 0, True)
+    K10s = normalize_Kmn(_unnormalized_K10s)
         
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K11(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K11(self, k):
         """K(m=1,n=1) perturbation theory integral"""
         return self._Kmn(k, 1, 1)
+    K11 = normalize_Kmn(_unnormalized_K11)
     
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K11s(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K11s(self, k):
         """K(m=1,n=1,s=True) perturbation theory integral"""
         return self._Kmn(k, 1, 1, True)
+    K11s = normalize_Kmn(_unnormalized_K11s)
 
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K20_a(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K20_a(self, k):
         """K(m=2,n=0) mu^2 perturbation theory integral"""
         return self._Kmn(k, 2, 0, False, 0)
+    K20_a = normalize_Kmn(_unnormalized_K20_a)
        
-    @normalize_Kmn
-    @interpolated_property("_Kmn")         
-    def K20_b(self, k):
+    @interpolated_function("_Kmn")         
+    def _unnormalized_K20_b(self, k):
         """K(m=2,n=0) mu^4 perturbation theory integral"""
         return self._Kmn(k, 2, 0, False, 1)
+    K20_b = normalize_Kmn(_unnormalized_K20_b)
 
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K20s_a(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K20s_a(self, k):
         """K(m=2,n=0,s=True) mu^2 perturbation theory integral"""
         return self._Kmn(k, 2, 0, True, 0)
+    K20s_a = normalize_Kmn(_unnormalized_K20s_a)
         
-    @normalize_Kmn
-    @interpolated_property("_Kmn")
-    def K20s_b(self, k):
+    @interpolated_function("_Kmn")
+    def _unnormalized_K20s_b(self, k):
         """K(m=2,n=0,s=True) mu^4 perturbation theory integral"""
         return self._Kmn(k, 2, 0, True, 1)
+    K20s_b = normalize_Kmn(_unnormalized_K20s_b)
             
     #---------------------------------------------------------------------------
     # full 2-loop integrals
     #---------------------------------------------------------------------------
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_vvdd")
-    def Ivvdd_h01(self, k):        
+    @interpolated_function("_Imn1Loop_vvdd")
+    def _unnormalized_Ivvdd_h01(self, k):        
         I_lin   = self._Imn1Loop_vvdd.EvaluateLinear(k, 0, 1)
         I_cross = self._Imn1Loop_vvdd.EvaluateCross(k, 0, 1)
         I_1loop = self._Imn1Loop_vvdd.EvaluateOneLoop(k, 0, 1)
         
         return I_lin, I_cross, I_1loop
+    Ivvdd_h01 = normalize_ImnOneLoop(_unnormalized_Ivvdd_h01)
 
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_vvdd")
-    def Ivvdd_h02(self, k):
+    @interpolated_function("_Imn1Loop_vvdd")
+    def _unnormalized_Ivvdd_h02(self, k):
         I_lin   = self._Imn1Loop_vvdd.EvaluateLinear(k, 0, 2)
         I_cross = self._Imn1Loop_vvdd.EvaluateCross(k, 0, 2)
         I_1loop = self._Imn1Loop_vvdd.EvaluateOneLoop(k, 0, 2)
         
         return I_lin, I_cross, I_1loop
+    Ivvdd_h02 = normalize_ImnOneLoop(_unnormalized_Ivvdd_h02)
     
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_dvdv")
-    def Idvdv_h03(self, k):
+    @interpolated_function("_Imn1Loop_dvdv")
+    def _unnormalized_Idvdv_h03(self, k):
         I_lin   = self._Imn1Loop_dvdv.EvaluateLinear(k, 0, 3)
         I_cross = self._Imn1Loop_dvdv.EvaluateCross(k, 0, 3)
         I_1loop = self._Imn1Loop_dvdv.EvaluateOneLoop(k, 0, 3)
         
         return I_lin, I_cross, I_1loop
+    Idvdv_h03 = normalize_ImnOneLoop(_unnormalized_Idvdv_h03)
         
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_dvdv")
-    def Idvdv_h04(self, k):
+    @interpolated_function("_Imn1Loop_dvdv")
+    def _unnormalized_Idvdv_h04(self, k):
         I_lin   = self._Imn1Loop_dvdv.EvaluateLinear(k, 0, 4)
         I_cross = self._Imn1Loop_dvdv.EvaluateCross(k, 0, 4)
         I_1loop = self._Imn1Loop_dvdv.EvaluateOneLoop(k, 0, 4)
         
         return I_lin, I_cross, I_1loop
+    Idvdv_h04 = normalize_ImnOneLoop(_unnormalized_Idvdv_h04)
         
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_vvvv")        
-    def Ivvvv_f23(self, k):
+    @interpolated_function("_Imn1Loop_vvvv")        
+    def _unnormalized_Ivvvv_f23(self, k):
         I_lin   = self._Imn1Loop_vvvv.EvaluateLinear(k, 2, 3)
         I_cross = self._Imn1Loop_vvvv.EvaluateCross(k, 2, 3)
         I_1loop = self._Imn1Loop_vvvv.EvaluateOneLoop(k, 2, 3)
         
         return I_lin, I_cross, I_1loop
+    Ivvvv_f23 = normalize_ImnOneLoop(_unnormalized_Ivvvv_f23)
 
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_vvvv")
-    def Ivvvv_f32(self, k):
+    @interpolated_function("_Imn1Loop_vvvv")
+    def _unnormalized_Ivvvv_f32(self, k):
         I_lin   = self._Imn1Loop_vvvv.EvaluateLinear(k, 3, 2)
         I_cross = self._Imn1Loop_vvvv.EvaluateCross(k, 3, 2)
         I_1loop = self._Imn1Loop_vvvv.EvaluateOneLoop(k, 3, 2)
         
         return I_lin, I_cross, I_1loop
+    Ivvvv_f32 = normalize_ImnOneLoop(_unnormalized_Ivvvv_f32)
     
-    @normalize_ImnOneLoop
-    @interpolated_property("_Imn1Loop_vvvv")
-    def Ivvvv_f33(self, k):
+    @interpolated_function("_Imn1Loop_vvvv")
+    def _unnormalized_Ivvvv_f33(self, k):
         I_lin   = self._Imn1Loop_vvvv.EvaluateLinear(k, 3, 3)
         I_cross = self._Imn1Loop_vvvv.EvaluateCross(k, 3, 3)
         I_1loop = self._Imn1Loop_vvvv.EvaluateOneLoop(k, 3, 3)
         
         return I_lin, I_cross, I_1loop
+    Ivvvv_f33 = normalize_ImnOneLoop(_unnormalized_Ivvvv_f33)
         
     #---------------------------------------------------------------------------
     # velocity-related quantities
@@ -449,12 +439,12 @@ class PTIntegralsMixin(object):
         """
         return self._power_norm**2 * self._unnormed_velocity_kurtosis
             
-    @normalize_Jmn
-    @interpolated_property("power_lin")
-    def sigmasq_k(self, k):
+    @interpolated_function("power_lin")
+    def _unnormalized_sigmasq_k(self, k):
         """
         The dark matter velocity dispersion at z, as a function of k, 
         ``\sigma^2_v(k)`` [units: `(Mpc/h)^2`]
         """
         # integrate up to 0.5 * kmax
         return self.power_lin.VelocityDispersion(k, 0.5)
+    sigmasq_k = normalize_Jmn(_unnormalized_sigmasq_k)

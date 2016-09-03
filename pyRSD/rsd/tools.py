@@ -19,6 +19,7 @@ def get_hash_key(*args):
         if isinstance(a, str):
             h = hashlib.sha1(a.encode())
         else:
+            if np.isscalar(a): a = np.array([a])
             b = a.view(np.uint8)
             h = hashlib.sha1(b)
         combined.update(h.digest())
@@ -296,24 +297,11 @@ class RSDSpline(interp.InterpolatedUnivariateSpline):
             Input dimension of domain points -- must be increasing
         y : (N,) array_like
             input dimension of data points
-        bounds_error : bool, optional
-            If `True`, raise an exception if the desired input domain value
-            is out of the input range. Default is `False`
-        fill_value : float, optional
-            The fill value to use for any values that are out of bounds 
-            on the input domain. Default is `0`
-        extrap : bool, optional
-            If desired domain value is out of bounds, do a linear extrapolation.
-            Default is `False`
         """
-        
-        # default kwargs
-        self.bounds_error = kwargs.pop('bounds_error', False)
-        self.fill_value   = kwargs.pop('fill_value', 0.)
-        self.extrap       = kwargs.pop('extrap', False)
-        
         self.x = args[0]
         self.y = args[1]
+        self.fill_value = kwargs.pop('fill_value', False)
+        self.bounds_error = kwargs.pop('bounds_error', True)
         super(RSDSpline, self).__init__(*args, **kwargs)
 
     def _check_bounds(self, x_new):
@@ -329,20 +317,8 @@ class RSDSpline(interp.InterpolatedUnivariateSpline):
         out_of_bounds : bool array
             The mask on x_new of values that are out of the bounds.
         """
-        # If self.bounds_error is True, we raise an error if any x_new values
-        # fall outside the range of x.  Otherwise, we return an array indicating
-        # which values are outside the boundary region.
         below_bounds = x_new < self.x[0]
         above_bounds = x_new > self.x[-1]
-
-        # !! Could provide more information about which values are out of bounds
-        if self.bounds_error and below_bounds.any():
-            raise ValueError("A value in x_new is below the interpolation "
-                                "range.")
-        if self.bounds_error and above_bounds.any():
-            raise ValueError("A value in x_new is above the interpolation "
-                                "range.")
-
         out_of_bounds = np.logical_or(below_bounds, above_bounds)
         return out_of_bounds
             
@@ -350,13 +326,7 @@ class RSDSpline(interp.InterpolatedUnivariateSpline):
         """
         Return the interpolated value
         """
-        if self.extrap: 
-            if np.isscalar(x_new):
-                return self.linear_extrap(x_new)*1.
-            else:
-                return np.array([self.linear_extrap(x) for x in x_new])
-        else:
-            return self._evaluate_spline(x_new)*1.
+        return self._evaluate_spline(x_new)*1.
        
     def _evaluate_spline(self, x_new):
         """
@@ -365,22 +335,13 @@ class RSDSpline(interp.InterpolatedUnivariateSpline):
         out_of_bounds = self._check_bounds(x_new)
         y_new = interp.InterpolatedUnivariateSpline.__call__(self, x_new)
         if np.isscalar(y_new) or y_new.ndim == 0:
-            return self.fill_value if out_of_bounds else y_new
-        else:
-            y_new[out_of_bounds] = self.fill_value
+            if out_of_bounds:
+                raise InterpolationDomainError()
             return y_new
-    
-    def linear_extrap(self, x):
-        """
-        Do a linear extrapolation
-        """
-        if x < self.x[0]:
-            return self.y[0] + (x-self.x[0])*(self.y[1]-self.y[0])/(self.x[1]-self.x[0])
-        elif x > self.x[-1]:
-            return self.y[-1] + (x-self.x[-1])*(self.y[-1]-self.y[-2])/(self.x[-1]-self.x[-2])
         else:
-            return self._evaluate_spline(x)
-    
+            if out_of_bounds.sum():
+                raise InterpolationDomainError()
+            return y_new
     
 #-------------------------------------------------------------------------------
 # bias to mass relation

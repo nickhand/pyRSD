@@ -35,6 +35,7 @@ def model():
     config['interpolate']        = False
     config['kmax']               = 0.95
     config['vel_disp_from_sims'] = False
+    config['interpolate']        = True
     m = HaloSpectrum(**config)
     
     # load the model

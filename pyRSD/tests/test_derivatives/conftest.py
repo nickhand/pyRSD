@@ -13,7 +13,8 @@ def driver(request):
     config['cosmo_filename'] = 'runPB.ini'
     config['kmin']           = 1e-3
     config['kmax']           = 0.6
-    m                        = GalaxySpectrum(**config)
+    config['interpolate']    = True
+    m = GalaxySpectrum(**config)
     
     # load the model
     with cache_manager(m, "runPB_galaxy.npy") as model:

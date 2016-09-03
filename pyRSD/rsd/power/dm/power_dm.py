@@ -952,7 +952,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         
         i = 0
         while i <= (self.max_mu//2):
-            toret += mu**(2*i) * funcs[i].derivative()(k)
+            toret += mu**(2*i) * funcs[i](k, derivative=True)
             i += 1
             
         return toret

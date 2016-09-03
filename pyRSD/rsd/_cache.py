@@ -290,12 +290,18 @@ class InterpolatedFunction(object):
         self.spline = spline
         self.function = function
     
-    def __call__(self, k):
+    def __call__(self, k, derivative=False):
         try:
             if isinstance(self.spline, list):
-                return [spl(k) for spl in self.spline]
+                if not derivative:
+                    return [spl(k) for spl in self.spline]
+                else:
+                    return [spl.derivative()(k) for spl in self.spline]
             else:
-                return self.spline(k)
+                if not derivative:
+                    return self.spline(k)
+                else:
+                    return self.spline.derivative()(k)
         except InterpolationDomainError:
             return self.function(k)
         except:
@@ -311,7 +317,7 @@ def interpolated_function(*parents, **kwargs):
         name = f.__name__
 
         @functools.wraps(f)
-        def wrapped(self, *args, ignore_cache=False):
+        def wrapped(self, *args, ignore_cache=False, **kws):
             """
             If `ignore_cache` is True, force an evaluation
             of the decorated function
@@ -339,7 +345,7 @@ def interpolated_function(*parents, **kwargs):
                     spl = self.spline(interp_domain, val, **spline_kwargs)
                     self._cache[name] = InterpolatedFunction(spl, g)
                     
-            return self._cache[name](*args)
+            return self._cache[name](*args, **kws)
             
         # store the meta information about this property
         wrapped._parents = list(parents) # the dependencies of this property

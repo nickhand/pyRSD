@@ -66,7 +66,7 @@ class GalaxySpectrum(BiasedSpectrum):
         Cache repeated calls to functions defined in this class, assuming
         constant `k` and `mu` input values
         """
-        from ..tools import cache_on, cache_off
+        from pyRSD.rsd.tools import cache_on, cache_off
         
         try:
             cache_on()

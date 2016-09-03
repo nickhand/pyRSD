@@ -156,7 +156,6 @@ class GalaxyPowerTerm(object):
         for term in self.terms:
             yield term.coefficient, term
 
-    @cacheable
     def __call__(self, k, mu):  
         """
         Sum the power for each sub-term, weighting by the 
@@ -164,7 +163,6 @@ class GalaxyPowerTerm(object):
         """
         return sum(coeff*term(k, mu) for coeff, term in self)
 
-    @cacheable
     def derivative_k(self, k, mu):
         """
         Sum the `k` derivative for each sub-term, weighting by the 
@@ -172,7 +170,6 @@ class GalaxyPowerTerm(object):
         """
         return sum(coeff*term.derivative_k(k, mu) for coeff, term in self)
         
-    @cacheable
     def derivative_mu(self, k, mu):
         """
         Sum the `mu` derivative for each sub-term, weighting by the 
@@ -221,7 +218,6 @@ class DampedGalaxyPowerTerm(GalaxyPowerTerm):
         if self._sigma2_name is None: return None
         return getattr(self.model, self._sigma2_name)
     
-    @cacheable
     def __call__(self, k, mu):
         """
         Return the damped power spectrum
@@ -233,7 +229,6 @@ class DampedGalaxyPowerTerm(GalaxyPowerTerm):
         toret = super(DampedGalaxyPowerTerm, self).__call__(k, mu)
         return G1*G2 * toret + self.model.N
         
-    @cacheable
     def derivative_k(self, k, mu):
         """
         Derivative with respect to `k`
@@ -251,7 +246,6 @@ class DampedGalaxyPowerTerm(GalaxyPowerTerm):
         
         return G1*G2 * deriv + (G2*G1prime + G1*G2prime) * power
     
-    @cacheable
     def derivative_mu(self, k, mu):
         """
         Derivative with respect to `mu`

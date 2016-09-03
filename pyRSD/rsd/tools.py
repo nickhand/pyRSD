@@ -128,7 +128,7 @@ def cacheable(f):
     def wrap(self, *args, **kws):
         
         if _global_cache is not None and isinstance(_global_cache, dict):            
-            name = "%s.%s" %(self.__class__.__name__, f.__name__)
+            name = "%s.%s" %(self.__class__.__name__, f.__qualname__)
             hashkey = get_hash_key(name, *args)
             if hashkey not in _global_cache:
                 _global_cache[hashkey] = f(self, *args, **kws)

@@ -1,4 +1,6 @@
 from .. import numpy
+from ._interpolate import InterpolationDomainError
+
 import functools
 from collections import OrderedDict
 import inspect
@@ -68,6 +70,8 @@ class CachedProperty(Property):
     an attribute that depends only on other `Parameter` or
     `CachedProperty` values, and can be cached appropriately
     """
+    __cache__ = True
+    
     def __delete__(self, obj):
         if self.fdel is None:
             raise AttributeError("can't delete attribute")
@@ -77,14 +81,6 @@ class CachedProperty(Property):
         # on this cached property attribute
         for dep in self._deps:
             obj._cache.pop(dep, None)
-
-class InterpolatedProperty(CachedProperty):
-    """
-    A subclass of the `property` descriptor to represent an
-    an attribute that depends only on other `Parameter` or
-    `CachedProperty` values, and can be cached appropriately
-    """
-    pass
             
 class CacheSchema(type):
     """
@@ -119,7 +115,7 @@ class CacheSchema(type):
             for name in c.__dict__:                
                 value = c.__dict__[name]
                 # track cached property
-                if isinstance(value, CachedProperty): 
+                if getattr(value, '__cache__', False):
                     cls._cached_names.add(name)
                     cls._cachemap[name] = value._parents
                 # track parameters
@@ -145,7 +141,7 @@ class CacheSchema(type):
                 if isinstance(f, ParameterProperty):
                     f._deps.add(name)
                 # recursively seach all parents of a cached property
-                elif isinstance(f, CachedProperty):
+                elif isinstance(f, CachedProperty) or getattr(f, '__cache__', False):
                     f._deps.add(name)
                     invert_cachemap(name, f._parents)
                 # invalid parent property
@@ -284,41 +280,72 @@ def cached_property(*parents, lru_cache=False, maxsize=128):
         return prop
     return cache
 
-def rename(newname):
-    def decorator(f):
-        f.__name__ = newname
-        return f
-    return decorator
-
-def interpolated_property(*parents, **kwargs):
+class InterpolatedFunction(object):
+    """
+    A callable class (as a function of wavenumber) that will 
+    either evaluate a spline or evaluate the underlying function, 
+    if a domain error occurs
+    """
+    def __init__(self, spline, function):
+        self.spline = spline
+        self.function = function
+    
+    def __call__(self, k):
+        try:
+            if isinstance(self.spline, list):
+                return [spl(k) for spl in self.spline]
+            else:
+                return self.spline(k)
+        except InterpolationDomainError:
+            return self.function(k)
+        except:
+            raise
+        
+def interpolated_function(*parents, **kwargs):
     """
     A decorator that represents a cached property that
     is a function of `k`. The cached property that is stored
     is a spline that predicts the function as a function of `k`
     """
-    def cache(f):
+    def wrapper(f):
         name = f.__name__
-        
+
         @functools.wraps(f)
-        def _get_property(self):
-            
+        def wrapped(self, *args, ignore_cache=False):
+            """
+            If `ignore_cache` is True, force an evaluation
+            of the decorated function
+            """
+            if ignore_cache:
+                return f(self, *args)
+                            
             # the spline isn't in the cache, make the spline
             if name not in self._cache:
+
+                # make the spline
                 interp_domain = getattr(self, kwargs.get("interp", "k_interp"))
                 val = f(self, interp_domain)
                 spline_kwargs = getattr(self, 'spline_kwargs', {})
+                
+                # the function that will explicitly evaluate the original function
+                g = functools.partial(wrapped, self, ignore_cache=True)
+                
+                # tuple of splines
                 if isinstance(val, tuple):
-                    self._cache[name] = [self.spline(interp_domain, x, **spline_kwargs) for x in val]
+                    splines = [self.spline(interp_domain, x, **spline_kwargs) for x in val]
+                    self._cache[name] = InterpolatedFunction(splines, g)
+                # single spline
                 else:
-                    self._cache[name] = self.spline(interp_domain, val, **spline_kwargs)
+                    spl = self.spline(interp_domain, val, **spline_kwargs)
+                    self._cache[name] = InterpolatedFunction(spl, g)
+                    
+            return self._cache[name](*args)
             
-            return self._cache[name]
-            
-        def _del_property(self):
-            self._cache.pop(name, None)
-                        
-        prop = InterpolatedProperty(_get_property, None, _del_property)
-        prop._parents = list(parents) # the dependencies of this property
-        prop._deps = set()
-        return prop
-    return cache
+        # store the meta information about this property
+        wrapped._parents = list(parents) # the dependencies of this property
+        wrapped._deps = set()
+        wrapped.__cache__ = True
+
+        return wrapped
+    
+    return wrapper        

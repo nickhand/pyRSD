@@ -80,7 +80,7 @@ class Pcc(GalaxyPowerTerm):
             G2prime = self.model.FOG.derivative_k(k, mu, self.model.sigma_so)
             
             f_so = self.model.f_so
-            toret = ((G1*(1-f_so))**2 + 2*f_so*(1-f_so) + (G2*f_so)**2) * dk
+            toret = ((G1*(1-f_so))**2 + 2*f_so*(1-f_so)*G1*G2 + (G2*f_so)**2) * dk
             toret += 2*G1*G1prime*(1-f_so)**2 * Pk
             toret += 2*f_so*(1-f_so) * (G1prime*G2 + G2prime*G1) * Pk
             toret += 2*G2*G2prime * f_so**2 * Pk
@@ -108,7 +108,7 @@ class Pcc(GalaxyPowerTerm):
             G2prime = self.model.FOG.derivative_mu(k, mu, self.model.sigma_so)
             
             f_so = self.model.f_so
-            toret = ((G1*(1-f_so))**2 + 2*f_so*(1-f_so) + (G2*f_so)**2) * dmu
+            toret = ((G1*(1-f_so))**2 + 2*f_so*(1-f_so)*G1*G2 + (G2*f_so)**2) * dmu
             toret += 2*G1*G1prime*(1-f_so)**2 * Pk
             toret += 2*f_so*(1-f_so) * (G1prime*G2 + G2prime*G1) * Pk
             toret += 2*G2*G2prime * f_so**2 * Pk

@@ -1,6 +1,7 @@
-from .._cache import parameter, cached_property
-from .. import tools, BiasedSpectrum
-from ... import numpy as np
+from pyRSD.rsd._cache import parameter, cached_property
+from pyRSD.rsd import tools, BiasedSpectrum
+from pyRSD import numpy as np
+
 from .fog_kernels import FOGKernel
 from . import Pgal
 

@@ -1,5 +1,5 @@
 import numpy
-from .. import tools
+from pyRSD.rsd import tools
 
 class FOGKernel(object):
     """

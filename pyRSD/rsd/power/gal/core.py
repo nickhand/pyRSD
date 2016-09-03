@@ -1,5 +1,5 @@
 import contextlib
-from ..tools import cacheable
+from pyRSD.rsd.tools import cacheable
 
 class OneHaloTerm(object):
     """

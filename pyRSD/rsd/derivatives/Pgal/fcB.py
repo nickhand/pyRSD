@@ -11,7 +11,7 @@ class dPgal_dfcB(PgalDerivative):
     def eval(m, pars, k, mu):
         
         term1 = 2*( -(1-m.fcB)*m.Pgal_cAcA(k,mu) + (1-2*m.fcB)*m.Pgal_cAcB(k,mu) + m.fcB*m.Pgal_cBcB(k,mu))
-        term2 = (-m.Pgal_cAs(k,mu) + m.Pgal_cBs(k,mu))
+        term2 = (1-m.fsB)*(-m.Pgal_cAsA(k,mu) + m.Pgal_cBsA(k,mu)) + m.fsB*(-m.Pgal_cAsB(k,mu) + m.Pgal_cBsB(k,mu))
         
         # AP shifted
         kprime  = k_AP(k, mu, m.alpha_perp, m.alpha_par)

@@ -276,19 +276,35 @@ class GalaxySpectrum(BiasedSpectrum):
     # central-satellite cross spectrum
     #---------------------------------------------------------------------------
     @tools.alcock_paczynski
-    def Pgal_cAs(self, k, mu, flatten=False):
+    def Pgal_cAsA(self, k, mu, flatten=False):
         """
-        The cross power spectrum of type A centrals and satellites
+        The cross power spectrum of type A centrals and type A sats
         """
-        toret = self._Pgal['Pcs']['PcAs'](k, mu)
+        toret = self._Pgal['Pcs']['PcAsA'](k, mu)
+        return toret if not flatten else np.ravel(toret, order='F')
+    
+    @tools.alcock_paczynski
+    def Pgal_cAsB(self, k, mu, flatten=False):
+        """
+        The cross power spectrum of type A centrals and type B sats
+        """
+        toret = self._Pgal['Pcs']['PcAsB'](k, mu)
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski
-    def Pgal_cBs(self, k, mu, flatten=False):
+    def Pgal_cBsA(self, k, mu, flatten=False):
         """
-        The cross power spectrum of type B centrals and satellites
+        The cross power spectrum of type B centrals and type A sats
         """
-        toret = self._Pgal['Pcs']['PcBs'](k, mu)
+        toret = self._Pgal['Pcs']['PcBsA'](k, mu)
+        return toret if not flatten else np.ravel(toret, order='F')
+        
+    @tools.alcock_paczynski
+    def Pgal_cBsB(self, k, mu, flatten=False):
+        """
+        The cross power spectrum of type B centrals and type B sats
+        """
+        toret = self._Pgal['Pcs']['PcBsB'](k, mu)
         return toret if not flatten else np.ravel(toret, order='F')
         
     @tools.alcock_paczynski

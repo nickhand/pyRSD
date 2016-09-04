@@ -1,7 +1,9 @@
 from .. import GalaxyPowerTerm, ZeroShotNoise
 
-from .PcAs import PcAs
-from .PcBs import PcBs
+from .PcAsA import PcAsA
+from .PcAsB import PcAsB
+from .PcBsA import PcBsA
+from .PcBsB import PcBsB
 
 class Pcs(GalaxyPowerTerm):
     """
@@ -10,7 +12,7 @@ class Pcs(GalaxyPowerTerm):
     name = "Pcs"
     
     def __init__(self, model):
-        super(Pcs, self).__init__(model, PcAs, PcBs)
+        super(Pcs, self).__init__(model, PcAsA, PcAsB, PcBsA, PcBsB)
     
     @property
     def coefficient(self):

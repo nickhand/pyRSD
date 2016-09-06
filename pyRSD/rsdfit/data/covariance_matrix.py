@@ -793,7 +793,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         """
         from matplotlib import pyplot as plt
         # get the current axes
-        if ax is None: ax = pfy.gca()
+        if ax is None: ax = plt.gca()
 
         # setup the default options
         options.setdefault('show_gaussian', False)
@@ -832,27 +832,27 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
             # do the plotting
             label = r"$\mu = {}$".format(mu)
-            pfy.plot(this_mu.ks(), sigma/norm, label=label)
+            plt.plot(this_mu.ks(), sigma/norm, label=label)
             if options['show_gaussian']:
-                pfy.plot(this_mu.ks(), np.diag(this_mu.gaussian_covariance())**0.5/norm, ls='--')
+                plt.plot(this_mu.ks(), np.diag(this_mu.gaussian_covariance())**0.5/norm, ls='--')
 
             if np.isscalar(norm):
-                ax.x_log_scale()
-                ax.y_log_scale()
+                ax.set_xscale('log')
+                ax.set_yscale('log')
 
         # add the legend and axis labels
         ax.legend(loc=0, ncol=2)
-        ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
+        ax.set_xlabel(r'$k$ ($h$/Mpc)', fontsize=16)
         if options['norm_by_power']:
-            ax.ylabel.update(r"$\sigma_P / P(k, \mu)$", fontsize=16)
+            ax.set_ylabel(r"$\sigma_P / P(k, \mu)$", fontsize=16)
 
         elif options['norm_by_gaussian']:
-            ax.ylabel.update(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
+            ax.set_ylabel(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
         else:
             if not options['subtract_gaussian']:
-                ax.ylabel.update(r"$\sigma_P$ $(\mathrm{Mpc}/h)^3$", fontsize=16)
+                ax.set_ylabel(r"$\sigma_P$ $(\mathrm{Mpc}/h)^3$", fontsize=16)
             else:
-                ax.ylabel.update(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
+                ax.set_ylabel(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
 
         return ax
 
@@ -967,8 +967,8 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
         # add the legend and axis labels
         ax.legend(loc=0, ncol=2)
-        ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
-        ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \mu) P(\bar{k}, \bar{\mu}))$", fontsize=16)
+        ax.set_xlabel(r'$k$ ($h$/Mpc)', fontsize=16)
+        ax.set_ylabel(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \mu) P(\bar{k}, \bar{\mu}))$", fontsize=16)
 
         return ax
 
@@ -1220,22 +1220,22 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                 plt.plot(this_slice.ks(), np.diag(gauss_cov)**0.5/norm, ls='--')
 
             if np.isscalar(norm):
-                ax.x_log_scale()
-                ax.y_log_scale()
+                ax.set_xscale('log')
+                ax.set_yscale('log')
 
         # add the legend and axis labels
         ax.legend(loc=0, ncol=2)
-        ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
+        ax.set_xlabel(r'$k$ ($h$/Mpc)', fontsize=16)
         if options['norm_by_power']:
-            ax.ylabel.update(r"$\sigma_P / |P_\ell(k)|$", fontsize=16)
+            ax.set_ylabel(r"$\sigma_P / |P_\ell(k)|$", fontsize=16)
 
         elif options['norm_by_gaussian']:
-            ax.ylabel.update(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
+            ax.set_ylabel(r"$\sigma_P / \sigma_P^\mathrm{Gaussian}$", fontsize=16)
         else:
             if not options['subtract_gaussian']:
-                ax.ylabel.update(r"$\sigma_P$ $(\mathrm{Mpc}/h)^3$", fontsize=16)
+                ax.set_ylabel(r"$\sigma_P$ $(\mathrm{Mpc}/h)^3$", fontsize=16)
             else:
-                ax.ylabel.update(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
+                ax.set_ylabel(r"$(\sigma_P - \sigma_P^\mathrm{Gaussian})/\sigma_P$", fontsize=16)
 
         return ax
 
@@ -1348,10 +1348,10 @@ class PoleCovarianceMatrix(CovarianceMatrix):
 
         # add the legend and axis labels
         ax.legend(loc=0, ncol=2)
-        ax.xlabel.update(r'$k$ ($h$/Mpc)', fontsize=16)
+        ax.set_xlabel(r'$k$ ($h$/Mpc)', fontsize=16)
         if options['norm_by_power'] and 'mean_power' in this_slice.attrs: 
-            ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \ell) P(\bar{k}, \bar{\ell}))$", fontsize=16)
+            ax.set_ylabel(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \ell) P(\bar{k}, \bar{\ell}))$", fontsize=16)
         else:
-            ax.ylabel.update(r"$\mathrm{Cov}(k, \bar{k})$  $(\mathrm{Mpc}/h)^3$", fontsize=16)
+            ax.set_ylabel(r"$\mathrm{Cov}(k, \bar{k})$  $(\mathrm{Mpc}/h)^3$", fontsize=16)
 
         return ax

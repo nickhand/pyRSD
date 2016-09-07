@@ -30,6 +30,6 @@ class dPgal_df_so(PgalDerivative):
         term1 = -2 * (1. - m.f_so) * G1**2 * Pcc
         term2 = 2 * (1 - 2*m.f_so) * G1*G2 * Pcc
         term3 = 2 * m.f_so * G2**2 * Pcc
-        term4 = 2*G1*G2*m.fcB*m.NcBs
+        term4 = 2*G1*G2*m.fcB*m.NcBs / m.alpha_perp**2 / m.alpha_par
 
         return (1-m.fs)**2 * (term1 + term2 + term3 + term4)

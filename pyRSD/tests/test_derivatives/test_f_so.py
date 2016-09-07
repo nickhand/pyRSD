@@ -5,7 +5,6 @@ def test_partial(driver):
     
     # set the socorr
     driver.theory.model.use_so_correction = True
-    driver.set_fiducial()
     model = driver.theory.model
     
     # get the deriv arguments

@@ -56,7 +56,7 @@ class Pcc(GalaxyPowerTerm):
             term2 = 2*self.model.f_so*(1-self.model.f_so) * G1*G2 * Pk
             term3 = (G2*self.model.f_so)**2 * Pk
             term4 = 2*G1*G2*self.model.f_so*self.model.fcB*self.model.NcBs
-            
+
             return term1 + term2 + term3 + term4
             
     def derivative_k(self, k, mu):

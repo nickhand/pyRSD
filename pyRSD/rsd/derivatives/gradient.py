@@ -143,7 +143,7 @@ class PgalGradient(object):
             results = results.reshape((2, -1, len(self.k)))
     
             if numpy.isscalar(epsilon):
-                epsilon = numpy.ones(results.shape[1]) * epsilon
+                epsilon = numpy.ones(len(theta)) * epsilon
     
             # compute the central finite-difference derivative
             toret[ii] = (results[0] - results[1]) / (2.*epsilon[ii][:,None])

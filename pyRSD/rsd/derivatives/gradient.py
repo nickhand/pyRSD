@@ -142,8 +142,11 @@ class PgalGradient(object):
                 results = numpy.array(pool.map(f, tasks))
             results = results.reshape((2, -1, len(self.k)))
     
+            if numpy.isscalar(epsilon):
+                epsilon = numpy.ones(results.shape[1]) * epsilon
+    
             # compute the central finite-difference derivative
-            toret[ii] = (results[0] - results[1]) / (2.*epsilon)
+            toret[ii] = (results[0] - results[1]) / (2.*epsilon[ii][:,None])
         except:
             raise
         finally:

@@ -287,9 +287,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         The name of the file holding the cosmological parameters
         """
-        if val is not None:
-            if not os.path.exists(val):
-                raise ValueError("the specified file `%s` for `linear_power_file` does not exist" %val)
         return val
         
     @parameter

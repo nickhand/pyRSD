@@ -372,8 +372,8 @@ class LBFGS(object):
             the value of the objective function at newX
         """
         # backtracking line search parameters
-        tau     = 0.2
-        c       = 1e-4
+        tau     = 0.5
+        c       = 1e-5
         rate    = 1.
         maxiter = 500
         

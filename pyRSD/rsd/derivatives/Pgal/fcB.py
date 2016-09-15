@@ -11,14 +11,14 @@ class dPgal_dfcB(PgalDerivative):
     def eval(m, pars, k, mu):
         
         term1 = 2*( -(1-m.fcB)*m.Pgal_cAcA(k,mu) + (1-2*m.fcB)*m.Pgal_cAcB(k,mu) + m.fcB*m.Pgal_cBcB(k,mu))
-        term2 = -m.Pgal_cAs(k,mu) + m.Pgal_cBs(k,mu)
-                
+        term2 = (1-m.fsB)*(-m.Pgal_cAsA(k,mu) + m.Pgal_cBsA(k,mu)) + m.fsB*(-m.Pgal_cAsB(k,mu) + m.Pgal_cBsB(k,mu))
+        
+        # AP shifted
+        kprime  = k_AP(k, mu, m.alpha_perp, m.alpha_par)
+        muprime = mu_AP(mu, m.alpha_perp, m.alpha_par)
+        
         # additional term from SO correction
         if m.use_so_correction:
-        
-            # AP shifted
-            kprime  = k_AP(k, mu, m.alpha_perp, m.alpha_par)
-            muprime = mu_AP(mu, m.alpha_perp, m.alpha_par)
             
             G1 = m.FOG(kprime, muprime, m.sigma_c)
             G2 = m.FOG(kprime, muprime, m.sigma_so)            

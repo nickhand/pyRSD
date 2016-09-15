@@ -15,9 +15,8 @@ class dPgal_dNcBs(PgalDerivative):
         muprime = mu_AP(mu, m.alpha_perp, m.alpha_par)
         
         Gc = m.FOG(kprime, muprime, m.sigma_c)
-        GsA = m.FOG(kprime, muprime, m.sigma_sA)
-        GsB = m.FOG(kprime, muprime, m.sigma_sB)
-        toret = 2*m.fs*(1-m.fs)*m.fcB*Gc * ((1-m.fsB)*GsA + m.fsB*GsB)
+        Gs = m.FOG(kprime, muprime, m.sigma_s)
+        toret = 2*m.fs*(1-m.fs)*m.fcB*Gc*Gs
         
         # additional term from SO correction
         if m.use_so_correction:

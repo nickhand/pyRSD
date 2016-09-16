@@ -373,7 +373,7 @@ class LBFGS(object):
         """
         # backtracking line search parameters
         tau     = 0.5
-        c       = 1e-4
+        c       = 1e-5
         rate    = 1.
         maxiter = 500
         

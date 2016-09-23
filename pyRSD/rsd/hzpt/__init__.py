@@ -3,6 +3,32 @@ from ... import numpy as np
 from .. import tools
 from ...data import hzpt_wiggles
 
+def default_parameters():
+    """
+    Set the default parameters for P00/P01 HZPT
+    
+    References
+    ----------
+    These parameters are from:
+    
+    file: ``P00_P01_CF_rmin-0.3_kmax-0.5.npz``
+    directory: ``$RSD_DIR/SimCalibrations/MatterHZPT/results``
+    git hash: 8cf9e626
+    """
+    d = {}
+    d['_A0_amp']    = 708.0
+    d['_A0_alpha']  = 3.664
+    d['_R_amp']     = 31.83
+    d['_R_alpha']   = 0.1182
+    d['_R1_amp']    = 3.215
+    d['_R1_alpha']  = 0.366
+    d['_R1h_amp']   = 3.733
+    d['_R1h_alpha'] = -0.1038
+    d['_R2h_amp']   = 1.691
+    d['_R2h_alpha'] = 0.423
+    d['_W0_alpha']  = 1.86
+    return d
+    
 class HaloZeldovichBase(Cache):
     """
     Base class to represent a Halo Zel'dovich power spectrum or 
@@ -22,17 +48,7 @@ class HaloZeldovichBase(Cache):
         self.enhance_wiggles = enhance_wiggles
         
         # default base parameters
-        self._A0_amp    = 763.74
-        self._A0_alpha  = 3.313
-        self._R_amp     = 25.252
-        self._R_alpha   = 0.297
-        self._R1_amp    = 4.132
-        self._R1_alpha  = 0.2318
-        self._R1h_amp   = 4.8919
-        self._R1h_alpha = -0.3831
-        self._R2h_amp   = 1.9536
-        self._R2h_alpha = 0.2163
-        self._W0_alpha  = 1.86
+        self.update(**default_parameters())
         
     #---------------------------------------------------------------------------
     # parameters

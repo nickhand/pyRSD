@@ -1,24 +1,5 @@
 from . import HaloZeldovichBase, tools
-from ... import pygcl
-
-def default_parameters(**kwargs):
-    """
-    Default parameters
-    """
-    d  = {}
-    d['_A0_amp']    = 763.74
-    d['_A0_alpha']  = 3.313
-    d['_R_amp']     = 25.252
-    d['_R_alpha']   = 0.297
-    d['_R1_amp']    = 4.132
-    d['_R1_alpha']  = 0.2318
-    d['_R1h_amp']   = 4.8919
-    d['_R1h_alpha'] = -0.3831
-    d['_R2h_amp']   = 1.9536
-    d['_R2h_alpha'] = 0.2163
-    d['_W0_alpha']  = 1.86
-    return d
-    
+from ... import pygcl, numpy as np
 
 class HaloZeldovichP00(HaloZeldovichBase):
     """

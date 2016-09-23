@@ -1,6 +1,7 @@
 from ... import numpy as np
 from .. import logging
 import scipy.stats
+from collections import OrderedDict
 
 logger = logging.getLogger('rsdfit.emcee_results')
 logger.addHandler(logging.NullHandler())
@@ -212,7 +213,7 @@ class EmceeResults(object):
     Class to hold the fitting results from an `emcee` MCMC run
     """
      
-    def __init__(self, sampler, fit_params, burnin=None):
+    def __init__(self, sampler, fit_params, burnin=None, **meta):
         """
         Initialize with the `emcee` sampler and the fitting parameters
         """      
@@ -253,13 +254,18 @@ class EmceeResults(object):
             logger.info("setting the burnin period to {} iterations".format(burnin))
         self.burnin = int(burnin)
         
-    def to_npz(self, filename):
+        # save meta-data
+        self.attrs = OrderedDict(**meta)
+        
+    def to_npz(self, filename, **meta):
         """
         Save the relevant information of the class to a numpy ``npz`` file
         """
         atts = ['free_names', 'constrained_names', 'chain', 'lnprobs',
                 'acceptance_fraction', 'autocorr_times','constrained_chain',
-                'burnin']
+                'burnin', 'attrs']
+        
+        self.attrs.update(**meta)
         d = {k:getattr(self, k) for k in atts}
         d['model_version'] = getattr(self, 'model_version', None)
         np.savez(filename, **d)
@@ -272,12 +278,18 @@ class EmceeResults(object):
         toret = cls.__new__(cls)
         with np.load(filename, encoding='latin1') as ff:
             for k, v in ff.items():
-                if k == 'burnin':
+                if k == 'burnin' or k == 'attrs':
                     continue
                 setattr(toret, k, v)
         
             toret._save_results()
             toret.burnin = int(ff['burnin'])
+            
+            if 'attrs' in ff:
+                toret.attrs = ff['attrs'].tolist()
+            else:
+                toret.attrs = OrderedDict()
+            
         toret.free_names = list(toret.free_names)
         toret.constrained_names = list(toret.constrained_names)
         return toret

@@ -46,4 +46,3 @@ def test_nonlinear_biasing():
     
     # add bias and save
     savefig(plt.gcf(), __file__, "" , "comparison.jpg")
-    print("DONE")

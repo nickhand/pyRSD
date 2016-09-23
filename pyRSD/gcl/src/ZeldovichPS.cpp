@@ -9,7 +9,6 @@ static const double RMIN = 1e-10;
 static const double RMAX = 1e10;
 static const int NMAX = 15;
 
-
 /*----------------------------------------------------------------------------*/
 /* Zeldovich base class */
 /*----------------------------------------------------------------------------*/
@@ -29,7 +28,6 @@ ZeldovichPS::ZeldovichPS(const Cosmology& C_, double z_, bool approx_lowk_)
     XX = X0 + 2.*sigma_sq;
     YY = norm*P_L.Y_Zel(r); 
 }
-
 
 ZeldovichPS::ZeldovichPS(const Cosmology& C_, bool approx_lowk_, double sigma8_z_, double k0_low_,
                          double sigmasq, const parray& X0_, const parray& XX_, const parray& YY_) 
@@ -118,9 +116,10 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const
     
     parray a(NUM_PTS);
     parray kmesh(NUM_PTS);
-    parray total(NUM_PTS);
 
     // logspaced between RMIN and RMAX
+    double this_Pk = 0.;
+    double toadd;   
     for (int n = 0; n <= NMAX; n++) {
         
         // the order of the Bessel function
@@ -140,18 +139,19 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const
         double kr = fftlogger.KR();
         double logkc = log10(kr) - logrc;
         
-        if (n == 0) {
-            for (int j = 1; j <= NUM_PTS; j++) 
-                kmesh[j-1] = pow(10., (logkc+(j-nc)*dlogr));
-        }        
-        // sum up 
-        for (int j = 0; j < NUM_PTS; j++) { 
-            total[j] += a[j];
-        }        
+        for (int j = 1; j <= NUM_PTS; j++) 
+            kmesh[j-1] = pow(10., (logkc+(j-nc)*dlogr));
+             
+        // sum it up
+        double out;
+        nearest_interp_1d(NUM_PTS, (double*)(kmesh), (double*)(a), 1, &k, &out);
+        toadd = factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out; 
+        
+        this_Pk += toadd;   
+        if (fabs(toadd/this_Pk) < 0.005) break;
     }
-    
-    auto spl = CubicSpline(kmesh, total);
-    return factor * sqrt(0.5*M_PI) * spl(k) * pow(k, -1.5);
+        
+    return this_Pk;
 }
 
 void ZeldovichPS::Fprim(parray&, const parray&, double) const 

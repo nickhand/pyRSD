@@ -13,19 +13,19 @@ def default_parameters():
     
     file: ``P00_P01_CF_rmin-0.3_kmax-0.5.npz``
     directory: ``$RSD_DIR/SimCalibrations/MatterHZPT/results``
-    git hash: 8cf9e626
+    git hash: aed2b025
     """
     d = {}
-    d['_A0_amp']    = 708.0
-    d['_A0_alpha']  = 3.664
-    d['_R_amp']     = 31.83
-    d['_R_alpha']   = 0.1182
-    d['_R1_amp']    = 3.215
-    d['_R1_alpha']  = 0.366
-    d['_R1h_amp']   = 3.733
-    d['_R1h_alpha'] = -0.1038
-    d['_R2h_amp']   = 1.691
-    d['_R2h_alpha'] = 0.423
+    d['_A0_amp']    = 707.8
+    d['_A0_alpha']  = 3.654
+    d['_R_amp']     = 31.76
+    d['_R_alpha']   = 0.1257
+    d['_R1_amp']    = 3.243
+    d['_R1_alpha']  = 0.3729
+    d['_R1h_amp']   = 3.768
+    d['_R1h_alpha'] = -0.1043
+    d['_R2h_amp']   = 1.699
+    d['_R2h_alpha'] = 0.4224
     d['_W0_alpha']  = 1.86
     return d
     

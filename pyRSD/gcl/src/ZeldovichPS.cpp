@@ -7,7 +7,7 @@ using namespace Common;
 static const int NUM_PTS = 1024;
 static const double RMIN = 1e-2;
 static const double RMAX = 1e5;
-static const int NMAX = 30;
+static const int NMAX = 15;
 
 /*----------------------------------------------------------------------------*/
 /* Zeldovich base class */

@@ -87,15 +87,27 @@ class HaloZeldovichP01(HaloZeldovichBase):
         A0, R, R1, R1h, R2h = self.A0, self.R, self.R1, self.R1h, self.R2h
         dA0, dR, dR1, dR1h, dR2h = self.dA0_dlna, self.dR_dlna, self.dR1_dlna, self.dR1h_dlna, self.dR2h_dlna
 
-        F = 1 - 1./(1 + k2*R**2)
-        norm = (1 + k2*R1h**2 + k4*R2h**4)**(-2)
+        N = 1 + k2*R**2
+        F = 1 - 1/N
+        numer = 1 + k2*R1**2
+        denom = 1 + k2*R1h**2 + k4*R2h**4
 
-        term1 = F*(1 + k2*R1**2) * (1 + k2*R1h**2 + k4*R2h**4) * dA0
-        term2 = (2*k2*A0*R*(1 + k2*R1**2) * (1 + k2*R1h**2 + k4*R2h**4) * dR) / (1 + k2*R**2)**2
-        term3 = (2*k4*A0*R**2*R1*(1 + k2*R1h**2 + k4*R2h**4) * dR1) / (1 + k2*R**2)
-        term4 = (2*k4*A0*R**2*(1 + k2*R1**2) * (R1h*dR1h + 2*k2*R2h**3*dR2h)) / (1 + k2*R**2)
+        # derivative wrt A0
+        dPbb_dA0 = F*numer/denom * dA0
+        
+        # derivative wrt R
+        dPbb_dR = 2*A0*k2*R * numer / N**2 / denom * dR
+        
+        # derivative wrt R1
+        dPbb_dR1 = 2*A0*k4*R**2*R1 / N / denom * dR1
+        
+        # derivative wrt R1h
+        dPbb_dR1h = -2*A0*k4*R**2*numer*R1h / N / denom**2 * dR1h
+        
+        # derivative wrt R2h
+        dPbb_dR2h = -4*A0*k**6*R**2*numer*R2h**3 / N / denom**2 * dR2h
 
-        return norm * (term1 + term2 + term3 - term4)
+        return dPbb_dA0 + dPbb_dR + dPbb_dR1 + dPbb_dR1h + dPbb_dR2h
         
     @tools.unpacked
     def __call__(self, k):

@@ -54,7 +54,7 @@ static double g(const PowerSpectrum& P, double k) {
     return P(k);
 }
 double PowerSpectrum::VelocityDispersion() const {
-    return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-5, 1e2, 1e-5, 1e-12);
+    return 1/(6*M_PI*M_PI) * Integrate<ExpSub>(bind(g, cref(*this), _1), 1e-4, 1e1, 1e-5, 1e-12);
 }
 
 double PowerSpectrum::VelocityDispersion(double k, double factor ) const {
@@ -96,7 +96,7 @@ static double X_integrand(const PowerSpectrum& P, double k, double q) {
 }
 
 double PowerSpectrum::X_Zel(double k) const {
-    return 1/(2*M_PI*M_PI) * Integrate(bind(X_integrand, cref(*this), k, _1), 1e-5, 1e2, 1e-4, 1e-10);
+    return 1/(2*M_PI*M_PI) * Integrate(bind(X_integrand, cref(*this), k, _1), 1e-4, 1e1, 1e-4, 1e-10);
 }
 
 parray PowerSpectrum::X_Zel(const parray& k) const {
@@ -114,7 +114,7 @@ static double Y_integrand(const PowerSpectrum& P, double k, double q) {
 }
 
 double PowerSpectrum::Y_Zel(double k) const {
-    return 1/(2*M_PI*M_PI) * Integrate(bind(Y_integrand, cref(*this), k, _1), 1e-5, 1e2, 1e-4, 1e-10);
+    return 1/(2*M_PI*M_PI) * Integrate(bind(Y_integrand, cref(*this), k, _1), 1e-4, 1e1, 1e-4, 1e-10);
 }
 
 parray PowerSpectrum::Y_Zel(const parray& k) const {

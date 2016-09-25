@@ -4,10 +4,10 @@
 
 using namespace Common;
 
-static const int NUM_PTS = 2048;
-static const double RMIN = 1e-10;
-static const double RMAX = 1e10;
-static const int NMAX = 15;
+static const int NUM_PTS = 1024;
+static const double RMIN = 1e-2;
+static const double RMAX = 1e5;
+static const int NMAX = 30;
 
 /*----------------------------------------------------------------------------*/
 /* Zeldovich base class */
@@ -145,10 +145,7 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const
         // sum it up
         double out;
         nearest_interp_1d(NUM_PTS, (double*)(kmesh), (double*)(a), 1, &k, &out);
-        toadd = factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out; 
-        
-        this_Pk += toadd;   
-        if (fabs(toadd/this_Pk) < 0.005) break;
+        this_Pk += factor*sqrt(0.5*M_PI)*pow(k, -1.5)*out;   
     }
         
     return this_Pk;

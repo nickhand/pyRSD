@@ -5,23 +5,31 @@ from ... import pygcl
 def default_parameters():
     """
     The default parameters
+    
+    References
+    ----------
+    These parameters are from:
+    
+    file: ``mcmc_fit_kmin-0.005_kmax-1.0.npz``
+    directory: ``$RSD_DIR/SimCalibrations/P11HaloZeldovich/results``
+    git hash: 8e1304e6
     """
     d = {}
     
     # A0
-    d['_A0_amp']   = 656
-    d['_A0_alpha'] = 3.95
-    d['_A0_beta']  = 1.96
+    d['_A0_amp']   = 658.9
+    d['_A0_alpha'] = 3.91
+    d['_A0_beta']  = 1.917
     
     # R
-    d['_R_amp']   = 19.5
-    d['_R_alpha'] = -0.60
-    d['_R_beta']  = -0.50
+    d['_R_amp']   = 18.95
+    d['_R_alpha'] = -0.3657
+    d['_R_beta']  = -0.2585
             
     # R1h
-    d['_R1h_amp']   = 0.84
-    d['_R1h_alpha'] = -0.045
-    d['_R1h_beta']  = 0.87
+    d['_R1h_amp']   = 0.8473
+    d['_R1h_alpha'] = -0.1524
+    d['_R1h_beta']  = 0.7769
     
     return d
 

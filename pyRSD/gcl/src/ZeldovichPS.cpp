@@ -222,6 +222,11 @@ ZeldovichP01::ZeldovichP01(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS)
     
 }
 
+double ZeldovichP01::LowKApprox(double k) const 
+{    
+    return (1 - 2*pow2(k)*sigma_sq)*Plin(k) + Plin.Q3_Zel(k);
+}
+
 
 double ZeldovichP01::Evaluate(double k) const {
     if (k >= k0_low || !approx_lowk)
@@ -258,6 +263,11 @@ ZeldovichP11::ZeldovichP11(const ZeldovichPS& ZelPS) : ZeldovichPS(ZelPS)
     
 }
 
+double ZeldovichP11::LowKApprox(double k) const 
+{    
+    return (1 - 3*pow2(k)*sigma_sq)*Plin(k) + 1.5*Plin.Q3_Zel(k);
+}
+
 double ZeldovichP11::Evaluate(double k) const {
     
     if (k >= k0_low || !approx_lowk)
@@ -289,6 +299,7 @@ void ZeldovichP11::Fsec(parray& a, const parray& r, double k, double n) const {
         a[i] = pow(r[i],1.5-n)*pow(k*YY[i],n) * (term1 + term2) * exp(-0.5*k2*(XX[i]+YY[i]));
     }
 }
+
 
 
 

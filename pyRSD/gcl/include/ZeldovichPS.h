@@ -100,7 +100,7 @@ public:
     ZeldovichP01(const ZeldovichPS& ZelPS);
     
     double Evaluate(double k) const; 
-    
+    double LowKApprox(double k) const;
 
 private:
         
@@ -114,7 +114,8 @@ public:
     ZeldovichP11(const Cosmology& C, double z, bool approx_lowk=false);
     ZeldovichP11(const ZeldovichPS& ZelPS);
     
-    double Evaluate(double k) const; 
+    double Evaluate(double k) const;
+    double LowKApprox(double k) const; 
     
 
 private:

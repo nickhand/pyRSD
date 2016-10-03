@@ -50,6 +50,11 @@ class HaloZeldovichBase(Cache):
         # default base parameters
         self.update(**default_parameters())
         
+        # try to turn on the low-k approximation
+        # this will fail for correlation function (ok)
+        try: self.zeldovich.SetLowKApprox()
+        except: pass
+        
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------

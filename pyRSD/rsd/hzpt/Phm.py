@@ -221,7 +221,7 @@ class HaloMatterBase(HaloZeldovichBase):
         Return a power law as a linear bias and sigma8(z) with the specified 
         parameters
         """
-        return A * self.b1**(alpha+running*np.log(self.b1)) * (self.sigma8_z/0.8)**beta
+        return A * (self.b1)**(alpha+running*np.log(self.b1)) * (self.sigma8_z/0.8)**beta
         
         
 class HaloZeldovichPhm(HaloMatterBase):
@@ -264,7 +264,7 @@ class HaloZeldovichCFhm(HaloMatterBase):
         """
         Initialize from an existing zeldovich power spectrum
         """
-        zel = pygcl.ZeldovichPCF(cosmo, 0.)
+        zel = pygcl.ZeldovichCF(cosmo, 0.)
         return cls(zel, sigma8_z, False)
                        
     def __broadband__(self, r):
@@ -282,9 +282,9 @@ class HaloZeldovichCFhm(HaloMatterBase):
         B *= -1
         B /= 2*R2h**4*S
         
-        num_term1 = 1. - (self.R1/self.R)**2
-        num_term2 = A*np.exp(r*(1./self.R - (0.5*(self.R1h**2-S))**0.5/self.R2h**2))
-        num_term3 = B*np.exp(r*(1./self.R - (0.5*(self.R1h**2+S))**0.5/self.R2h**2))
+        num_term1 = 1. - (R1/R)**2
+        num_term2 = A * np.exp(r*(1./R - np.sqrt(0.5*(R1h**2 - S)) / R2h**2))
+        num_term3 = B * np.exp(r*(1./R - np.sqrt(0.5*(R1h**2 + S)) / R2h**2))
         denom = (1 - (R1h/R)**2 + (R2h/R)**4)
         
         return norm * (num_term1 + num_term2 + num_term3) / denom

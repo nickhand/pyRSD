@@ -4,38 +4,46 @@ from ... import pygcl, numpy as np
 
 def default_parameters():
     """
-    The default parameters
+    The default parameters for P_hm, CF_hm
+    
+    References
+    ----------
+    These parameters are from:
+    
+    file: ``global_Phm_kmax-0.5_final.npz``
+    directory: ``$RSD_DIR/SimCalibrations/HaloMatterHZPT/results``
+    git hash: 72834b10d
     """
     d = {}
     
     # A0 power law
-    d['_A0_amp']   = 780.
-    d['_A0_alpha'] = 1.57
-    d['_A0_beta']  = 3.50
+    d['_A0_amp']   = 751.9
+    d['_A0_alpha'] = 1.657
+    d['_A0_beta']  = 3.752
     d['_A0_run']   = 0.
     
     # R1 power law
-    d['_R1_amp']   = 4.88
-    d['_R1_alpha'] = -0.59
-    d['_R1_beta']  = 0.12
+    d['_R1_amp']   = 5.192
+    d['_R1_alpha'] = -0.5739
+    d['_R1_beta']  = 0.1616
     d['_R1_run']   = 0.
     
     # R1h power law
-    d['_R1h_amp']   = 8.00
-    d['_R1h_alpha'] = -0.92
-    d['_R1h_beta']  = -0.36
+    d['_R1h_amp']   = 8.253
+    d['_R1h_alpha'] = -0.8421
+    d['_R1h_beta']  = -0.1345
     d['_R1h_run']   = 0.
     
     # R2h power law
-    d['_R2h_amp']   = 2.92
-    d['_R2h_alpha'] = -1.07
-    d['_R2h_beta']  = -0.35
+    d['_R2h_amp']   = 3.053
+    d['_R2h_alpha'] = -1.03
+    d['_R2h_beta']  = -0.3596
     d['_R2h_run']   = 0.
     
     # R power law
-    d['_R_amp']   = 14.7
-    d['_R_alpha'] = 0.22
-    d['_R_beta']  = -0.18
+    d['_R_amp']   = 16.9
+    d['_R_alpha'] = -0.1185
+    d['_R_beta']  = -1.067
     d['_R_run']   = 0
     
     return d

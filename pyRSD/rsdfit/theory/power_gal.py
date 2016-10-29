@@ -10,6 +10,8 @@ from . import base_model_params, extra_model_params
 from ..parameters import Parameter, ParameterSet
 from ... import rsd, numpy as np, os
 
+import contextlib
+
 class GalaxyPowerParameters(ParameterSet):
     """
     A `ParameterSet` for the galaxy redshift space power spectrum in 
@@ -172,6 +174,25 @@ class GalaxyPowerTheory(object):
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
 
+    @contextlib.contextmanager
+    def preserve(self, theta):
+        """
+        Context manager that preserves the state of the model
+        upon exiting the context by first saving and then restoring it
+        """
+        # save the free values
+        original_state = self.free_values
+    
+        # set the input state
+        for i, name in enumerate(self.free_names):
+            self.fit_params[name].value = theta[i]
+        
+        yield
+        
+        # restore old state
+        old = dict(zip(self.free_names, original_state))
+        self.fit_params.update_values(**old)
+                
     def set_model(self, *model):
         """
         Set the model, possibly from a file, or initialize a new one

@@ -533,7 +533,9 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             # if parameters are out of bounds, return the log-likelihood
             # for a null model + the prior results (which hopefully are restrictive)
             if not in_bounds:
-                return -self.null_lnlike - self.lnprior()
+                
+                with self.theory.preserve(theta):
+                    return -self.null_lnlike - self.lnprior()
         else:
             theta = self.theory.free_values
         
@@ -598,7 +600,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         use_priors : bool, optional
             whether to include the log priors in the objective function when 
             minimizing the negative log probability
-        """                    
+        """                
         # set the free parameters
         if theta is not None:
             in_bounds = self.theory.set_free_parameters(theta)
@@ -606,7 +608,14 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             # if parameters are out of bounds, return the log-likelihood
             # for a null model + the prior results (which hopefully are restrictive)
             if not in_bounds:
-                return -self.theory.dlnprior
+                
+                # set parameters to get derivatives at invalid state
+                with self.theory.preserve(theta):
+                    
+                    # derivatives at invalid state
+                    dlnprior = self.theory.dlnprior
+                    
+                return -1.0 * dlnprior
         else:
             theta = self.theory.free_values
         

@@ -218,15 +218,11 @@ class OneLoopP22Bar(gcl.OneLoopP22Bar, PickalableSWIG, metaclass=DocFixer):
 # ZeldovichPS
 class ZeldovichPS(gcl.ZeldovichPS, PickalableSWIG, metaclass=DocFixer):
     def __init__(self, *args):
-        self.args = list(args)
-        self.args.pop(1) # remove the redshift
+        self.args = (args[0], )
         gcl.ZeldovichPS.__init__(self, *args)
         
     def __getstate__(self):
-        args = self.args
-        if len(args) == 1:
-            args += (self.GetApproxLowKFlag(), )
-        args += (self.GetSigma8AtZ(), self.GetK0Low(), self.GetSigmaSq(), self.GetX0Zel(), self.GetXZel(), self.GetYZel())
+        args = (self.args[0], self.GetApproxLowKFlag(), self.GetSigma8AtZ(), self.GetK0Low(), self.GetSigmaSq(), self.GetX0Zel(), self.GetXZel(), self.GetYZel())
         return {'args': args}
 
 #-------------------------------------------------------------------------------

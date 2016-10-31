@@ -492,11 +492,23 @@ class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
         Return a list of the constrained `Parameter` objects.
         """
         return [self[k] for k in self.constrained_names]
-
-    
         
-        
-        
-        
-        
-        
+    @property
+    def scales(self):
+        """
+        The scales of the free parameters
+        """
+        try: 
+            return np.array([self[k].scale for k in self.free_names])
+        except:
+            raise ValueError("priors must be defined for all free parameters to access `scales`")
+            
+    @property
+    def locs(self):
+        """
+        The locs of the free parameters
+        """
+        try: 
+            return np.array([self[k].loc for k in self.free_names])
+        except:
+            raise ValueError("priors must be defined for all free parameters to access `locs`") 

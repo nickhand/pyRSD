@@ -174,6 +174,29 @@ class GalaxyPowerTheory(object):
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
 
+    def scale(self, theta):
+        """
+        Scale the (unscaled) free parameters, using the priors to 
+        define the scaling transformation
+        """
+        return (theta - self.fit_params.locs) / self.fit_params.scales
+        
+    def inverse_scale(self, theta):
+        """
+        Inverse scale the free parameters, using the priors to 
+        define the scaling transformation
+        """
+        return theta*self.fit_params.scales + self.fit_params.locs
+        
+    def scale_gradient(self, grad):
+        """
+        Scale the gradient with respect to the unscaled free parameters, 
+        using the priors to define the scaling transformation
+        
+        This returns df / dxprime where xprime is the scaled param vector
+        """
+        return grad * self.fit_params.scales
+        
     @contextlib.contextmanager
     def preserve(self, theta):
         """

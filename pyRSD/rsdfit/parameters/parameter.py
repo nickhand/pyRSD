@@ -420,3 +420,34 @@ class Parameter(PickeableCache, lmfit.Parameter):
             if k in toret and not np.isfinite(toret[k]):
                 toret.pop(k)
         return toret
+        
+    @property
+    def scale(self):
+        """
+        The `scale` of the parameter as determined from the 
+        prior
+        """
+        if self.prior_name is None:
+            raise ValueError("prior must be defined to compute `scale`")
+            
+        if self.prior_name == 'uniform':
+            return 0.5*(self.upper - self.lower)
+        elif self.prior_name == 'normal':
+            return self.sigma
+            
+    @property
+    def loc(self):
+        """
+        The `loc` of the parameter as determined from the 
+        prior
+        """
+        if self.prior_name is None:
+            raise ValueError("prior must be defined to compute `loc`")
+            
+        if self.prior_name == 'uniform':
+            return 0.5*(self.upper + self.lower)
+        elif self.prior_name == 'normal':
+            return self.mu
+            
+            
+        

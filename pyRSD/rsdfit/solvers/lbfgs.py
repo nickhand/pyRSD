@@ -141,7 +141,7 @@ class LBFGS(object):
     """
     logger = logging.getLogger("LBFGS")
     
-    def __init__(self, f, fprime, p0, args=[], kwargs={}, M=100):
+    def __init__(self, f, fprime, p0, args=[], kwargs={}, M=100, unscaler=None):
         """
         Parameters
         ----------
@@ -160,12 +160,16 @@ class LBFGS(object):
         M : int, optional 
             the number of previous iterations to use in determining the 
             optimal LBFGS step
+        unscaler : callable, optional
+            a function that unscales the parameters back to their original
+            values
         """
-        self.f       = f
-        self.fprime  = fprime
-        self.M       = int(M)
-        self.args    = args
-        self.kwargs  = kwargs
+        self.f        = f
+        self.fprime   = fprime
+        self.M        = int(M)
+        self.args     = args
+        self.kwargs   = kwargs
+        self.unscaler = unscaler
         
         # set the default options
         self.options = {}
@@ -317,7 +321,11 @@ class LBFGS(object):
         """
         d = self.data
         curr = d['curr_state']
-        values = "   ".join(["%15.6f" %th for th in curr['X']])
+        
+        values = curr['X']
+        if self.unscaler is not None:
+            values = self.unscaler(values)
+        values = "   ".join(["%15.6f" %th for th in values])
         X = "%.4d   %s   %15.6f" %(d['iteration'], values, curr['F'])
         return X
 

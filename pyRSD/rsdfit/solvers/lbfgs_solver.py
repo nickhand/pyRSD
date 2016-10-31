@@ -37,7 +37,7 @@ def InitializeWithScatter(params, x, scatter):
            break
 
     return p0
-                       
+                           
 def run(params, theory, pool=None, init_values=None):
     """
     Perform nonlinear fitting of a system using `scipy.optimize`.
@@ -63,6 +63,7 @@ def run(params, theory, pool=None, init_values=None):
     epsilon    = params.get('lbfgs_epsilon', 1e-4)
     use_priors = params.get('lbfgs_use_priors', True)
     options    = params.get('lbfgs_options', {})
+    scaling    = params.get('lbfgs_rescale', True)
     options['test_convergence'] = params.get('test_convergence', True)
     
     if 'maxiter' in options and not options['test_convergence']:
@@ -84,10 +85,10 @@ def run(params, theory, pool=None, init_values=None):
      
     # determine the objective functions
     if use_priors:
-        f = functools.partial(objectives.minus_lnprob)
+        f = functools.partial(objectives.minus_lnprob, scaling=scaling)
     else:
-        f = functools.partial(objectives.minus_lnlike)
-    fprime = functools.partial(objectives.grad_minus_lnlike, epsilon=epsilon, pool=pool, use_priors=use_priors)
+        f = functools.partial(objectives.minus_lnlike, scaling=scaling)
+    fprime = functools.partial(objectives.grad_minus_lnlike, epsilon=epsilon, pool=pool, use_priors=use_priors, scaling=scaling)
     
     #--------------------------------------------------------------------------
     # run the algorithm, catching any errors
@@ -98,7 +99,11 @@ def run(params, theory, pool=None, init_values=None):
         niter = minimizer.data['iteration']
         logger.warning("LBFGS: continuing from previous optimziation (starting at iteration {})".format(niter))
     else:
-        minimizer = lbfgs.LBFGS(f, fprime, init_values)
+        unscaler = None
+        if scaling:
+            init_values = theory.scale(init_values)
+            unscaler = theory.inverse_scale
+        minimizer = lbfgs.LBFGS(f, fprime, init_values, unscaler=unscaler)
     
     try:
         start = time.time()
@@ -117,6 +122,9 @@ def run(params, theory, pool=None, init_values=None):
     #--------------------------------------------------------------------------
     logger.warning("...LBFGS optimization finished. Time elapsed: {}".format(tools.hms_string(stop-start)))
     d = minimizer.data
+    
+    if scaling:
+        d['curr_state'].X = theory.inverse_scale(d['curr_state'].X)
     
     # extract the values to put them in the feedback
     if exception or d['status'] <= 0:

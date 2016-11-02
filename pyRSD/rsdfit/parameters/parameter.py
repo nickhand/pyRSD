@@ -433,7 +433,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         if self.prior_name == 'uniform':
             return 0.5*(self.upper - self.lower)
         elif self.prior_name == 'normal':
-            return self.sigma
+            return 2*self.sigma
             
     @property
     def loc(self):

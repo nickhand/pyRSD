@@ -342,7 +342,8 @@ class PkmuTransfer(Cache):
             optional weight array to apply before averaging
         """
         if w is None: w = np.ones(d.shape)
-        return self.sum(d*w) / self.sum(w)
+        with np.errstate(invalid='ignore', divide='ignore'):
+            return self.sum(d*w) / self.sum(w)
                 
     def restrict_k(self, arr):
         """

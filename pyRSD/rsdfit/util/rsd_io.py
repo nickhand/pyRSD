@@ -41,7 +41,7 @@ def save_pickle(obj, filename):
     # make sure pool is None, so it is pickable
     pickle.dump(obj, open(filename, 'w'))
     
-def load_model(filename):
+def load_model(filename, **kwargs):
     """
     Load a model from file
     """
@@ -50,7 +50,7 @@ def load_model(filename):
     _, ext = os.path.splitext(filename)
     if ext == '.npy':
         from ...rsd import load_model
-        model = load_model(filename)
+        model = load_model(filename, **kwargs)
     elif ext == '.pickle':
         model = load_pickle(filename)
     else:

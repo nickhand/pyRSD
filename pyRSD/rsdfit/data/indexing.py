@@ -1,4 +1,4 @@
-import xarray as xr
+import pyRSD.extern.xarray as xr
 import numpy as np
 import pandas as pd
         
@@ -89,7 +89,7 @@ def remap_label_indexers(indexes, indexers):
                 label = indexers[dim]
                 if not isinstance(label, slice):
                     _, label = index.get_nearest(dim, label)
-                toret[dim] = xr.core.indexing.convert_label_indexer(index.to_pandas(dim), label, dim, None)
+                toret[dim] = xr.indexing.convert_label_indexer(index.to_pandas(dim), label, dim, None)
                 
     return toret
     

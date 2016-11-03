@@ -41,7 +41,7 @@ class OutdatedModelWarning(UserWarning):
     """
     pass
 
-def load_model(filename):
+def load_model(filename, show_warning=True):
     """
     Load a model from a npy
     """
@@ -57,7 +57,7 @@ def load_model(filename):
     model = numpy.load(filename).tolist()
     
     # check the version
-    if not hasattr(model, '__version__') or model.__version__ != __version__:
+    if show_warning and not hasattr(model, '__version__') or model.__version__ != __version__:
         import warnings
         msg = "loading an outdated model:\n"
         msg += '\tcurrent model version: %s\n' %(__version__)

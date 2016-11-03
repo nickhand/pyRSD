@@ -57,7 +57,7 @@ def load_model(filename, show_warning=True):
     model = numpy.load(filename).tolist()
     
     # check the version
-    if show_warning and not hasattr(model, '__version__') or model.__version__ != __version__:
+    if show_warning and (not hasattr(model, '__version__') or model.__version__ != __version__):
         import warnings
         msg = "loading an outdated model:\n"
         msg += '\tcurrent model version: %s\n' %(__version__)

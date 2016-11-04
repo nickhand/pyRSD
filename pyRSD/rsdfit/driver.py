@@ -620,7 +620,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             theta = self.theory.free_values
         
         # get the gradient of Pgal wrt the parameters
-        gradient = self.pkmu_gradient(theta, epsilon=epsilon, numerical=numerical)
+        gradient = self.pkmu_gradient(theta, pool=pool, epsilon=epsilon, numerical=numerical)
         
         # do multipoles integration of the gradient
         if self.mode == 'poles':

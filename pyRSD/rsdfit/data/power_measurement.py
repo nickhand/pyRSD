@@ -254,6 +254,10 @@ class PowerData(Cache):
 
         # slice the data
         self.slice_data()
+        
+        # log the measurements
+        labels = [m.label for m in self.measurements]
+        logger.info("using measurements: %s" %str(labels), on=0)
 
         # set the k-limits
         self.set_k_limits()

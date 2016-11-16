@@ -551,7 +551,7 @@ class PolesTransfer(PkmuTransfer):
         """
         idx = self._valid_k
         toret = np.ones(poles.shape)*np.nan
-        toret[idx,...] = convolve_multipoles(self.k_mean[idx], poles[idx,...], self.window)
+        toret[idx,...] = convolve_multipoles(self.k_mean[idx], self.ells, poles[idx,...], self.window)
         return toret
         
     

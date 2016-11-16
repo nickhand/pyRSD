@@ -57,6 +57,10 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         kwargs['kmax'] = self.data.global_kmax
         self.theory = GalaxyPowerTheory(param_file, **kwargs)
         
+        # log the DOF
+        args = (self.Nb, self.Np, self.dof)
+        logger.info("number of degrees of freedom: %d - %d = %d" %args, on=0)
+        
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
                         
@@ -426,7 +430,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         """
         Return number of data points
         """
-        return len(self.combined_model) 
+        return self.data.ndim
         
     @property
     def Np(self):

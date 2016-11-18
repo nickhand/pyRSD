@@ -504,11 +504,14 @@ class LBFGS(object):
             zg = np.dot(z, state['G']) / zNorm
             
             if (zg / state['Gnorm'] < 0.01):
+                theta = np.arccos(zg / state['Gnorm']) * 180./np.pi
                 warn = "LBFGS iteration %d: the descent direction does not have a sufficient " %d['iteration']
-                warn += "projection (%.2e) into the gradient; using steepest descent at this step!" %(zg/state['Gnorm'])
-                self.logger.debug(warn)
+                warn += "projection (%.2e, theta=%.4f) into the gradient; using steepest descent at this step!" %(zg/state['Gnorm'], theta)
+                self.logger.info(warn)
                 z[:] = state['G'] / state['Gnorm']
                 zg = 1.
+                
+                self.data['H'] = LimitedMemoryInverseHessian(1., (self.M, self.N))
                 
             # do the linesearch
             try:

@@ -562,24 +562,34 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             return self._pkmu_gradient
         except AttributeError:
             
-            k = self.data.combined_k
-            if self.mode == 'poles':
-                mu = np.linspace(0., 1., NMU)
+            # evaluate gradient on the transfer grid
+            if self.data.transfer is not None:
                 
-                # broadcast to the right shape
-                k     = k[:, np.newaxis]
-                mu    = mu[np.newaxis, :]
-                k, mu = np.broadcast_arrays(k, mu)
-                k     = k.ravel(order='F')
-                mu    = mu.ravel(order='F')
-                
+                transfer = self.data.transfer
+                grid = transfer.grid
+                k, mu = grid.k[grid.notnull], grid.mu[grid.notnull]
+            # evaluate over own k,mu grid
             else:
-                mu = self.data.combined_mu
+                k = self.data.combined_k
+                if self.mode == 'poles':
+                    mu = np.linspace(0., 1., NMU)
+            
+                    # broadcast to the right shape
+                    k     = k[:, np.newaxis]
+                    mu    = mu[np.newaxis, :]
+                    k, mu = np.broadcast_arrays(k, mu)
+                    k     = k.ravel(order='F')
+                    mu    = mu.ravel(order='F')
+            
+                else:
+                    mu = self.data.combined_mu
                 
+            # make the gradient object       
             self._pkmu_gradient = PgalGradient(self.model, self.theory.fit_params, k, mu)
             return self._pkmu_gradient
                     
-    def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True, numerical=False):
+    def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True, 
+                            numerical=False, numerical_from_lnlike=False):
         """
         Return the vector of the gradient of the negative log likelihood,
         with respect to the free parameters, optionally evaluating at `theta`
@@ -589,8 +599,6 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         
         Parameters
         ----------
-        obj : callable
-            the objective function to take the derivative of
         theta : array_like, optional
             if provided, the values of the free parameters to compute the 
             gradient at; if not provided, the current values of free parameters 
@@ -604,6 +612,12 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         use_priors : bool, optional
             whether to include the log priors in the objective function when 
             minimizing the negative log probability
+        numerical : bool, optional
+            if `True`, evaluate gradients of P(k,mu) numerically using finite difference
+        numerical_from_lnlike : bool, optional
+            if `True`, evaluate the gradient by taking the numerical derivative
+            of :func:`minus_lnlike`
+                            
         """                
         # set the free parameters
         if theta is not None:
@@ -623,34 +637,55 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         else:
             theta = self.theory.free_values
         
-        # get the gradient of Pgal wrt the parameters
-        gradient = self.pkmu_gradient(theta, pool=pool, epsilon=epsilon, numerical=numerical)
+        # numerical gradient of minus_lnlike
+        if numerical_from_lnlike:
+
+            increments = np.identity(len(theta)) * epsilon
+            tasks = np.concatenate([theta+increments, theta-increments], axis=0)
+            results = np.array([self.minus_lnlike(t) for t in tasks])
+            results = results.reshape((2, -1))
+
+            grad_minus_lnlike = (results[0] - results[1]) / (2.*epsilon)
         
-        # do multipoles integration of the gradient
-        if self.mode == 'poles':
-            from scipy.special import legendre
-            from scipy.integrate import simps
-                        
-            # reshape the arrays
-            k        = self.pkmu_gradient.k.reshape(-1, NMU, order='F')
-            mu       = self.pkmu_gradient.mu.reshape(-1, NMU, order='F')
-            gradient = gradient.reshape(self.Np, -1, NMU, order='F')
+        else:
+        
+            # get the gradient of Pgal wrt the parameters
+            gradient = self.pkmu_gradient(theta, pool=pool, epsilon=epsilon, numerical=numerical)
+        
+            # evaluate transfer
+            if self.data.transfer is not None:
+                
+                grad_lnlike = []
+                for i in range(self.Np):
+                    self.data.transfer.power = gradient[i]
+                    grad_lnlike.append(self.data.transfer(flatten=True))
+                grad_lnlike = np.asarray(grad_lnlike)
             
-            # do the integration over mu
-            kern     = np.asarray([(2*ell+1.)*legendre(ell)(mu[i]) for i, ell in enumerate(self.data.combined_ell)])
-            gradient = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
-            
-        # transform from model gradient to log likelihood gradient
-        diff = self.data.combined_power - self.combined_model
-        grad_lnlike = np.dot(np.dot(self.data.covariance.inverse, diff), gradient.T)
-        grad_minus_lnlike = -1 * grad_lnlike
-            
+            # do pole calculation yourself
+            elif self.mode == 'poles':
+                from scipy.special import legendre
+                from scipy.integrate import simps
+
+                # reshape the arrays
+                k        = self.pkmu_gradient.k.reshape(-1, NMU, order='F')
+                mu       = self.pkmu_gradient.mu.reshape(-1, NMU, order='F')
+                gradient = gradient.reshape(self.Np, -1, NMU, order='F')
+
+                # do the integration over mu
+                kern     = np.asarray([(2*ell+1.)*legendre(ell)(mu[i]) for i, ell in enumerate(self.data.combined_ell)])
+                gradient = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
+
+            # transform from model gradient to log likelihood gradient
+            diff = self.data.combined_power - self.combined_model
+            grad_lnlike = np.dot(np.dot(self.data.covariance.inverse, diff), grad_lnlike.T)
+            grad_minus_lnlike = -1 * grad_lnlike
+
         # test for inf
         has_inf = np.isinf(grad_minus_lnlike)
         if has_inf.any():
             bad = np.array(self.theory.free_names)[has_inf].tolist()
             raise ValueError("inf values detected in the gradient for: %s" %str(bad))
-            
+
         # test for NaN
         has_nan = np.isnan(grad_minus_lnlike)
         if has_nan.any():

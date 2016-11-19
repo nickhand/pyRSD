@@ -1,6 +1,7 @@
 import numpy as np
 import logging
 from collections import namedtuple
+import scipy.optimize as opt
 
 class LineSearchError(Exception):
     pass
@@ -353,66 +354,7 @@ class LBFGS(object):
                    -5: 'Algorithm has not moved for some weird reason',
                     0: 'Algorithm has not yet converged, with no errors so far'}
         return reasons[self.data['status']]
-        
-    def do_linesearch(self, X, z, zg):
-        """
-        Find the new value of parameters along a given direction that
-        results in a reasonable reduction of the objective function, 
-        using a line search along the specified direction
-        
-        This uses the backtracking line search algorithm, see
-        https://en.wikipedia.org/wiki/Backtracking_line_search for details
-        
-        Parameters
-        ----------
-        X : array_like
-            the current value of the starting parameters
-        z : array_like
-            the direction in which to step
-        zg : array_like
-            the dot product of the desired direction and gradient
-            
-        Returns
-        -------
-        newX : array_like
-            the value of the new parameters after stepping
-        newF : float
-            the value of the objective function at newX
-        """
-        # backtracking line search parameters
-        tau     = 0.5
-        c       = 1e-5
-        rate    = 1.
-        maxiter = 500
-        
-        currF = self.data['curr_state']['F']
-        newX = X.copy()
-        newX += -rate*z
-        newF = self.f(newX)
-        self.data['funcalls'] += 1
-        
-        it = 0
-        while True:
-            
-            # max iterations exceeded
-            if it == maxiter:
-                raise LineSearchError
-            
-            # test Armijo-Goldstein condition
-            if (currF - newF >= rate * c * zg):
-                break
-                
-            # reset and backtrack with smaller step
-            rate *= tau
-            newX[:] = X
-            newX += -rate*z
-            newF = self.f(newX)
-            self.data['funcalls'] += 1
-            
-            it += 1
-        
-        return newX, newF
-            
+                    
     def compute_LBFGS_step(self, it, a):
         """
         Compute the parameter step direction, using the LBFGS algorithm
@@ -514,8 +456,11 @@ class LBFGS(object):
                 self.data['H'] = LimitedMemoryInverseHessian(1., (self.M, self.N))
                 
             # do the linesearch
-            try:
-                searchX, new_val = self.do_linesearch(state['X'], z, zg)
+            try:                
+                args = (self.f, state['X'], -z, state['G'], state['F'])
+                alpha, _, new_val = opt.linesearch.line_search_armijo(*args)
+                if alpha is None: raise LineSearchError
+                searchX = state['X'] - alpha * z
             except LineSearchError:
                 d['status'] = -4
                 break

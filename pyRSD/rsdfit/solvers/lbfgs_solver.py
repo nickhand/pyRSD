@@ -66,8 +66,8 @@ def run(params, theory, pool=None, init_values=None):
     scaling    = params.get('lbfgs_rescale', True)
     options['test_convergence'] = params.get('test_convergence', True)
     
-    if 'maxiter' in options and not options['test_convergence']:
-        logger.info("running LBFGS for %d iterations and then stopping" %options['maxiter'])
+    if 'max_iter' in options and not options['test_convergence']:
+        logger.info("running LBFGS for %d iterations and then stopping" %options['max_iter'])
     
     # sort epsilon is a dictionary of values
     if isinstance(epsilon, dict):

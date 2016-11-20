@@ -159,7 +159,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         
         elif solver_name == 'nlopt':
             options = self.params.get('lbfgs_options', {})
-            options['maxiter'] = total_iterations
+            options['max_iter'] = total_iterations
             self.params.add('lbfgs_options', value=options)
             
     

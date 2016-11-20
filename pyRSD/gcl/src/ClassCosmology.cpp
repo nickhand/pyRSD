@@ -1,4 +1,5 @@
 #include "ClassCosmology.h"
+#include "DiscreteQuad.h"
 
 #include <sstream>
 #include <string>

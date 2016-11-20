@@ -141,8 +141,8 @@ class PgalGradient(object):
             if pool is None:
                 results = numpy.array([self._call_Pgal(t) for t in tasks])
             else:
-                logging.debug("id of pool function = %s" %str(id(pool.function)))
-                logging.debug("id of function passed = %s" %str(id(self._call_Pgal_mpi)))
+                logging.info("id of pool function = %s" %str(id(pool.function)))
+                logging.info("id of function passed = %s" %str(id(self._call_Pgal_mpi)))
                 results = numpy.array(pool.map(self._call_Pgal_mpi, tasks))
             results = results.reshape((2, -1, len(self.k)))
     

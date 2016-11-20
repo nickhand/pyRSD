@@ -767,7 +767,7 @@ class WindowConvolution(object):
 
 
 def convolve_multipoles(k, ells, Pell, s, convolver, k_out=None, interpolate=True, 
-                        pk_smooth=0., xi_smooth=0., method=pygcl.IntegrationMethods.TRAPZ, Ns=500):
+                        pk_smooth=0., xi_smooth=0., method=pygcl.IntegrationMethods.TRAPZ):
     """
     Convolve the input ell = 0, 2, 4 power multipoles, specified by `Pell`,
     with the specified window function.
@@ -813,9 +813,6 @@ def convolve_multipoles(k, ells, Pell, s, convolver, k_out=None, interpolate=Tru
             poles_hires.append(interp.splev(k_hires, tck))
         Pell = np.vstack(poles_hires).T
         k = k_hires.copy()
-    
-    if Ns > 0:
-        s = np.logspace(np.log10(s.min()), np.log10(s.max()), Ns)
     
     # FT the power multipoles    
     xi = np.empty((len(s), Nell))

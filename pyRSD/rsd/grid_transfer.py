@@ -1,5 +1,5 @@
 from .. import numpy as np
-from .tools import convolve_multipoles
+from .tools import convolve_multipoles, WindowConvolution
 from ._cache import Cache, parameter, cached_property
 from scipy.special import legendre
 
@@ -469,6 +469,13 @@ class PolesTransfer(PkmuTransfer):
             raise NotImplementedError("window convolution only implemented for case of ell=0,2,4 multipoles")
         return val
         
+    @cached_property("window")
+    def convolver(self):
+        """
+        The window convolution object
+        """
+        return WindowConvolution(self.window[:,0], self.window[:,1:])
+        
     @cached_property()
     def k_mean(self):
         """
@@ -510,7 +517,7 @@ class PolesTransfer(PkmuTransfer):
     #--------------------------------------------------------------------------
     # main functions
     #--------------------------------------------------------------------------
-    def __call__(self, flatten=False):
+    def __call__(self, flatten=False, no_convolution=False, **kws):
         """
         Return the multipoles corresponding to `ells`, by weighting the
         `power` attribute by the appropriate Legendre weights and summing
@@ -530,8 +537,8 @@ class PolesTransfer(PkmuTransfer):
         toret = np.asarray([self.average(d, self.grid.modes) for d in tobin]).T
         
         # convolve with window?
-        if self.window is not None:
-            toret = self.convolve_window(toret)
+        if self.window is not None and not no_convolution:
+            toret = self.convolve_window(toret, **kws)
         
         # restrict k range
         toret = self.restrict_k(toret)
@@ -540,7 +547,7 @@ class PolesTransfer(PkmuTransfer):
         if flatten: toret = _flatten(toret)
         return toret 
         
-    def convolve_window(self, poles):
+    def convolve_window(self, poles, **kws):
         """
         Convolve the `ell = 0, 2, 4` multipoles with the window function specified
         by `window`
@@ -551,7 +558,9 @@ class PolesTransfer(PkmuTransfer):
         """
         idx = self._valid_k
         toret = np.ones(poles.shape)*np.nan
-        toret[idx,...] = convolve_multipoles(self.k_mean[idx], self.ells, poles[idx,...], self.window)
+        
+        conv = self.convolver
+        toret[idx,...] = convolve_multipoles(self.k_mean[idx], self.ells, poles[idx,...], conv.s, conv, **kws)
         return toret
         
     

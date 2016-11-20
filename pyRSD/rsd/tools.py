@@ -6,6 +6,7 @@ from ._interpolate import RegularGridInterpolator, InterpolationDomainError
 from scipy.integrate import simps
 import scipy.interpolate as interp
 from scipy.optimize import brentq
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 import functools
 import itertools
@@ -678,76 +679,95 @@ def sigma_from_bias(bias, z, linearPS):
 
 #-------------------------------------------------------------------------------
 # window convolution tools
-#-------------------------------------------------------------------------------     
-def window_convolved_xi(ells, xi_data, W):
+#-------------------------------------------------------------------------------    
+class WindowConvolution(object):
     """
-    Compute the window-convolved configuration space multipoles, from
-    the ell = 0, 2, 4 (,6) unconvolved multipoles and the window
-    
-    Parameters
-    ----------
-    ells : array_like
-        the relevant multipoles
-    xi_data : array_like, (Ns, 3 or 4)
-        the unconvolved configuration space multipoles, with the three columns
-        being the ell = 0, 2, 4 (,6) multipoles, respectively
-    W : array_like, (Ns, Nl)
-        the even-ell configuration space window function multipoles, 
-        where Nl must be >= 5; the first column is the ell=0, second 
-        is ell=2, etc
+    Object to compute the window-convolved configuration space multipoles, 
+    from the ell = 0, 2, 4 (,6) unconvolved multipoles and the window
     """
-    shape = xi_data.shape
-    Nell = len(ells)
-    if Nell == 4:
-        have_window_ell10 = W.shape[1] == 6
-    
-    if shape[0] != W.shape[0]:
-        raise ValueError("shape mismatch in first dimension between `xi_data` and window")
-    
-    # loop over each ell 
-    # each column in xi_data is a value in ells
-    toret = np.empty(shape)
-    kern = np.zeros((len(xi_data), 4))
-    
-    for i, ell in enumerate(ells):
+    def __init__(self, s, W):
+        """
+        s : array_like, (Ns,)
+            the separation vector
+        W : array_like, (Ns, Nl)
+            the even-ell configuration space window function multipoles, 
+            where Nl must be >= 5; the first column is the ell=0, second 
+            is ell=2, etc
+        """
+        self.s = s
+        self.W = W
         
-        # get the kernel for this ell
-        if ell == 0:    
-            kern[:,:3] = W[:,:3] * np.array([1., 1./5, 1./9])
-            if Nell == 4: # tetraxhex
-                kern[:,3] = W[:,3] * 1./13. 
-            
-        elif ell == 2:
-            kern[:,0] = W[:,1]
-            kern[:,1] = np.einsum('...i,i...', W[:,:3], np.array([1., 2./7, 2./7]))
-            kern[:,2] = np.einsum('...i,i...', W[:,1:4], np.array([2./7, 100./693, 25./143]))
-            if Nell == 4: # tetraxhex
-                kern[:,3] = np.einsum('...i,i...', W[:,2:5], np.array([25./143, 14./143., 28./221.]))
+        if W.shape[1] not in [5, 6]:
+            raise ValueError("please provide the first 5 or 6 even configuration space multipoles")
+        self.include_tetrahex = self.W.shape[1]==6
         
-        elif ell == 4:
-            kern[:,0] = W[:,2]
-            kern[:,1] = np.einsum('...i,i...', W[:,1:4], np.array([18./35, 20./77, 45./143]))
-            kern[:,2] = np.einsum('...i,i...', W[:,:5], np.array([1., 20./77, 162./1001, 20./143, 490./2431]))
+        self._initialize_splines()
+        
+    def _initialize_splines(self):
+        """
+        Initialize the splines used to compute the convolution
+        kernels for each ell from the discretely-measued
+        window multipoles
+        """
+        self.splines = {}
+        kern = np.zeros((len(self.s), 4))
+        W = self.W
+        
+        for i, ell in enumerate([0,2,4]):
+        
+            # get the kernel for this ell
+            if ell == 0:    
+                kern[:,:3] = W[:,:3] * np.array([1., 1./5, 1./9])
+                if self.include_tetrahex: # tetraxhex
+                    kern[:,3] = W[:,3] * 1./13. 
             
-            # tetraxhex
-            if Nell == 4: 
-                # include ell = 10 window
-                if not have_window_ell10:
-                    k =  np.array([45./143., 20./143., 252./2431., 4536./46189.])
-                else:
+            elif ell == 2:
+                kern[:,0] = W[:,1]
+                kern[:,1] = np.einsum('...i,i...', W[:,:3], np.array([1., 2./7, 2./7]))
+                kern[:,2] = np.einsum('...i,i...', W[:,1:4], np.array([2./7, 100./693, 25./143]))
+                if self.include_tetrahex: # tetraxhex
+                    kern[:,3] = np.einsum('...i,i...', W[:,2:5], np.array([25./143, 14./143., 28./221.]))
+        
+            elif ell == 4:
+                kern[:,0] = W[:,2]
+                kern[:,1] = np.einsum('...i,i...', W[:,1:4], np.array([18./35, 20./77, 45./143]))
+                kern[:,2] = np.einsum('...i,i...', W[:,:5], np.array([1., 20./77, 162./1001, 20./143, 490./2431]))
+            
+                # tetraxhex
+                if self.include_tetrahex: 
                     k =  np.array([45./143., 20./143., 252./2431., 4536./46189., 630./4199.])
-                kern[:,3] = np.einsum('...i,i...', W[:,1:], k)
+                    kern[:,3] = np.einsum('...i,i...', W[:,1:], k)
                     
-        if Nell != kern.shape[1]:
-            toret[:,i] = np.einsum('ij,ij->i', xi_data, np.take(kern, [i for i in range(Nell)], axis=1))
-        else:
-            toret[:,i] = np.einsum('ij,ij->i', xi_data, kern)
+            self.splines[ell] = [spline(self.s, k) for k in kern.T]
+    
+    def _get_kernel(self, ell, r):
+        """
+        Return the appropriate kernel
+        """
+        return np.vstack([s(r) for s in self.splines[ell]]).T
         
-    return toret
-    
-    
-def convolve_multipoles(k, ells, Pell, window, k_out=None, interpolate=True, 
-                        pk_smooth=0., xi_smooth=0., method=pygcl.IntegrationMethods.TRAPZ):
+    def __call__(self, ells, r, xi):
+        """
+        Convolve the input configuration space multipoles with the window
+        """
+        Nell = len(ells)
+        toret = np.empty_like(xi)
+        
+        for i, ell in enumerate(ells):
+        
+            kern = self._get_kernel(ell, r)
+            if Nell != kern.shape[1]:
+                toret[:,i] = np.einsum('ij,ij->i', xi, np.take(kern, [i for i in range(Nell)], axis=1))
+            else:
+                toret[:,i] = np.einsum('ij,ij->i', xi, kern)
+        
+        return toret
+        
+            
+
+
+def convolve_multipoles(k, ells, Pell, s, convolver, k_out=None, interpolate=True, 
+                        pk_smooth=0., xi_smooth=0., method=pygcl.IntegrationMethods.TRAPZ, Ns=500):
     """
     Convolve the input ell = 0, 2, 4 power multipoles, specified by `Pell`,
     with the specified window function.
@@ -776,8 +796,6 @@ def convolve_multipoles(k, ells, Pell, window, k_out=None, interpolate=True,
     if not all(ell in [0,2,4,6] for ell in ells):
         raise ValueError("valid `ell` values are [0,2,4,6]")
     
-    # separation is the first window column
-    s = window[:,0]
     
     # format the k_out
     if k_out is None: k_out = k
@@ -795,15 +813,18 @@ def convolve_multipoles(k, ells, Pell, window, k_out=None, interpolate=True,
             poles_hires.append(interp.splev(k_hires, tck))
         Pell = np.vstack(poles_hires).T
         k = k_hires.copy()
-        
+    
+    if Ns > 0:
+        s = np.logspace(np.log10(s.min()), np.log10(s.max()), Ns)
+    
     # FT the power multipoles    
     xi = np.empty((len(s), Nell))
     for i, ell in enumerate(ells): 
         xi[:,i] = pygcl.pk_to_xi(int(ell), k, Pell[:,i], s, smoothing=pk_smooth, method=method)
-    
+
     # convolve the config space multipole
-    xi_conv = window_convolved_xi(ells, xi, window[:,1:])
-    
+    xi_conv = convolver(ells, s, xi)
+
     # FT back to get convolved power pole
     toret = np.empty((len(k_out), Nell))
     for i, ell in enumerate(ells):

@@ -78,6 +78,9 @@ class PgalGradient(object):
         # determine which parameters require numerical derivatives
         self._find_numerical()
         
+        # store mpi pool version
+        self._call_Pgal_mpi = functools.partial(_call_Pgal_from_driver, self.k, self.mu)
+        
     def _find_numerical(self):
         """
         Internal function to determine which derivatives require a 
@@ -138,8 +141,7 @@ class PgalGradient(object):
             if pool is None:
                 results = numpy.array([self._call_Pgal(t) for t in tasks])
             else:
-                f = functools.partial(_call_Pgal_from_driver, self.k, self.mu)
-                results = numpy.array(pool.map(f, tasks))
+                results = numpy.array(pool.map(self._call_Pgal_mpi, tasks))
             results = results.reshape((2, -1, len(self.k)))
     
             if numpy.isscalar(epsilon):

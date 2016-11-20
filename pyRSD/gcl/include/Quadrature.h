@@ -9,10 +9,6 @@
 #include <cmath>
 #include "parray.h"
 
-double TrapzIntegrate(const parray& x, const parray& y);
-double SimpsIntegrate(const parray& x, const parray& y);
-double basic_simps(const parray& y, int start, int stop, const parray& x);
-
 /* General notes on integration routines:
  *  - The Function f can be any callable object, i.e. any object that defines
  *    the method  double operator()(double x).  This becomes especially

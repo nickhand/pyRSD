@@ -455,7 +455,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         current values of the AP effect parameters, `alpha_perp` and `alpha_par`
         """
         kmin = min(0.005, self.kmin)
-        kmax = max(0.7, self.kmax)
+        kmax = max(1.0, self.kmax)
         return np.logspace(np.log10(kmin), np.log10(kmax), self.Nk)
         
     @cached_property("z", "cosmo")

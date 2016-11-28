@@ -420,13 +420,23 @@ class PowerData(Cache):
             else:
                 x = self._ells
                 cls = PolesTransfer; lab = 'ells'
+            kws = {'kmin':self.kmin, 'kmax':self.kmax}
             
             # verify and initialize    
             if x is None:
                 raise ValueError("`%s` parameter must be defined if `grid_file` is supplied" %lab)
             if len(x) != self.size:
                 raise ValueError("size mismatch between `%s` and number of measurements" %lab)
-            self.transfer = cls(self.grid, x, kmin=self.kmin, kmax=self.kmax)
+                
+            # which ells to include when convolving
+            if self.mode == 'poles' and self.window is not None:
+                max_ellprime = self.params.get('max_convolve_ell', 4)
+                tmp = list(range(0, max_ellprime+1, 2))
+                kws['ells_mask'] = [True if ell in x else False for ell in tmp]
+                x = list(tmp)
+            
+            # initialize the transfer function    
+            self.transfer = cls(self.grid, x, **kws)
             
             # set the window function
             if self.mode == 'poles' and self.window is not None:
@@ -681,40 +691,26 @@ class PowerData(Cache):
             
     #---------------------------------------------------------------------------
     # cached properties
-    #---------------------------------------------------------------------------
-    @cached_property('window')
-    def window_kmax_boost(self):
-        """
-        The boost factor for the `global_kmax` parameter
-        """
-        if self.window is None:
-            return 1.
-        else:
-            return 1.5
-            
-    @cached_property('window')
-    def window_kmin_boost(self):
-        """
-        The boost factor for the `global_kmin` parameter
-        """
-        if self.window is None:
-            return 1.
-        else:
-            return 0.25
-            
+    #---------------------------------------------------------------------------  
     @cached_property('kmin')
     def global_kmin(self):
         """
         The global mininum wavenumber
         """
-        return self.window_kmin_boost * self.kmin.min()
+        if self.window is None:
+            return self.kmin.min()
+        else:
+            return min(1e-4, self.kmin.min())
         
-    @cached_property('kmax', 'window_kmax_boost')
+    @cached_property('kmax')
     def global_kmax(self):
         """
         The global maximum wavenumber
         """
-        return self.window_kmax_boost * self.kmax.max()
+        if self.window is None:
+            return self.kmax.max()
+        else:
+            return max(0.7, self.kmax.max())
             
     @cached_property('combined_power')
     def ndim(self):

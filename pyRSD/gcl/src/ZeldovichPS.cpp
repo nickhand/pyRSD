@@ -119,7 +119,6 @@ double ZeldovichPS::fftlog_compute(double k, double factor) const
 
     // logspaced between RMIN and RMAX
     double this_Pk = 0.;
-    double toadd;   
     for (int n = 0; n <= NMAX; n++) {
         
         // the order of the Bessel function

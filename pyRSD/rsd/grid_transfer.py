@@ -1,7 +1,8 @@
 from .. import numpy as np
-from .tools import convolve_multipoles, WindowConvolution
+from .window import convolve_multipoles, WindowConvolution
 from ._cache import Cache, parameter, cached_property
 from scipy.special import legendre
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 #------------------------------------------------------------------------------
 # TOOLS
@@ -416,7 +417,7 @@ class PolesTransfer(PkmuTransfer):
     Class to facilitate the manipulations of multipole measurements
     on an underlying (k, mu) grid
     """
-    def __init__(self, grid, ells, kmin=-np.inf, kmax=np.inf, power=None):
+    def __init__(self, grid, ells, kmin=-np.inf, kmax=np.inf, power=None, ells_mask=None):
         """
         Parameters
         ----------
@@ -432,10 +433,19 @@ class PolesTransfer(PkmuTransfer):
             the power values defined on the grid -- can have shape
             (Nk,Nmu) or (N,), in which case it is interpreted
             as the values at all valid grid points
+        ells_mask : list, None, optional
+            boolean mask specifying which ell values to return; this is needed in the 
+            case that we are doing a window convolution and need more ell values
         """
         self.ells = np.array(ells)
+        if ells_mask is None: 
+            ells_mask = [True for ell in self.ells]
+        self.ells_mask = np.asarray(ells_mask)
+        
         super(PolesTransfer, self).__init__(grid, [(0., 1.)], kmin=kmin, kmax=kmax, power=power)
         self.window = None
+        
+
         
     @classmethod
     def from_structured(cls, coords, data, ells, **kwargs):
@@ -449,6 +459,30 @@ class PolesTransfer(PkmuTransfer):
     #--------------------------------------------------------------------------
     # parameters
     #--------------------------------------------------------------------------
+    @parameter
+    def kmin(self, val):
+        """
+        The minimum wavenumber to include -- can be either
+        a float or array of length ``N2``
+        """
+        N2 = self.ells_mask.sum()
+        if val is None: val = -np.inf
+        toret = np.empty(N2)
+        toret[:] = val
+        return toret
+    
+    @parameter
+    def kmax(self, val):
+        """
+        The maximum wavenumber to include -- can be either
+        a float or array of length ``N2``
+        """
+        N2 = self.ells_mask.sum()
+        if val is None: val = np.inf
+        toret = np.empty(N2)
+        toret[:] = val
+        return toret
+        
     @parameter
     def ells(self, val):
         """
@@ -474,7 +508,7 @@ class PolesTransfer(PkmuTransfer):
         """
         The window convolution object
         """
-        return WindowConvolution(self.window[:,0], self.window[:,1:])
+        return WindowConvolution(self.window[:,0], self.window[:,1:], max_ellprime=4)
         
     @cached_property()
     def k_mean(self):
@@ -517,6 +551,14 @@ class PolesTransfer(PkmuTransfer):
     #--------------------------------------------------------------------------
     # main functions
     #--------------------------------------------------------------------------
+    def restrict_k(self, arr):
+        """
+        Apply ``ells_mask`` and then restrict_k
+        """        
+        # ells mask
+        arr = arr[:,self.ells_mask]
+        return super(PolesTransfer, self).restrict_k(arr)
+        
     def __call__(self, flatten=False, no_convolution=False, **kws):
         """
         Return the multipoles corresponding to `ells`, by weighting the
@@ -560,7 +602,22 @@ class PolesTransfer(PkmuTransfer):
         toret = np.ones(poles.shape)*np.nan
         
         conv = self.convolver
-        toret[idx,...] = convolve_multipoles(self.k_mean[idx], self.ells, poles[idx,...], conv.s, conv, **kws)
+        
+        # make hi-res results
+        k = self.k_mean[idx]
+        k_hires = np.logspace(np.log10(k.min()), np.log10(k.max()), 500)
+        poles_hires = np.empty((len(k_hires), poles.shape[1]))
+        for i, ell in enumerate(self.ells):
+            spl = spline(k, poles[idx,i])
+            poles_hires[:,i] = spl(k_hires)
+        
+        # do the convolution
+        kk, poles_conv = convolve_multipoles(k_hires, poles_hires, self.ells, conv, **kws)
+        
+        # spline back to the grid
+        for i, ell in enumerate(self.ells):
+            spl = spline(kk, poles_conv[:,i])
+            toret[idx,i] = spl(k)
         return toret
         
     

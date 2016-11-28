@@ -3,10 +3,12 @@
 
 #include "parray.h"
 
-// wrapper for FFTLog fortran code (implementation in FFTLogWrapper.cpp)
+/// wrapper for FFTLog fortran code (implementation in FFTLogWrapper.cpp)
 class FortranFFTLog {
     
 public:
+    
+    
     // for reverse transform, dlnr will be dlnk
     FortranFFTLog(int N, double dlnr, double mu=0.5, double q=0, double kr=1, int kropt=1);
     bool Transform(parray& a, int dir=1);

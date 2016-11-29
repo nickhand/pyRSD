@@ -58,6 +58,13 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         try: self.b1_bar = 2.
         except: pass
          
+    def __getstate__(self):
+        
+        # delete these since the data is large 
+        del self.auto_stochasticity_fits
+        del self.cross_stochasticity_fits
+        return self.__dict__
+       
     #---------------------------------------------------------------------------
     # attributes
     #---------------------------------------------------------------------------

@@ -591,28 +591,41 @@ class PolesTransfer(PkmuTransfer):
         
     def convolve_window(self, poles, **kws):
         """
-        Convolve the `ell = 0, 2, 4` multipoles with the window function specified
+        Convolve the multipoles with the window function specified
         by `window`
-        
+            
         Notes
         -----
         *   this is still defined on the grid -- no `k` restrictions yet
+        *   to do the convolution FFTs, we use FFTLog, which performs better
+            when the k-range is wide --> we zero pad the Pell results
+            out to ``grid_kmax`` (default: 100 h/Mpc) beyond the maximum
+            k of the grid
         """
+        # get some default values
+        grid_kmax = kws.pop('grid_kmax', 100.) # zero pad
+        grid_Nk = kws.pop('grid_Nk', 1024)
+        
+        # setup
         idx = self._valid_k
+        k = self.k_mean[idx]
         toret = np.ones(poles.shape)*np.nan
         
+        # convolution object 
         conv = self.convolver
         
         # make hi-res results
-        k = self.k_mean[idx]
-        k_hires = np.logspace(np.log10(k.min()), np.log10(k.max()), 500)
-        poles_hires = np.empty((len(k_hires), poles.shape[1]))
+        kgrid = np.logspace(np.log10(k.min()), np.log10(grid_kmax), grid_Nk)
+        poles_hires = np.zeros((len(kgrid), poles.shape[1]))
         for i, ell in enumerate(self.ells):
             spl = spline(k, poles[idx,i])
-            poles_hires[:,i] = spl(k_hires)
+            
+            # zero pad beyond k.max()
+            valid = kgrid < k.max()
+            poles_hires[valid,i] = spl(kgrid[valid])
         
         # do the convolution
-        kk, poles_conv = convolve_multipoles(k_hires, poles_hires, self.ells, conv, **kws)
+        kk, poles_conv = convolve_multipoles(kgrid, poles_hires, self.ells, conv, **kws)
         
         # spline back to the grid
         for i, ell in enumerate(self.ells):

@@ -122,18 +122,26 @@ class LimitedMemoryInverseHessian(object):
         self.rho[:] = np.roll(self.rho, 1)
         
         # updates for rho and H0k
-        ys = np.dot(sk, yk)
         yy = np.linalg.norm(yk)
         yy *= yy
         
+        try:  # this was handled in numeric, let it remaines for more safety
+            rhok = 1.0 / (np.dot(yk, sk))
+        except ZeroDivisionError:
+            rhok = 1000.0
+            print("Divide-by-zero encountered: rhok assumed large")
+        if np.isinf(rhok):  # this is patch for numpy
+            rhok = 1000.0
+            print("Divide-by-zero encountered: rhok assumed large")
+        
         # the update didn't move
-        if (ys == 0. or yy == 0.):
-            raise LBFGSStepError("no LBFGS step")
+        if (yy == 0.):
+            raise LBFGSStepError("no difference in gradient norm; cannot compute LBFGS step")
         
         # set the zero element, corresponding to this iteration
         self.s[0] = sk
         self.y[0] = yk
-        self.rho[0] = 1. / ys
+        self.rho[0] = rhok
         self.H0k = ys / yy
 
 class LBFGS(object):
@@ -536,7 +544,7 @@ class LBFGS(object):
             except LBFGSStepError as e:
                 self.logger.warning("error taking the LBFGS step: %s" %str(e))
                 d['status'] = -5
-                pass
+                break
 
             d['iteration'] += 1
             yield state

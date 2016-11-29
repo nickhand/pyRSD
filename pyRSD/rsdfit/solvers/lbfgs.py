@@ -142,7 +142,7 @@ class LimitedMemoryInverseHessian(object):
         self.s[0] = sk
         self.y[0] = yk
         self.rho[0] = rhok
-        self.H0k = ys / yy
+        self.H0k = 1.0 / (rhok*yy)
 
 class LBFGS(object):
     """

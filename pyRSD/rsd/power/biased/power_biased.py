@@ -1,5 +1,6 @@
 import contextlib
 from pyRSD import numpy as np
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 
 # tools
 from pyRSD.rsd._cache import parameter, cached_property, interpolated_function, CachedProperty
@@ -17,6 +18,8 @@ from pyRSD.rsd.simulation import CrossStochasticityFits
 
 # nonliner biasing
 from pyRSD.rsd.nonlinear_biasing import NonlinearBiasingMixin
+
+GP_NK = 20
 
 class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     """
@@ -335,12 +338,16 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         *   The model for the (type B) stochasticity, interpolated as a function 
             of sigma8(z), b1, and k using a Gaussian process
         """
-        params = {'sigma8_z' : self.sigma8_z, 'k':k}    
+        _k = np.logspace(np.log10(self.k.min()), np.log10(self.k.max()), GP_NK)
+        
+        params = {'sigma8_z' : self.sigma8_z, 'k':_k}    
         if self._ib1 != self._ib1_bar:
             b1_1, b1_2 = sorted([self._ib1, self._ib1_bar])
-            return self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
+            toret = self.cross_stochasticity_fits(b1_1=b1_1, b1_2=b1_2, **params)
         else:
-            return self.auto_stochasticity_fits(b1=self._ib1, **params)
+            toret = self.auto_stochasticity_fits(b1=self._ib1, **params)
+            
+        return spline(_k, toret)(k)
                               
     @cached_property("P00_ss_no_stoch", "stochasticity")
     def P00_ss(self):

@@ -28,10 +28,16 @@ void ComputeXiLM_fftlog(int l, int m, const parray& k, const parray& pk,
   
     // spacing quantities
     double nc = 0.5*double(N+1);
-    double logkmin = log10(k.min()); 
-    double logkmax = log10(k.max());
+    double dlogr = log10(k[1]) - log10(k[0]);
+    
+    // check if last two points have same spacing
+    if (fabs(log10(k[-1]) - log10(k[-2]) - dlogr) > 1e-5) {
+        error("ComputeXiLM_fftlog needs logspaced points!!");
+    }
+    
+    double logkmin = log10(k.min()) - 0.5*dlogr; 
+    double logkmax = log10(k.max()) + 0.5*dlogr;
     double logrc = 0.5*(logkmin+logkmax);
-    double dlogr = (logkmax - logkmin)/N; 
     
     FortranFFTLog fftlogger(N, dlogr*log(10.), l+0.5, q, 1.0, 1);
 
@@ -40,7 +46,9 @@ void ComputeXiLM_fftlog(int l, int m, const parray& k, const parray& pk,
         a[i] = pow(k[i], m - 0.5) * pk[i] * exp(-pow2(k[i]*smoothing));
     
     bool ok = fftlogger.Transform(a, 1);
-    if (!ok) error("FFTLog failed\n");
+    if (!ok) 
+        error("FFTLog failed in ComputeXiLM_fftlog (`ok` flag False)\n");
+    
     double kr = fftlogger.KR();
     double logkc = log10(kr) - logrc;
     

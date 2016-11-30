@@ -148,7 +148,7 @@ class WindowConvolution(object):
         
         return conv_xi   
     
-def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7):
+def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7, dry_run=False):
     """
     Convolve the input ell = 0, 2, 4 power multipoles, specified by `Pell`,
     with the specified window function.
@@ -174,7 +174,10 @@ def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7):
         xi[:,i] *= (-1)**(ell//2)
     
     # convolve
-    xi_conv = convolver(ells, rr, xi, order='F')
+    if dry_run:
+        xi_conv = xi.copy()
+    else:
+        xi_conv = convolver(ells, rr, xi, order='F')
 
     # FFTLog back
     Pell_conv = np.empty((Nk, Nell), order='F')

@@ -111,7 +111,7 @@ class LimitedMemoryInverseHessian(object):
         else:
             raise AttributeError(key)
             
-    def update(self, sk, yk):
+    def update(self, sk, yk, logger=None):
         """
         Update the inverse Hessian, by iterating the `s`, `y`,
         and `rho` arrays and updating the value of `H0k`
@@ -129,10 +129,12 @@ class LimitedMemoryInverseHessian(object):
             rhok = 1.0 / (np.dot(yk, sk))
         except ZeroDivisionError:
             rhok = 1000.0
-            print("Divide-by-zero encountered: rhok assumed large")
+            if logger is not None:
+                logger.warning("Divide-by-zero encountered: rhok assumed large")
         if np.isinf(rhok):  # this is patch for numpy
             rhok = 1000.0
-            print("Divide-by-zero encountered: rhok assumed large")
+            if logger is not None:
+                logger.warning("Divide-by-zero encountered: rhok assumed large")
         
         # the update didn't move
         if (yy == 0.):
@@ -540,7 +542,7 @@ class LBFGS(object):
             
             # take the LBFGS step
             try:
-                d['H'].update(sk, yk)
+                d['H'].update(sk, yk, logger=self.logger)
             except LBFGSStepError as e:
                 self.logger.warning("error taking the LBFGS step: %s" %str(e))
                 d['status'] = -5

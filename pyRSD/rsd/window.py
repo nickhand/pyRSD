@@ -1,8 +1,11 @@
 import math
 from fractions import Fraction
 import numpy as np
-from scipy.interpolate import InterpolatedUnivariateSpline as spline
+
+from pyRSD.rsd.tools import RSDSpline as spline
 from pyRSD import pygcl
+
+_epsilon = np.finfo(float).eps
 
 def G(p):
     """
@@ -89,6 +92,8 @@ class WindowConvolution(object):
             is ell=2, etc
         """
         self.s = s
+        self.smin = s.min()
+        self.smax = s.max()
         self.W = W
         self.max_ellprime = max_ellprime  
         self.max_ell = max_ell
@@ -125,7 +130,18 @@ class WindowConvolution(object):
         """
         Return the appropriate kernel
         """
-        return np.vstack([s(r) for s in self.splines[ell]]).T
+        splines = self.splines[ell]
+        toret = np.zeros((len(r), len(splines)))
+        
+        idx = (r>=self.smin)&(r<=self.smax)
+        for i, s in enumerate(splines):
+            toret[idx,i] = s(r[idx])
+            
+            # set the kernel to one out of bounds
+            if i == ell//2:
+                toret[~idx,i] = 1.0
+                
+        return toret
         
     def __call__(self, ells, r, xi, order='F'):
         """
@@ -145,7 +161,7 @@ class WindowConvolution(object):
                                   "please provide the first %d even multipoles" %npoles))
             
             conv_xi[:,i] = np.einsum('ij,ij->i', xi, kern)
-        
+            
         return conv_xi   
     
 def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7, dry_run=False):

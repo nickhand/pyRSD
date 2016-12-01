@@ -28,19 +28,13 @@ void ComputeXiLM_fftlog(int l, int m, const parray& k, const parray& pk,
   
     // spacing quantities
     double nc = 0.5*double(N+1);
-    double dlogr = log10(k[1]) - log10(k[0]);
-    
-    // check if last two points have same spacing
-    if (fabs(log10(k[-1]) - log10(k[-2]) - dlogr) > 1e-5) {
-        error("ComputeXiLM_fftlog needs logspaced points!!");
-    }
-    
-    double logkmin = log10(k.min()) - 0.5*dlogr; 
-    double logkmax = log10(k.max()) + 0.5*dlogr;
+    double logkmin = log10(k[0]);
+    double logkmax = log10(k[-1]);
+    double dlogr = (logkmax-logkmin)/(N-1);
     double logrc = 0.5*(logkmin+logkmax);
     
     FortranFFTLog fftlogger(N, dlogr*log(10.), l+0.5, q, 1.0, 1);
-
+    
     // the fftlog magic
     for(int i = 0; i < N; i++)
         a[i] = pow(k[i], m - 0.5) * pk[i] * exp(-pow2(k[i]*smoothing));
@@ -75,7 +69,7 @@ parray ComputeXiLM(int l, int m, const parray& k_, const parray& pk_, const parr
         double logkmin = log10(k_.min()); 
         double logkmax = log10(k_.max());
         double logrc = 0.5*(logkmin+logkmax);
-        double dlogr = (logkmax - logkmin)/N; 
+        double dlogr = (logkmax - logkmin)/(N-1); 
     
         for (int i = 1; i <= N; i++)
             k[i-1] = pow(10., (logrc+(i-nc)*dlogr));

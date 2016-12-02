@@ -29,10 +29,10 @@ parray xi_to_pk(int ell, const parray& r, const parray& xi, const parray& k,
 %inline %{
     /*  takes as input two numpy arrays */
     void compute_xilm_fftlog(int l, int m, const parray& k, const parray& pk,
-                              double r[], int rsize, double xi[], int xisize, double smoothing=0.)
+                              double r[], int rsize, double xi[], int xisize, double q=0, double smoothing=0.)
     {
         /*  calls the original funcion, providing only the size of the first */
-        ComputeXiLM_fftlog(l, m, k, pk, r, xi, smoothing);
+        ComputeXiLM_fftlog(l, m, k, pk, r, xi, q, smoothing);
    }
 %}
 

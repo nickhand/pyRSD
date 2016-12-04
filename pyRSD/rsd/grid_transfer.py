@@ -607,7 +607,7 @@ class PolesTransfer(PkmuTransfer):
         grid_Nk = kws.pop('grid_Nk', 2048)
         
         # setup
-        idx = self._valid_k1024
+        idx = self._valid_k
         k = self.k_mean[idx]
         toret = np.ones(poles.shape)*np.nan
         

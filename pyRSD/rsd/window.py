@@ -1,6 +1,7 @@
 import math
 from fractions import Fraction
 import numpy as np
+import scipy.interpolate as interp
 
 from pyRSD.rsd.tools import RSDSpline as spline
 from pyRSD import pygcl
@@ -164,7 +165,7 @@ class WindowConvolution(object):
             
         return conv_xi   
     
-def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7, dry_run=False):
+def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7, dry_run=False, legacy=True):
     """
     Convolve the input ell = 0, 2, 4 power multipoles, specified by `Pell`,
     with the specified window function.
@@ -179,27 +180,77 @@ def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7, dry_run=False):
     Pell : array_like, (Nk, Nell)
         the ell = 0, 2, 4 power multipoles, defined at `k`
     """
-    Nell = len(ells); Nk = len(k)
+    if not legacy:
+        
+        Nell = len(ells); Nk = len(k)
     
-    # FFT the input power multipoles
-    xi = np.empty((Nk, Nell), order='F') # column-continuous
-    rr = np.empty(Nk)
+        # FFT the input power multipoles
+        xi = np.empty((Nk, Nell), order='F') # column-continuous
+        rr = np.empty(Nk)
     
-    for i, ell in enumerate(ells):
-        pygcl.ComputeXiLM_fftlog(int(ell), 2, k, Pell[:,i], rr, xi[:,i], qbias)
-        xi[:,i] *= (-1)**(ell//2)
+        for i, ell in enumerate(ells):
+            pygcl.ComputeXiLM_fftlog(int(ell), 2, k, Pell[:,i], rr, xi[:,i], qbias)
+            xi[:,i] *= (-1)**(ell//2)
     
-    # convolve
-    if dry_run:
-        xi_conv = xi.copy()
-    else:
-        xi_conv = convolver(ells, rr, xi, order='F')
+        # convolve
+        if dry_run:
+            xi_conv = xi.copy()
+        else:
+            xi_conv = convolver(ells, rr, xi, order='F')
 
-    # FFTLog back
-    Pell_conv = np.empty((Nk, Nell), order='F')
-    kk = np.empty(Nk)
-    for i, ell in enumerate(ells):
-        pygcl.ComputeXiLM_fftlog(int(ell), 2, rr, xi_conv[:,i], kk, Pell_conv[:,i], -qbias)
-        Pell_conv[:,i] *= (-1)**(ell//2) * (2*np.pi)**3
+        # FFTLog back
+        Pell_conv = np.empty((Nk, Nell), order='F')
+        kk = np.empty(Nk)
+        for i, ell in enumerate(ells):
+            pygcl.ComputeXiLM_fftlog(int(ell), 2, rr, xi_conv[:,i], kk, Pell_conv[:,i], -qbias)
+            Pell_conv[:,i] *= (-1)**(ell//2) * (2*np.pi)**3
     
-    return kk, Pell_conv   
+        return kk, Pell_conv
+        
+    else:
+        
+        shape = Pell.shape
+        Nell = len(ells)
+        if Nell != shape[-1]:
+            raise ValueError("shape mismatch between multipole numbers and number of multipoles provided")
+        
+        if not all(ell in [0,2,4,6] for ell in ells):
+            raise ValueError("valid `ell` values are [0,2,4,6]")
+    
+        # separation is the first window column
+        s = convolver.s
+    
+        # format the k_out
+        k_out = k
+        if np.ndim(k_out) == 1:
+            k_out = np.repeat(k_out[:,None], Nell, axis=1)
+        if k_out.shape[-1] != len(ells):
+            raise ValueError("input `k_out` must have %d columns for ell=%s multipoles" %(Nell, str(ells)))
+    
+        # make the hires version to avoid wiggles when convolving
+        if len(k) < 500:
+            k_hires = np.logspace(np.log10(k.min()), np.log10(k.max()), 500)
+            poles_hires = []
+            for i in range(Nell):
+                tck = interp.splrep(k, Pell[:,i], k=3, s=0)
+                poles_hires.append(interp.splev(k_hires, tck))
+            Pell = np.vstack(poles_hires).T
+            k = k_hires.copy()
+        
+        # FT the power multipoles    
+        xi = np.empty((len(s), Nell))
+        for i, ell in enumerate(ells): 
+            xi[:,i] = pygcl.pk_to_xi(int(ell), k, Pell[:,i], s, smoothing=0., method=pygcl.IntegrationMethods.TRAPZ)
+    
+        # convolve the config space multipole
+        if dry_run:
+            xi_conv = xi.copy()
+        else:
+            xi_conv = convolver(ells, s, xi, order='F')
+    
+        # FT back to get convolved power pole
+        toret = np.empty((len(k_out), Nell))
+        for i, ell in enumerate(ells):
+            toret[:,i] = pygcl.xi_to_pk(int(ell), s, xi_conv[:,i], k_out[:,i], smoothing=0., method=pygcl.IntegrationMethods.TRAPZ)
+    
+        return k_out[:,0], toret   

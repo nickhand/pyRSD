@@ -286,9 +286,10 @@ class InterpolatedFunction(object):
     either evaluate a spline or evaluate the underlying function, 
     if a domain error occurs
     """
-    def __init__(self, spline, function):
-        self.spline = spline
+    def __init__(self, spline, function, name):
+        self.spline   = spline
         self.function = function
+        self.name     = name
     
     def __call__(self, k, derivative=False):
         try:
@@ -303,7 +304,25 @@ class InterpolatedFunction(object):
                 else:
                     return self.spline.derivative()(k)
         except InterpolationDomainError:
-            return self.function(k)
+            import warnings
+            
+            # if/else so legacy code works
+            name = getattr(self, 'name', None)
+            if name is not None:
+                warnings.warn("evaluating interpolated function %s outside of domain...will be slow!!" %name)
+            else:
+                warnings.warn("evaluating interpolated function outside of domain...will be slow!!")
+            
+            # return spline results in bounds, and call the function out of bounds
+            if numpy.isscalar(k) or numpy.ndim(k) == 0:
+                return self.function(k)[0]
+            else:
+                k = numpy.asarray(k)
+                out_of_bounds = self.spline._check_bounds(k)
+                toret = numpy.zeros_like(k)
+                toret[out_of_bounds] = self.function(k[out_of_bounds])
+                toret[~out_of_bounds] = self.spline(k[~out_of_bounds])
+                return toret
         except:
             raise
         
@@ -339,11 +358,11 @@ def interpolated_function(*parents, **kwargs):
                 # tuple of splines
                 if isinstance(val, tuple):
                     splines = [self.spline(interp_domain, x, **spline_kwargs) for x in val]
-                    self._cache[name] = InterpolatedFunction(splines, g)
+                    self._cache[name] = InterpolatedFunction(splines, g, name)
                 # single spline
                 else:
                     spl = self.spline(interp_domain, val, **spline_kwargs)
-                    self._cache[name] = InterpolatedFunction(spl, g)
+                    self._cache[name] = InterpolatedFunction(spl, g, name)
                     
             return self._cache[name](*args, **kws)
             

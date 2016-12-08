@@ -64,7 +64,7 @@ def run(params, theory, pool=None, init_values=None):
     use_priors = params.get('lbfgs_use_priors', True)
     options    = params.get('lbfgs_options', {})
     scaling    = params.get('lbfgs_rescale', True)
-    options['test_convergence'] = params.get('test_convergence', True)
+    options['test_convergence'] = params.get('test_convergence', False)
     
     if 'max_iter' in options and not options['test_convergence']:
         logger.info("running LBFGS for %d iterations and then stopping" %options['max_iter'])

@@ -1,6 +1,8 @@
 from ... import numpy as np
 from ...rsd._cache import Cache, parameter, cached_property
-from ...rsd import PkmuTransfer, PolesTransfer, PkmuGrid
+from ...rsd import PkmuTransfer, PolesTransfer, PkmuGrid, INTERP_KMAX
+from ...rsd.window import WindowTransfer
+
 from .. import logging, MPILoggerAdapter
 from ..parameters import ParameterSet
 from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
@@ -360,9 +362,9 @@ class PowerData(Cache):
         
         # verify the grid
         if self.transfer is not None:
-            if self.transfer.size != self.covariance.N:
+            if self.binning_transfer.size != self.covariance.N:
                 msg = "size mismatch between grid transfer function and covariance: "
-                args = (self.transfer.size, self.covariance.N)
+                args = (t.size, self.covariance.N)
                 raise ValueError(msg + "grid size =  %d, cov size = %d" %args)
         
     def read_data(self):
@@ -410,8 +412,8 @@ class PowerData(Cache):
             self.grid = PkmuGrid.from_plaintext(grid_file)
             
             # set modes to zero outside k-ranges to avoid model failing
-            self.grid.modes[self.grid.k < self.global_kmin] = 0.
-            self.grid.modes[self.grid.k > self.global_kmax] = 0.
+            self.grid.modes[self.grid.k < self.global_kmin] = np.nan
+            self.grid.modes[self.grid.k > self.global_kmax] = np.nan
 
             # initialize the transfer
             if self.mode == 'pkmu':
@@ -428,20 +430,26 @@ class PowerData(Cache):
             if len(x) != self.size:
                 raise ValueError("size mismatch between `%s` and number of measurements" %lab)
                 
-            # which ells to include when convolving
-            if self.mode == 'poles' and self.window is not None:
+            # initialize the transfer function
+            self.binning_transfer = cls(self.grid, x, **kws)
+            if self.window is None: 
+                self.transfer = self.binning_transfer
+            else:
+                
+                kws = {}
+                
+                # determine max ell prime and which poles we need
                 max_ellprime = self.params.get('max_convolve_ell', 4)
                 tmp = list(range(0, max_ellprime+1, 2))
                 kws['ells_mask'] = [True if ell in x else False for ell in tmp]
-                x = list(tmp)
-            
-            # initialize the transfer function    
-            self.transfer = cls(self.grid, x, **kws)
-            
-            # set the window function
-            if self.mode == 'poles' and self.window is not None:
-                self.transfer.window = self.window
-                    
+                kws['max_ellprime'] = max_ellprime
+                x = list(tmp)                    
+                
+                # evaluate at k_out of the binning grid
+                self.transfer = WindowTransfer(self.window, x, k_out=self.binning_transfer.coords[0], **kws)
+                
+                
+                                
     def set_all_measurements(self):
         """
         Initialize a list of `PowerMeasurement` objects from the 
@@ -710,7 +718,7 @@ class PowerData(Cache):
         if self.window is None:
             return self.kmax.max()
         else:
-            return max(0.7, self.kmax.max())
+            return max(INTERP_KMAX, self.kmax.max())
             
     @cached_property('combined_power')
     def ndim(self):

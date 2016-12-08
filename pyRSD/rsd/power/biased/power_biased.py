@@ -63,7 +63,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         # delete these since the data is large 
         del self.auto_stochasticity_fits
         del self.cross_stochasticity_fits
-        return self.__dict__
+        return super(BiasedSpectrum, self).__getstate__()
        
     #---------------------------------------------------------------------------
     # attributes
@@ -298,7 +298,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     #---------------------------------------------------------------------------
     # power term attributes
     #---------------------------------------------------------------------------                
-    @interpolated_function("_ib1", "P00", "use_Phm_model", "sigma8_z", "b2_00_a", interp="k")
+    @interpolated_function("_ib1", "P00", "use_Phm_model", "sigma8_z", "b2_00_a", "k", interp="k")
     def Phm(self, k):
         """
         The halo - matter cross correlation for the 1st tracer
@@ -316,7 +316,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
             
         return toret
         
-    @interpolated_function("_ib1_bar", "P00", "use_Phm_model", "sigma8_z", "b2_00_a", interp="k")
+    @interpolated_function("_ib1_bar", "P00", "use_Phm_model", "sigma8_z", "b2_00_a", "k", interp="k")
     def Phm_bar(self, k):
         """
         The halo - matter cross correlation for the 2nd tracer
@@ -334,7 +334,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
 
         return toret
         
-    @interpolated_function("_ib1", "_ib1_bar", "z", "sigma8_z", interp="k")
+    @interpolated_function("_ib1", "_ib1_bar", "z", "sigma8_z", "k", interp="k")
     def stochasticity(self, k):
         """
         The isotropic (type B) stochasticity term due to the discreteness of the 
@@ -450,7 +450,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         from .P04 import P04PowerTerm
         return P04PowerTerm(self)
             
-    @interpolated_function("_ib1", "_ib1_bar", "sigma8_z", "f", interp="k")
+    @interpolated_function("_ib1", "_ib1_bar", "sigma8_z", "f", "k", interp="k")
     def mu2_model_correction(self, k):
         """
         The mu2 correction to the model evaluated at `k`
@@ -460,7 +460,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         params = {'b1':mean_bias, 'sigma8_z':self.sigma8_z, 'k':k, 'f':self.f}
         return self.Pmu2_correction(**params)
         
-    @interpolated_function("_ib1", "_ib1_bar", "sigma8_z", "f", interp="k")
+    @interpolated_function("_ib1", "_ib1_bar", "sigma8_z", "f", "k", interp="k")
     def mu4_model_correction(self, k):
         """
         The mu4 correction to the model evaluated at `k`
@@ -473,7 +473,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
     #---------------------------------------------------------------------------
     # power as a function of mu
     #---------------------------------------------------------------------------
-    @interpolated_function("P00_ss", interp="k")
+    @interpolated_function("P00_ss", "k", interp="k")
     def P_mu0(self, k):
         """
         The full halo power spectrum term with no angular dependence. Contributions
@@ -481,7 +481,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         """
         return self.P00_ss.mu0(k)
 
-    @interpolated_function("P01_ss", "P11_ss", "P02_ss", "correct_mu2", interp="k")
+    @interpolated_function("P01_ss", "P11_ss", "P02_ss", "correct_mu2", "k", interp="k")
     def P_mu2(self, k):
         """
         The full halo power spectrum term with mu^2 angular dependence. Contributions
@@ -494,7 +494,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         return P_mu2
 
     @interpolated_function("P11_ss", "P02_ss", "P12_ss", "P22_ss", "P03_ss",
-                           "P13_ss", "P04_ss", "correct_mu4", interp="k")
+                           "P13_ss", "P04_ss", "correct_mu4", "k", interp="k")
     def P_mu4(self, k):
         """
         The full halo power spectrum term with mu^4 angular dependence. Contributions
@@ -507,7 +507,7 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         
         return P_mu4
     
-    @interpolated_function("P12_ss", interp="k")
+    @interpolated_function("P12_ss", "k", interp="k")
     def P_mu6(self, k):
         """
         The full halo power spectrum term with mu^6 angular dependence. Contributions

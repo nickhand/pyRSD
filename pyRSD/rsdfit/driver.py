@@ -9,6 +9,7 @@ from .solvers import *
 from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
 from ..rsd import GalaxySpectrum
+from ..rsd.window import WindowTransfer
 from ..rsd.derivatives import PgalGradient
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
@@ -556,7 +557,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
     @property
     def pkmu_gradient(self):
         """
-        Return the pkmu gradient
+        Return the P(k,mu) gradient class
         """
         try:
             return self._pkmu_gradient
@@ -568,6 +569,7 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
                 transfer = self.data.transfer
                 grid = transfer.grid
                 k, mu = grid.k[grid.notnull], grid.mu[grid.notnull]
+            
             # evaluate over own k,mu grid
             else:
                 k = self.data.combined_k
@@ -652,13 +654,13 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
             # get the gradient of Pgal wrt the parameters
             gradient = self.pkmu_gradient(theta, pool=pool, epsilon=epsilon, numerical=numerical)
         
-            # evaluate transfer
+            # evaluate gradient via the transfer function
             if self.data.transfer is not None:
                 
                 grad_lnlike = []
                 for i in range(self.Np):
                     self.data.transfer.power = gradient[i]
-                    grad_lnlike.append(self.data.transfer(flatten=True))
+                    grad_lnlike.append(self.data.transfer(flatten=True))    
                 grad_lnlike = np.asarray(grad_lnlike)
             
             # do pole calculation yourself
@@ -673,7 +675,10 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
 
                 # do the integration over mu
                 kern     = np.asarray([(2*ell+1.)*legendre(ell)(mu[i]) for i, ell in enumerate(self.data.combined_ell)])
-                gradient = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
+                grad_lnlike = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
+                
+            else:
+                grad_lnlike = gradient
 
             # transform from model gradient to log likelihood gradient
             diff = self.data.combined_power - self.combined_model

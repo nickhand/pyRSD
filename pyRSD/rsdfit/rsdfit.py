@@ -153,7 +153,6 @@ class RSDFitDriver(object):
             if solver == 'nlopt' and self.iterations is not None:
                 options = driver.params['lbfgs_options'].value
                 options['max_iter'] = self.iterations
-                driver.params['test_convergence'].value = False
                 
             # check if we need to find previous result
             init_from = driver.params.get('init_from', None)

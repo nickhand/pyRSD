@@ -305,16 +305,17 @@ class LBFGS(object):
         if self.data['iteration'] >= opt['max_iter']:
             self.data['status'] = -1
             return self.data['status']
-        
+
         # if not testing convergence, return
         if not opt['test_convergence']:
             return self.data['status']
-                        
+                       
         # check tolerance of objective function
         if 'factr' in opt and opt['factr'] is not None:
             
             delta = abs(curr['F'] - prev['F'])
             max_val = max(curr['F'], prev['F'])
+            self.logger.info("convergence test: %.4e <= %.4e" %(delta / max(max_val, 1.), opt['factr'] * _epsilon))
             if delta / max(max_val, 1.) <= opt['factr'] * _epsilon:
                 self.logger.info("objective function has reached the required precision")
                 self.data['status'] = 2
@@ -469,6 +470,7 @@ class LBFGS(object):
         
         See `LBFGS.default_options()` for default keyword options
         """
+        self.logger.info("options = %s" %options)
         self.options.update(**options)
         
         # scratch workspace for alpha in LBFGS step

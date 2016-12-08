@@ -1,5 +1,4 @@
 from .. import numpy as np
-from .window import convolve_multipoles, WindowConvolution
 from ._cache import Cache, parameter, cached_property
 from scipy.special import legendre
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
@@ -113,7 +112,7 @@ class PkmuGrid(object):
         data = np.array([[float(ll) for ll in l.split()] for l in lines[Nk+Nmu+1:]]).reshape((Nk, Nmu, 3))
         
         return cls([k_cen, mu_cen], *np.rollaxis(data, 2))
-        
+            
     @property
     def shape(self):
         return self.k.shape
@@ -238,7 +237,7 @@ class PkmuTransfer(Cache):
 
     #--------------------------------------------------------------------------
     # cached properties
-    #--------------------------------------------------------------------------        
+    #--------------------------------------------------------------------------            
     @cached_property("mu_bounds")
     def mu_edges(self):
         """
@@ -363,7 +362,7 @@ class PkmuTransfer(Cache):
         toret[~self.in_range_idx] = np.nan
         return toret[first:last,...]
         
-    def __call__(self, flatten=False):
+    def __call__(self, flatten=False, full_grid_output=False):
         """
         Return the `power` attribute re-binned into the mu bins 
         corresponding to `mu_edges`, optionally flattening the return array
@@ -377,7 +376,12 @@ class PkmuTransfer(Cache):
         flatten : bool, optional (`False`)
             whether to flatten the return array (column-wise)
         """
-        toret = self.restrict_k(self.average(self.power, self.grid.modes))
+        if not (~np.isnan(self.power)).sum():
+            raise ValueError("please set ``power`` arrary; all NaN right now")
+            
+        toret = self.average(self.power, self.grid.modes)
+        if not full_grid_output:
+            toret = self.restrict_k(toret)
         if flatten: toret = _flatten(toret)
         return toret
         
@@ -443,9 +447,6 @@ class PolesTransfer(PkmuTransfer):
         self.ells_mask = np.asarray(ells_mask)
         
         super(PolesTransfer, self).__init__(grid, [(0., 1.)], kmin=kmin, kmax=kmax, power=power)
-        self.window = None
-        
-
         
     @classmethod
     def from_structured(cls, coords, data, ells, **kwargs):
@@ -490,40 +491,14 @@ class PolesTransfer(PkmuTransfer):
         second axis (columns)
         """
         return val
-        
-    @parameter
-    def window(self, val):
-        """
-        The array holding the window function to be convolved
-        with the `ell = 0,2,4` multipoles
-        """
-        if val is None: return val
-        
-        if not all(l in [0, 2, 4] for l in set(self.ells)):
-            raise NotImplementedError("window convolution only implemented for case of ell=0,2,4 multipoles")
-        return val
-        
-    @cached_property("window")
-    def convolver(self):
-        """
-        The window convolution object
-        """
-        return WindowConvolution(self.window[:,0], self.window[:,1:], max_ellprime=4)
-        
+                
     @cached_property()
     def k_mean(self):
         """
         The `k` values averaged over the `mu` dimension
         """
         return self.average(self.grid.k, self.grid.modes)
-        
-    @cached_property()
-    def _valid_k(self):
-        """
-        The non-null indices of the multipoles (after averaging over the grid)
-        """
-        return np.isfinite(self.k_mean)
-    
+            
     @cached_property("ells")
     def N2(self):
         return len(self.ells)  
@@ -547,7 +522,7 @@ class PolesTransfer(PkmuTransfer):
         
         # restrict the k-range and return
         return self.restrict_k(k_cen), self.restrict_k(ells)
-                
+
     #--------------------------------------------------------------------------
     # main functions
     #--------------------------------------------------------------------------
@@ -559,7 +534,7 @@ class PolesTransfer(PkmuTransfer):
         arr = arr[:,self.ells_mask]
         return super(PolesTransfer, self).restrict_k(arr)
         
-    def __call__(self, flatten=False, no_convolution=False, **kws):
+    def __call__(self, flatten=False, full_grid_output=False):
         """
         Return the multipoles corresponding to `ells`, by weighting the
         `power` attribute by the appropriate Legendre weights and summing
@@ -574,66 +549,21 @@ class PolesTransfer(PkmuTransfer):
         flatten : bool, optional (`False`)
             whether to flatten the return array (column-wise)
         """
+        if not (~np.isnan(self.power)).sum():
+            raise ValueError("please set ``power`` arrary; all NaN right now")
+            
         # average over grid
         tobin = self.legendre_weights*self.power
         toret = np.asarray([self.average(d, self.grid.modes) for d in tobin]).T
-        
-        # convolve with window?
-        if self.window is not None and not no_convolution:
-            toret = self.convolve_window(toret, **kws)
-        
+                
         # restrict k range
-        toret = self.restrict_k(toret)
+        if not full_grid_output:
+            toret = self.restrict_k(toret)
         
         # flatten and return
         if flatten: toret = _flatten(toret)
         return toret 
-        
-    def convolve_window(self, poles, **kws):
-        """
-        Convolve the multipoles with the window function specified
-        by `window`
-            
-        Notes
-        -----
-        *   this is still defined on the grid -- no `k` restrictions yet
-        *   to do the convolution FFTs, we use FFTLog, which performs better
-            when the k-range is wide --> we zero pad the Pell results
-            out to ``grid_kmax`` (default: 100 h/Mpc) beyond the maximum
-            k of the grid
-        """
-        # get some default values
-        grid_kmax = kws.pop('grid_kmax', 100.) # zero pad
-        grid_Nk = kws.pop('grid_Nk', 2048)
-        
-        # setup
-        idx = self._valid_k
-        k = self.k_mean[idx]
-        toret = np.ones(poles.shape)*np.nan
-        
-        # convolution object 
-        conv = self.convolver
-        
-        # make hi-res results
-        kgrid = np.logspace(np.log10(k.min()), np.log10(grid_kmax), grid_Nk)
-        poles_hires = np.zeros((len(kgrid), poles.shape[1]))
-        for i, ell in enumerate(self.ells):
-            spl = spline(k, poles[idx,i])
-            
-            # zero pad beyond k.max()
-            valid = kgrid < k.max()
-            poles_hires[valid,i] = spl(kgrid[valid])
-        
-        # do the convolution
-        kk, poles_conv = convolve_multipoles(kgrid, poles_hires, self.ells, conv, **kws)
-        
-        # spline back to the grid
-        for i, ell in enumerate(self.ells):
-            spl = spline(kk, poles_conv[:,i])
-            toret[idx,i] = spl(k)
-        return toret
-        
-    
+                
     def to_covariance(self, components=False):
         """
         Return the P(k,mu) covariance, which is diagonal and equal to

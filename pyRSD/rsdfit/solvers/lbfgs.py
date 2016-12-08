@@ -260,7 +260,7 @@ class LBFGS(object):
             is `F` and `Gnorm`
         """
         default = {}
-        default['factr']   = 1e7
+        default['factr']   = 1e5
         default['gtol']    = 1e-5
         default['max_iter'] = 500
         default['display'] = 2
@@ -504,7 +504,7 @@ class LBFGS(object):
                 theta = np.arccos(costheta) * 180./np.pi
                 args = (costheta, theta)
                 warn = "LBFGS iteration %d: the descent direction does not have a sufficient " %d['iteration']
-                warn += "projection (costheta=%.2e, theta=%.4f) into the gradient; using steepest descent at this step!" %args
+                warn += "projection (cos(theta)=%.2e, theta=%.4f) into the gradient; using steepest descent at this step!" %args
                 self.logger.info(warn)
                 
                 # use the gradient as search direction

@@ -133,11 +133,12 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Custom pickling that removes `lru_cache` objects from
         the cache, which will ensure pickling succeeds
         """
+        d = self.__dict__
         for k in list(self._cache):
             if isinstance(self._cache[k], functools._lru_cache_wrapper):
-                self._cache.pop(k)
+                d['_cache'].pop(k)
         
-        return self.__dict__
+        return d
     
     def initialize(self):
         """
@@ -332,13 +333,17 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Minimum observed wavenumber needed for results
         """
+        if val < INTERP_KMIN:
+            raise ValueError("cannot compute model below %.2e h/Mpc due to PT integrals")
         return val
         
     @parameter
     def kmax(self, val):
         """
-        Minimum observed wavenumber needed for results
+        Maximum observed wavenumber needed for results
         """
+        if val > INTERP_KMAX:
+            raise ValueError("cannot compute model above %.2f h/Mpc due to PT integrals")
         return val
         
     @parameter
@@ -447,15 +452,17 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         else:
             return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit_int)
                       
-    @cached_property("Nk")
+    @cached_property("Nk", "kmin", "kmax")
     def k(self):
         """
         Return a range in wavenumbers, set by the minimum/maximum
         allowed values, given the desired `kmin` and `kmax` and the
         current values of the AP effect parameters, `alpha_perp` and `alpha_par`
         """
-        kmin = min(0.005, self.kmin)
-        kmax = max(1.0, self.kmax)
+        kmin = min(0.005, 0.9*self.kmin)
+        if kmin < INTERP_KMIN: kmin = INTERP_KMIN
+        kmax = max(0.9, 1.1*self.kmax)
+        if kmax > INTERP_KMAX: kmax = INTERP_KMAX
         return np.logspace(np.log10(kmin), np.log10(kmax), self.Nk)
         
     @cached_property("z", "cosmo")
@@ -695,7 +702,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return self._power_norm * self.power_lin_nw(k)
         
-    @interpolated_function("P00", interp="k")
+    @interpolated_function("P00", "k", interp="k")
     def P_mu0(self, k):
         """
         The full power spectrum term with no angular dependence. Contributions
@@ -703,7 +710,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return self.P00.mu0(k)
         
-    @interpolated_function("P01", "P11", "P02", interp="k")
+    @interpolated_function("P01", "P11", "P02", "k", interp="k")
     def P_mu2(self, k):
         """
         The full power spectrum term with mu^2 angular dependence. Contributions
@@ -712,7 +719,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         return self.P01.mu2(k) + self.P11.mu2(k) + self.P02.mu2(k)
     
     @interpolated_function("P11", "P02", "P12", "P22", "P03", "P13", 
-                           "P04", "include_2loop", interp="k")
+                           "P04", "include_2loop", "k", interp="k")
     def P_mu4(self, k):
         """
         The full power spectrum term with mu^4 angular dependence. Contributions
@@ -722,7 +729,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         if self.include_2loop: Pk += self.P13.mu4(k) + self.P04.mu4(k)
         return Pk
         
-    @interpolated_function("P12", "P22", "P13", "P04", "include_2loop", interp="k")
+    @interpolated_function("P12", "P22", "P13", "P04", "include_2loop", "k", interp="k")
     def P_mu6(self, k):
         """
         The full power spectrum term with mu^6 angular dependence. Contributions
@@ -732,7 +739,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         if self.include_2loop: Pk += self.P04.mu6(k)
         return Pk
             
-    @interpolated_function("z", "_power_norm", interp="k")
+    @interpolated_function("z", "_power_norm", "k", interp="k")
     def Pdd(self, k):
         """
         The 1-loop auto-correlation of density.
@@ -740,7 +747,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         norm = self._power_norm
         return norm*(self.power_lin(k) + norm*self._Pdd_0(k))
         
-    @interpolated_function("f", "z", "_power_norm", "use_Pdv_model", "Pdv_model_type", "Pdv_loaded", interp="k")
+    @interpolated_function("f", "z", "_power_norm", "use_Pdv_model", "Pdv_model_type", "Pdv_loaded", "k", interp="k")
     def Pdv(self, k):
         """
         The 1-loop cross-correlation between dark matter density and velocity 
@@ -759,7 +766,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                 norm = self._power_norm
                 return (-self.f)*norm*(self.power_lin(k) + norm*self._Pdv_0(k))
     
-    @interpolated_function("f", "z", "_power_norm", "use_Pvv_model", interp="k")
+    @interpolated_function("f", "z", "_power_norm", "use_Pvv_model", "k", interp="k")
     def Pvv(self, k):
         """
         The 1-loop auto-correlation of velocity divergence.
@@ -892,20 +899,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             the returned array is raveled, with dimensions of `(N*len(self.k), )`
         """                
         # the return array
-        pkmu = np.zeros(k.shape)
-        idx = k >= self.k0_low
-        
-        # k >= k0_low
-        if idx.sum():
-            pkmu[idx] = self._power(k[idx], mu[idx])
-            
-        # k < k0_low
-        if (~idx).sum():
-            A = self._power(self.k0_low, mu[~idx])
-            with self.use_spt():
-                norm = A / self._power(self.k0_low, mu[~idx])
-                pkmu[~idx] = self._power(k[~idx], mu[~idx]) * norm
-
+        pkmu = self._power(k, mu)
         if flatten: pkmu = np.ravel(pkmu, order='F')
         return pkmu
     

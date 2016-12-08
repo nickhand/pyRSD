@@ -1,5 +1,6 @@
 from pyRSD.rsd._cache import parameter, cached_property
 from pyRSD.rsd import tools, BiasedSpectrum
+from pyRSD.rsd.window import WindowTransfer
 from pyRSD import numpy as np
 
 from .fog_kernels import FOGKernel
@@ -7,7 +8,9 @@ from . import Pgal
 
 from scipy.special import legendre
 from scipy.integrate import simps
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import contextlib
+
           
 class GalaxySpectrum(BiasedSpectrum):
     """
@@ -462,24 +465,24 @@ class GalaxySpectrum(BiasedSpectrum):
         """
         return self.Pgal(k, mu, **kwargs)
         
-    def from_transfer(self, transfer, flatten=False):
+    def from_transfer(self, transfer, flatten=False, **kws):
         """
         Return the power (either P(k,mu) or multipoles), accounting for 
         discrete binning effects using the input transfer function
     
         Parameter
         ---------
-        transfer : PkmuTransfer or PolesTransfer
+        transfer : PkmuTransfer, PolesTransfer, WindowTransfer
             the transfer class which accounts for the discrete binning effects
         flatten : bool, optional    
             If `True`, flatten the return array, which will have a length of 
             `Nk * Nmu` or `Nk * Nell`
-        """
-        # compute P(k,mu) on the grid and update the grid transfer
+        """        
         grid = transfer.grid
         power = self.Pgal(grid.k[grid.notnull], grid.mu[grid.notnull])
-        transfer.power = power
-        
-        # call the transfer to evaluate P(k,mu) on the grid
-        return transfer(flatten=flatten)
+        transfer.power = power        
+        return transfer(flatten=True, **kws)
+
+            
+            
     

@@ -304,15 +304,11 @@ class InterpolatedFunction(object):
                 else:
                     return self.spline.derivative()(k)
         except InterpolationDomainError:
+            
+            # print a warning
             import warnings
-            
-            # if/else so legacy code works
-            name = getattr(self, 'name', None)
-            if name is not None:
-                warnings.warn("evaluating interpolated function %s outside of domain...will be slow!!" %name)
-            else:
-                warnings.warn("evaluating interpolated function outside of domain...will be slow!!")
-            
+            warnings.warn("evaluating interpolated function %s outside of domain...will be slow!!" %(self.name))
+
             # return spline results in bounds, and call the function out of bounds
             if numpy.isscalar(k) or numpy.ndim(k) == 0:
                 return self.function(k)[0]

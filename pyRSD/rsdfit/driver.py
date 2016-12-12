@@ -126,6 +126,51 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
     
         return driver
         
+    @classmethod
+    def compute_mean_results(cls, dirname, model_file, pattern):
+        """
+        Return the theory results for several results files
+        
+        Parameters
+        ----------
+        dirname : str
+            the name of the directory holding the results
+        model_file : str
+            the name of the file holding the model to load.
+        pattern : str
+            the pattern to match result files on
+        
+        Returns
+        -------
+        k, result : array_like
+            the stacked results file
+        """
+        from glob import glob
+        
+        driver = cls.from_directory(dirname, model_file)
+        results = glob(pattern)
+        
+        driver.results = results[0]
+        pairs = driver.data_model_pairs()
+        k = [pair[0] for pair in pairs]
+        max_len = max([len(kk) for kk in k])
+        
+        # make the k array
+        kcoords = np.ones((max_len, len(pairs)))*np.nan
+        for i in range(len(pairs)):
+            kcoords[:,i] = k[i][:]
+            
+        toret = np.ones((len(results), max_len, len(pairs)))*np.nan
+        for i, r in enumerate(results):
+            driver.results = r
+            driver.set_fit_results()
+            
+            th = driver.combined_model
+            for j in range(len(pairs)):
+                toret[i,:,j] = th[driver.data.flat_slices[j]][:]
+                
+        return kcoords, toret
+                
     def set_restart(self, restart_file, iterations=None):
         """
         Initialize the `restart` mode by loading the results from a previous

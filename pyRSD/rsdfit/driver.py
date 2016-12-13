@@ -147,9 +147,9 @@ class FittingDriver(object, metaclass=rsd_io.PickeableClass):
         """
         from glob import glob
         
-        driver = cls.from_directory(dirname, model_file)
+        driver = cls.from_directory(dirname, model_file=model_file)        
         results = glob(pattern)
-        
+
         driver.results = results[0]
         pairs = driver.data_model_pairs()
         k = [pair[0] for pair in pairs]

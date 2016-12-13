@@ -481,8 +481,4 @@ class GalaxySpectrum(BiasedSpectrum):
         grid = transfer.grid
         power = self.Pgal(grid.k[grid.notnull], grid.mu[grid.notnull])
         transfer.power = power        
-        return transfer(flatten=True, **kws)
-
-            
-            
-    
+        return transfer(flatten=flatten, **kws)

@@ -10,6 +10,7 @@ from scipy.special import legendre
 from scipy.integrate import simps
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import contextlib
+import warnings
 
           
 class GalaxySpectrum(BiasedSpectrum):
@@ -477,8 +478,26 @@ class GalaxySpectrum(BiasedSpectrum):
         flatten : bool, optional    
             If `True`, flatten the return array, which will have a length of 
             `Nk * Nmu` or `Nk * Nell`
-        """        
+        """  
         grid = transfer.grid
+        
+        # check some bounds for window convolution  
+        from pyRSD.rsd.window import WindowTransfer
+        if isinstance(transfer, WindowTransfer):
+            
+            # check k-range inconsistency
+            kmin, kmax = transfer.kmin, transfer.kmax
+            if (kmin < self.kmin).any():
+                warnings.warn("min k of window transfer (%s) is less than model's kmin (%.2e)" %(kmin, self.kmin))
+            if (kmax > self.kmax).any():
+                warnings.warn("max k of window transfer (%s) is greater than model's kmax (%.2e)" %(kmax, self.kmax))
+                
+            # check bad values
+            if self.kmin > 5e-3:
+                warnings.warn("doing window convolution with dangerous model kmin (%.2e)" %self.kmin)
+            if self.kmax < 0.5:
+                warnings.warn("doing window convolution with dangerous model kmax (%.2e)" %self.kmax)
+
         power = self.Pgal(grid.k[grid.notnull], grid.mu[grid.notnull])
         transfer.power = power        
         return transfer(flatten=flatten, **kws)

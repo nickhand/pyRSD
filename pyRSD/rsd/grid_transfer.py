@@ -66,8 +66,9 @@ class PkmuGrid(object):
         """
         Write out the grid to a plaintext file
         """
-        with open(filename, 'w') as ff:
-            ff.write("%d %d\n" %(self.Nk, self.Nmu))
+        with open(filename, 'wb') as ff:
+            header = "%d %d\n" %(self.Nk, self.Nmu)
+            ff.write(header.encode())
             np.savetxt(ff, self.k_cen)
             np.savetxt(ff, self.mu_cen)
             d = np.dstack([self.k, self.mu, self.modes])
@@ -79,7 +80,7 @@ class PkmuGrid(object):
         Convienence method to return a ``PkmuGrid`` from a 
         ``nbodykit.PkmuResult`` instance
         """
-        coords = [pkmu.coords['k_cen'], pkmu.coords['mu_cen']]
+        coords = [pkmu.coords['k'], pkmu.coords['mu']]
         return cls(coords, pkmu['k'], pkmu['mu'], pkmu['modes'])
     
     @classmethod

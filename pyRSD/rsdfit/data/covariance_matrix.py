@@ -138,7 +138,7 @@ class CovarianceMatrix(Cache):
         Write out the `attrs` dictionary to an open file
         """
         if len(self.attrs):
-            ff.write("%d\n" %len(self.attrs))
+            ff.write(("%d\n" %len(self.attrs)).encode())
             for k, v in self.attrs.items():
                 if np.isscalar(v):
                     N = (0,)
@@ -148,10 +148,10 @@ class CovarianceMatrix(Cache):
                     cast = np.asarray(v).dtype.type.__name__
                 N = (0,) if np.isscalar(v) else np.shape(v)
                 args = (k, max(1, np.product(N)), cast, " ".join(map(str, N)))
-                ff.write("%s %d %s %s\n" %args)
+                ff.write(("%s %d %s %s\n" %args).encode())
                 
                 if np.isscalar(v):
-                    ff.write("%s\n" %str(v))
+                    ff.write(("%s\n" %str(v)).encode())
                 else:
                     np.savetxt(ff, v.ravel())
                     
@@ -318,18 +318,19 @@ class CovarianceMatrix(Cache):
         """
         Save the covariance matrix to a plain text file
         """
-        with open(filename, 'w') as ff:
+        with open(filename, 'wb') as ff:
             
             # first line is the data size
-            ff.write("%d\n" %self.N)
+            header = "%d\n" %self.N
+            ff.write(header.encode())
             
             # then the data
-            ff.write("\n".join(map(str, self._data)) + "\n")
+            ff.write(("\n".join(map(str, self._data)) + "\n").encode())
             
             # then the dims and coords
             dims = self._indexer.dims_flat
             coords = np.vstack(self[d] for d in dims).T
-            ff.write(" ".join(dims) + "\n")
+            ff.write((" ".join(dims) + "\n").encode())
             np.savetxt(ff, coords)
             
             # then the attrs

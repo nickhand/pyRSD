@@ -192,7 +192,7 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex', ad
         out.loc["red_chi2", 'tex_name'] = r'$\chi^2$/d.o.f.'
         
     # sort by param name first
-    if params is not None: 
+    if not isinstance(params, list): 
         out = out.sort_index()
 
     # move red_chi2 column to first

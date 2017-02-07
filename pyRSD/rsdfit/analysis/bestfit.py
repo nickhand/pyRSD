@@ -191,8 +191,9 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex', ad
     if add_reduced_chi2 and "red_chi2" in out.index and "tex_name" in out:
         out.loc["red_chi2", 'tex_name'] = r'$\chi^2$/d.o.f.'
         
-    # sort by param name first 
-    out = out.sort_index()
+    # sort by param name first
+    if params is not None: 
+        out = out.sort_index()
 
     # move red_chi2 column to first
     if add_reduced_chi2 and "red_chi2" in out.index:

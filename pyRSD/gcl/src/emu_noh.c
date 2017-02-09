@@ -232,9 +232,9 @@ void emu_noh(double *xstar, double *ystar, int *outtype) {
     gsl_interp_accel_free(accel);
 }
 
-// Linker function for use with Fortran
-void emu_noh_(double *x, double *y, int *outtype) {
-    void emu();
-    emu(x,y,outtype);
-}
+// // Linker function for use with Fortran
+// void emu_noh_(double *x, double *y, int *outtype) {
+//     void emu();
+//     emu(x,y,outtype);
+// }
 

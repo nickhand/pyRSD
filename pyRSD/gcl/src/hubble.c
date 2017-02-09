@@ -251,7 +251,7 @@ void getH0fromCMB(double *xstar, double *stuff){
 
 // Linker function for use with Fortran
 
-void geth0fromcmb_(double *xstar, double *stuff){
-  void getH0fromCMB();
-  getH0fromCMB(xstar,stuff);
-}
+// void geth0fromcmb_(double *xstar, double *stuff){
+//   void getH0fromCMB();
+//   getH0fromCMB(xstar,stuff);
+// }

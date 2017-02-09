@@ -77,8 +77,10 @@ setup(  cmdclass={'install': MyInstall, 'develop':MyDevelop, 'clean' : MyClean},
             'pandas', 
             'numpy',
             'scipy', 
+            'scikitlearn', 
+            'george',
+            'emcee'
         ],
-        requires=['scikitlearn', 'george'],
         package_data={'pyRSD': pkg_data},
         entry_points={'console_scripts' : ['rsdfit = pyRSD.rsdfit.rsdfit:main', 'rsdfit-batch = pyRSD.rsdfit.rsdfit_batch:main']}
     )

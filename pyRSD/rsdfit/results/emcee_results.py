@@ -641,12 +641,15 @@ class EmceeResults(object):
         fig : matplotlib.Figure
             The figure object 
         """
-        from . import triangle
-        
-        thin = kwargs.get('thin', 1)
-        outfile = kwargs.get('outfile', None)
+        try: import corner
+        except: raise ImportError("`corner` must be installed")
+                
         if len(names) < 2:
             raise ValueError('Must specify at least two parameter names to make triangle plot')
+        
+        thin = kwargs.pop('thin', 1)
+        outfile = kwargs.pop('outfile', None)
+        kwargs.setdefault('labels', names)
         
         # make the sample array for the desired parameters
         samples = []
@@ -655,7 +658,7 @@ class EmceeResults(object):
             trace = param.trace()[:, self.burnin::thin].flatten()
             samples.append(trace)
             
-        fig = triangle.corner(np.vstack(samples).T, labels=names)
+        fig = corner.corner(np.vstack(samples).T, **kwargs)
         if outfile is not None:
             fig.savefig(outfile)
         return fig
@@ -815,7 +818,7 @@ class EmceeResults(object):
             
         return toret
         
-    def chains(self, params=[], use_latex=False):
+    def chains(self, params=[], labels={}, use_latex=False):
         """
         Return a pandas DataFrame holding the chains (flat traces) as 
         columns for both the free and constrained parameters
@@ -853,7 +856,9 @@ class EmceeResults(object):
             if len(params) and p not in params:
                 continue
                 
-            if use_latex and p in tex_names:
+            if p in labels:
+                d[labels[p]] = self[p].flat_trace
+            elif use_latex and p in tex_names:
                 d[tex_names[p]] = self[p].flat_trace
             else:
                 d[p] = self[p].flat_trace        
@@ -862,8 +867,10 @@ class EmceeResults(object):
         for p in self.constrained_names:
             if len(params) and p not in params:
                 continue
-                
-            if use_latex and p in tex_names:
+              
+            if p in labels:
+                d[labels[p]] = self[p].flat_trace  
+            elif use_latex and p in tex_names:
                 d[tex_names[p]] = self[p].flat_trace
             else:
                 d[p] = self[p].flat_trace
@@ -871,7 +878,7 @@ class EmceeResults(object):
         return pd.DataFrame(d)
         
         
-    def corr(self, params=[], use_latex=False):
+    def corr(self, params=[], labels={}, use_latex=False):
         """
         Return a pandas DataFrame holding the correlation matrix, 
         as computed from the ``chains`` DataFrame, for all
@@ -890,7 +897,7 @@ class EmceeResults(object):
         DataFrame (Np, Np) :  
             the DataFrame holding the correlation between parameters
         """
-        return self.chains(params=params, use_latex=use_latex).corr()
+        return self.chains(params=params, labels=labels, use_latex=use_latex).corr()
         
     def sorted_1d_corrs(self, params=[], use_latex=False, absval=False):
         """

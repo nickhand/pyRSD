@@ -185,7 +185,7 @@ test_zeldovichPS : test_zeldovichPS.o $(COBJS) $(FOBJS)
 	$(MCK_CXX) $(MCK_OPT) $(OMPFLAG) $(MCK_CXXFLAGS) $(INCLUDES) $(LIBS) -o test/$@ $(addprefix build/, $(addsuffix .o, $@)) $(addprefix build/, $(COBJS) $(FOBJS)) $(CLASS_COBJS)
 
 $(PY_LIBRARY): .base check_env $(LIBRARY) python/*.i
-	cd python; $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES) -L$(PY_LIBDIRS)
+	cd python; env CC=$(MCK_CXX) CXX=$(MCK_CXX) $(PYTHON) setup.py build_ext --inplace -I$(PY_INCLUDES) -l$(PY_LIBNAMES) -L$(PY_LIBDIRS)
 
 clean: .base
 	rm -rf $(WRKDIR)

@@ -13,10 +13,6 @@ import numpy
 import os
 import shutil
 
-
-os.environ['CC'] = 'g++'
-os.environ['CXX'] = 'g++'
-
 # clean previous build
 for root, dirs, files in os.walk(".", topdown=False):
     for name in files:

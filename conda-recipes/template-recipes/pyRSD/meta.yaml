@@ -25,6 +25,7 @@ requirements:
   - emcee
   - mpi4py
   - libgcc
+  - fftw
 
 test:
   imports:

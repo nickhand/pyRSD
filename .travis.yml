@@ -63,8 +63,8 @@ script:
       fi
       
     # make the recipes
-    cd conda-recipes
-    python extrude_recipes
+    - cd conda-recipes
+    - python extrude_recipes
       
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION"  --inspect-channels nickhand $UPLOAD; fi

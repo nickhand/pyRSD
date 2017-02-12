@@ -46,9 +46,6 @@ install:
     - conda install --yes conda-build=2.0.10
     - conda install --yes -c conda-forge conda-build-all=1.0*
     
-    # use gcc compilers
-    - conda install --yes gcc
-    
     # so we can grab compiled packages for dependencies
     - conda config --add channels nickhand
     
@@ -71,11 +68,9 @@ script:
     # make the recipes
     - cd conda-recipes
     - python extrude_recipes
-    - ls recipes/depends
-    - ls recipes/depends/fftw
+
+    - echo $PREFIX
     
-    - conda build recipes/depends/fftw
-    - conda build recipes/depends/eigen3
     
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi

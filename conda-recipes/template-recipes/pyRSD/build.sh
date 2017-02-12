@@ -1,6 +1,6 @@
 #!/bin/bash
 
-
+cp $RECIPE_DIR/setup.config .
 $PYTHON setup.py install 
 
 # Add more build steps here, if they are necessary.

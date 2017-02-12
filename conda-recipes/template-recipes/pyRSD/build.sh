@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cp $RECIPE_DIR/setup.config .
-pip install .[extras]
+$CONDA_PREFIX/bin/pip install .[extras]
 
 # Add more build steps here, if they are necessary.
 

@@ -18,7 +18,8 @@ env:
         # The python build restriction MUST be set at the moment, though it
         # can have any value. The setting below avoids known-bad builds on
         # python 2.6 and 3.3 for some packages.
-        - PYTHON_BUILD_RESTRICTIONS=">=3.4"
+        - PYTHON_BUILD_RESTRICTIONS="2.7|>=3.4"
+        - PYRSD_PYTHON_RESTRICTIONS="3.5"
         
         - NUMPY_BUILD_RESTRICTION="numpy <1.12"
         # The value below needs to be set but will be ignored.
@@ -73,5 +74,5 @@ script:
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" --inspect-channels nickhand $UPLOAD; fi
     
     # build pyRSD
-    - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi
+    - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python $PYRSD_PYTHON_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi
     

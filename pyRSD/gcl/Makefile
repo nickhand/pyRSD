@@ -58,6 +58,7 @@ MCK_CXXFLAGS += -lgfortran
 UNAME := $(shell uname)
 ifeq ($(UNAME), Linux)
     MCK_CXXFLAGS += -fPIC
+    MCK_FFLAGS += -fPIC
 endif
 
 # where to find include files *.h

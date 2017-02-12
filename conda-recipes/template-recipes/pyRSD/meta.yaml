@@ -21,6 +21,9 @@ requirements:
 
   run:
   - python
+  - libgcc
+  - fftw
+  - gsl
   - numpy
   - pandas
   - scipy
@@ -28,7 +31,6 @@ requirements:
   - scikit-learn >=0.17
   - emcee
   - mpi4py
-  - libgcc
 
 test:
   imports:

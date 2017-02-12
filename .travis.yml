@@ -74,6 +74,9 @@ script:
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" --inspect-channels nickhand $UPLOAD; fi
     
+    # remove existing pyRSD install
+    - anaconda remove nickhand/pyrsd -f
+    
     # build pyRSD
     - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python ==3.5" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi
     

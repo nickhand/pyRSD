@@ -1,7 +1,7 @@
 #!/bin/bash
 
 cp $RECIPE_DIR/setup.config .
-$CONDA_PREFIX/bin/pip install .[extras]
+$PYTHON setup.py install
 
 # Add more build steps here, if they are necessary.
 

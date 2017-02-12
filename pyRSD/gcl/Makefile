@@ -55,6 +55,11 @@ endif
 # add standard fortran libraries
 MCK_CXXFLAGS += -lgfortran
 
+UNAME := $(shell uname)
+ifeq ($(UNAME), Linux)
+    MCK_CXXFLAGS += -fPIC
+endif
+
 # where to find include files *.h
 INCLUDES = -I../include -I$(FFTW_INC) -I$(CLASS_INC)
 

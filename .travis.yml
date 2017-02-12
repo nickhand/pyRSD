@@ -70,6 +70,8 @@ script:
     - python extrude_recipes
     - ls recipes/depends
     
+    - echo "conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION"  --inspect-channels nickhand $UPLOAD"
+    
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION"  --inspect-channels nickhand $UPLOAD; fi
     

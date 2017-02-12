@@ -72,9 +72,10 @@ script:
     - cd conda-recipes
     - python extrude_recipes
     - ls recipes/depends
+    - ls recipes/depends/fftw
     
     - conda build recipes/depends/fftw
-    - conda build recipes/dependes/eigen3
+    - conda build recipes/depends/eigen3
     
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi

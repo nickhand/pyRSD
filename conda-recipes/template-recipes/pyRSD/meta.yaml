@@ -1,5 +1,5 @@
 package:
-  name: pyRSD
+  name: pyrsd
   version: {{version}}
 source:
   git_url: https://github.com/nickhand/pyRSD.git

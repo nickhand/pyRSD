@@ -1,8 +1,5 @@
 #!/bin/bash
 
-if [ `uname` == Darwin ]; then
-	export LIBS="-Wl,-rpath,$CONDA_PREFIX/lib"
-fi
 
 $PYTHON setup.py install 
 

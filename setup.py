@@ -4,6 +4,16 @@ from setuptools.command.install import install as Install
 from setuptools.command.develop import develop as Develop
 import os
 
+def find_version(path):
+    import re
+    # path shall be a plain ascii text file.
+    s = open(path, 'rt').read()
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              s, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Version not found")
+
 def make_pygcl(path, dist_name):
     """
     Make the ``pygcl`` package
@@ -56,31 +66,37 @@ on a distribution function velocity moments approach
 """
 
 DISTNAME            = 'pyRSD'
-DESCRIPTION         = 'Redshift space power spectra in python'
+DESCRIPTION         = 'Anisotropic RSD Fourier space modeling in Python'
 LONG_DESCRIPTION    = descr
 MAINTAINER          = 'Nick Hand'
 MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
-VERSION             = '1.0'
 
-#-------------------------------------------------------------------------------   
+# the dependencies
+with open('requirements.txt', 'r') as fh:
+    dependencies = [l.strip() for l in fh]
+
+# extra dependencies
+extras = {}
+with open('requirements-extras.txt', 'r') as fh:
+    extras['extras'] = [l.strip() for l in fh][1:]
+    extras['full'] = extras['extras'] #
+
 pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
             'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl*.so']
-setup(  cmdclass={'install': MyInstall, 'develop':MyDevelop, 'clean' : MyClean},
+
+
+#-------------------------------------------------------------------------------   
+setup(  cmdclass={'install':MyInstall, 'develop':MyDevelop, 'clean':MyClean},
         name=DISTNAME,
         description=DESCRIPTION,
         long_description=LONG_DESCRIPTION,
         maintainer=MAINTAINER,
         maintainer_email=MAINTAINER_EMAIL,
-        version=VERSION,
+        version=find_version("pyRSD/version.py"),,
         packages=find_packages(),
-        install_requires=[
-            'pandas', 
-            'numpy',
-            'scipy', 
-            'scikitlearn', 
-            'george',
-            'emcee'
-        ],
+        license="GPL3",
+        install_requires=dependencies,
+        extras_require=extras,
         package_data={'pyRSD': pkg_data},
         entry_points={'console_scripts' : ['rsdfit = pyRSD.rsdfit.rsdfit:main', 'rsdfit-batch = pyRSD.rsdfit.rsdfit_batch:main']}
     )

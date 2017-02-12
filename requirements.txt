@@ -1,3 +1,7 @@
+numpy
+pandas
+scipy
 george
 scikit-learn>=0.17
 emcee
+mpi4py

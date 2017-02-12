@@ -1,0 +1,74 @@
+# The language in this case has no bearing - we are going to be making use of "conda" for a
+# python distribution for the scientific python stack.
+language: c
+
+os:
+  - linux
+  - osx
+
+env:
+    global:
+        - DESTINATION_CONDA_CHANNEL="nickhand"
+        - TARGET_ARCH="x64"
+        - CONDA_INSTALL_LOCN="${HOME}/miniconda"
+
+        # Defines BINSTAR_TOKEN for your binstar channel
+        secure: "XZMjbSNM6UcnoRqVjzvxdNRAQ3W5b8Od8nlitg8mnxkF+Q+Oc4Kk+unRmKLABaDkHypK75I7CBpC8Y/FlLSwb1hQVz657NkWFhoGE/2OzddeZ22OagMy6w4Gg6xe299+aQqZozgcimcQMokTwzsUizl0CkSvFQMat7JvxAvz2B469egEU+p/zZXQUhULPFTrm3IsuJEeLI+7Kzu+3/jaWiE9viJtbzNgGRE6/MJG3gDAigidjUJ6JtMyItSTAv4haxHVmFy4y0paP6kIkWyRtt7URoueiauYO4ZaxCHfoIVcAU38+rZm773lWB/IPpTstPdSbH937lGgjNU7b8/iW3AGFX5MWu3z0qy9HQPRZK17VnsI2x9V/0AFemo9LloL3odIgaVCSEblvxrQXmaiQovvSFF8LqSCfLRrCi/X7JGzHA8WR73pPQopSg5mZ1QfU7buZ3p5AUvHNi/eJVHy3zjQrFp103Lu7m8lVf6yacPPBUFAkX1C3NMA8mO4Lu8CFtgPQ/UNLO7aKSp5VGnv3tAuKODbj6aJssaEz3Qp0YTxPcMoalSJ28QyW6p1mY1gJ0xDrXyXv4yj7NQMWaQ1SwvMPf+bmhZe24sPihR+lNkI4Dr6eXyGKEF7tI0xFy6+IFwNfMzJRu5atxNqnIG3VJq9/s+B+Li55zyxRnXD7wc="
+
+        # The python build restriction MUST be set at the moment, though it
+        # can have any value. The setting below avoids known-bad builds on
+        # python 2.6 and 3.3 for some packages.
+        - PYTHON_BUILD_RESTRICTIONS="2.7*|>=3.4"
+        
+        - NUMPY_BUILD_RESTRICTION="numpy <1.12"
+        # The value below needs to be set but will be ignored.
+        - CONDA_NPY="1.11"
+        - CONDA_VERSION=4.2*
+
+# Matrix is fully specified (for now) by os versions
+
+install:
+    # Install and set up miniconda.
+    - if [ $TRAVIS_OS_NAME == "linux" ]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh; fi
+    - if [ $TRAVIS_OS_NAME == "osx" ]; then wget http://repo.continuum.io/miniconda/Miniconda-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
+    - bash miniconda.sh -b -p $CONDA_INSTALL_LOCN
+    - export PATH=${CONDA_INSTALL_LOCN}/bin:$PATH
+    - conda config --set always_yes true
+
+    - PIN_FILE_CONDA=${CONDA_INSTALL_LOCN}/conda-meta/pinned
+    - echo "conda ${CONDA_VERSION}" > $PIN_FILE_CONDA
+
+    - conda update --quiet conda
+
+    # Install a couple of dependencies we need for sure.
+    - conda install --quiet --yes anaconda-client jinja2
+    
+    - conda install conda-build=2.0.10
+    - conda install -c conda-forge conda-build-all=1.0*
+    
+    # so we can grab compiled packages for dependencies
+    - conda config --add channels nickhand
+    
+    # To ease debugging, list installed packages
+    - conda info -a
+
+script:
+    # Only upload if this is NOT a pull request.
+    - UPLOAD="";
+    - if [ "$TRAVIS_PULL_REQUEST" = "false" ]; then
+        if [ $TRAVIS_REPO_SLUG = "nickhand/pyRSD" ]; then
+          echo "Uploading enabled";
+          UPLOAD="--upload-channels $DESTINATION_CONDA_CHANNEL";
+        fi;
+      fi
+      
+    # make the recipes
+    cd conda-recipes
+    python extrude_recipes
+      
+    # build dependencies
+    - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION"  --inspect-channels nickhand $UPLOAD; fi
+    
+    # build pyRSD
+    - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi
+    

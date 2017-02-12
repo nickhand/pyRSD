@@ -49,6 +49,9 @@ install:
     # so we can grab compiled packages for dependencies
     - conda config --add channels nickhand
     
+    # so we can grab emcee
+    - conda config --add channels astropy
+    
     # To ease debugging, list installed packages
     - conda info -a
 

@@ -7,6 +7,11 @@ class ClassCosmology : public Engine {
 
 public:
 
+    static std::string Alpha_inf_hyrec_file;
+    static std::string R_inf_hyrec_file;
+    static std::string two_photon_tables_hyrec_file;
+    static std::string sBBN_file;
+
     ClassCosmology();
     ClassCosmology(const ClassParams& pars, const std::string& precision_file = "");
     ClassCosmology(const std::string& param_file, const std::string& precision_file = "");

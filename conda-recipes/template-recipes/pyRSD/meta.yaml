@@ -15,6 +15,7 @@ requirements:
   - gcc
   - gsl
   - fftw
+  - wget
 
   run:
   - python

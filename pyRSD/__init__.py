@@ -34,3 +34,25 @@ try:
     import pygcl
 except Exception as msg:
     raise ImportError("Cannot use package without pygcl; original message: %s" %msg)
+
+def _init():
+    """
+    Set up the path of data files, which are installed to the package directory.
+    """
+
+    import os
+
+    path = os.path.dirname(__file__)
+    path = os.path.join(path, 'data', 'class')
+
+    # setting static variables with swig is tricky.
+    # see http://www.swig.org/Doc3.0/SWIGDocumentation.html#Python_nn20
+
+    from gcl import cvar
+
+    cvar.ClassCosmology_Alpha_inf_hyrec_file = os.path.join(path, 'hyrec', 'Alpha_inf.dat')
+    cvar.ClassCosmology_R_inf_hyrec_file = os.path.join(path, 'hyrec', 'R_inf.dat')
+    cvar.ClassCosmology_two_photon_tables_hyrec_file = os.path.join(path, 'hyrec', 'two_photon_tables.dat')
+    cvar.ClassCosmology_sBBN_file = os.path.join(path, 'bbn', 'sBBN.dat')
+
+_init(); del _init

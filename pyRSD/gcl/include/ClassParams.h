@@ -42,6 +42,8 @@ public:
     const_iterator begin() const { return pars.begin(); }
     const_iterator end() const { return pars.end(); }
   
+    bool contains(const std::string& key) const;
+  
     // overload the [] operator to return const reference
     const std::string& operator[](const std::string& key) const { return this->value(key); }
 

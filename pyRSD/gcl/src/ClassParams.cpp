@@ -38,6 +38,14 @@ void ClassParams::Print() {
         cout << iter->first << " = " << iter->second << endl;
 }
 
+bool ClassParams::contains(const std::string& key) const
+{
+    if (pars.size() == 0)
+        return false;
+     
+    return (pars.find(key) != pars.end());
+}
+
 int ClassParams::Update(const string& key, const int& val) { 
     
     ostringstream os;

@@ -3,6 +3,26 @@ from setuptools import setup, Command, find_packages
 from setuptools.command.install import install as Install
 from setuptools.command.develop import develop as Develop
 import os
+import shutil
+
+CLASS_VERSION="2.5.0"
+
+# base directory of package
+package_basedir = os.path.abspath(os.path.dirname(__file__))
+
+def build_CLASS():
+    """
+    Function to dowwnload CLASS from github and and build the library
+    """
+    # latest class version and download link    
+    
+    prefix = os.path.join('depends', 'build', 'class')
+    args = (package_basedir, CLASS_VERSION, prefix, "/opt/class/willfail")
+    command = 'sh %s/depends/install_class.sh %s %s %s' %args
+    
+    ret = os.system(command)
+    if ret != 0:
+        raise ValueError("could not build CLASS v%s" %CLASS_VERSION)
 
 def find_version(path):
     import re
@@ -25,11 +45,19 @@ def make_pygcl(path, dist_name):
             msg += " Try copying over 'setup.config.example' with the appropriate edits."
         raise OSError(msg)
     
+    # build CLASS first
+    build_CLASS()
+    
     # make pygcl
     install_path_args = path, dist_name
     data_dir = "{}/{}/data/params".format(*install_path_args)
     ans = os.system("cd pyRSD/gcl; make gcl")
     if (ans > 0): raise ValueError("Failed to make `pygcl` module; installation cannot continue.")
+    
+    # copy over the CLASS data
+    build_dir = os.path.join(package_basedir, 'depends', 'build', 'class')
+    shutil.rmtree(os.path.join(path, dist_name, 'data', 'class'), ignore_errors=True)
+    shutil.copytree(os.path.join(build_dir, 'data'), os.path.join(path, dist_name, 'data', 'class'))
     
 class MyInstall(Install):
     
@@ -54,7 +82,10 @@ class MyClean(Command):
         self.cwd = os.getcwd()
     def run(self):
         assert os.getcwd() == self.cwd, 'Must be in package root: %s' % self.cwd
-        os.system('rm -rf ./build')
+        
+        shutil.rmtree('build', ignore_errors=True)
+        shutil.rmtree(os.path.join('depends', 'build'), ignore_errors=True)
+        os.system("rm -rf depends/tmp*")
         os.system('cd pyRSD/gcl; make clean;')
 
 #-------------------------------------------------------------------------------
@@ -65,11 +96,11 @@ perturbation theory and the redshift space distortion (RSD) model based
 on a distribution function velocity moments approach
 """
 
-DISTNAME            = 'pyRSD'
-DESCRIPTION         = 'Anisotropic RSD Fourier space modeling in Python'
-LONG_DESCRIPTION    = descr
-MAINTAINER          = 'Nick Hand'
-MAINTAINER_EMAIL    = 'nicholas.adam.hand@gmail.com'
+DISTNAME         = 'pyRSD'
+DESCRIPTION      = 'Anisotropic RSD Fourier space modeling in Python'
+LONG_DESCRIPTION = descr
+MAINTAINER       = 'Nick Hand'
+MAINTAINER_EMAIL = 'nicholas.adam.hand@gmail.com'
 
 # the dependencies
 with open('requirements.txt', 'r') as fh:

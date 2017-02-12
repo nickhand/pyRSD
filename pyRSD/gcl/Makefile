@@ -25,6 +25,12 @@ include ../../setup.config
 ###### IN PRINCIPLE THE REST SHOULD BE LEFT UNCHANGED ##
 ########################################################
 
+# the ClASS variables
+CLASS_PATH = $(MDIR)/../../depends/build/class
+CLASS_LIB = $(CLASS_PATH)/build
+CLASS_INC = $(CLASS_PATH)/include
+
+
 # optimization flag
 MCK_OPT = $(MCK_OPT_WARN) $(MCK_OPT_HIGH)
 ifdef OMP_FLAG

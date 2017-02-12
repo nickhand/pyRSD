@@ -28,6 +28,12 @@ History (add to end):
 class ClassCosmology : public Engine
 {
 public:
+    
+    /* default path of data files */
+    static std::string Alpha_inf_hyrec_file;
+    static std::string R_inf_hyrec_file;
+    static std::string two_photon_tables_hyrec_file;
+    static std::string sBBN_file;
   
     ClassCosmology();
     // construct from a ClassParams object

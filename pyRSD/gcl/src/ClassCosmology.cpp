@@ -9,6 +9,11 @@
 using namespace std;
 using namespace Common;
 
+std::string ClassCosmology::Alpha_inf_hyrec_file;
+std::string ClassCosmology::R_inf_hyrec_file;
+std::string ClassCosmology::two_photon_tables_hyrec_file;
+std::string ClassCosmology::sBBN_file;
+
 
 // Constructors
 ClassCosmology::ClassCosmology() : cl(0), dofree(false) {}
@@ -37,6 +42,16 @@ ClassCosmology::ClassCosmology(const string & param_file, const string & precisi
 /*----------------------------------------------------------------------------*/
 void ClassCosmology::Initialize(const ClassParams& pars, const string & precision_file)
 {
+    ClassParams pars_ = pars; 
+    if (!pars_.contains("Alpha_inf hyrec file"))
+        pars_.Update("Alpha_inf hyrec file", ClassCosmology::Alpha_inf_hyrec_file);
+    if (!pars_.contains("a_inf hyrec file"))
+        pars_.Update("R_inf hyrec file", ClassCosmology::R_inf_hyrec_file);
+    if (!pars_.contains("two_photon hyrec file"))
+        pars_.Update("two_photon_tables hyrec file", ClassCosmology::two_photon_tables_hyrec_file);
+    if (!pars_.contains("sBBN file"))
+        pars_.Update("sBBN file", ClassCosmology::sBBN_file);
+    
     // set lmax value
     _lmax = 0;
     
@@ -66,13 +81,13 @@ void ClassCosmology::Initialize(const ClassParams& pars, const string & precisio
         }
     
     // prepare fp structure
-    size_t n = pars.size();
+    size_t n = pars_.size();
     char file_not_needed[] = "not_needed_file.dat";
     parser_init(pfc_input, n, file_not_needed, _errmsg);
   
     // set up the input 
     int i = 0;
-    for (ClassParams::const_iterator iter = pars.begin(); iter != pars.end(); iter++) {        
+    for (ClassParams::const_iterator iter = pars_.begin(); iter != pars_.end(); iter++) {        
         string key(iter->first);
         string val(iter->second);
         strcpy(pfc_input->name[i], key.c_str());

@@ -30,7 +30,7 @@ mkdir -p $ROOT/$PREFIX/data
 # copy all *.dat files to install dir
 find . -type f -name "*.dat" -print0 |  xargs -0  tar cf - | tar xvf - -C $ROOT/$PREFIX/data
 
-make CLASSCFG=$ROOT/depends/class.cfg libclass.a
+make CLASSDIR="" CLASSCFG=$ROOT/depends/class.cfg libclass.a
 cp -r include $START/$PREFIX/
 cp -r build $START/$PREFIX/
 

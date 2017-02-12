@@ -11,11 +11,13 @@ build:
 requirements:
   build:
   - python
+  - numpy
   - setuptools
   - gcc
   - gsl
   - fftw
   - wget
+  - swig
 
   run:
   - python

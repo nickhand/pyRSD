@@ -1,0 +1,123 @@
+from __future__ import (division, print_function, absolute_import)
+
+import os
+import re
+import shutil
+
+from six.moves import xmlrpc_client as xmlrpclib
+from jinja2 import Environment, FileSystemLoader, Template
+from jinja2.exceptions import TemplateNotFound
+
+PYPI_XMLRPC = 'https://pypi.python.org/pypi'
+TEMPLATE_FOLDER = 'template-recipes'
+
+def find_version(path):
+    # path shall be a plain ascii text file.
+    s = open(path, 'rt').read()
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              s, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Version not found")
+
+def get_pypi_info(name):
+    client = xmlrpclib.ServerProxy(PYPI_XMLRPC)
+    pypi_stable = client.package_releases(name)
+    try:
+        return pypi_stable[0]
+    except IndexError:
+        return None
+
+def render_template(package, template, folder=TEMPLATE_FOLDER, **meta):
+    """
+    Render recipe components from jinja2 templates.
+
+    Parameters
+    ----------
+
+    package : Package
+        :class:`Package` object for which template will be rendered.
+    template : str
+        Name of template file, path relative to ``folder``.
+    folder : str
+        Path to folder containing template.
+    """
+    full_template_path = os.path.abspath(folder)
+    jinja_env = Environment(loader=FileSystemLoader(full_template_path))
+    tpl = jinja_env.get_template('/'.join([package, template]))
+    rendered = tpl.render(**meta)
+    return rendered
+    
+    
+def find_version(path):
+    import re
+    # path shall be a plain ascii text file.
+    s = open(path, 'rt').read()
+    version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]",
+                              s, re.M)
+    if version_match:
+        return version_match.group(1)
+    raise RuntimeError("Version not found")
+
+
+if __name__ == '__main__':
+    
+
+    RECIPE_FOLDER = 'recipes'
+    template_dir = 'template-recipes'
+    if not os.path.exists(RECIPE_FOLDER):
+        os.mkdir(RECIPE_FOLDER)
+        
+
+    for p in ['fftw', 'george', 'pyRSD']:
+
+        if p == 'pyRSD':
+            recipe_path = os.path.join(RECIPE_FOLDER, p)
+        else:
+            recipe_path = os.path.join(RECIPE_FOLDER, 'depends', p)
+        template_path = os.path.join(template_dir, p)
+        try:
+            os.makedirs(recipe_path)
+        except OSError:
+            pass
+        
+        templates = [d for d in os.listdir(template_path) if
+                     not d.startswith('.')]
+        for template in templates:
+            
+            if p == 'fftw':
+                shutil.copy(os.path.join(template_path, template), os.path.join(recipe_path, template))
+            elif p == 'george':
+                
+                version = get_pypi_info('george')
+                client = xmlrpclib.ServerProxy(PYPI_XMLRPC)
+                urls = client.release_urls('george', version)
+                try:
+                    # Many packages now have wheels, need to iterate over download
+                    # URLs to get the source distribution.
+                    for a_url in urls:
+                        if a_url['packagetype'] == 'sdist':
+                            url = a_url['url']
+                            md5sum = a_url['md5_digest']
+                            break
+                    else:
+                        # No source distribution, so raise an index error
+                        raise IndexError
+                except IndexError:
+                    # Apparently a pypi release isn't required to have any source?
+                    # If it doesn't, then return None
+                    print('No source found for {}: {}'.format('george',version))
+                    url = None
+                    md5sum = None
+                meta = {'version':version, 'md5':md5sum}
+                
+        
+                rendered = render_template(p, template, folder=template_dir, **meta)
+                with open(os.path.join(recipe_path, template), 'wt') as f:
+                    f.write(rendered)
+            elif p == 'pyRSD':
+                
+                version = find_version('../pyRSD/version.py')
+                rendered = render_template(p, template, folder=template_dir, version=version)
+                with open(os.path.join(recipe_path, template), 'wt') as f:
+                    f.write(rendered)

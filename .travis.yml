@@ -67,17 +67,18 @@ script:
         fi;
       fi
       
+    # the pyRSD version
+    - PYRSD_VERSION=$(python setup.py --version)
+      
     # make the recipes
     - cd conda-recipes
     - python extrude_recipes
 
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" --inspect-channels nickhand $UPLOAD; fi
-    
-    - echo $BINSTAR_TOKEN
-    
+        
     # remove existing pyRSD install
-    - anaconda -t $BINSTAR_TOKEN remove -f nickhand/pyrsd
+    - anaconda -t $BINSTAR_TOKEN remove -f nickhand/pyrsd/$PYRSD_VERSION
     
     # build pyRSD
     - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python ==3.5" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi

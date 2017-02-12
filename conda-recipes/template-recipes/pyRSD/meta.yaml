@@ -21,7 +21,7 @@ requirements:
   - pandas
   - scipy
   - george
-  - scikit-learn>=0.17
+  - scikit-learn >=0.17
   - emcee
   - mpi4py
   - libgcc

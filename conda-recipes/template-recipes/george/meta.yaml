@@ -32,12 +32,6 @@ test:
   imports:
     - george
     - george.testing
-  commands:
-    # I'm not sure why, but nosetests george.testing does not run any tests,
-    # so I need to call out each module separately
-    - nosetests george.testing.test_basic
-    - nosetests george.testing.test_kernels
-    - nosetests george.testing.test_tutorial
 
 about:
   home: https://github.com/dfm/george

@@ -14,6 +14,7 @@ requirements:
   - setuptools
   - gcc
   - gsl
+  - fftw
 
   run:
   - python
@@ -25,7 +26,6 @@ requirements:
   - emcee
   - mpi4py
   - libgcc
-  - fftw
 
 test:
   imports:

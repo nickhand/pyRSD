@@ -69,7 +69,7 @@ if __name__ == '__main__':
         os.mkdir(RECIPE_FOLDER)
         
 
-    for p in ['fftw', 'george', 'pyRSD']:
+    for p in ['eigen3', 'fftw', 'george', 'pyRSD']:
 
         if p == 'pyRSD':
             recipe_path = os.path.join(RECIPE_FOLDER, p)
@@ -85,7 +85,7 @@ if __name__ == '__main__':
                      not d.startswith('.')]
         for template in templates:
             
-            if p == 'fftw':
+            if p in ['fftw', 'eigen3']:
                 shutil.copy(os.path.join(template_path, template), os.path.join(recipe_path, template))
             elif p == 'george':
                 

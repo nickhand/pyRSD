@@ -18,7 +18,7 @@ env:
         # The python build restriction MUST be set at the moment, though it
         # can have any value. The setting below avoids known-bad builds on
         # python 2.6 and 3.3 for some packages.
-        - PYTHON_BUILD_RESTRICTIONS="2.7*|>=3.4"
+        - PYTHON_BUILD_RESTRICTIONS=">=3.4"
         
         - NUMPY_BUILD_RESTRICTION="numpy <1.12"
         # The value below needs to be set but will be ignored.

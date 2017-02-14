@@ -1,4 +1,5 @@
 import abc 
+from six import add_metaclass
 
 class HashableMeta(abc.ABCMeta):
     """
@@ -10,7 +11,8 @@ class HashableMeta(abc.ABCMeta):
         return hash((cls.name, expr))
         
         
-class ConstraintDerivative(object, metaclass=HashableMeta):
+@add_metaclass(HashableMeta)
+class ConstraintDerivative(object):
     """
     Class to represent the derivative of a constraint function
     """

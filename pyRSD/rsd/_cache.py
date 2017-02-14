@@ -5,6 +5,7 @@ import functools
 from collections import OrderedDict
 import inspect
 import fnmatch
+from six import add_metaclass
 
 def doublewrap(f):
     """
@@ -155,8 +156,8 @@ class CacheSchema(type):
         for name in cls._cachemap:
             invert_cachemap(name, cls._cachemap[name])
     
-
-class Cache(object, metaclass=CacheSchema):
+@add_metaclass(CacheSchema)
+class Cache(object):
     """
     The main class to do handle caching of parameters; this is the
     class that should serve as the base class

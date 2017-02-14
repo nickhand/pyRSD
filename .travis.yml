@@ -81,5 +81,5 @@ script:
     - anaconda -t $BINSTAR_TOKEN remove -f nickhand/pyrsd/$PYRSD_VERSION
     
     # build pyRSD
-    - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python ==3.5" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi
+    - if [[ -d recipes ]]; then conda build-all recipes/pyRSD --matrix-conditions "python 2.7|3.5" "$NUMPY_BUILD_RESTRICTION" $UPLOAD; fi
     

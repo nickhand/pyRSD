@@ -12,9 +12,10 @@ from ...extern import lmfit
 from ... import numpy as np
 from ...rsd._cache import CacheSchema, parameter, cached_property
 import copyreg
+from six import add_metaclass
 
-    
-class PickeableCache(object, metaclass=CacheSchema):    
+@add_metaclass(CacheSchema)
+class PickeableCache(object):
     def __new__(cls, *args, **kwargs):
         
         # make the new instance

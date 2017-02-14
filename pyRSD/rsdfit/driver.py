@@ -12,6 +12,8 @@ from ..rsd import GalaxySpectrum
 from ..rsd.window import WindowTransfer
 from ..rsd.derivatives import PgalGradient
 
+from six import add_metaclass
+
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
 NMU = 41
@@ -26,7 +28,8 @@ def load_results(filename):
         result = LBFGSResults.from_npz(filename)
     return result
 
-class FittingDriver(object, metaclass=rsd_io.PickeableClass):
+@add_metaclass(rsd_io.PickeableClass)
+class FittingDriver(object):
     """
     A class to handle the data analysis pipeline, merging together a model, 
     theory, and fitting algorithm

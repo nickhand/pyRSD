@@ -10,6 +10,7 @@
 import collections
 import copy
 import copyreg
+from six import add_metaclass
 
 from . import tools, Parameter
 from ...extern import lmfit
@@ -41,7 +42,8 @@ def _unpickle(cls, items, meta):
         
     return toret
 
-class ParameterSet(lmfit.Parameters, metaclass=PickeableClass):
+@add_metaclass(PickeableClass)
+class ParameterSet(lmfit.Parameters):
     """
     A subclass of `lmfit.Parameters` that adds the ability to update values
     based on constraints in place

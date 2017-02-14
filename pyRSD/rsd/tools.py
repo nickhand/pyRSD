@@ -159,7 +159,7 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
      
     valid = ['self', 'k', 'mu']   
     if attrs[:3] != valid:
-        args = (f.__name__, str(valid)), str(attrs[:3]))
+        args = (f.__name__, str(valid), str(attrs[:3]))
         raise ValueError("to apply AP effect, the signature of the function '%s' should be %s, not %s" %args)
 
     

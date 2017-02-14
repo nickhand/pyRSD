@@ -336,11 +336,12 @@ def interpolated_function(*parents, **kwargs):
         name = f.__name__
 
         @functools.wraps(f)
-        def wrapped(self, *args, ignore_cache=False, **kws):
+        def wrapped(self, *args, **kws):
             """
             If `ignore_cache` is True, force an evaluation
             of the decorated function
             """
+            ignore_cache = kws.pop('ignore_cache', False)
             if ignore_cache:
                 return f(self, *args)
                             

@@ -2,6 +2,7 @@ import numpy as np
 from pyRSD.rsd._cache import Cache, cached_property, parameter
 import itertools
 from collections import OrderedDict
+from six import string_types
 from . import indexing
 
 def is_array_like(d, shape):
@@ -379,7 +380,7 @@ class CovarianceMatrix(Cache):
         where `i` and `j` integers between `0` and `N`
         """
         # return the coordinates arrays if provided the name
-        if isinstance(key, str):
+        if isinstance(key, string_types):
             if key in self._indexer.dims_flat:
                 for axis, dims in enumerate(self.dims):
                     if key in dims:

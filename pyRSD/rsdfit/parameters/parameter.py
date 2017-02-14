@@ -6,6 +6,7 @@
     __email__  : nhand@berkeley.edu
     __desc__   : A class to store a generic Parameter, with a prior
 """
+from __future__ import print_function
 
 from . import tools, distributions as dists
 from ...extern import lmfit

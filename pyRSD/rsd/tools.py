@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 from .. import pygcl, numpy as np
 from . import APLock
 from ._cache import Cache, parameter, cached_property

@@ -5,7 +5,7 @@ import functools
 from collections import OrderedDict
 import inspect
 import fnmatch
-from six import add_metaclass
+from six import add_metaclass, PY3, string_types
 
 def doublewrap(f):
     """
@@ -92,11 +92,15 @@ class CacheSchema(type):
     def __init__(cls, clsname, bases, attrs):
                                     
         # keep track of allowable kwargs of main class
-        sig = inspect.signature(cls.__init__)
         cls.allowable_kwargs = set()
-        for name, p in sig.parameters.items():
-            if p.default != inspect.Parameter.empty:
-                cls.allowable_kwargs.add(name)
+        if PY3:            
+            sig = inspect.signature(cls.__init__)
+            for name, p in sig.parameters.items():
+                if p.default != inspect.Parameter.empty:
+                    cls.allowable_kwargs.add(name)
+        else:
+            attrs, varargs, varkw, defaults = inspect.getargspec(cls.__init__)
+            cls.allowable_kwargs = set(attrs[1:])
         
         # attach the registry attributes
         cls._cachemap = OrderedDict()
@@ -219,7 +223,7 @@ def parameter(f, default=None):
         if _name not in self.__dict__:
             
             if default is not None:
-                if isinstance(default, str):
+                if isinstance(default, string_types):
                     if hasattr(self, default):
                         val = getattr(self, default)
                         return val

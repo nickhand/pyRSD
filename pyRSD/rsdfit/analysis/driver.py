@@ -10,6 +10,8 @@
         parts of this moduel are directly adapted from the 
         `Monte Python` <http://montepython.net/>` code from Baudren et. al.
 """
+from __future__ import print_function
+
 from ... import os, numpy as np
 from ..util import rsd_io
 from . import tools, stats, plot

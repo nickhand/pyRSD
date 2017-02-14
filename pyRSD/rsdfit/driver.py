@@ -12,7 +12,7 @@ from ..rsd import GalaxySpectrum
 from ..rsd.window import WindowTransfer
 from ..rsd.derivatives import PgalGradient
 
-from six import add_metaclass
+from six import add_metaclass, string_types
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
@@ -102,7 +102,7 @@ class FittingDriver(object):
         params_path = os.path.join(dirname, params_filename)
         
         model_path = model_file
-        existing_model = isinstance(model_path, str) and os.path.exists(model_path)
+        existing_model = isinstance(model_path, string_types) and os.path.exists(model_path)
         existing_model = existing_model or isinstance(model_path, GalaxySpectrum)
         if model_path is not None:
             if not existing_model:
@@ -119,7 +119,7 @@ class FittingDriver(object):
         if existing_model:
             driver.model = model_path
         if results_file is not None:
-            if isinstance(results_file, str) and not os.path.exists(results_file):
+            if isinstance(results_file, string_types) and not os.path.exists(results_file):
                 if not os.path.join(dirname, results_file):
                     raise rsd_io.ConfigurationError('specified results file `%s` does not exist' %results_file)
                 else:
@@ -383,7 +383,7 @@ class FittingDriver(object):
         Set the results, checking to make sure we re-order the fitted params
         into the right order
         """
-        if isinstance(val, str):
+        if isinstance(val, string_types):
             val = load_results(val)
             
         # possibly reorder the results
@@ -406,7 +406,7 @@ class FittingDriver(object):
         Set the theoretical model
         """
         # set it
-        if isinstance(val, str):
+        if isinstance(val, string_types):
             logger.info("setting the theoretical model from file `%s`" %val, on=0)
         else:
             logger.info("setting the theoretical model from existing instance", on=0)

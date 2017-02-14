@@ -10,7 +10,7 @@
 import collections
 import copy
 import copyreg
-from six import add_metaclass
+from six import add_metaclass, string_types
 
 from . import tools, Parameter
 from ...extern import lmfit
@@ -83,10 +83,10 @@ class ParameterSet(lmfit.Parameters):
             either a string specifying the name of the parameter, or the
             integer index of the parameter in the collection 
         """
-        if not isinstance(key, (int, str)): 
+        if not isinstance(key, (int,) + string_types): 
             raise KeyError("key must either be an integer or a str")
         
-        if isinstance(key, str):
+        if isinstance(key, string_types):
             if key not in self:
                 raise ValueError("no parameter with name `%s` in ParameterSet" %key)
             return self[key]()
@@ -121,7 +121,7 @@ class ParameterSet(lmfit.Parameters):
         tags : list, optional
             list of any parameter tags to specifically seach for
         """
-        if isinstance(tags, str):
+        if isinstance(tags, string_types):
             tags = [tags]
         if len(tags) > 1:
             toret = collections.defaultdict(cls)

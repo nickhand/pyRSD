@@ -1,7 +1,8 @@
 import pyRSD.extern.xarray as xr
 import numpy as np
 import pandas as pd
-        
+from six import string_types
+
 def slice_data(data, indexers, indexes, return_indices=False):
     """
     Slice the input data according to the integer 
@@ -243,7 +244,7 @@ class GridIndexer(object):
         # index is a list of GridIndex objects for each axis
         self.index = []
         for i, dim in enumerate(dims):
-            if not isinstance(dim, (str, tuple, list)):
+            if not isinstance(dim, string_types + (tuple, list)):
                 raise TypeError("each dimension must be specified by str or tuple/list of str")
             self.index.append(GridIndex(dim, coords[i]))
             

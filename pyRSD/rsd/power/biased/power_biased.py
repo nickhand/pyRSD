@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import contextlib
 from pyRSD import numpy as np
 from scipy.interpolate import InterpolatedUnivariateSpline as spline

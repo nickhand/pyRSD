@@ -263,8 +263,9 @@ class GeorgeSimulationDataSet(object):
             self._data[dep] = GeorgeSimulationData(independent, data, theta[i], dependent_col=dep, **kwargs)
             
     @tools.unpacked
-    def __call__(self, *args, select=None, **indep_vars):
+    def __call__(self, *args, **indep_vars):
         
+        select = indep_vars.pop('select', None)
         # determine which parameters we are returning
         if select is None:
             select = self.dependents

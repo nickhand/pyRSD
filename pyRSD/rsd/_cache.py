@@ -243,11 +243,14 @@ def parameter(f, default=None):
     prop._deps = set() # track things that depend on this parameter
     return prop
 
-def cached_property(*parents, lru_cache=False, maxsize=128):
+def cached_property(*parents, **kws):
     """
     Decorator to represent a model parameter will be cached
     and automatically updated if any of its dependencies change
     """
+    lru_cache = kws.pop('lru_cache', False)
+    maxsize = kws.pop('maxsize', 128)
+    
     def cache(f):
         name = f.__name__
         

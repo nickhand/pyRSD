@@ -14,6 +14,7 @@ import functools
 import itertools
 import inspect
 import hashlib
+from six import PY3
 
 def get_hash_key(*args):
     
@@ -150,12 +151,17 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
     
     The first three arguments to `f` should be `self`, `k`, `mu`
     """
-    valid = ['self', 'k', 'mu']
-    sig = inspect.signature(f)
-    for i, (name, arg) in enumerate(sig.parameters.items()):
-        if i > 2: break
-        if arg.name != valid[i]:
-            raise ValueError("to apply AP effect, the signature of the function '%s' should be %s" %(f.__name__, str(valid)))
+    if PY3:
+        sig = inspect.signature(f)
+        attrs = list(sig.parameters.keys())
+    else:
+        attrs, varargs, varkw, defaults = inspect.getargspec(f)
+     
+    valid = ['self', 'k', 'mu']   
+    if attrs[:3] != valid:
+        args = (f.__name__, str(valid)), str(attrs[:3]))
+        raise ValueError("to apply AP effect, the signature of the function '%s' should be %s, not %s" %args)
+
     
     @functools.wraps(f)
     def wrap(self, *args, **kwargs):

@@ -184,7 +184,7 @@ class DampedGalaxyPowerTerm(GalaxyPowerTerm):
     """
     name = None
 
-    def __init__(self, model, *terms, sigma1=None, sigma2=None):
+    def __init__(self, model, *terms, **kws):
         """
         Parameters
         ----------
@@ -199,6 +199,9 @@ class DampedGalaxyPowerTerm(GalaxyPowerTerm):
             the name of the second velocity dispersion attribute; 
             defaults to sigma1
         """
+        sigma1 = kws.pop('sigma1', None)
+        sigma2 = kws.pop('sigma2', None)
+        
         super(DampedGalaxyPowerTerm, self).__init__(model, *terms)
         self._sigma1_name = sigma1
         self._sigma2_name = sigma2

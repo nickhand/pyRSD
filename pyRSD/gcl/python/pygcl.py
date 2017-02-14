@@ -19,12 +19,11 @@ from gcl import ComputeXiLM, compute_xilm_fftlog as ComputeXiLM_fftlog
 from gcl import IntegrationMethods
 
 class DocFixer(type):
-    def __init__(cls, name, bases, attrs):
-        base = bases[0]
-        if base.__doc__ is not None:
-            cls.__doc__ = base.__doc__
-        if base.__init__.__doc__ is not None:
-            cls.__init__.__doc__ = base.__init__.__doc__
+    
+    def __new__(cls, name, bases, dct):
+        dct['__doc__'] = bases[0].__doc__
+        dct['__init__'].__doc__ = bases[0].__init__.__doc__
+        return type.__new__(cls, name, bases, dct)
 
 class PickalableSWIG:
  

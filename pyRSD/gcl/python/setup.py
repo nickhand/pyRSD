@@ -26,7 +26,7 @@ for root, dirs, files in os.walk(".", topdown=False):
 # setup the extension
 gcl_module = Extension('_gcl',
                          sources=['gcl.i'],
-                         swig_opts=['-c++', '-Wall', '-py3'], 
+                         swig_opts=['-c++', '-Wall'], 
                          include_dirs=[numpy.get_include()],
                          extra_link_args=["-L..", "-g", "-fPIC"],
                          extra_compile_args=["-fopenmp", "-O2"]

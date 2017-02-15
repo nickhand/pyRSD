@@ -393,6 +393,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return val
             
+    @parameter(default=1.0)
+    def alpha_drag(self, val):
+        """
+        The ratio of the sound horizon in the fiducial cosmology
+        to the true cosmology
+        """
+        return val
+        
     @parameter(default="sigma_lin")
     def sigma_v(self, val):
         """
@@ -434,6 +442,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     #---------------------------------------------------------------------------
     # cached properties
     #---------------------------------------------------------------------------
+    @cached_property("cosmo")
+    def fiducial_rs_drag(self):
+        """
+        The sound horizon at the drag redshift in the cosmology of ``cosmo``
+        """
+        return self.cosmo.rs_drag()
+        
     @cached_property("transfer_fit")
     def transfer_fit_int(self):
         """

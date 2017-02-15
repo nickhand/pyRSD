@@ -144,7 +144,7 @@ def cacheable(f):
     return wrap
     
 @doublewrap
-def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
+def alcock_paczynski(f, alpha_par=None, alpha_perp=None, alpha_drag=None):
     """
     Decorator to introduce the AP effect by rescaling input
     `k` and `mu`
@@ -162,7 +162,6 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
         args = (f.__name__, str(valid), str(attrs[:3]))
         raise ValueError("to apply AP effect, the signature of the function '%s' should be %s, not %s" %args)
 
-    
     @functools.wraps(f)
     def wrap(self, *args, **kwargs):
         args = list(args)
@@ -173,7 +172,8 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
             # determine alpha_par, alpha_perp            
             alpha_par_  = alpha_par if alpha_par is not None else self.alpha_par
             alpha_perp_ = alpha_perp if alpha_perp is not None else self.alpha_perp
-        
+            alpha_drag_ = alpha_drag if alpha_drag is not None else self.alpha_drag
+            
             # the k,mu to evaluate P(k, mu)
             k = k_AP(args[0], args[1], alpha_perp_, alpha_par_)
             mu = mu_AP(args[1], alpha_perp_, alpha_par_)
@@ -189,6 +189,9 @@ def alcock_paczynski(f, alpha_par=None, alpha_perp=None):
         
                 # do the volume rescaling
                 pkmu /= (alpha_perp_**2 * alpha_par_)
+                
+                # scale by (rs_drag^fid / rs_drag)**3
+                pkmu *= (alpha_drag_)**3 # see eq 46 of Beutler et al 2016
                 
         # if locked, the distortion was already added
         else:

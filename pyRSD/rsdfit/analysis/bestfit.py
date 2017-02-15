@@ -131,7 +131,8 @@ def transform_ipynb(df):
 #------------------------------------------------------------------------------
 # main class/functions
 #------------------------------------------------------------------------------ 
-def to_comparison_table(names, data, filename=None, params=None, fmt='latex', add_reduced_chi2=True):
+def to_comparison_table(names, data, filename=None, params=None, fmt='latex', 
+                            add_reduced_chi2=True, tabular_only=False):
     """
     Write out a comparison table from multiple BestfitParameterSet instances
     """
@@ -210,7 +211,8 @@ def to_comparison_table(names, data, filename=None, params=None, fmt='latex', ad
         pd.set_option('max_colwidth', 1000)
         kwargs = {'escape':False, 'index_names':False, 'columns':names}
         toret = pd.DataFrame.to_latex(out, **kwargs)
-        return out._finalize_latex(toret, len(names), filename=filename, include_fit_info=False)
+        return out._finalize_latex(toret, len(names), filename=filename, 
+                    include_fit_info=False, tabular_only=tabular_only)
     else:
         out.index.name = 'parameter'
         return out.loc[:, names]
@@ -412,7 +414,7 @@ class BestfitParameterSet(pd.DataFrame):
                     ff.write("# %s %s %s\n" %(k, val, type(val).__name__))
         self.to_csv(filename, sep=" ", mode='a')
         
-    def _finalize_latex(self, table, Ncols, filename=None, caption="", include_fit_info=True):
+    def _finalize_latex(self, table, Ncols, filename=None, caption="", include_fit_info=True, tabular_only=False):
         """
         Internal function to format the default latex table and output
         """
@@ -423,14 +425,15 @@ class BestfitParameterSet(pd.DataFrame):
             
         # do some formatting of the standard pandas `to_latex` output
         table = table.replace("".join(['l']*(Ncols+1)), 'c'+"".join(['l']*(Ncols)))
-        table = table.replace(r"\midrule", r'\colrule')
-        table = table.replace(r"\bottomrule", r"\botrule")
         
         # add a header
-        header = "\\begin{table}\n\\centering\n"
-        precision = "\\sisetup{round-mode=places, round-precision=3}\n"
-        header += precision
-        header += "\\caption{%s}\n\\label{tab:}\n" %caption
+        header = ""
+        if not tabular_only:
+            header = "\\begin{table}\n\\centering\n"
+            precision = "\\sisetup{round-mode=places, round-precision=3}\n"
+            header += precision
+        #header += 
+        
         if include_fit_info: header += "\\begin{threeparttable}\n"
         table = header + table
         
@@ -441,7 +444,10 @@ class BestfitParameterSet(pd.DataFrame):
             note = r'$-\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args
             note = "\\begin{tablenotes}\n\t\item %s\n\\end{tablenotes}\n" %note
             note += "\\end{threeparttable}\n"
-        table = table + note + "\\end{table}"
+        table = table + note
+        
+        if not tabular_only:
+            table += "\\caption{%s}\n\\label{tab:}\n" %caption + "\\end{table}"
         
         if filename is None:
             return table
@@ -449,7 +455,7 @@ class BestfitParameterSet(pd.DataFrame):
             with open(filename, 'w') as ff:
                 ff.write(table)
         
-    def to_latex(self, filename=None, caption="", include_fit_info=True):
+    def to_latex(self, filename=None, caption="", include_fit_info=True, tabular_only=False):
         """
         Write out the bestfit parameters as a latex table
         
@@ -473,7 +479,8 @@ class BestfitParameterSet(pd.DataFrame):
         
         # finalize
         Ncols = len(df.columns)
-        kw = {'filename':filename, 'caption':caption, 'include_fit_info':include_fit_info}
+        kw = {'filename':filename, 'caption':caption, 
+                'include_fit_info':include_fit_info, 'tabular_only':tabular_only}
         return self._finalize_latex(out, Ncols, **kw)
         
     def to_ipynb(self, params=None):

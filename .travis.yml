@@ -84,3 +84,11 @@ script:
     - for PYTHON in "2.7" "3.5"; do 
         conda build --python $PYTHON recipes/pyRSD;
       done
+      
+    # determine the conda channel
+    - if [ "$TRAVIS_OS_NAME" = "linux" ]; then CONDA_OS="linux-64"; else CONDA_OS="osx-64"
+        
+    # upload
+    - for f in $CONDA_PREFIX/conda-bld/$CONDA_OS/pyrsd-$PYRSD_VERSION*; do
+          anaconda -t $BINSTAR_TOKEN upload -f $f
+      done

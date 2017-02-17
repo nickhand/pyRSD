@@ -76,9 +76,6 @@ script:
 
     # build dependencies
     - if [[ -d recipes ]]; then conda build-all recipes/depends --matrix-conditions "python $PYTHON_BUILD_RESTRICTIONS" "$NUMPY_BUILD_RESTRICTION" --inspect-channels nickhand $UPLOAD; fi
-        
-    # remove existing pyRSD install
-    #- anaconda -t $BINSTAR_TOKEN remove -f nickhand/pyrsd/$PYRSD_VERSION
     
     # build pyRSD
     - for PYTHON in "2.7" "3.5"; do 
@@ -92,6 +89,6 @@ script:
       fi
         
     # upload
-    - for f in $CONDA_PREFIX/conda-bld/$CONDA_OS/pyrsd-$PYRSD_VERSION*; do
+    - for f in $CONDA_INSTALL_LOCN/conda-bld/$CONDA_OS/pyrsd-$PYRSD_VERSION*; do
           anaconda -t $BINSTAR_TOKEN upload -f $f;
       done

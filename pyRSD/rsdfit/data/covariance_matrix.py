@@ -274,7 +274,7 @@ class CovarianceMatrix(Cache):
     
     #---------------------------------------------------------------------------
     # utility functions
-    #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------    
     def __repr__(self):
         name = str(self.__class__).split('.')[-1].split("'")[0]
         return "<{name}: size {N}x{N}>".format(name=name, N=self.N)
@@ -687,7 +687,29 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
     
     #--------------------------------------------------------------------------
     # main functions
-    #--------------------------------------------------------------------------
+    #--------------------------------------------------------------------------        
+    def __iter__(self):
+        """
+        Iterate across mu blocks
+        """
+        mu1 = self.mus(unique=True, name='mu1')
+        mu2 = self.mus(unique=True, name='mu2')
+        for i in range(len(mu1)):
+            for j in range(len(mu2)):
+                yield self.sel(mu1=mu1[i], mu2=mu2[j])
+                
+    def enumerate(self, upper=True):
+        """
+        Enumerate across the upper mu triangle of blocks
+        """
+        mu1 = self.mus(unique=True, name='mu1')
+        mu2 = self.mus(unique=True, name='mu2')
+        
+        for iblock, block in enumerate(self):
+            i,j = np.unravel_index(iblock, (len(mu1), len(mu2)))
+            if upper and i > j: continue
+            yield mu1[i], mu2[j], block
+      
     def trim_k(self, kmin=-np.inf, kmax=np.inf):
         """
         Trim the k bounds of the covariance matrix, returning a new, trimmed
@@ -1059,7 +1081,29 @@ class PoleCovarianceMatrix(CovarianceMatrix):
     
     #--------------------------------------------------------------------------
     # main functions
-    #--------------------------------------------------------------------------
+    #--------------------------------------------------------------------------        
+    def __iter__(self):
+        """
+        Iterate across ``ell`` blocks
+        """
+        ell1 = self.ells(unique=True, name='ell1')
+        ell2 = self.ells(unique=True, name='ell2')
+        for i in range(len(ell1)):
+            for j in range(len(ell2)):
+                yield self.sel(ell1=ell1[i], ell2=ell2[j])
+                
+    def enumerate(self, upper=True):
+        """
+        Enumerate across the upper triangle of blocks
+        """
+        ell1 = self.ells(unique=True, name='ell1')
+        ell2 = self.ells(unique=True, name='ell2')
+        
+        for iblock, block in enumerate(self):
+            i,j = np.unravel_index(iblock, (len(ell1), len(ell2)))
+            if upper and i > j: continue
+            yield ell1[i], ell2[j], block
+            
     def trim_k(self, kmin=-np.inf, kmax=np.inf):
         """
         Trim the k bounds of the covariance matrix, returning a new, trimmed

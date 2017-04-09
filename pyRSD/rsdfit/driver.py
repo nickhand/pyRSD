@@ -733,6 +733,123 @@ class FittingDriver(object):
             
         return grad_minus_lnlike
         
+    def fisher(self, theta=None, epsilon=1e-4, pool=None, use_priors=True, 
+                numerical=False, numerical_from_lnlike=False):
+        """
+        Return the Fisher information matrix, defined as the negative Hessian
+        of the log likelihood with respect to the parameter vector
+                
+        ..math::
+                
+                F_{ij} = - \frac{\partial \partial \log \mathcal{L}}{\partial \theta_i \partial \theta_j}
+                
+        This uses a central-difference finite-difference approximation to 
+        compute the numerical derivatives
+        
+        Parameters
+        ----------
+        theta : array_like, optional
+            if provided, the values of the free parameters to compute the 
+            gradient at; if not provided, the current values of free parameters 
+            from `theory.fit_params` will be used
+        epsilon : float or array_like, optional
+            the step-size to use in the finite-difference derivative calculation; 
+            default is `1e-4` -- can be different for each parameter
+        pool : MPIPool, optional
+            a MPI Pool object to distribute the calculations of derivatives to 
+            multiple processes in parallel
+        use_priors : bool, optional
+            whether to include the log priors in the objective function when 
+            minimizing the negative log probability
+        numerical : bool, optional
+            if `True`, evaluate gradients of P(k,mu) numerically using finite difference
+        numerical_from_lnlike : bool, optional
+            if `True`, evaluate the gradient by taking the numerical derivative
+            of :func:`minus_lnlike`
+                            
+        """                
+        # set the free parameters
+        if theta is not None:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                raise ValueError("the parameter vector is not valid (out of bounds); bad!")
+        else:
+            theta = self.theory.free_values
+        
+        # numerical gradient of minus_lnlike
+        if numerical_from_lnlike:
+            try:
+                import numdifftools
+            except ImportError:
+                raise ImportError("``numdifftools`` is required to compute the Fisher Hessian numerically")
+
+            # return the numerical Hessian of either the log prob (with priors) or log likelihood
+            if use_priors:
+                f = self.lnprob
+            else:
+                f = self.lnlike
+            H = numdifftools.Hessian(f, step=epsilon)
+            return -1.0 * H(theta)
+        
+        else:
+        
+            # get the gradient of Pgal wrt the parameters
+            gradient = self.pkmu_gradient(theta, pool=pool, epsilon=epsilon, numerical=numerical)
+        
+            # evaluate gradient via the transfer function
+            if self.data.transfer is not None:
+                
+                grad_lnlike = []
+                for i in range(self.Np):
+                    self.data.transfer.power = gradient[i]
+                    grad_lnlike.append(self.data.transfer(flatten=True))    
+                grad_lnlike = np.asarray(grad_lnlike)
+            
+            # do pole calculation yourself
+            elif self.mode == 'poles':
+                from scipy.special import legendre
+                from scipy.integrate import simps
+
+                # reshape the arrays
+                k        = self.pkmu_gradient.k.reshape(-1, NMU, order='F')
+                mu       = self.pkmu_gradient.mu.reshape(-1, NMU, order='F')
+                gradient = gradient.reshape(self.Np, -1, NMU, order='F')
+
+                # do the integration over mu
+                kern     = np.asarray([(2*ell+1.)*legendre(ell)(mu[i]) for i, ell in enumerate(self.data.combined_ell)])
+                grad_lnlike = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
+                
+            else:
+                grad_lnlike = gradient
+
+            # compute Fisher from gradient
+            F = np.zeros((self.Np, self.Np))
+            for i in range(self.Np):
+                for j in range(i, d.Np):
+                    F[i,j] =  np.dot(grad_lnlike[i], np.dot(self.data.covariance.inverse, grad_lnlike[j]))
+                    F[j,i] = F[i,j]
+
+            # add priors??
+            priors = np.zeros(self.Np)
+            if use_priors:
+                for ipar, par in enumerate(self.theory.free):
+                    if par.prior.name == 'normal':
+                        prior = par.prior.scale**(-2)
+                    elif par.prior.name == 'uniform':
+                        prior = 0.
+                    else:
+                        raise NotImplemented("adding prior of type '%s' to Fisher matrix not implemented" %par.prior.name)
+                    priors[ipar] = prior
+            priors = np.diag(priors)
+            
+            # add the (possibly zero) info from priors
+            F += priors
+        
+            return F
+        
     #---------------------------------------------------------------------------
     # setting results
     #---------------------------------------------------------------------------

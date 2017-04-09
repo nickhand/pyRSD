@@ -9,9 +9,10 @@
 from __future__ import print_function
 
 from . import tools, distributions as dists
-from ...extern import lmfit
 from ... import numpy as np
 from ...rsd._cache import CacheSchema, parameter, cached_property
+
+import lmfit
 import copyreg
 from six import add_metaclass
 
@@ -88,8 +89,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
         if value is None and kwargs.get('fiducial', None) is not None:
             value = kwargs['fiducial']
         lmfit.Parameter.__init__(self, name=name, value=value, vary=vary, min=min, max=max, expr=expr)
-        self.value = self._val
-        
+            
         # handle additional parameters
         self.description = kwargs.get('description', 'No description available')
         self.prior_name = kwargs.get('prior', None)
@@ -102,6 +102,20 @@ class Parameter(PickeableCache, lmfit.Parameter):
     #---------------------------------------------------------------------------
     # parameters
     #---------------------------------------------------------------------------
+    def _init_bounds(self):
+        """Custom version that does not set max/min to +/-inf by default"""
+        #_val is None means - infinity.
+        if self._val is not None:
+            if self.max is not None and self._val > self.max:
+                self._val = self.max
+            if self.min is not None and self._val < self.min:
+                self._val = self.min
+        elif self.min is not None and self._expr is None:
+            self._val = self.min
+        elif self.max is not None and self._expr is None:
+            self._val = self.max
+        self.setup_bounds()
+        
     @property
     def dtype(self):
         """
@@ -166,19 +180,31 @@ class Parameter(PickeableCache, lmfit.Parameter):
         """
         return val
     
-    @parameter
+    @property
+    def value(self):
+        """Return the numerical value of the Parameter, with bounds applied."""
+        return self._getval()
+
+    @value.setter
     def value(self, val):
-        """
-        The parameter value
-        """
-        
+        """Custom setter to handle $ in values and store :attr:`user_data`"""
         if isinstance(val, str) and '$' in val:
             self.output_value = val
             val = tools.replace_vars(val, {})
-        
+
         self.user_value = val
         self._val = val
-        return self._getval()
+        if not hasattr(self, '_expr_eval'):
+            self._expr_eval = None
+        if self._expr_eval is not None:
+            self._expr_eval.symtable[self.name] = val
+            
+            # remove children that depend on this parameter
+            # this ensures that parameters in symbol table 
+            # are always up to date
+            for child in getattr(self, 'children', []):
+                self._expr_eval.symtable.pop(child, None)
+        
 
     @parameter
     def fiducial(self, val):
@@ -383,7 +409,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
             else:
                 s.append('no prior')
 
-        return "<Parameter %s" % ' '.join(s)
+        return "<Parameter %s>" % ' '.join(s)
 
     def __str__(self):
         return self.__repr__()

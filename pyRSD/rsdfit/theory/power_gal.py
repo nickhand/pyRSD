@@ -50,7 +50,8 @@ class GalaxyPowerParameters(ParameterSet):
                 params.update_param(name, description=desc)
             else:
                 params[name] = Parameter(name=name, description=desc)
-        
+                params[name]._delay_asteval = True
+                
         params.model_params = cls.model_params
         params.extra_params = cls.extra_params
         return params
@@ -273,7 +274,9 @@ class GalaxyPowerTheory(object):
         
         # update
         self.fit_params.prepare_params()
-        self.fit_params.update_values()
+        for name in self.fit_params:
+            self.fit_params[name]._delay_asteval = False
+        self.fit_params.update_constraints()
         
         # check for any fixed, constrained values
         for name in self.fit_params:

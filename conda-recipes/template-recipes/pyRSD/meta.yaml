@@ -35,6 +35,8 @@ requirements:
   - seaborn
   - corner
   - six
+  - lmfit >=0.9
+  - autograd
 
 test:
   imports:

@@ -1,3 +1,4 @@
+autograd
 matplotlib
 seaborn
 corner

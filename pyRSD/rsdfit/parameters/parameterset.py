@@ -8,51 +8,34 @@
 """
 
 import collections
-import copy
-import copyreg
-from six import add_metaclass, string_types
+from six import string_types
+import lmfit
 
 from . import tools, Parameter
-from ...extern import lmfit
 from ... import os, numpy as np
 
-class PickeableClass(type):
-    def __init__(cls, name, bases, attrs):
-        copyreg.pickle(cls, _pickle, _unpickle)
-
-def _pickle(params):    
-    items = [[k, params[k]] for k in params]
-    inst_dict = vars(params).copy()
-    for k in vars(collections.OrderedDict()):
-        inst_dict.pop(k, None)
-    inst_dict.pop('_asteval')
-    return _unpickle, (params.__class__, items, inst_dict, )
-
-def _unpickle(cls, items, meta):
-    toret = cls()
-    for k in meta: setattr(toret, k, meta[k])
-    toret.update(items)
-    for k, v in toret._registered_functions.items():
-        toret.register_function(k, v)
-    toret.prepare_params()
-    try:
-        toret.update_values()
-    except:
-         pass
+class SmartSymTable(dict):
+    def __init__(self, params):
+        self.params = params
         
-    return toret
+    def __contains__(self, key):
+        if key in self.params:
+            return True
+        return dict.__contains__(self, key)
+    def __missing__(self, key):
+        if key in self.params:
+            return self.params[key]._getval()
+        raise KeyError(key)
 
-@add_metaclass(PickeableClass)
 class ParameterSet(lmfit.Parameters):
     """
     A subclass of `lmfit.Parameters` that adds the ability to update values
     based on constraints in place
     """    
     def __init__(self, *args, **kwargs):
+        
+        kwargs['asteval'] = lmfit.asteval.Interpreter(symtable=SmartSymTable(self))
         super(ParameterSet, self).__init__(*args, **kwargs)
-
-        self._asteval = lmfit.asteval.Interpreter()
-        self._namefinder = lmfit.astutils.NameFinder()
         self._prepared = False
         self._registered_functions = {}
         self.tag = None
@@ -101,13 +84,7 @@ class ParameterSet(lmfit.Parameters):
         Builtin representation function
         """
         return "<ParameterSet (size: %d)>" %len(self)
-        
-    def copy(self):
-        """
-        Return a copy
-        """
-        return copy.deepcopy(self)
-        
+                
     @classmethod
     def from_file(cls, filename, tags=[]):
         """
@@ -184,6 +161,7 @@ class ParameterSet(lmfit.Parameters):
                 v = Parameter(**v)
             else:
                 v = Parameter(value=v)
+            v._delay_asteval = True
             v.name = k
             
             if k in orig:
@@ -284,11 +262,9 @@ class ParameterSet(lmfit.Parameters):
                 par.ast = self._asteval.parse(par.expr)
                 par.vary = False
                 par.deps = []
-                self._namefinder.names = []
-                self._namefinder.generic_visit(par.ast)
-                for symname in self._namefinder.names:
+                for symname in par._expr_deps:
                     if (symname in self and symname not in par.deps):
-                        par.deps.append(symname)
+                        par.deps.append(symname)    
                         self[symname].children.add(name)
                         
         self._prepared = True
@@ -315,7 +291,7 @@ class ParameterSet(lmfit.Parameters):
             if self[k].expr is None:
                 self[k].value = v
                 
-    def update_values(self, *args, **kwargs):
+    def update_values(self, **kwargs):
         """
         Update the values of all parameters, checking that dependencies are
         evaluated as needed.
@@ -331,64 +307,15 @@ class ParameterSet(lmfit.Parameters):
         """    
         if not self._prepared:
             raise RuntimeError("cannot call ``update`` before calling ``prepare_params``")
-        
-        # update constraints for certain names
-        changed = list(args)
-        if any(name not in self for name in changed):
-            raise ValueError("cannot update parameters not in the ParameterSet")
-            
-        # update parameter values and then update constraints
+                    
+        # update parameter values
         if len(kwargs):
             for k,v in kwargs.items():
                 if k not in self:
                     raise ValueError("cannot update value for parameter '%s'" %k)
                 if v != self[k].value:
                     self[k].value = v
-                    changed.append(k)
-                    
-        # default is to update all
-        if not len(changed) and not len(kwargs):
-            changed += list(self)
-        
-        # now update
-        try:
-            self._updated = dict([(name, False) for name in self])
-            for name in changed:
-                self._update_parameter(name)
-        except:
-            pass
-        finally:
-            del self._updated
-        
-    def _update_parameter(self, name):
-        """
-        Internal function to recursively update parameter called ``name``, 
-        accounting for any constraints on this parameter.
-        """
-        if self._updated[name]:
-            return
-           
-        par = self[name]
-        if getattr(par, 'expr', None) is not None:
-            if getattr(par, 'ast', None) is None:
-                par.ast = self._asteval.parse(par.expr)
-            if par.deps is not None:
-                for dep in par.deps:
-                    self._update_parameter(dep)
-            try:
-                par.value = self._asteval.run(par.ast, with_raise=True)  
-            except:
-                msg = "error evaluating '%s' for parameter '%s'" %(par.expr, name)
-                raise ValueError(msg)
-
-        self._asteval.symtable[name] = par.value
-        self._updated[name] = True
-        
-        # update the children too!
-        for child in par.children:
-            if not self._updated[child]:
-                self._update_parameter(child)
-    
+            
     #---------------------------------------------------------------------------
     # convenient functions/attributes
     #---------------------------------------------------------------------------
@@ -514,3 +441,62 @@ class ParameterSet(lmfit.Parameters):
             return np.array([self[k].loc for k in self.free_names])
         except:
             raise ValueError("priors must be defined for all free parameters to access `locs`") 
+            
+    def constraint_derivative(self, name, wrt, theta=None):
+        """
+        Return the constraint derivative at the specified values of free 
+        parameters. If `theta` is not specified, the current values are used.
+        
+        This returns d`name` / d`wrt`
+        
+        Parameters
+        ----------
+        name : str
+            the name of the constrained derivative to take the derivative of
+        wrt : str
+            the name of the free parameter to the derivative with respect to
+        theta : array_like, optional
+            the array of free parameters to evaluate the derivative at
+        
+        Returns
+        -------
+        grad : float
+            the value of the gradient 
+        """
+        try:
+            import autograd
+        except ImportError:
+            raise ImportError("computing constraint derivatives requires ``autograd``")
+        
+        # some checks
+        if name not in self:
+            raise ValueError("'%s' is not a valid parameter name" %name)
+        if wrt not in self.free_names:
+            raise ValueError("'wrt' should specify the name of a free parameter")
+        if not self[name].constrained:
+            raise ValueError("`name` should specify a constrained parameter")
+        
+        if theta is None:
+            theta = self.free_values
+        
+        # save original values
+        free = self.free_values
+        
+        def obj(*args):
+            if len(args) != len(self.free_names):
+                raise ValueError("need to specify %d arguments" %len(self.free_names))
+            for i, arg in enumerate(args):
+                self._asteval.symtable[self.free_names[i]] = arg
+            lmfit.Parameters.update_constraints(self)
+            thispar = self[name]
+            return thispar.value
+            
+        grad = autograd.grad(obj, argnum=self.free_names.index(wrt))
+        toret = grad(*theta)
+        
+        for i, name in enumerate(self.free_names):
+            self[name].value = free[i]
+            
+        return toret
+        
+        

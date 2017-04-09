@@ -49,10 +49,11 @@ install:
     - conda install --yes -c conda-forge conda-build-all=1.0*
     
     # so we can grab compiled packages for dependencies
-    - conda config --add channels nickhand
+    - conda config --prepend channels nickhand
     
-    # so we can grab emcee
-    - conda config --add channels astropy
+    # so we can grab emcee, lmfit, and autograd
+    - conda config --append channels astropy
+    - conda config --append channels conda-forge
     
     # To ease debugging, list installed packages
     - conda info -a

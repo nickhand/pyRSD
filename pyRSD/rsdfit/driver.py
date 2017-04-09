@@ -894,7 +894,66 @@ class FittingDriver(object):
                     J[irow, icol] = deriv
                         
         return J
-    
+        
+    def marginalized_errors(self, params=None, theta=None, fixed=[], **kws):
+        """
+        Return the marginalized errors on the specified parameters, as 
+        computed from the Fisher matrix: (F^(-1))^(1/2)
+        
+        Optionally, we can fix certain parameters, specified in ``fixed``
+        
+        Parameters
+        ----------
+        params : list, optional
+            return errors for this parameters; default is all free parameters
+        theta : array_like, optional
+            the array of free parameters to evaluate the best-fit model at
+        fixed : list, optional
+            list of free parameters to fix when evaluating marginalized errors
+        **kws : 
+            additional keywords passed to :func:`fisher`
+        
+        Returns
+        -------
+        errors : array_like
+            the marginalized errors as computed from the inverse of the 
+            Fisher matrix
+        """
+        if isinstance(params, string_types):
+            params = [params]
+        if isinstance(fixed, string_types):
+            fixed = [fixed]
+        
+        # return for all free parameters by default
+        if params is None:
+            params = self.theory.free_names
+        
+        # compute Fisher
+        F = self.fisher(theta=theta, **kws)
+        
+        # Jacobian
+        J = self.jacobian(params, theta=theta)
+        
+        # no fixing, just do inverse Fisher
+        if not len(fixed):
+            C = np.linalg.inv(F)
+            
+        # fixed = remove some row/columns from Fisher before inverting
+        else:
+            
+            # fixed parameters must be free initially
+            if not all(name in self.theory.free_names for name in fixed):
+                raise ValueError("we can only fix free parameters")
+            
+            # remove fixed params from F
+            indices = [self.theory.free_names.index(name) for name in fixed]
+            F = np.delete(np.delete(F, indices, axis=0), indices, axis=1)
+            C = np.linalg.inv(F)
+            J = np.delete(J, indices, axis=0)
+            
+        # return the properly transformed errors
+        return np.dot(J.T, np.dot(C, J))**0.5
+            
     #---------------------------------------------------------------------------
     # setting results
     #---------------------------------------------------------------------------

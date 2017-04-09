@@ -12,7 +12,7 @@ from ..extern.astropy_helpers.git_helpers import get_git_devstr
 from .. import pkg_dir
 
 # compute the version
-__version__ = '0.3.0'
+__version__ = '0.3.1'
 _githash = get_git_devstr(sha=True, show_warning=False, path=pkg_dir)[:7]
 if _githash:
     __version__ += ".dev." + _githash 

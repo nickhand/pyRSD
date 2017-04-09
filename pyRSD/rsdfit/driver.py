@@ -765,8 +765,7 @@ class FittingDriver(object):
             if `True`, evaluate gradients of P(k,mu) numerically using finite difference
         numerical_from_lnlike : bool, optional
             if `True`, evaluate the gradient by taking the numerical derivative
-            of :func:`minus_lnlike`
-                            
+            of :func:`minus_lnlike`      
         """                
         # set the free parameters
         if theta is not None:
@@ -828,7 +827,7 @@ class FittingDriver(object):
             # compute Fisher from gradient
             F = np.zeros((self.Np, self.Np))
             for i in range(self.Np):
-                for j in range(i, d.Np):
+                for j in range(i, self.Np):
                     F[i,j] =  np.dot(grad_lnlike[i], np.dot(self.data.covariance.inverse, grad_lnlike[j]))
                     F[j,i] = F[i,j]
 
@@ -847,9 +846,55 @@ class FittingDriver(object):
             
             # add the (possibly zero) info from priors
             F += priors
-        
+                        
             return F
+            
+    def jacobian(self, params, theta=None):
+        """
+        Return the Jacobian between the input (constrained) parameters and the 
+        free parameters, holding dp' / dp where p' is the set of constrained 
+        ``params`` and p is the set of free parameters
         
+        Parameters
+        ---------- 
+        params : list
+            list of the constrained parameters 
+        theta : array_like, optional
+            free parameter values to evaluate Jacobian of transformation at
+        
+        Returns
+        -------
+        J : array_like (self.Np, len(params))
+            the Jacobian
+        """
+        # set the free parameters
+        if theta is not None:
+            in_bounds = self.theory.set_free_parameters(theta)
+            
+            # if parameters are out of bounds, return the log-likelihood
+            # for a null model + the prior results (which hopefully are restrictive)
+            if not in_bounds:
+                raise ValueError("the parameter vector is not valid (out of bounds); bad!")
+        else:
+            theta = self.theory.free_values
+            
+        J = np.zeros((self.Np, len(params)))
+        for irow, freepar in enumerate(self.theory.free_names):
+            for icol, newpar in enumerate(params):
+                
+                # transformation between two free parameters
+                if freepar in self.theory.free_names and newpar in self.theory.free_names:
+                    if freepar == newpar:
+                        J[irow, icol] = 1.0
+                    else:
+                        J[irow, icol] = 0.
+                else:
+                    # this is dnewpar / dfreepar
+                    deriv = self.theory.fit_params.constraint_derivative(newpar, freepar, theta=theta)
+                    J[irow, icol] = deriv
+                        
+        return J
+    
     #---------------------------------------------------------------------------
     # setting results
     #---------------------------------------------------------------------------

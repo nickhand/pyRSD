@@ -2,7 +2,7 @@ import numpy
 import logging
 import functools
 
-from . import get_Pgal_derivative, get_constraint_derivative
+from . import get_Pgal_derivative
 
 def compute(name, m, pars, k, mu):
     """
@@ -44,8 +44,7 @@ def compute(name, m, pars, k, mu):
         if numpy.count_nonzero(a):
             
             # this is dchild/dpar
-            dconstraint = get_constraint_derivative(childpar, par)
-            b = dconstraint(*args)
+            b = pars.constraint_derivative(child, name)
             logging.debug("  adding dPgal/{child} * d{child}/d{name}".format(child=child, name=name))
             dPgal_dpar += a*b
         

@@ -7,3 +7,4 @@ emcee
 mpi4py
 six
 lmfit>=0.9
+autograd

@@ -465,7 +465,8 @@ class PowerData(Cache):
         stats = self.params['statistics'].value
         if len(stats) != np.shape(self.data)[-1]:
             args = (len(stats), np.shape(self.data)[-1])
-            raise ValueError("mismatch between number of data columns read and number of statistics")
+            raise ValueError(("mismatch between number of data columns read and number of statistics:"
+                            + " %d statistics and %d data columns read" %args))
         
         # loop over each statistic
         self.measurements = []

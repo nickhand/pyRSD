@@ -16,7 +16,7 @@ import os
 import shlex
 
 import mock
-MOCK_MODULES = []
+MOCK_MODULES = ['scipy', 'george', 'emcee', 'pandas', 'sklearn', 'mpi4py', 'lmfit', 'autograd']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 

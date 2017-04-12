@@ -112,9 +112,6 @@ with open('requirements-extras.txt', 'r') as fh:
     extras['extras'] = [l.strip() for l in fh][1:]
     extras['full'] = extras['extras'] 
     
-with open('requirements-docs.txt', 'r') as fh:
-    extras['docs'] = [l.strip() for l in fh][1:]
-
 pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*', 
             'data/params/*', 'data/simulation_fits/*', 'gcl/python/_gcl*.so']
 

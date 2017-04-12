@@ -94,6 +94,6 @@ script:
           anaconda -t $BINSTAR_TOKEN upload $f --force;
       done
       
-after_sucess:
+after_success:
     # build the documentation
     - curl -X POST https://readthedocs.org/build/pyrsd/latest

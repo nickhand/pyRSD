@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# nbodykit documentation build configuration file, created by
+# pyRSD documentation build configuration file, created by
 # sphinx-quickstart on Thu Jul 30 14:47:26 2015.
 #
 # This file is execfile()d with the current directory set to its
@@ -25,7 +25,7 @@ for mod_name in MOCK_MODULES:
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../pyRSD'))
-import nbodykit
+import pyRSD
 
 # -- General configuration ------------------------------------------------
 
@@ -242,7 +242,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'nbodykitdoc'
+htmlhelp_basename = 'pyRSDdoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 

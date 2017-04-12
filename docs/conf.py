@@ -146,9 +146,8 @@ if not on_rtd:
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
 else:
-    
-    # do the html setup
-    os.system("make html-setup")
+    # do the setup
+    os.system("make apidoc")
     
 #html_theme = 'nature'
 

@@ -26,4 +26,6 @@ dependencies:
 - matplotlib
 - seaborn
 - corner
+- numpydoc
+- IPython=4.0 # pin beceause of https://github.com/ipython/ipython/issues/8733
 - pyrsd

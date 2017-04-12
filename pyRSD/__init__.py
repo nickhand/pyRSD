@@ -59,3 +59,5 @@ def _init():
 
 if pygcl is not None:
     _init(); del _init
+    
+from .version import __version__

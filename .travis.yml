@@ -93,3 +93,7 @@ script:
     - for f in $CONDA_INSTALL_LOCN/conda-bld/$CONDA_OS/pyrsd-$PYRSD_VERSION*; do
           anaconda -t $BINSTAR_TOKEN upload $f --force;
       done
+      
+after_sucess:
+    # build the documentation
+    - curl -X POST https://readthedocs.org/build/pyrsd/latest

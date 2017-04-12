@@ -50,21 +50,12 @@ help:
 
 clean:
 	rm -rf $(BUILDDIR)/*
-	rm -rf plugins-list/
 	rm -rf api
-
-html-setup: apidoc plugins-apidoc plugins-list
 	
-plugins-apidoc: apidoc
-	echo ".. include:: nbodykit.plugins.rst" > api/plugins_ref.rst
-
 apidoc: 
 	bash apidoc.sh
 	
-plugins-list:
-	python generate_plugins_list.py
-
-html: html-setup
+html: apidoc
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."
@@ -103,9 +94,9 @@ qthelp:
 	@echo
 	@echo "Build finished; now you can run "qcollectiongenerator" with the" \
 	      ".qhcp project file in $(BUILDDIR)/qthelp, like this:"
-	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/nbodykit.qhcp"
+	@echo "# qcollectiongenerator $(BUILDDIR)/qthelp/pyRSD.qhcp"
 	@echo "To view the help file:"
-	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/nbodykit.qhc"
+	@echo "# assistant -collectionFile $(BUILDDIR)/qthelp/pyRSD.qhc"
 
 applehelp:
 	$(SPHINXBUILD) -b applehelp $(ALLSPHINXOPTS) $(BUILDDIR)/applehelp
@@ -120,8 +111,8 @@ devhelp:
 	@echo
 	@echo "Build finished."
 	@echo "To view the help file:"
-	@echo "# mkdir -p $$HOME/.local/share/devhelp/nbodykit"
-	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/nbodykit"
+	@echo "# mkdir -p $$HOME/.local/share/devhelp/pyRSD"
+	@echo "# ln -s $(BUILDDIR)/devhelp $$HOME/.local/share/devhelp/pyRSD"
 	@echo "# devhelp"
 
 epub:

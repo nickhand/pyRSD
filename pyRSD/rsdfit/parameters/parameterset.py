@@ -50,7 +50,7 @@ class ParameterSet(lmfit.Parameters):
         
         # now get any constraints
         toret += "\n\nConstraints\n" + "_"*10 + "\n"
-        for name in self:
+        for name in sorted(self):
             if self[name].expr is not None:
                 toret += "%s = %s\n" %(name, self[name].expr)
         return toret

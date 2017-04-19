@@ -10,6 +10,7 @@
 import collections
 from six import string_types
 import lmfit
+import contextlib
 
 from . import tools, Parameter
 from ... import os, numpy as np
@@ -43,6 +44,11 @@ class ParameterSet(lmfit.Parameters):
     #---------------------------------------------------------------------------
     # builtin functions
     #---------------------------------------------------------------------------
+    def __setitem__(self, key, par):
+        if getattr(self, '_delay_asteval', False):
+            par._delay_asteval = True
+        lmfit.Parameters.__setitem__(self, key, par)
+        
     def __str__(self):
         # first get the parameters
         toret = "Parameters\n" + "_"*10 + "\n"
@@ -54,6 +60,19 @@ class ParameterSet(lmfit.Parameters):
             if self[name].expr is not None:
                 toret += "%s = %s\n" %(name, self[name].expr)
         return toret
+        
+    @contextlib.contextmanager
+    def delayed_asteval(self):
+        """
+        Context manager to handle delaying asteval evaluation
+        """
+        self._delay_asteval = True
+        try:
+            yield
+        finally:
+            delattr(self, '_delay_asteval')
+            for name in self:
+                self[name]._delay_asteval = False
         
     def __call__(self, key):
         """

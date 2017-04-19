@@ -22,7 +22,7 @@ def compute(name, m, pars, k, mu):
     mu : array_like
         the array of `mu` values to evaluate the derivative at
     """
-    if name not in set(pars.model_params)|set(pars.free_names):
+    if name not in set(pars.valid_model_params)|set(pars.free_names):
         logging.debug("ignoring parameter '%s'" %name)
         return numpy.zeros(len(k))
 

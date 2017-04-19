@@ -334,7 +334,7 @@ class GalaxyPowerTheory(object):
             for name in self.extra_params:
                 if name in self.fit_params:
                     desc = self.fit_params[name].description
-                    vals.append("theory_extra.%s =  %s" %(name, desc))
+                    vals.append("theory_extra.%s =  '%s'" %(name, desc))
             f.write("%s\n\n" %("\n".join(vals)))
             f.close()
         

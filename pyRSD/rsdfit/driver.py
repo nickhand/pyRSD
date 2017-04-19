@@ -410,7 +410,7 @@ class FittingDriver(object):
             logger.info("setting the theoretical model from file `%s`" %val, on=0)
         else:
             logger.info("setting the theoretical model from existing instance", on=0)
-        self.theory.set_model(val)
+        self.theory.model = val
         
         # print out the model paramete
         params = self.theory.model.to_dict()

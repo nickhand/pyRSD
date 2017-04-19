@@ -330,7 +330,11 @@ class GalaxyPowerTheory(object):
         # now any extra params
         if self.extra_params is not None:
             f = open(filename, 'a')
-            vals = ["theory_extra.%s =  %s" %(k, repr(v)) for k, v in self.extra_params.items()]
+            vals = []
+            for name in self.extra_params:
+                if name in self.fit_params:
+                    desc = self.fit_params[name].description
+                    vals.append("theory_extra.%s =  %s" %(name, desc))
             f.write("%s\n\n" %("\n".join(vals)))
             f.close()
         

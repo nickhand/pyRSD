@@ -473,6 +473,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
             if k == 'description': continue
             if k == 'prior':
                 val = getattr(self, 'prior_name')
+                k = 'prior_name'
             elif k == 'value' and output:
                 val = getattr(self, 'output_value')
             else:

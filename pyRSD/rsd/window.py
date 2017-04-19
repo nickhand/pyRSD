@@ -190,10 +190,17 @@ class WindowConvolution(object):
         
             # convolution kernel
             kern = self._get_kernel(ell, r)
+            
+            # check shapes
             if kern.shape[1] != xi.shape[1]:
                 npoles = self.max_ellprime//2+1
-                raise ValueError(("shape mismatch between kernel and number of xi multipoles; "
-                                  "please provide the first %d even multipoles" %npoles))
+                
+                # need at least a shape of npoles
+                if xi.shape[1] > npoles:
+                    xi = xi[...,:npoles]
+                else:
+                    raise ValueError(("shape mismatch between kernel and number of xi multipoles; "
+                                      "please provide the first %d even multipoles" %npoles))
             
             conv_xi[:,i] = np.einsum('ij,ij->i', xi, kern)
             
@@ -265,7 +272,7 @@ class WindowTransfer(PolesTransfer):
         super(WindowTransfer, self).__init__(grid, ells, kmin=grid_kmin, kmax=kmax, power=power, ells_mask=ells_mask)
                 
         # the convolver object
-        self.convolver = WindowConvolution(window[:,0], window[:,1:], max_ellprime=max_ellprime)
+        self.convolver = WindowConvolution(window[:,0], window[:,1:], max_ellprime=max_ellprime, max_ell=int(max(ells)))
     
         # the output k
         self.k_out = k_out

@@ -64,6 +64,16 @@ class GalaxySpectrum(BiasedSpectrum):
         self.f_so              = 0.
         self.sigma_so          = 0.
         
+    def default_params(self):
+        """
+        Return a GalaxyPowerParameters instance holding the default
+        model parameters configuration
+        
+        The model associated with the parameter is ``self``
+        """
+        from pyRSD.rsdfit.theory import GalaxyPowerParameters
+        return GalaxyPowerParameters.from_defaults(model=self)
+    
     @contextlib.contextmanager
     def use_cache(self):
         """

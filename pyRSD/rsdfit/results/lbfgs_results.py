@@ -128,7 +128,8 @@ class LBFGSResults(object):
             i = self.free_names.index(key)
             return self.min_chi2_values[i]
         elif key in self.constrained_names:
-            return self.min_chi2_constrained_values[key]
+            i = self.constrained_names.index(key)
+            return self.min_chi2_constrained_values[i]
         else:
             return getattr(self, key)
                     

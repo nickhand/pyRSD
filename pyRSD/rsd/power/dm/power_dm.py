@@ -109,7 +109,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         self.f                 = self.cosmo.f_z(self.z)
         self.alpha_par         = 1.
         self.alpha_perp        = 1.
-        self.small_scale_sigma = 0.
         self.sigma_v2          = 0.
         self.sigma_bv2         = 0.
         self.sigma_bv4         = 0.

@@ -101,7 +101,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
             
     #---------------------------------------------------------------------------
     # parameters
-    #---------------------------------------------------------------------------
+    #---------------------------------------------------------------------------        
     def _init_bounds(self):
         """Custom version that does not set max/min to +/-inf by default"""
         #_val is None means - infinity.
@@ -115,6 +115,43 @@ class Parameter(PickeableCache, lmfit.Parameter):
         elif self.max is not None and self._expr is None:
             self._val = self.max
         self.setup_bounds()
+        
+    def _getval(self):
+        """get value, with bounds applied"""
+
+        # Note assignment to self._val has been changed to self.value
+        # The self.value property setter makes sure that the
+        # _expr_eval.symtable is kept updated.
+        # If you just assign to self._val then
+        # _expr_eval.symtable[self.name]
+        # becomes stale if parameter.expr is not None.
+        if (isinstance(self._val, lmfit.uncertainties.Variable)
+            and self._val is not np.nan):
+
+            try:
+                self.value = self._val.nominal_value
+            except AttributeError:
+                pass
+        if not self.vary and self._expr is None:
+            return self._val
+
+        if self._expr is not None:
+            if self._expr_ast is None:
+                self.__set_expression(self._expr)
+
+            if self._expr_eval is not None:
+                if not self._delay_asteval:
+                    self.value = self._expr_eval(self._expr_ast)
+                    lmfit.parameter.check_ast_errors(self._expr_eval)
+
+        v = self._val
+        if v is not None:
+            if v > self.max:
+                v = self.max
+            if v < self.min:
+                v = self.min
+        self.value = self._val = v
+        return self._val
         
     @property
     def dtype(self):

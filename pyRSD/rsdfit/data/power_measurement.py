@@ -440,10 +440,10 @@ class PowerData(Cache):
                 
                 # determine max ell prime and which poles we need
                 max_ellprime = self.params.get('max_convolve_ell', 4)
-                tmp = list(range(0, max_ellprime+1, 2))
-                kws['ells_mask'] = [True if ell in x else False for ell in tmp]
+                if max(x) < max_ellprime:
+                    kws['ells_mask'] = [True if ell in x else False for ell in range(0, max_ellprime+1, 2)]
+                    x = list(range(0, max_ellprime+1, 2))
                 kws['max_ellprime'] = max_ellprime
-                x = list(tmp)                    
                 
                 # evaluate at k_out of the binning grid
                 self.transfer = WindowTransfer(self.window, x, k_out=self.binning_transfer.coords[0], **kws)

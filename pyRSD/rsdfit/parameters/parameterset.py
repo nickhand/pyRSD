@@ -401,7 +401,7 @@ class ParameterSet(lmfit.Parameters):
         Return the free parameter values. `Free` means that 
         `Parameter.vary = True` and `Parameter.constrained = False`
         """
-        return [self[k]() for k in self.free_names]
+        return np.asarray(self.free)
     
     @property
     def free(self):
@@ -431,8 +431,7 @@ class ParameterSet(lmfit.Parameters):
         """
         Return the constrained parameter values.
         """
-        data = tuple(self[k]() for k in self.constrained_names)
-        return np.array(data, dtype=self.constrained_dtype)
+        return np.asarray(self.constrained)
     
     @property
     def constrained(self):

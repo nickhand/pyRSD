@@ -48,7 +48,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
     Currently, the prior can either be a uniform or normal distribution.
     """
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
-                   'description', 'fiducial', 'prior', 'lower', 'upper', 
+                   'description', 'fiducial', 'prior_name', 'lower', 'upper', 
                    'mu', 'sigma', 'analytic']
                    
     def __init__(self, name=None, value=None, vary=False, min=None, max=None, expr=None, **kwargs):
@@ -77,7 +77,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
             If a `str`, this gives a mathematical expression used to constrain 
             the value during the fit. Otherwise, the function will be called
             to evaluate the parameter's value. Default is `None`
-        prior : {'uniform', 'normal'}, optional
+        prior_name : {'uniform', 'normal'}, optional
             Use either a uniform or normal prior for this parameter. Default
             is no prior.
         lower, upper : floats, optional
@@ -92,7 +92,12 @@ class Parameter(PickeableCache, lmfit.Parameter):
             
         # handle additional parameters
         self.description = kwargs.get('description', 'No description available')
-        self.prior_name = kwargs.get('prior', None)
+        self.prior_name = kwargs.get('prior_name', None)
+        
+        # check for deprecated "prior"
+        if 'prior' in kwargs:
+            self.prior_name = kwargs['prior']
+        
         for k in ['fiducial', 'lower', 'upper', 'mu', 'sigma']:
             setattr(self, k, kwargs.get(k, None))
             

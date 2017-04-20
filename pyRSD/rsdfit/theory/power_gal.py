@@ -85,6 +85,7 @@ class GalaxyPowerParameters(ParameterSet):
                         
             # update with values from file
             fromfile = super(GalaxyPowerParameters, cls).from_file(filename, tags=tag)
+            params.tag = fromfile.tag # transfer the tag
             for name in fromfile:
                 
                 # ignore deprecated parameters

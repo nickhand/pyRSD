@@ -48,7 +48,7 @@ class Parameter(PickeableCache, lmfit.Parameter):
     Currently, the prior can either be a uniform or normal distribution.
     """
     valid_keys = ['name', 'value', 'vary', 'min', 'max', 'expr', 
-                   'description', 'fiducial', 'prior_name', 'lower', 'upper', 
+                   'description', 'fiducial', 'prior_name', 'prior', 'lower', 'upper', 
                    'mu', 'sigma', 'analytic']
                    
     def __init__(self, name=None, value=None, vary=False, min=None, max=None, expr=None, **kwargs):

@@ -133,9 +133,12 @@ class RSDFitDriver(object):
                         model_dir = driver.params.get('model_dir', self.folder)
                         np.save(os.path.join(model_dir, model_filename), driver.theory.model)
             
-            # write out the param file
-            if self.comm.rank == 0:
+            # only one rank needs to write out
+            if MPI.COMM_WORLD.rank == 0:
                 driver.to_file(os.path.join(self.folder, params_filename))
+            
+            # have everyone wait
+            MPI.COMM_WORLD.barrier()
             
             # set driver values from command line
             solver = driver.params['solver_type'].value

@@ -82,6 +82,12 @@ class LBFGSResults(object):
         for a in ['min_chi2', 'free_names', 'constrained_names', 'data']:
             v = getattr(toret, a)
             setattr(toret, a, v.tolist())
+            
+        # remove old structured arrays from constrained values
+        x = toret.min_chi2_constrained_values
+        if x.dtype.char == "V":
+            toret.min_chi2_constrained_values = np.array([x[name] for name in toret.constrained_names])
+            
         return toret
         
     def __iter__(self):

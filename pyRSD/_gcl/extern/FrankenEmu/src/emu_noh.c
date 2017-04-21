@@ -1,9 +1,9 @@
 /*
- *  emu.c
+ *  emu_noh.c
  *  
  *
  *  Created by Earl Lawrence on 9/17/09.
- *  Update 10/9/2012
+ *  Update 11/30/2012
  *
  *  This program was prepared by Los Alamos National Security, LLC at Los Alamos National Laboratory (LANL) 
  *  under contract No. DE-AC52-06NA25396 with the U.S. Department of Energy (DOE). All rights in the program 
@@ -24,23 +24,23 @@
 #include <gsl/gsl_spline.h>
 #include <gsl/gsl_errno.h>
 
-#include "FrankenEmu/pcbasis.h"
-#include "FrankenEmu/design.h"
-#include "FrankenEmu/pcweights.h"
-#include "FrankenEmu/corrlengths.h"
-#include "FrankenEmu/precisions.h"
-#include "FrankenEmu/meansd.h"
-#include "FrankenEmu/kemu.h"
-#include "FrankenEmu/ksim.h"
+#include "pcbasis_noh.h"
+#include "design_noh.h"
+#include "pcweights_noh.h"
+#include "corrlengths_noh.h"
+#include "precisions_noh.h"
+#include "meansd.h"
+#include "kemu.h"
+#include "ksim.h"
 
 // Sizes of stuff and number of redshifts
-static int m=137, neta=5500, p=6, peta=9, rs=11, nsim=582;
+static int m=37, neta=5500, p=5, peta=6, rs=11, nsim=582;
 // Kriging basis computed by emuInit, sizes should be peta and m
-static double KrigBasis[9][137];
+static double KrigBasis[6][37];
 
 
 // Initialization function that computes the Kriging basis
-void emuInit() {
+void emuInit_noh() {
     int i,j,k,l;
     double cov;
     gsl_matrix *SigmaSim = gsl_matrix_alloc(m,m);
@@ -82,7 +82,7 @@ void emuInit() {
 
 // The actual emulation
 // Cosmological parameters, placeholder for the output, type of output
-void emu(double *xstar, double *ystar, int *outtype) {
+void emu_noh(double *xstar, double *ystar, int *outtype) {
     static int inited=0;
     int i, j, k;
     double wstar[peta], Sigmastar[peta][m], ystaremu[neta], ystar_allz[rs*nsim], logc;
@@ -96,7 +96,7 @@ void emu(double *xstar, double *ystar, int *outtype) {
     
     // Iinitialize if necessary
     if(inited==0) {
-        emuInit();
+        emuInit_noh();
         inited=1;
     }
     
@@ -114,13 +114,10 @@ void emu(double *xstar, double *ystar, int *outtype) {
                 case 2:
                     printf("n_s must be between %f and %f.\n", xmin[i], xmin[i]+xrange[i]);
                     break;
-				case 3:
-					printf("h must be between %f and %f.\n", xmin[i], xmin[i]+xrange[i]);
-                    break;
-                case 4:
+                case 3:
                     printf("w must be between %f and %f.\n", xmin[i], xmin[i]+xrange[i]);
                     break;
-                case 5:
+                case 4:
                     printf("sigma_8 must be between %f and %f.\n", xmin[i], xmin[i]+xrange[i]);
                     break;
             }
@@ -207,9 +204,10 @@ void emu(double *xstar, double *ystar, int *outtype) {
     
     switch(outtype[0]) {
         default:
-            for(j=0; j<nsim; j++) {
-                ystar[nsim+j] = pow(10.0,ystar[nsim+j]);
-            }
+	   for(j=0; j<nsim; j++) {
+	     ystar[nsim+j] = pow(10.0,ystar[nsim+j]);
+	   }
+
             break;
         case 1:
             // Transform to Delta^2
@@ -235,7 +233,7 @@ void emu(double *xstar, double *ystar, int *outtype) {
 }
 
 // // Linker function for use with Fortran
-// void emu_(double *x, double *y, int *outtype) {
+// void emu_noh_(double *x, double *y, int *outtype) {
 //     void emu();
 //     emu(x,y,outtype);
 // }

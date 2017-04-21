@@ -30,11 +30,8 @@ on_rtd = os.environ.get('READTHEDOCS') == 'True'
 # every module uses numpy
 import numpy
 
-# try to import pygcl; hopefully you succeed
-sys.path.insert(1, "%s/gcl/python" %pkg_dir)
-print(sys.path)
 try:
-    import pygcl
+    from pyRSD import pygcl
 except Exception as msg:    
     if on_rtd: 
         pygcl = None

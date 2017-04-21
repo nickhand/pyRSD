@@ -1,9 +1,9 @@
 # environment.yml
 # Configuration file for creating a Conda Environment with dependencies needed for pyRSD.
 # Create the environment by running the following command (after installing Miniconda):
-#   $ conda env create --name pyrsd-docs-py27 -f environment.yml
+#   $ conda env create --name pyrsd-docs -f environment.yml
 
-name: pyrsd-docs-py27
+name: pyrsd-docs
 
 channels:
 - defaults
@@ -12,7 +12,7 @@ channels:
 - conda-forge
 
 dependencies:
-- python=2.7
+- python=3.5
 - numpy
 - pandas
 - scipy

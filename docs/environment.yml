@@ -6,18 +6,15 @@
 name: pyrsd-docs
 
 channels:
-- conda-defaults
+- defaults
 - nickhand
 - astropy
 - conda-forge
 
 dependencies:
 - python=3.5
-- setuptools
 - gsl
-- swig
 - fftw
-- gsl
 - numpy
 - pandas
 - scipy
@@ -35,3 +32,4 @@ dependencies:
 - sphinx_rtd_theme
 - numpydoc
 - sphinx
+- pyrsd

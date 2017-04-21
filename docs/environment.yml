@@ -26,7 +26,6 @@ dependencies:
 - matplotlib
 - seaborn
 - corner
-- pyrsd
 - IPython
 - sphinx_rtd_theme
 - numpydoc

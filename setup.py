@@ -250,7 +250,5 @@ if __name__ == '__main__':
           extras_require=extras,
           package_data={'pyRSD': pkg_data},
           entry_points={'console_scripts' : 
-                      ['rsdfit = pyRSD.rsdfit.rsdfit:main', 
-                      'rsdfit-batch = pyRSD.rsdfit.rsdfit_batch:main'
-                      ]}
+                      ['rsdfit = pyRSD.rsdfit.rsdfit:main']}
     )

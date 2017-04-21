@@ -18,7 +18,6 @@ requirements:
   - gcc
   - gsl
   - fftw
-  - wget
   - swig
 
   run:

@@ -32,12 +32,16 @@ import numpy
 
 # try to import pygcl; hopefully you succeed
 sys.path.insert(1, "%s/gcl/python" %pkg_dir)
+print(sys.path)
 try:
     import pygcl
 except Exception as msg:    
-    if on_rtd: pygcl = None
+    if on_rtd: 
+        pygcl = None
     else:
-        raise ImportError("Cannot use package without pygcl; original message: %s" %msg)
+        import traceback
+        tb = traceback.format_exc()
+        raise ImportError("Cannot use package without pygcl\n%s" %tb)
 
 def _init():
     """

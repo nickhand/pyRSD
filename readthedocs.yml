@@ -1,2 +1,4 @@
+name: pyrsd-docs
+type: sphinx
 conda:
-    file: pyRSD_conda_env.yml
+    file: docs/environment.yml

@@ -16,7 +16,8 @@ import os
 import shlex
 
 import mock
-MOCK_MODULES = ['scipy', 'george', 'emcee', 'pandas', 'sklearn', 'mpi4py', 'lmfit', 'autograd']
+MOCK_MODULES = ['scipy', 'scipy.integrate', 'scipy.interpolate', 'scipy.optimize', 'scipy.special', 'scipy.stats',
+                'george', 'emcee', 'pandas', 'sklearn', 'mpi4py', 'lmfit', 'autograd', 'lsskit']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
@@ -24,8 +25,10 @@ for mod_name in MOCK_MODULES:
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #sys.path.insert(0, os.path.abspath('.'))
-sys.path.insert(0, os.path.abspath('../pyRSD'))
+
+sys.path.insert(0, os.path.abspath('..'))
 import pyRSD
+print(sys.path)
 
 # -- General configuration ------------------------------------------------
 
@@ -48,17 +51,8 @@ extensions = [
 ]
 
 autosummary_generate = True
-
 numpydoc_show_class_members = True
 numpydoc_class_members_toctree = False
-
-def skip(app, what, name, obj, skip, options):
-    if name == "__init__":
-        return False
-    return skip
-
-def setup(app):
-    app.connect("autodoc-skip-member", skip)
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']
@@ -104,7 +98,7 @@ version = release
 
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
-exclude_patterns = ['_build']
+exclude_patterns = ['build']
 
 # The reST default role (used for this markup: `text`) to use for all
 # documents.
@@ -145,9 +139,6 @@ if not on_rtd:
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-else:
-    # do the setup
-    os.system("make apidoc")
     
 #html_theme = 'nature'
 
@@ -241,7 +232,7 @@ html_static_path = ['_static']
 #html_search_scorer = 'scorer.js'
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'pyRSDdoc'
+htmlhelp_basename = 'pyrsddoc'
 
 # -- Options for LaTeX output ---------------------------------------------
 

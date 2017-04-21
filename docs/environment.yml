@@ -1,9 +1,9 @@
-# pyRSD_conda_env.yml
+# environment.yml
 # Configuration file for creating a Conda Environment with dependencies needed for pyRSD.
 # Create the environment by running the following command (after installing Miniconda):
-#   $ conda env create -f pyRSD_conda_env.yml
+#   $ conda env create --name pyrsd-docs-py27 -f environment.yml
 
-name: pyRSD
+name: pyrsd-docs-py27
 
 channels:
 - defaults
@@ -12,7 +12,7 @@ channels:
 - conda-forge
 
 dependencies:
-- python=2.7.12
+- python=2.7
 - numpy
 - pandas
 - scipy
@@ -26,6 +26,8 @@ dependencies:
 - matplotlib
 - seaborn
 - corner
-- numpydoc
-- IPython=4.0 # pin beceause of https://github.com/ipython/ipython/issues/8733
 - pyrsd
+- IPython
+- sphinx_rtd_theme
+- numpydoc
+- sphinx

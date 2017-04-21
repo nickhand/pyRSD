@@ -1,0 +1,22 @@
+include pyRSD/gcl_wrap.cpp
+include pyRSD/gcl.py
+include pyRSD/_gcl/include/*h
+recursive-include pyRSD/_gcl/extern *.h
+include pyRSD/_gcl/python/*.i
+
+include depends/class.cfg
+include depends/install_class.sh
+include depends/Makefile
+include depends/class-v2.6.0.tar.gz
+
+include pyRSD/data/dark_matter/pkmu_P*
+include pyRSD/data/galaxy/full/*
+include pyRSD/data/galaxy/2-halo/*
+include pyRSD/data/params/*
+include pyRSD/data/simulation_fits/*
+
+include README.md
+include readthedocs.yml
+include LICENSE
+include requirements.txt
+include requirements-extras.txt

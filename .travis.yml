@@ -39,11 +39,11 @@ install:
 
     - PIN_FILE_CONDA=${CONDA_INSTALL_LOCN}/conda-meta/pinned
     - echo "conda ${CONDA_VERSION}" > $PIN_FILE_CONDA
-
+    
     - conda update --quiet conda
 
     # Install a couple of dependencies we need for sure.
-    - conda install --quiet --yes anaconda-client jinja2
+    - conda install --quiet --yes anaconda-client jinja2 numpy
     
     - conda install --yes conda-build=2.0.10
     - conda install --yes -c conda-forge conda-build-all=1.0*

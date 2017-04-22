@@ -12,8 +12,7 @@ Documentation
    :maxdepth: 1
 
    installing
-   api/modules
-   maintainer
+   api
   
 
 Get in touch

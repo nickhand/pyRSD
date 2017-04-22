@@ -666,10 +666,18 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         
     def to_npy(self, filename):
         """
-        Save to a numpy `.npy` file
+        Save to a ``.npy`` file by calling :func:`numpy.save`
         """
         np.save(filename, self)
         
+    @classmethod
+    def from_npy(cls, filename):
+        """
+        Load a model from a ``.npy`` file
+        """
+        from pyRSD.rsd import load_model
+        return load_model(filename)
+    
     #---------------------------------------------------------------------------
     # utility functions
     #---------------------------------------------------------------------------             
@@ -684,9 +692,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             except Exception as e:
                 raise RuntimeError("failure to set parameter `%s` to value %s: %s" %(k, str(v), str(e)))
     
-    def to_dict(self):
+    @property
+    def config(self):
         """
-        Return a dictionary of the allowable parameters
+        Return a dictionary holding the model configuration
+        
+        This holds the value of all attributes in the
+        :attr:`allowable_kwargs` list
         """
         allowed = self.__class__.allowable_kwargs
         return {k:getattr(self, k) for k in allowed}

@@ -412,8 +412,8 @@ class FittingDriver(object):
             logger.info("setting the theoretical model from existing instance", on=0)
         self.theory.model = val
         
-        # print out the model paramete
-        params = self.theory.model.to_dict()
+        # print out the model parameters
+        params = self.theory.model.config
         msg = "running with model parameters:\n\n"
         msg += "\n".join(["%-25s: %s" %(k, str(v)) for k,v in sorted(params.items())])
         logger.info(msg, on=0)

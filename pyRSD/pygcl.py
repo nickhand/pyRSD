@@ -3,19 +3,19 @@ import os
 from six import add_metaclass
 
 from pyRSD import gcl
-from pyRSD.gcl import ClassCosmology
-from pyRSD.gcl import ClassParams
-from pyRSD.gcl import Cosmology
-from pyRSD.gcl import Engine
+from gcl import ClassCosmology
+from gcl import ClassParams
+from gcl import Cosmology
+from gcl import Engine
 
-from pyRSD.gcl import Constants
-from pyRSD.gcl import CubicSpline
-from pyRSD.gcl import LinearSpline
-from pyRSD.gcl import Spline
+from gcl import Constants
+from gcl import CubicSpline
+from gcl import LinearSpline
+from gcl import Spline
 
-from pyRSD.gcl import xi_to_pk, pk_to_xi
-from pyRSD.gcl import ComputeXiLM, compute_xilm_fftlog as ComputeXiLM_fftlog
-from pyRSD.gcl import IntegrationMethods
+from gcl import xi_to_pk, pk_to_xi
+from gcl import ComputeXiLM, compute_xilm_fftlog as ComputeXiLM_fftlog
+from gcl import IntegrationMethods
 
 class DocFixer(type):
     

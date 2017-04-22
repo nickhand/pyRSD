@@ -28,7 +28,6 @@ for mod_name in MOCK_MODULES:
 
 sys.path.insert(0, os.path.abspath('..'))
 import pyRSD
-print(sys.path)
 
 # -- General configuration ------------------------------------------------
 
@@ -51,8 +50,8 @@ extensions = [
 ]
 
 autosummary_generate = True
-numpydoc_show_class_members = True
-numpydoc_class_members_toctree = False
+numpydoc_class_members_toctree = True
+numpydoc_show_class_members = False
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ['_templates']

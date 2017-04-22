@@ -15,14 +15,19 @@ import warnings
           
 class GalaxySpectrum(BiasedSpectrum):
     """
-    The galaxy redshift space power spectrum, a subclass of the `BiasedSpectrum`
-    for biased redshift space power spectra
+    The galaxy redshift space power spectrum, a subclass of  
+    :class:`~pyRSD.rsd.BiasedSpectrum` for biased redshift space power spectra
     """    
     def __init__(self, fog_model='modified_lorentzian', 
                        use_so_correction=False,
                        **kwargs):
         """
-        Additional `GalaxySpectrum`-specific parameters:
+        Initialize the GalaxySpectrum
+                           
+        Additional `GalaxySpectrum`-specific parameters are listed
+        below. Keywords accepted by :class:`pyRSD.rsd.BiasedSpectrum`
+        and :class:`pyRSD.rsd.DMSpectrum`. See their documenation for further 
+        details.
         
         Parameters
         ----------

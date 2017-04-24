@@ -1,0 +1,3 @@
+runtests
+matplotlib
+numdifftools

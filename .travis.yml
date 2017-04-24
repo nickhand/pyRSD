@@ -1,0 +1,57 @@
+language: python
+python:
+    - 2.7
+    - 3.5
+
+env:
+    - NUMPY_VERSION=1.11
+
+cache:
+    directories:
+        - $HOME/.cache/pip
+        - $HOME/.conda
+        - $HOME/.cache/pyRSD
+
+before_install:
+    - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+    - chmod +x miniconda.sh
+    - ./miniconda.sh -b -p $HOME/miniconda
+    - export PATH=$HOME/miniconda/bin:$PATH
+    - conda update --yes conda
+
+install:
+    - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
+    - source activate test
+
+    # search astropy and bccp channels for dependencies
+    - conda config --add channels conda-forge
+    - conda config --add channels astropy
+    - conda config --add channels bccp
+    - conda config --add channels nickhand
+
+    # install specific numpy version and pin it
+    - conda install --yes numpy=$NUMPY_VERSION
+    - echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
+
+    # install base dependencies
+    - conda install --yes --file requirements.txt
+
+    # install test dependencies
+    - pip install -r requirements-tests.txt
+
+    # install nbodykit itself
+    - pip install .[tests]
+
+script:
+    - python runtests.py
+
+deploy:
+    - provider: pypi
+      distributions: sdist
+      server: https://pypi.python.org/pypi
+      user: "nickhand"
+      password:
+          secure: "HgbpYapyGiOpi51rRGx6H5u1PbkaUp9QgLemg5XjfuKt660QAcDFH3KSDJzl6f2PKvnlkLis8f0fieDYrx8pT3PmuvhwZjQi03ArDpdjVSFn+rQvU1ir3f1Qf1gqdlMWttwfdHjLzHQOF3IMomLGDU6+TXQK+4iRJIprufJFSemNOJ9fTx+Qos6/oWo2q566SLVtdHZZsz1N3tuGzdY9gUGdJLx07g2IsE+WX14v9jwPupgZU+uR1o6twA/I+mvqvbcb9BBKBOQGp7XYtSv61H35SNz+GB6SZeOR3pyG4xKXEB6NsKyIU+7YDPLCwPGAJJZ9rGKviErC8ayTaAhcWDLgLahvWze9IkbGmULoqa4Hs/M5sOkI6ETI7mITl6W9LtFTAwDlUcsZNrtRRYtMM7ygI9xqztU3PuKzzAi50HC7aKRncbj0xhzozCT7ocm1bpICeu+vHh7qsIsVAP4dAC8DqeplN1qSsfkS157/bFYoAWhCJclK1i2KScq7ZQR/Ekc+H0fRBZzVmjbP/2Mv7ukuipn7VBqY5PAoQPWsYLMGutKsRoWcU6TmpL/uxU7iZo2ht8OB7aJ5B+vueqlR7sADw0S37HwtspQGlSQ9OV7KLxLGegGaOu9ajxVo0Bidb+RY+ID4rTSVz4qbbNeJkRD1lhjMG0kCcEyzOwmC+Wc="
+      on:
+        tags   : true
+        condition : $TRAVIS_PYTHON_VERSION = "2.7"

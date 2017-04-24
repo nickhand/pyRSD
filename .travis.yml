@@ -24,10 +24,13 @@ install:
     - source activate test
 
     # search astropy and bccp channels for dependencies
-    - conda config --add channels conda-forge
     - conda config --add channels astropy
     - conda config --add channels bccp
-    - conda config --add channels nickhand
+    - conda config --prepend channels nickhand
+    - conda config --append channels conda-forge
+
+    # build dependencies
+    - conda install --yes swig gcc gsl fftw libgcc
 
     # install specific numpy version and pin it
     - conda install --yes numpy=$NUMPY_VERSION

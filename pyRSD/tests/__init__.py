@@ -6,5 +6,6 @@ import os
 # update the rc params
 mpl.rc_file(os.path.join(data_dir, 'tests', 'matplotlibrc'))
 mpl.use("Agg")
+mpl.rcParams['text.usetex'] = True
 
 from .utils.cache import cache_manager

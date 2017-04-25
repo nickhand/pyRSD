@@ -5,17 +5,23 @@ from datetime import date
 import pickle
 import copyreg
 import types
+from six import PY3
 
 class PickeableClass(type):
     def __init__(cls, name, bases, attrs):
         copyreg.pickle(types.MethodType, _pickle_method, _unpickle_method)
 
 def _pickle_method(method):
-    func_name = method.im_func.__name__
-    obj = method.im_self
-    cls = method.im_class
+    if not PY3:
+        func_name = method.im_func.__name__
+        obj = method.im_self
+        cls = method.im_class
+    else:
+        func_name = method.__func__.__name__
+        obj = method.__self__
+        cls = method.__self__.__class__
     return _unpickle_method, (func_name, obj, cls)
- 
+
 def _unpickle_method(func_name, obj, cls):
     for cls in cls.mro():
         try:
@@ -28,21 +34,21 @@ def _unpickle_method(func_name, obj, cls):
 
 def load_pickle(filename):
     """
-    Load an instance, i.e., `FittingDriver`, `EmceeResults` that has been 
+    Load an instance, i.e., `FittingDriver`, `EmceeResults` that has been
     pickled
     """
     try:
         return pickle.load(open(filename, 'r'))
     except Exception as e:
         raise ConfigurationError("Cannot load the pickle `%s`; original message: %s" %(filename, e))
-    
+
 def save_pickle(obj, filename):
     """
     Pickle an instance using `pickle`
     """
     # make sure pool is None, so it is pickable
     pickle.dump(obj, open(filename, 'w'))
-    
+
 def load_model(filename, **kwargs):
     """
     Load a model from file
@@ -57,22 +63,22 @@ def load_model(filename, **kwargs):
         model = load_pickle(filename)
     else:
         raise ValueError("extension for model file not recognized; must be `.npy` or `.pickle`")
-    
+
     return model
 
 def create_output_file(folder, solver_type, chain_number, iterations, walkers=0, restart=None):
     """
     Automatically create a new name for the results file.
-    
+
     This routine takes care of organizing the folder for you. It will
     automatically generate names for the new chains according to the date,
     number of points chosen.
-    """    
+    """
     if solver_type == 'mcmc':
         tag = "{}x{}".format(walkers, iterations)
     else:
         tag = solver_type + '_%di' %iterations
-        
+
     # output file
     if restart is None:
         outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
@@ -83,7 +89,7 @@ def create_output_file(folder, solver_type, chain_number, iterations, walkers=0,
             outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
         else:
             outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[3])
-        
+
     suffix = 0
     for files in os.listdir(folder):
         if files.find(outname_base) != -1:
@@ -98,9 +104,9 @@ def create_output_file(folder, solver_type, chain_number, iterations, walkers=0,
             break
     outfile_name = os.path.join(folder, outname_base)+str(suffix)+'.npz'
     print('Creating %s\n' %outfile_name)
-     
+
     # touch the file so it exists and then return
-    open(outfile_name, 'a').close()   
+    open(outfile_name, 'a').close()
     return outfile_name
 
 class ConfigurationError(Exception):
@@ -125,7 +131,7 @@ def write_covariance_matrix(covariance_matrix, names, path):
                 else:
                     cov.write('%.5e\t' % covariance_matrix[i][j])
             cov.write('\n')
-            
+
 def write_bestfit_file(bestfit, names, path, scales=None):
     """
     Store the bestfit parameters to a file
@@ -140,7 +146,7 @@ def write_bestfit_file(bestfit, names, path, scales=None):
             else:
                 bestfit_file.write('%-15s = %.5e\n' %(name, bf_value))
         bestfit_file.write('\n')
-        
+
 def write_histogram(hist_file_name, x_centers, hist):
     """
     Store the posterior distribution to a file
@@ -235,7 +241,7 @@ def read_histogram_2d(histogram_path):
     hist = np.array(hist)
 
     return x_centers, y_centers, extent, hist
-    
+
 def store_contour_coordinates(file_name, name1, name2, contours, levels):
 
     with open(file_name, 'w') as plot_file:

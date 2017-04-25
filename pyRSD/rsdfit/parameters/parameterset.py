@@ -296,7 +296,7 @@ class ParameterSet(lmfit.Parameters):
                     if self[dep].constrained:
                         redundant = True
                         par.deps.pop(par.deps.index(dep))
-                        par.deps.extend([name for name in self[dep].deps if name not in par.deps])
+                        par.deps.extend([xx for xx in self[dep].deps if xx not in par.deps])
                         if name in self[dep].children:
                             self[dep].children.remove(name)
 
@@ -516,9 +516,11 @@ class ParameterSet(lmfit.Parameters):
 
         # some more checks
         if wrt not in self.free_names:
-            raise ValueError("wrt='%s' should be the name of a free parameter" %wrt)
+            args = (name, wrt, wrt)
+            raise ValueError("computing d%s/d%s: wrt='%s' should be the name of a free parameter" %args)
         if not self[name].constrained:
-            raise ValueError("name='%s' should specify a constrained parameter" %name)
+            args = (name, wrt, name)
+            raise ValueError("computing d%s/d%s: name='%s' should specify a constrained parameter" %args)
 
         if theta is None:
             theta = self.free_values

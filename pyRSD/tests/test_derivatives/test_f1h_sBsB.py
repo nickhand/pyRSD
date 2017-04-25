@@ -26,7 +26,7 @@ def test_total(driver):
 
     # setup the numerical derivative
     index = driver.theory.free_names.index('f1h_sBsB')
-    theta = [driver.theory.fit_params[k].value for k in driver.theory.free_names]
+    theta = driver.theory.free_values
 
     def f(x):
         t = theta.copy()

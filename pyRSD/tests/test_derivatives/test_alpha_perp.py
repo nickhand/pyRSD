@@ -32,7 +32,7 @@ def test_total(driver, socorr):
 
     # setup the numerical derivative
     index = driver.theory.free_names.index('alpha_perp')
-    theta = [driver.theory.fit_params[k].value for k in driver.theory.free_names]
+    theta = driver.theory.free_values
 
     def f(x):
         t = theta.copy()

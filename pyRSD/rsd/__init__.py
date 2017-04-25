@@ -15,7 +15,7 @@ from .. import pkg_dir
 __version__ = '0.3.1'
 _githash = get_git_devstr(sha=True, show_warning=False, path=pkg_dir)[:7]
 if _githash:
-    __version__ += ".dev." + _githash 
+    __version__ += ".dev." + _githash
 
 # import model classes
 from .power.dm     import DarkMatterSpectrum
@@ -48,16 +48,16 @@ def load_model(filename, show_warning=True):
     Load a model from a npy
     """
     from .. import os, numpy
-    
+
     # check the filename extension
     _, ext = os.path.splitext(filename)
     desired_ext = os.path.extsep + 'npy'
     if ext != desired_ext:
         raise ValueError("file name should end in %s" %desired_ext)
-        
+
     # load
-    model = numpy.load(filename).tolist()
-    
+    model = numpy.load(filename, encoding='latin1').tolist()
+
     # check the version
     if show_warning and (not hasattr(model, '__version__') or model.__version__ != __version__):
         import warnings
@@ -65,5 +65,5 @@ def load_model(filename, show_warning=True):
         msg += '\tcurrent model version: %s\n' %(__version__)
         msg += '\tloaded model version: %s\n' %(model.__version__)
         warnings.warn(msg, OutdatedModelWarning)
-        
+
     return model

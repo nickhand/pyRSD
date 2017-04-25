@@ -228,9 +228,16 @@ with open('requirements-tests.txt', 'r') as fh:
     extras['tests'] = [l.strip() for l in fh][1:]
     extras['test'] = extras['tests']
 
-pkg_data = ['data/dark_matter/pkmu_P*', 'data/galaxy/full/*', 'data/galaxy/2-halo/*',
-            'data/params/*', 'data/simulation_fits/*','data/examples/*', 'data/tests/*/*png',
-            'data/tests/*/*/*png', 'data/tests/matplotlibrc']
+pkg_data = ['data/dark_matter/pkmu_P*',
+            'data/dark_matter/hzpt*',
+            'data/galaxy/full/*',
+            'data/galaxy/2-halo/*',
+            'data/params/*',
+            'data/simulation_fits/*',
+            'data/examples/*',
+            'data/tests/*/*png',
+            'data/tests/*/*/*png',
+            'data/tests/matplotlibrc']
 
 if __name__ == '__main__':
 

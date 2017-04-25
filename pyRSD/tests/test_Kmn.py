@@ -44,7 +44,7 @@ def model():
 
     return model
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tol=20)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=20)
 def test_Kmn_0(model):
     """
     Reproduce top left panel of Figure 1.
@@ -66,7 +66,7 @@ def test_Kmn_0(model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tol=20)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=20)
 def test_Kmn_1(model):
     """
     Reproduce top right panel of Figure 1.
@@ -90,7 +90,7 @@ def test_Kmn_1(model):
     return fig
 
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tol=20)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=20)
 def test_Kmn_2(model):
     """
     Reproduce bottom left panel of Figure 1.
@@ -114,7 +114,7 @@ def test_Kmn_2(model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tol=20)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=20)
 def test_Kmn_3(model):
     """
     Reproduce bottom right panel of Figure 1.

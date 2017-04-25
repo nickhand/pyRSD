@@ -244,6 +244,7 @@ def test_P01(model, binning):
     ylabel = r"$P_{01}^\mathrm{hh} \ / 2 f b_1 P_\mathrm{NW}$"
 
     # plot each mass bin
+    failed = []
     for mass_bin in mass_bins:
 
         fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
@@ -281,7 +282,13 @@ def test_P01(model, binning):
         path = savefig(fig, '.', *output_paths('test_P01_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
+        try:
+            assert correct == file_md5sum(os.path.join('figures', path)), path
+        except:
+            failed.append(path)
+
+    if len(failed):
+        raise AssertionError("failed: %s" %str(failed))
 
 def test_P11_plus_P02(model, binning):
     """
@@ -302,6 +309,7 @@ def test_P11_plus_P02(model, binning):
     fig, ax = new_axes(ylabel, xlims, ylims[iz])
 
     # plot each mass bin
+    failed = []
     for mass_bin in mass_bins:
 
         fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
@@ -334,7 +342,13 @@ def test_P11_plus_P02(model, binning):
         path = savefig(fig, '.', *output_paths('test_P11_plus_P02_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
+        try:
+            assert correct == file_md5sum(os.path.join('figures', path)), path
+        except:
+            failed.append(path)
+
+    if len(failed):
+        raise AssertionError("failed: %s" %str(failed))
 
 def test_P11_mu4(model, binning):
     """
@@ -355,6 +369,7 @@ def test_P11_mu4(model, binning):
     fig, ax = new_axes(ylabel, xlims, ylims[iz])
 
     # plot each mass bin
+    failed = []
     for mass_bin in mass_bins:
 
         fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
@@ -388,7 +403,13 @@ def test_P11_mu4(model, binning):
         path = savefig(fig, '.', *output_paths('test_P11_mu4_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
+        try:
+            assert correct == file_md5sum(os.path.join('figures', path)), path
+        except:
+            failed.append(path)
+
+    if len(failed):
+        raise AssertionError("failed: %s" %str(failed))
 
 def test_higher_order_mu4(model, binning):
     """
@@ -409,6 +430,7 @@ def test_higher_order_mu4(model, binning):
     fig, ax = new_axes(ylabel, xlims, ylims[iz])
 
     # plot each mass bin
+    failed = []
     for mass_bin in mass_bins:
 
         fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
@@ -442,4 +464,10 @@ def test_higher_order_mu4(model, binning):
         path = savefig(fig, '.', *output_paths('test_higher_order_mu4_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
+        try:
+            assert correct == file_md5sum(os.path.join('figures', path)), path
+        except:
+            failed.append(path)
+
+    if len(failed):
+        raise AssertionError("failed: %s" %str(failed))

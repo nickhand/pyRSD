@@ -10,6 +10,7 @@ include depends/Makefile
 include depends/class-v2.6.0.tar.gz
 
 include pyRSD/data/dark_matter/pkmu_P*
+include pyRSD/data/dark_matter/hzpt*
 include pyRSD/data/galaxy/full/*
 include pyRSD/data/galaxy/2-halo/*
 include pyRSD/data/params/*

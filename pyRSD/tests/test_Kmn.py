@@ -51,20 +51,22 @@ def test_Kmn_0(model):
     # axis limits
     xlims = (0.01, 1.0)
     ylims = (1., 1e3)
-    ylabel = r"$P \ \mathrm{[Mpc/h]^3}$"
+    ylabel = r"$P [Mpc/h]^3}$"
 
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
-
     # this panel
-    plt.loglog(k, model.K00(k), c='b', label=r'$K_{00}$')
-    plt.loglog(k, -model.K00s(k), c='b', ls='--', label=r"$-K_{00,s}$")
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_Kmn', "panel_0.png")
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+
+        plt.loglog(k, model.K00(k), c='b', label=r'$K_{00}$')
+        plt.loglog(k, -model.K00s(k), c='b', ls='--', label=r"$-K_{00,s}$")
+
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_Kmn', "panel_0.png")
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
     assert correct == file_md5sum(os.path.join('figures', path)), path
@@ -81,16 +83,18 @@ def test_Kmn_1(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
-
     # this panel
-    plt.loglog(k, model.K01(k), c='b', label=r'$K_{01}$')
-    plt.loglog(k, model.K01s(k), c='b', ls='dashdot', label=r"$K_{01,s}$")
-    plt.loglog(k, model.K02s(k), c='b', ls='dashed', label=r"$K_{02,s}$")
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_Kmn', "panel_1.png")
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+
+        plt.loglog(k, model.K01(k), c='b', label=r'$K_{01}$')
+        plt.loglog(k, model.K01s(k), c='b', ls='dashdot', label=r"$K_{01,s}$")
+        plt.loglog(k, model.K02s(k), c='b', ls='dashed', label=r"$K_{02,s}$")
+
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_Kmn', "panel_1.png")
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
     assert correct == file_md5sum(os.path.join('figures', path)), path
@@ -107,17 +111,19 @@ def test_Kmn_2(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
-
     # this panel
-    plt.loglog(k, model.K11(k), c='b', label=r'$K_{11}$')
-    plt.loglog(k, abs(model.K10(k)), c='b', ls='dashdot', label=r"$|K_{10}|$")
-    plt.loglog(k, abs(model.K11s(k)), c='b', ls='dashed', label=r"$|K_{11,s}|$")
-    plt.loglog(k, -model.K10s(k), c='b', ls='dotted', label=r"$-K_{10,s}$")
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_Kmn', 'panel_2.png')
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+
+        plt.loglog(k, model.K11(k), c='b', label=r'$K_{11}$')
+        plt.loglog(k, abs(model.K10(k)), c='b', ls='dashdot', label=r"$|K_{10}|$")
+        plt.loglog(k, abs(model.K11s(k)), c='b', ls='dashed', label=r"$|K_{11,s}|$")
+        plt.loglog(k, -model.K10s(k), c='b', ls='dotted', label=r"$-K_{10,s}$")
+
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_Kmn', 'panel_2.png')
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
     assert correct == file_md5sum(os.path.join('figures', path)), path
@@ -134,18 +140,20 @@ def test_Kmn_3(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
-
     # this panel
     A = 1./k**2
-    plt.loglog(k, -A*model.K20_a(k), c='b', ls='dashed', label=r'$-K_{20}[\mu^2]$')
-    plt.loglog(k, A*abs(model.K20s_a(k)), c='b', label=r'$|K_{20,s}[\mu^2]|$')
-    plt.loglog(k, A*model.K20_b(k), c='b', ls='dotted', label=r'$K_{20}[\mu^4]$')
-    plt.loglog(k, -A*model.K20s_b(k), c='b', ls='dashdot', label=r'$-K_{20,s }[\mu^4]$')
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_Kmn', 'panel_3.png')
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+
+        plt.loglog(k, -A*model.K20_a(k), c='b', ls='dashed', label=r'$-K_{20}[\mu^2]$')
+        plt.loglog(k, A*abs(model.K20s_a(k)), c='b', label=r'$|K_{20,s}[\mu^2]|$')
+        plt.loglog(k, A*model.K20_b(k), c='b', ls='dotted', label=r'$K_{20}[\mu^4]$')
+        plt.loglog(k, -A*model.K20s_b(k), c='b', ls='dashdot', label=r'$-K_{20,s }[\mu^4]$')
+
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_Kmn', 'panel_3.png')
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
     assert correct == file_md5sum(os.path.join('figures', path)), path

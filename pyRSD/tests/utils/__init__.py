@@ -26,8 +26,8 @@ def new_axes(ylabel, xlims=None, ylims=None, nticks=5):
     if ylims is not None: ax.set_ylim(ylims)
 
     # axes labels
-    ax.set_xlabel(r"$k$ [$h$/Mpc]", fontsize=14)
-    ax.set_ylabel(ylabel, fontsize=14)
+    ax.set_xlabel(r"$k \ [h \mathrm{Mpc}^{-1}]$", fontsize=12)
+    ax.set_ylabel(ylabel, fontsize=12)
 
     # add minor ticks
     ax.xaxis.set_minor_locator(AutoMinorLocator(nticks))

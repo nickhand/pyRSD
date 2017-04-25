@@ -95,29 +95,31 @@ def test_P00(redshift, model):
     ylims = (0.8, 1.5)
     ylabel = r"$P_{00}^\mathrm{DM} \ / P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims, ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # normalization
-    norm = model.normed_power_lin_nw(model.k)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims, ylims)
 
-    # plot the model (1-loop SPT)
-    kws = {'c':'b', 'ls':'-', 'label':"1-loop SPT"}
-    plt.plot(model.k, model.P00.mu0(model.k) / norm, **kws)
+        # normalization
+        norm = model.normed_power_lin_nw(model.k)
 
-    # linear
-    kws = {'c':'k', 'ls':':', 'label':"linear"}
-    plt.plot(model.k, model.normed_power_lin(model.k) / norm, **kws)
+        # plot the model (1-loop SPT)
+        kws = {'c':'b', 'ls':'-', 'label':"1-loop SPT"}
+        plt.plot(model.k, model.P00.mu0(model.k) / norm, **kws)
 
-    # zeldovich
-    kws = {'c':'Magenta', 'ls':'dashdot', 'label':"Zel'dovich"}
-    plt.plot(model.k, model.hzpt._P00.__zeldovich__(model.k) / norm, **kws)
+        # linear
+        kws = {'c':'k', 'ls':':', 'label':"linear"}
+        plt.plot(model.k, model.normed_power_lin(model.k) / norm, **kws)
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P00', 'z_%.3f.png' %redshift)
+        # zeldovich
+        kws = {'c':'Magenta', 'ls':'dashdot', 'label':"Zel'dovich"}
+        plt.plot(model.k, model.hzpt._P00.__zeldovich__(model.k) / norm, **kws)
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P00', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P01(redshift, model):
     """
@@ -130,30 +132,32 @@ def test_P01(redshift, model):
     ylims = (0.8, 1.5)
     ylabel = r"$P_{01}^\mathrm{DM} \ / P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # normalization
-    A = 2*model.f
-    norm = A*model.normed_power_lin_nw(model.k)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-    # plot the model (1-loop SPT)
-    kws = {'c':'b', 'ls':'-', 'label':"1-loop SPT"}
-    plt.plot(model.k, model.P01.mu2(model.k) / norm, **kws)
+        # normalization
+        A = 2*model.f
+        norm = A*model.normed_power_lin_nw(model.k)
 
-    # linear
-    kws = {'c':'k', 'ls':':', 'label':"linear"}
-    plt.plot(model.k, A*model.normed_power_lin(model.k) / norm, **kws)
+        # plot the model (1-loop SPT)
+        kws = {'c':'b', 'ls':'-', 'label':"1-loop SPT"}
+        plt.plot(model.k, model.P01.mu2(model.k) / norm, **kws)
 
-    # zeldovich
-    kws = {'c':'Magenta', 'ls':'dashdot', 'label':"Zel'dovich"}
-    plt.plot(model.k, A*model.hzpt._P01.__zeldovich__(model.k) / norm, **kws)
+        # linear
+        kws = {'c':'k', 'ls':':', 'label':"linear"}
+        plt.plot(model.k, A*model.normed_power_lin(model.k) / norm, **kws)
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P01', 'z_%.3f.png' %redshift)
+        # zeldovich
+        kws = {'c':'Magenta', 'ls':'dashdot', 'label':"Zel'dovich"}
+        plt.plot(model.k, A*model.hzpt._P01.__zeldovich__(model.k) / norm, **kws)
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P01', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_scalar_P11(redshift, model):
     """
@@ -166,29 +170,31 @@ def test_scalar_P11(redshift, model):
     ylims = (0.8, 2.0)
     ylabel = r"$P_{11}^\mathrm{DM}[\mu^4] \ / P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # 1-loop results
-    with model.preserve(include_2loop=False):
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-        # normalization
-        A = model.f**2
-        norm = A * model.normed_power_lin_nw(model.k)
+        # 1-loop results
+        with model.preserve(include_2loop=False):
 
-        # plot the model
-        kws = {'c':'b', 'ls':'-', 'label':"model"}
-        plt.plot(model.k, model.P11.mu4.scalar(model.k) / norm, **kws)
+            # normalization
+            A = model.f**2
+            norm = A * model.normed_power_lin_nw(model.k)
 
-        # linear
-        kws = {'c':'k', 'ls':':', 'label':"linear"}
-        plt.plot(model.k, A*model.normed_power_lin(model.k) / norm, **kws)
+            # plot the model
+            kws = {'c':'b', 'ls':'-', 'label':"model"}
+            plt.plot(model.k, model.P11.mu4.scalar(model.k) / norm, **kws)
 
-        ax.legend(loc=0, fontsize=16)
-        path = savefig(fig, '.', 'test_scalar_P11', 'z_%.3f.png' %redshift)
+            # linear
+            kws = {'c':'k', 'ls':':', 'label':"linear"}
+            plt.plot(model.k, A*model.normed_power_lin(model.k) / norm, **kws)
 
-        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
+            ax.legend(loc=0, fontsize=16)
+            path = savefig(fig, '.', 'test_scalar_P11', 'z_%.3f.png' %redshift)
+
+            correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+            assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P11(redshift, model):
     """
@@ -201,33 +207,35 @@ def test_P11(redshift, model):
     ylims = (1.0, 1e4)
     ylabel = r"$P_{11}^\mathrm{DM} \ \mathrm{[Mpc/h]^3}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # 1-loop scalar
-    with model.preserve(include_2loop=False):
-        plt.loglog(model.k, model.P11.mu4.scalar(model.k), label='1-loop, scalar', c='b')
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-    # 1-loop and 2-loop vector
-    plt.loglog(model.k, model.P11.mu2.vector(model.k), label='2-loop, vector', color='r')
-    with model.preserve(include_2loop=False):
-        plt.loglog(model.k, model.P11.mu2.vector(model.k), label='1-loop, vector', color='r', ls='--')
+        # 1-loop scalar
+        with model.preserve(include_2loop=False):
+            plt.loglog(model.k, model.P11.mu4.scalar(model.k), label='1-loop, scalar', c='b')
 
-    # 1-loop and 2-loop C11
-    plt.loglog(model.k, model.f**2 * model.I13(model.k), label=r'1-loop $C_{11}[\mu^4]$', c='g')
-    I1 = model.Ivvdd_h02(model.k)
-    I2 = model.Idvdv_h04(model.k)
-    plt.loglog(model.k, model.f**2 * (I1+I2), label=r'2-loop $C_{11}[\mu^4]$', c='g', ls='--')
+        # 1-loop and 2-loop vector
+        plt.loglog(model.k, model.P11.mu2.vector(model.k), label='2-loop, vector', color='r')
+        with model.preserve(include_2loop=False):
+            plt.loglog(model.k, model.P11.mu2.vector(model.k), label='1-loop, vector', color='r', ls='--')
 
-    # linear
-    kws = {'c':'k', 'ls':':', 'label':"linear"}
-    plt.loglog(model.k, model.f**2*model.normed_power_lin(model.k), **kws)
+        # 1-loop and 2-loop C11
+        plt.loglog(model.k, model.f**2 * model.I13(model.k), label=r'1-loop $C_{11}[\mu^4]$', c='g')
+        I1 = model.Ivvdd_h02(model.k)
+        I2 = model.Idvdv_h04(model.k)
+        plt.loglog(model.k, model.f**2 * (I1+I2), label=r'2-loop $C_{11}[\mu^4]$', c='g', ls='--')
 
-    ax.legend(loc=0, fontsize=16, ncol=2)
-    path = savefig(fig, '.', 'test_P11', 'z_%.3f.png' %redshift)
+        # linear
+        kws = {'c':'k', 'ls':':', 'label':"linear"}
+        plt.loglog(model.k, model.f**2*model.normed_power_lin(model.k), **kws)
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        ax.legend(loc=0, fontsize=16, ncol=2)
+        path = savefig(fig, '.', 'test_P11', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P02(redshift, model):
     """
@@ -240,32 +248,34 @@ def test_P02(redshift, model):
     ylims = (-8, 2)
     ylabel = r"$P^\mathrm{DM}_{02} \ / \ (f \sigma_v k)^2 P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # normalization
-    norm = (model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
-    model.sigma_bv2 = get_sigma_bv2(redshift)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-    # 2 loop anisotropic
-    P02_anisotropic = (2./3)*model.P02.mu4(model.k)
-    plt.semilogx(model.k, P02_anisotropic/norm, c='g', ls='--', label="anisotropic")
+        # normalization
+        norm = (model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
+        model.sigma_bv2 = get_sigma_bv2(redshift)
 
-    # 2 loop isotropic
-    P02_isotropic = (1./3)*model.P02.mu4(model.k) + model.P02.mu2(model.k)
-    plt.semilogx(model.k, P02_isotropic/norm, c='b', ls='dashdot', label=r'2-loop isotropic, $\sigma^2$')
+        # 2 loop anisotropic
+        P02_anisotropic = (2./3)*model.P02.mu4(model.k)
+        plt.semilogx(model.k, P02_anisotropic/norm, c='g', ls='--', label="anisotropic")
 
-    # 1 loop isotropic
-    with model.preserve(include_2loop=False):
-        model.sigma_bv2 = 0.
+        # 2 loop isotropic
         P02_isotropic = (1./3)*model.P02.mu4(model.k) + model.P02.mu2(model.k)
-        plt.semilogx(model.k, P02_isotropic/norm, label=r'1-loop isotropic, no $\sigma^2$', c='r')
+        plt.semilogx(model.k, P02_isotropic/norm, c='b', ls='dashdot', label=r'2-loop isotropic, $\sigma^2$')
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P02', 'z_%.3f.png' %redshift)
+        # 1 loop isotropic
+        with model.preserve(include_2loop=False):
+            model.sigma_bv2 = 0.
+            P02_isotropic = (1./3)*model.P02.mu4(model.k) + model.P02.mu2(model.k)
+            plt.semilogx(model.k, P02_isotropic/norm, label=r'1-loop isotropic, no $\sigma^2$', c='r')
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P02', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P12(redshift, model):
     """
@@ -278,32 +288,34 @@ def test_P12(redshift, model):
     ylims = (-7.5, 3.5)
     ylabel = r"$P^\mathrm{DM}_{12} \ / \ f^3 (\sigma_v k)^2 P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims, nticks=4)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # normalization
-    norm = model.f*(model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims, nticks=4)
 
-    # mu4 with small scale sigma
-    model.sigma_bv2 = get_sigma_bv2(redshift)
-    kws = {'label':r"2-loop $P_{12}[\mu^4]$, $\sigma^2$", 'c':'b', 'ls':'dashdot'}
-    plt.semilogx(model.k, model.P12.mu4(model.k)/norm, **kws)
+        # normalization
+        norm = model.f*(model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
 
-    # mu6 term
-    kws = {'label':r"$P_{12}[\mu^6]$", 'c':'g', 'ls':'--'}
-    plt.semilogx(model.k, model.P12.mu6(model.k)/norm, **kws)
-
-    # 1 loop mu4 with no additional sigma
-    with model.preserve(include_2loop=False):
-        model.sigma_bv2 = 0.
-        kws = {'label':r"1-loop $P_{12}[\mu^4]$, no $\sigma^2$", 'c':'r'}
+        # mu4 with small scale sigma
+        model.sigma_bv2 = get_sigma_bv2(redshift)
+        kws = {'label':r"2-loop $P_{12}[\mu^4]$, $\sigma^2$", 'c':'b', 'ls':'dashdot'}
         plt.semilogx(model.k, model.P12.mu4(model.k)/norm, **kws)
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P12', 'z_%.3f.png' %redshift)
+        # mu6 term
+        kws = {'label':r"$P_{12}[\mu^6]$", 'c':'g', 'ls':'--'}
+        plt.semilogx(model.k, model.P12.mu6(model.k)/norm, **kws)
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        # 1 loop mu4 with no additional sigma
+        with model.preserve(include_2loop=False):
+            model.sigma_bv2 = 0.
+            kws = {'label':r"1-loop $P_{12}[\mu^4]$, no $\sigma^2$", 'c':'r'}
+            plt.semilogx(model.k, model.P12.mu4(model.k)/norm, **kws)
+
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P12', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P22(redshift, model):
     """
@@ -316,28 +328,30 @@ def test_P22(redshift, model):
     ylims = (1e-3, 10.)
     ylabel = r"$P^\mathrm{DM}_{22} \ / \ (f^2 \sigma_v k)^2 P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # normalization
-    norm = (model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-    # 1 loop mu4 and mu6
-    model.sigma_bv2 = 0.
-    with model.preserve(include_2loop=False):
-        plt.loglog(model.k, abs(model.P22.mu4(model.k)/norm), c='r', lw=0.5)
-        plt.loglog(model.k, abs(model.P22.mu6(model.k)/norm), ls='--', c='b', lw=0.5)
+        # normalization
+        norm = (model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
 
-    # 2 loop mu4 and mu6
-    model.sigma_bv2 = get_sigma_bv2(redshift)
-    plt.loglog(model.k, abs(model.P22.mu4(model.k)/norm), label=r"2-loop, $P_{22}[\mu^4]$", c='r')
-    plt.loglog(model.k, abs(model.P22.mu6(model.k)/norm), label=r"2-loop, $P_{22}[\mu^6]$", c='b', ls='--')
+        # 1 loop mu4 and mu6
+        model.sigma_bv2 = 0.
+        with model.preserve(include_2loop=False):
+            plt.loglog(model.k, abs(model.P22.mu4(model.k)/norm), c='r', lw=0.5)
+            plt.loglog(model.k, abs(model.P22.mu6(model.k)/norm), ls='--', c='b', lw=0.5)
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P22', 'z_%.3f.png' %redshift)
+        # 2 loop mu4 and mu6
+        model.sigma_bv2 = get_sigma_bv2(redshift)
+        plt.loglog(model.k, abs(model.P22.mu4(model.k)/norm), label=r"2-loop, $P_{22}[\mu^4]$", c='r')
+        plt.loglog(model.k, abs(model.P22.mu6(model.k)/norm), label=r"2-loop, $P_{22}[\mu^6]$", c='b', ls='--')
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P22', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P03_and_P13(redshift, model):
     """
@@ -350,31 +364,33 @@ def test_P03_and_P13(redshift, model):
     ylims = (0.6, 4.4)
     ylabel = r"$P^\mathrm{DM}_{ij} \ / \ k^2 \sigma_v^2 P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # plot P03
-    model.sigma_v2 = get_sigma_v2(redshift)
-    norm1 = -model.f*(model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
-    kws = {'color':'g', 'ls':'dashdot', 'label':r"2-loop, $P_{03}[\mu^4]$"}
-    plt.semilogx(model.k, model.P03.mu4(model.k)/norm1, **kws)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-    # plot P13
-    norm2 = -(model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
-    kws = {'label':r"2-loop, $P_{13}[\mu^6]$", 'color':'b', 'ls':'dashed'}
-    plt.semilogx(model.k, model.P13.mu6(model.k)/norm2, **kws)
-
-    # also show 1 loop
-    model.sigma_v2 = 0.
-    with model.preserve(include_2loop=False):
-        kws = {'label':r"1-loop, no $\sigma_v$, $P_{03}[\mu^4]$", 'color':'r'}
+        # plot P03
+        model.sigma_v2 = get_sigma_v2(redshift)
+        norm1 = -model.f*(model.f*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
+        kws = {'color':'g', 'ls':'dashdot', 'label':r"2-loop, $P_{03}[\mu^4]$"}
         plt.semilogx(model.k, model.P03.mu4(model.k)/norm1, **kws)
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P03_and_P13', 'z_%.3f.png' %redshift)
+        # plot P13
+        norm2 = -(model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
+        kws = {'label':r"2-loop, $P_{13}[\mu^6]$", 'color':'b', 'ls':'dashed'}
+        plt.semilogx(model.k, model.P13.mu6(model.k)/norm2, **kws)
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        # also show 1 loop
+        model.sigma_v2 = 0.
+        with model.preserve(include_2loop=False):
+            kws = {'label':r"1-loop, no $\sigma_v$, $P_{03}[\mu^4]$", 'color':'r'}
+            plt.semilogx(model.k, model.P03.mu4(model.k)/norm1, **kws)
+
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P03_and_P13', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P13_and_P04(redshift, model):
     """
@@ -387,21 +403,23 @@ def test_P13_and_P04(redshift, model):
     ylims = (1e-3, 100.)
     ylabel = r"$P^\mathrm{DM}_{ij} \ / \ k^2 \sigma_v^2 P_\mathrm{NW}$"
 
-    # new axes
-    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # setup
-    model.sigma_v2 = get_sigma_v2(redshift)
-    model.sigma_bv2 = get_sigma_bv2(redshift)
-    model.sigma_bv4 = get_sigma_bv4(redshift)
+        # new axes
+        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-    # plot P13 and P04
-    norm = (model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
-    plt.loglog(model.k, abs(model.P13.mu4(model.k))/norm, label=r"2-loop, $P_{13}[\mu^4]$", c='b')
-    plt.loglog(model.k, abs(model.P04.mu4(model.k))/norm, label=r"2-loop, $P_{04}[\mu^4]$", c='g')
+        # setup
+        model.sigma_v2 = get_sigma_v2(redshift)
+        model.sigma_bv2 = get_sigma_bv2(redshift)
+        model.sigma_bv4 = get_sigma_bv4(redshift)
 
-    ax.legend(loc=0, fontsize=16)
-    path = savefig(fig, '.', 'test_P13_and_P04', 'z_%.3f.png' %redshift)
+        # plot P13 and P04
+        norm = (model.f**2*model.sigma_lin*model.k)**2*model.normed_power_lin_nw(model.k)
+        plt.loglog(model.k, abs(model.P13.mu4(model.k))/norm, label=r"2-loop, $P_{13}[\mu^4]$", c='b')
+        plt.loglog(model.k, abs(model.P04.mu4(model.k))/norm, label=r"2-loop, $P_{04}[\mu^4]$", c='g')
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+        ax.legend(loc=0, fontsize=16)
+        path = savefig(fig, '.', 'test_P13_and_P04', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path

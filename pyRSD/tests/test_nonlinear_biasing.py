@@ -49,10 +49,6 @@ def test_nonlinear_biasing():
     gp = NonlinearBiasFits()
     b1s = numpy.linspace(0.9, 6, 500)
 
-    # get a new axes
-    plt.clf()
-    ax = plt.gca()
-
     # get the Vlah et al data
     x = []; y = []
     for i, z in enumerate(redshifts):
@@ -61,22 +57,27 @@ def test_nonlinear_biasing():
             x.append(get_linear_bias(z_str, mass_bin))
             y.append(get_nonlinear_biases(z_str, mass_bin))
 
+    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
 
-    # plot b2_00
-    ax.plot(b1s, [gp(b1=b1, select='b2_00_a') for b1 in b1s], c='r', label=r"$b_2^{00}$ (GP prediction)", zorder=0)
-    ax.scatter(x, [yy['b2_00'] for yy in y], c='r', alpha=0.8, zorder=10, label=r"$b_2^{00}$ (Vlah et al.)")
+        # get a new axes
+        plt.clf()
+        ax = plt.gca()
 
-    # plot b2_01
-    ax.plot(b1s, [gp(b1=b1, select='b2_01_a') for b1 in b1s], c='b', label=r"$b_2^{01}$ (GP prediction)", zorder=0)
-    ax.scatter(x, [yy['b2_01'] for yy in y], c='b', alpha=0.8, zorder=10, label=r"$b_2^{01}$ (Vlah et al.)")
+        # plot b2_00
+        ax.plot(b1s, [gp(b1=b1, select='b2_00_a') for b1 in b1s], c='r', label=r"$b_2^{00}$ (GP prediction)", zorder=0)
+        ax.scatter(x, [yy['b2_00'] for yy in y], c='r', alpha=0.8, zorder=10, label=r"$b_2^{00}$ (Vlah et al.)")
 
-    # new axes
-    ax.set_xlabel(r"$b_1$", fontsize=16)
-    ax.set_ylabel(r"$b_2$", fontsize=16)
-    ax.legend(ncol=2, loc=0)
+        # plot b2_01
+        ax.plot(b1s, [gp(b1=b1, select='b2_01_a') for b1 in b1s], c='b', label=r"$b_2^{01}$ (GP prediction)", zorder=0)
+        ax.scatter(x, [yy['b2_01'] for yy in y], c='b', alpha=0.8, zorder=10, label=r"$b_2^{01}$ (Vlah et al.)")
 
-    # add bias and save
-    path = savefig(plt.gcf(), '.', "test_nonlinear_biasing" , "comparison.png")
+        # new axes
+        ax.set_xlabel(r"$b_1$", fontsize=16)
+        ax.set_ylabel(r"$b_2$", fontsize=16)
+        ax.legend(ncol=2, loc=0)
+
+        # add bias and save
+        path = savefig(plt.gcf(), '.', "test_nonlinear_biasing" , "comparison.png")
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
     assert correct == file_md5sum(os.path.join('figures', path)), path

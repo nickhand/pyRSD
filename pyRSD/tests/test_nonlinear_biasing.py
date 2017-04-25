@@ -39,7 +39,7 @@ def get_nonlinear_biases(z_str, mass):
 #-------------------------------------------------------------------------------
 # TESTS
 #-------------------------------------------------------------------------------
-@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', tol=20)
 def test_nonlinear_biasing():
     """
     Compare the nonlinear biasing interpolation to that of Vlah et al. 2013

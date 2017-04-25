@@ -183,7 +183,7 @@ def test_Phm(model, binning):
     path = savefig(fig, '.', *output_paths('test_Phm', z=z))
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P00(model, binning):
     """
@@ -224,7 +224,7 @@ def test_P00(model, binning):
     path = savefig(fig, '.', *output_paths('test_P00_halo', z=z))
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P01(model, binning):
     """
@@ -281,7 +281,7 @@ def test_P01(model, binning):
         path = savefig(fig, '.', *output_paths('test_P01_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P11_plus_P02(model, binning):
     """
@@ -334,7 +334,7 @@ def test_P11_plus_P02(model, binning):
         path = savefig(fig, '.', *output_paths('test_P11_plus_P02_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P11_mu4(model, binning):
     """
@@ -388,7 +388,7 @@ def test_P11_mu4(model, binning):
         path = savefig(fig, '.', *output_paths('test_P11_mu4_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_higher_order_mu4(model, binning):
     """
@@ -442,4 +442,4 @@ def test_higher_order_mu4(model, binning):
         path = savefig(fig, '.', *output_paths('test_higher_order_mu4_halo', z=z, mass=mass_bin))
 
         correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path

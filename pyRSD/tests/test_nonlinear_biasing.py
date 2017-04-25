@@ -79,4 +79,4 @@ def test_nonlinear_biasing():
     path = savefig(plt.gcf(), '.', "test_nonlinear_biasing" , "comparison.png")
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path

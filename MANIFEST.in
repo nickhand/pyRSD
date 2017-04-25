@@ -15,6 +15,7 @@ include pyRSD/data/galaxy/2-halo/*
 include pyRSD/data/params/*
 include pyRSD/data/simulation_fits/*
 include pyRSD/data/examples/*
+include pyRSD/data/tests/matplotlibrc
 recursive-include pyRSD/data/tests *.png
 
 include README.md

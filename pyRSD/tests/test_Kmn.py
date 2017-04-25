@@ -67,7 +67,7 @@ def test_Kmn_0(model):
     path = savefig(fig, '.', 'test_Kmn', "panel_0.png")
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_Kmn_1(model):
     """
@@ -93,7 +93,7 @@ def test_Kmn_1(model):
     path = savefig(fig, '.', 'test_Kmn', "panel_1.png")
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_Kmn_2(model):
     """
@@ -120,7 +120,7 @@ def test_Kmn_2(model):
     path = savefig(fig, '.', 'test_Kmn', 'panel_2.png')
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_Kmn_3(model):
     """
@@ -148,4 +148,4 @@ def test_Kmn_3(model):
     path = savefig(fig, '.', 'test_Kmn', 'panel_3.png')
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path

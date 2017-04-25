@@ -117,7 +117,7 @@ def test_P00(redshift, model):
     path = savefig(fig, '.', 'test_P00', 'z_%.3f.png' %redshift)
 
     correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P01(redshift, model):
     """
@@ -150,7 +150,10 @@ def test_P01(redshift, model):
     plt.plot(model.k, A*model.hzpt._P01.__zeldovich__(model.k) / norm, **kws)
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, '.', 'test_P01', 'z_%.3f.png' %redshift)
+    path = savefig(fig, '.', 'test_P01', 'z_%.3f.png' %redshift)
+
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_scalar_P11(redshift, model):
     """
@@ -182,7 +185,10 @@ def test_scalar_P11(redshift, model):
         plt.plot(model.k, A*model.normed_power_lin(model.k) / norm, **kws)
 
         ax.legend(loc=0, fontsize=16)
-        savefig(fig, '.', 'test_scalar_P11', 'z_%.3f.png' %redshift)
+        path = savefig(fig, '.', 'test_scalar_P11', 'z_%.3f.png' %redshift)
+
+        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+        assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P11(redshift, model):
     """
@@ -218,7 +224,10 @@ def test_P11(redshift, model):
     plt.loglog(model.k, model.f**2*model.normed_power_lin(model.k), **kws)
 
     ax.legend(loc=0, fontsize=16, ncol=2)
-    savefig(fig, '.', 'test_P11', 'z_%.3f.png' %redshift)
+    path = savefig(fig, '.', 'test_P11', 'z_%.3f.png' %redshift)
+
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P02(redshift, model):
     """
@@ -253,7 +262,10 @@ def test_P02(redshift, model):
         plt.semilogx(model.k, P02_isotropic/norm, label=r'1-loop isotropic, no $\sigma^2$', c='r')
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, '.', 'test_P02', 'z_%.3f.png' %redshift)
+    path = savefig(fig, '.', 'test_P02', 'z_%.3f.png' %redshift)
+
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P12(redshift, model):
     """
@@ -288,7 +300,10 @@ def test_P12(redshift, model):
         plt.semilogx(model.k, model.P12.mu4(model.k)/norm, **kws)
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, '.', 'test_P12', 'z_%.3f.png' %redshift)
+    path = savefig(fig, '.', 'test_P12', 'z_%.3f.png' %redshift)
+
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P22(redshift, model):
     """
@@ -319,7 +334,10 @@ def test_P22(redshift, model):
     plt.loglog(model.k, abs(model.P22.mu6(model.k)/norm), label=r"2-loop, $P_{22}[\mu^6]$", c='b', ls='--')
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, '.', 'test_P22', 'z_%.3f.png' %redshift)
+    path = savefig(fig, '.', 'test_P22', 'z_%.3f.png' %redshift)
+
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
 
 def test_P03_and_P13(redshift, model):
     """
@@ -355,6 +373,9 @@ def test_P03_and_P13(redshift, model):
     ax.legend(loc=0, fontsize=16)
     path = savefig(fig, '.', 'test_P03_and_P13', 'z_%.3f.png' %redshift)
 
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path
+
 def test_P13_and_P04(redshift, model):
     """
     Reproduce Figure 9.
@@ -380,4 +401,7 @@ def test_P13_and_P04(redshift, model):
     plt.loglog(model.k, abs(model.P04.mu4(model.k))/norm, label=r"2-loop, $P_{04}[\mu^4]$", c='g')
 
     ax.legend(loc=0, fontsize=16)
-    savefig(fig, '.', 'test_P13_and_P04', 'z_%.3f.png' %redshift)
+    path = savefig(fig, '.', 'test_P13_and_P04', 'z_%.3f.png' %redshift)
+
+    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
+    assert correct == file_md5sum(os.path.join('figures', path)), path

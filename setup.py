@@ -235,9 +235,7 @@ pkg_data = ['data/dark_matter/pkmu_P*',
             'data/params/*',
             'data/simulation_fits/*',
             'data/examples/*',
-            'data/tests/*/*png',
-            'data/tests/*/*/*png',
-            'data/tests/matplotlibrc']
+            'tests/baseline/*png']
 
 if __name__ == '__main__':
 

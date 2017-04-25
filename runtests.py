@@ -1,4 +1,7 @@
 import sys; sys.path.pop(0)
+import matplotlib as mpl
+mpl.use("Agg")
+
 from runtests import Tester
 import os.path
 

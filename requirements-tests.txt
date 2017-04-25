@@ -1,3 +1,4 @@
 runtests
 matplotlib
 numdifftools
+pytest-mpl

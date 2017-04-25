@@ -2,7 +2,7 @@
 This module will reproduce the plots in Vlah et al. 2013., as
 a test of :class:`HaloSpectrum`
 """
-from .utils import new_axes, savefig, file_md5sum
+from .utils import new_axes
 from . import cache_manager
 from pyRSD import data_dir
 
@@ -13,12 +13,13 @@ import pytest
 
 sim_tags  = ['teppei_lowz', 'teppei_midz', 'teppei_highz']
 redshifts = [0., 0.509, 0.989]
-vlah_bins = [(0, [0, 1, 2, 3]), (1, [0, 1, 2, 3]), (2, [0, 1, 2])]
+mass_bins = [[0, 1, 2, 3], [0, 1, 2, 3], [0, 1, 2]]
+binning_vals = [(z,mass_bin) for i, z in enumerate(redshifts) for mass_bin in mass_bins[i]]
 
 #-------------------------------------------------------------------------------
 # FIXTURES
 #-------------------------------------------------------------------------------
-@pytest.fixture(scope='module', params=vlah_bins)
+@pytest.fixture(scope='module', params=binning_vals)
 def binning(request):
     return request.param
 
@@ -129,28 +130,16 @@ def update_model(model, z, b1):
     # set the bias
     model.b1 = b1
 
-def output_paths(d, z, mass=None):
-    """
-    Utility function to return the directory name and filename
-    """
-    if mass is not None:
-        d = os.path.join(d, "%.3f" %z)
-
-    if mass is None:
-        filename = 'z_%.3f.png' %z
-    else:
-        filename = 'mass_%d.png' %mass
-
-    return d, filename
-
 #-------------------------------------------------------------------------------
 # TESTS
 #-------------------------------------------------------------------------------
-def test_Phm(model, binning):
+@pytest.mark.parametrize("bins", [(0, [0, 1, 2, 3]), (1, [0, 1, 2, 3]), (2, [0, 1, 2])])
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+def test_halo_Phm(model, bins):
     """
     Reproduce Figure 3
     """
-    iz, mass_bins = binning
+    iz, mass_bins = bins
     z = redshifts[iz]
 
     # new axes
@@ -158,41 +147,38 @@ def test_Phm(model, binning):
     ylims = [(0.85, 1.3), (0.95, 1.5), (0.95, 1.5)]
     ylabel = r"$P^\mathrm{hm} \ / b_1 P_{00}$"
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims[iz])
 
-        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims[iz])
+    # plot each mass bin
+    for mass_bin in mass_bins:
 
-        # plot each mass bin
-        for mass_bin in mass_bins:
+        # get the params
+        params = get_params(z, mass_bin)
+        b1 = params.pop('b1')
 
-            # get the params
-            params = get_params(z, mass_bin)
-            b1 = params.pop('b1')
+        # update the model
+        update_model(model, z, b1)
 
-            # update the model
-            update_model(model, z, b1)
+        # update the params
+        model.sigma_v = params.pop('sigma_v') / 100. / model.f
 
-            # update the params
-            model.sigma_v = params.pop('sigma_v') / 100. / model.f
+        # plot Phm
+        with model.load_dm_sims(sim_tags[iz]):
+            norm = model.b1 * model.P00.mu0(model.k)
+            with model.cache_override(**params):
+                plt.plot(model.k, model.Phm(model.k) / norm, label=r"$b_1 = %.2f$" %b1)
 
-            # plot Phm
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = model.b1 * model.P00.mu0(model.k)
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.Phm(model.k) / norm, label=r"$b_1 = %.2f$" %b1)
+    ax.legend(loc=0, fontsize=14)
+    ax.axhline(y=1, c='k', ls='--')
+    return fig
 
-        ax.legend(loc=0, fontsize=14)
-        ax.axhline(y=1, c='k', ls='--')
-        path = savefig(fig, '.', *output_paths('test_Phm', z=z))
-
-        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
-
-def test_P00(model, binning):
+@pytest.mark.parametrize("bins", [(0, [0, 1, 2, 3]), (1, [0, 1, 2, 3]), (2, [0, 1, 2])])
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+def test_halo_P00(model, bins):
     """
     Reproduce Figure 4
     """
-    iz, mass_bins = binning
+    iz, mass_bins = bins
     z = redshifts[iz]
 
     # new axes
@@ -200,43 +186,41 @@ def test_P00(model, binning):
     ylims = [(0.5, 1.1), (0.7, 1.1), (0.6, 1.2)]
     ylabel = r"$P_{00}^\mathrm{hh} \ / b_1^2 P_{00}$"
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
-        fig, ax = new_axes(ylabel, xlims, ylims[iz])
+    fig, ax = new_axes(ylabel, xlims, ylims[iz])
 
-        # plot each mass bin
-        for mass_bin in mass_bins:
+    # plot each mass bin
+    for mass_bin in mass_bins:
 
-            # get the params
-            params = get_params(z, mass_bin)
-            b1 = params.pop('b1')
+        # get the params
+        params = get_params(z, mass_bin)
+        b1 = params.pop('b1')
 
-            # update the model
-            update_model(model, z, b1)
+        # update the model
+        update_model(model, z, b1)
 
-            # update the params
-            model.sigma_v = params.pop('sigma_v') / 100. / model.f
+        # update the params
+        model.sigma_v = params.pop('sigma_v') / 100. / model.f
 
-            # plot Phh
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = model.b1**2 * model.P00.mu0(model.k)
-                with model.cache_override(**params):
-                    P00_ss = model.b1**2 * model.P00.mu0(model.k)
-                    P00_ss += 2*(model.b1*model.b2_00_a(model.b1))*model.K00(model.k)
-                    plt.plot(model.k, (P00_ss + params['stochasticity'](model.k))/ norm, label=r"$b_1 = %.2f$" %b1)
+        # plot Phh
+        with model.load_dm_sims(sim_tags[iz]):
+            norm = model.b1**2 * model.P00.mu0(model.k)
+            with model.cache_override(**params):
+                P00_ss = model.b1**2 * model.P00.mu0(model.k)
+                P00_ss += 2*(model.b1*model.b2_00_a(model.b1))*model.K00(model.k)
+                plt.plot(model.k, (P00_ss + params['stochasticity'](model.k))/ norm, label=r"$b_1 = %.2f$" %b1)
 
-        ax.legend(loc=0, fontsize=14)
-        ax.axhline(y=1, c='k', ls='--')
-        path = savefig(fig, '.', *output_paths('test_P00_halo', z=z))
+    ax.legend(loc=0, fontsize=14)
+    ax.axhline(y=1, c='k', ls='--')
+    return fig
 
-        correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-        assert correct == file_md5sum(os.path.join('figures', path)), path
-
-def test_P01(model, binning):
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+def test_halo_P01(model, binning):
     """
     Reproduce Figure 5
     """
-    iz, mass_bins = binning
-    z = redshifts[iz]
+    z, mass_bin = binning
+    iz = redshifts.index(z)
+
     if iz == 0:
         ylims = [(0.8, 1.3), (0.8, 1.5), (0.8, 2.), (0.8, 3)]
     elif iz == 1:
@@ -248,61 +232,47 @@ def test_P01(model, binning):
     xlims = (0.0, 0.25)
     ylabel = r"$P_{01}^\mathrm{hh} \ / 2 f b_1 P_\mathrm{NW}$"
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
 
-        # plot each mass bin
-        failed = []
-        for mass_bin in mass_bins:
+    # get the params
+    params = get_params(z, mass_bin)
+    b1 = params.pop('b1')
 
-            fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
+    # update the model
+    update_model(model, z, b1)
 
-            # get the params
-            params = get_params(z, mass_bin)
-            b1 = params.pop('b1')
+    # update the params
+    params['stochasticity'] = params['stochasticity'](model.k)
+    model.sigma_v = params.pop('sigma_v') / 100. / model.f
 
-            # update the model
-            update_model(model, z, b1)
+    # plot model P01
+    with model.load_dm_sims(sim_tags[iz]):
+        norm = 2 * model.f * model.b1 * model.normed_power_lin_nw(model.k)
+        with model.cache_override(**params):
+            plt.plot(model.k, model.P01_ss.mu2(model.k) / norm, label="model")
 
-            # update the params
-            params['stochasticity'] = params['stochasticity'](model.k)
-            model.sigma_v = params.pop('sigma_v') / 100. / model.f
+        # b1 * DM
+        plt.plot(model.k, model.b1 * model.P01.mu2(model.k) / norm, c='k', label=r"$b_1$ DM", ls='dashed')
 
-            # plot model P01
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = 2 * model.f * model.b1 * model.normed_power_lin_nw(model.k)
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.P01_ss.mu2(model.k) / norm, label="model")
+    # PT
+    with model.use_spt():
+        with model.cache_override(**params):
+            plt.plot(model.k, model.P01_ss.mu2(model.k) / norm, label=r"PT: $b_1$+$b_2$", c='b')
 
-                # b1 * DM
-                plt.plot(model.k, model.b1 * model.P01.mu2(model.k) / norm, c='k', label=r"$b_1$ DM", ls='dashed')
+    # linear
+    kws = {'color':'k', 'ls':'dotted', 'label':"linear"}
+    plt.plot(model.k, 2*model.f*model.b1 *  model.normed_power_lin(model.k) / norm, **kws)
 
-            # PT
-            with model.use_spt():
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.P01_ss.mu2(model.k) / norm, label=r"PT: $b_1$+$b_2$", c='b')
+    ax.legend(loc=0, fontsize=14)
+    return fig
 
-            # linear
-            kws = {'color':'k', 'ls':'dotted', 'label':"linear"}
-            plt.plot(model.k, 2*model.f*model.b1 *  model.normed_power_lin(model.k) / norm, **kws)
-
-            ax.legend(loc=0, fontsize=14)
-            path = savefig(fig, '.', *output_paths('test_P01_halo', z=z, mass=mass_bin))
-
-            correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-            try:
-                assert correct == file_md5sum(os.path.join('figures', path)), path
-            except:
-                failed.append(path)
-
-        if len(failed):
-            raise AssertionError("failed: %s" %str(failed))
-
-def test_P11_plus_P02(model, binning):
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+def test_halo_P11_plus_P02(model, binning):
     """
     Reproduce Figure 9
     """
-    iz, mass_bins = binning
-    z = redshifts[iz]
+    z, mass_bin = binning
+    iz = redshifts.index(z)
     if iz == 0:
         ylims = [(-2, 1.), (-2, 1.), (-3, 2.), (-6., 4)]
     elif iz == 1:
@@ -314,56 +284,42 @@ def test_P11_plus_P02(model, binning):
     xlims = (0., 0.3)
     ylabel = r"$P^\mathrm{hh}[\mu^2] \ / k^2 \sigma_v^2 P_\mathrm{NW}$"
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
 
-        # plot each mass bin
-        failed = []
-        for mass_bin in mass_bins:
+    # get the params
+    params = get_params(z, mass_bin)
+    b1 = params.pop('b1')
 
-            fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
+    # update the model
+    update_model(model, z, b1)
 
-            # get the params
-            params = get_params(z, mass_bin)
-            b1 = params.pop('b1')
+    # update the params
+    params['stochasticity'] = params['stochasticity'](model.k)
+    model.sigma_v = params.pop('sigma_v') / 100. / model.f
 
-            # update the model
-            update_model(model, z, b1)
+    # plot model
+    with model.load_dm_sims(sim_tags[iz]):
+        norm = (model.f*model.sigma_lin*model.k)**2 * model.b1 * model.normed_power_lin_nw(model.k)
+        with model.cache_override(**params):
 
-            # update the params
-            params['stochasticity'] = params['stochasticity'](model.k)
-            model.sigma_v = params.pop('sigma_v') / 100. / model.f
+            # plot P11 + P02 [mu2]
+            kws = {'label':r'$(P_{11}^{hh} + P_{02}^{hh})[\mu^2]$', 'c':'r'}
+            plt.plot(model.k, (model.P11_ss.mu2(model.k) + model.P02_ss.mu2(model.k))/norm, **kws)
 
-            # plot model
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = (model.f*model.sigma_lin*model.k)**2 * model.b1 * model.normed_power_lin_nw(model.k)
-                with model.cache_override(**params):
+            # plot P11[mu4]
+            kws = {'label':r'$P_{02}^{hh}[\mu^4]$', 'c':'b'}
+            plt.plot(model.k, model.P02_ss.mu4(model.k)/norm, **kws)
 
-                    # plot P11 + P02 [mu2]
-                    kws = {'label':r'$(P_{11}^{hh} + P_{02}^{hh})[\mu^2]$', 'c':'r'}
-                    plt.plot(model.k, (model.P11_ss.mu2(model.k) + model.P02_ss.mu2(model.k))/norm, **kws)
+    ax.legend(loc=0, fontsize=14)
+    return fig
 
-                    # plot P11[mu4]
-                    kws = {'label':r'$P_{02}^{hh}[\mu^4]$', 'c':'b'}
-                    plt.plot(model.k, model.P02_ss.mu4(model.k)/norm, **kws)
-
-            ax.legend(loc=0, fontsize=14)
-            path = savefig(fig, '.', *output_paths('test_P11_plus_P02_halo', z=z, mass=mass_bin))
-
-            correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-            try:
-                assert correct == file_md5sum(os.path.join('figures', path)), path
-            except:
-                failed.append(path)
-
-        if len(failed):
-            raise AssertionError("failed: %s" %str(failed))
-
-def test_P11_mu4(model, binning):
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+def test_halo_P11_mu4(model, binning):
     """
     Reproduce Figure 10
     """
-    iz, mass_bins = binning
-    z = redshifts[iz]
+    z, mass_bin = binning
+    iz = redshifts.index(z)
     if iz == 0:
         ylims = [(0.8, 1.3), (0.8, 1.5), (0.8, 2.4), (0.8, 6)]
     elif iz == 1:
@@ -375,57 +331,43 @@ def test_P11_mu4(model, binning):
     xlims = (0., 0.2)
     ylabel = r"$P_{11}^\mathrm{hh}[\mu^4] \ / P_{11}^\mathrm{DM}$"
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
 
-        # plot each mass bin
-        failed = []
-        for mass_bin in mass_bins:
+    # get the params
+    params = get_params(z, mass_bin)
+    b1 = params.pop('b1')
 
-            fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
+    # update the model
+    update_model(model, z, b1)
 
-            # get the params
-            params = get_params(z, mass_bin)
-            b1 = params.pop('b1')
+    # update the params
+    params['stochasticity'] = params['stochasticity'](model.k)
+    model.sigma_v = params.pop('sigma_v') / 100. / model.f
 
-            # update the model
-            update_model(model, z, b1)
+    # note that this won't agree exactly...we are using Jennings
+    # Pvv here
 
-            # update the params
-            params['stochasticity'] = params['stochasticity'](model.k)
-            model.sigma_v = params.pop('sigma_v') / 100. / model.f
+    # model
+    with model.load_dm_sims(sim_tags[iz]):
+        norm = model.P11.mu4(model.k)
+        with model.cache_override(**params):
+            plt.plot(model.k, model.P11_ss.mu4(model.k) / norm, label="model", c='r')
 
-            # note that this won't agree exactly...we are using Jennings
-            # Pvv here
+    # PT
+    with model.use_spt():
+        with model.cache_override(**params):
+            plt.plot(model.k, model.P11_ss.mu4(model.k) / norm, label=r"PT: $b_1$+$b_2$", c='b')
 
-            # model
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = model.P11.mu4(model.k)
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.P11_ss.mu4(model.k) / norm, label="model", c='r')
+    ax.legend(loc=0, fontsize=14)
+    return fig
 
-            # PT
-            with model.use_spt():
-                with model.cache_override(**params):
-                    plt.plot(model.k, model.P11_ss.mu4(model.k) / norm, label=r"PT: $b_1$+$b_2$", c='b')
-
-            ax.legend(loc=0, fontsize=14)
-            path = savefig(fig, '.', *output_paths('test_P11_mu4_halo', z=z, mass=mass_bin))
-
-            correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-            try:
-                assert correct == file_md5sum(os.path.join('figures', path)), path
-            except:
-                failed.append(path)
-
-        if len(failed):
-            raise AssertionError("failed: %s" %str(failed))
-
-def test_higher_order_mu4(model, binning):
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
+def test_halo_higher_order_mu4(model, binning):
     """
     Reproduce Figure 11
     """
-    iz, mass_bins = binning
-    z = redshifts[iz]
+    z, mass_bin = binning
+    iz = redshifts.index(z)
     if iz == 0:
         ylims = [(-0.5, 4.), (-0.5, 4.), (-0.5, 6.), (-0.5, 8.)]
     elif iz == 1:
@@ -437,47 +379,32 @@ def test_higher_order_mu4(model, binning):
     xlims = (0., 0.3)
     ylabel = r"$P^\mathrm{hh}[\mu^4] \ / k^2 \sigma_v^2 P_\mathrm{NW}$"
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
 
-        # plot each mass bin
-        failed = []
-        for mass_bin in mass_bins:
+    # get the params
+    params = get_params(z, mass_bin)
+    b1 = params.pop('b1')
 
-            fig, ax = new_axes(ylabel, xlims, ylims[mass_bin])
+    # update the model
+    update_model(model, z, b1)
 
-            # get the params
-            params = get_params(z, mass_bin)
-            b1 = params.pop('b1')
+    # update the params
+    params['stochasticity'] = params['stochasticity'](model.k)
+    model.sigma_v = params.pop('sigma_v') / 100. / model.f
 
-            # update the model
-            update_model(model, z, b1)
+    # plot model
+    with model.load_dm_sims(sim_tags[iz]):
+        norm = model.f*(model.f*model.sigma_lin*model.k)**2 * model.b1 * model.normed_power_lin_nw(model.k)
+        with model.cache_override(**params):
 
-            # update the params
-            params['stochasticity'] = params['stochasticity'](model.k)
-            model.sigma_v = params.pop('sigma_v') / 100. / model.f
+            # plot - (P12 + P03)
+            kws = {'label':r'$-(P_{12}^{hh}+P_{03}^{hh})$', 'c':'r'}
+            plt.plot(model.k, -(model.P12_ss.mu4(model.k) + model.P03_ss.mu4(model.k))/norm, **kws)
 
-            # plot model
-            with model.load_dm_sims(sim_tags[iz]):
-                norm = model.f*(model.f*model.sigma_lin*model.k)**2 * model.b1 * model.normed_power_lin_nw(model.k)
-                with model.cache_override(**params):
+            # plot P13 + P22 + P04
+            kws = {'label':r'$P_{13}^{hh}+P_{22}^{hh}+P_{04}^{hh}$', 'c':'b'}
+            y = (model.P13_ss.mu4(model.k)  + model.P22_ss.mu4(model.k) + model.P04_ss.mu4(model.k))
+            plt.plot(model.k, y/norm, **kws)
 
-                    # plot - (P12 + P03)
-                    kws = {'label':r'$-(P_{12}^{hh}+P_{03}^{hh})$', 'c':'r'}
-                    plt.plot(model.k, -(model.P12_ss.mu4(model.k) + model.P03_ss.mu4(model.k))/norm, **kws)
-
-                    # plot P13 + P22 + P04
-                    kws = {'label':r'$P_{13}^{hh}+P_{22}^{hh}+P_{04}^{hh}$', 'c':'b'}
-                    y = (model.P13_ss.mu4(model.k)  + model.P22_ss.mu4(model.k) + model.P04_ss.mu4(model.k))
-                    plt.plot(model.k, y/norm, **kws)
-
-            ax.legend(loc=0, fontsize=14)
-            path = savefig(fig, '.', *output_paths('test_higher_order_mu4_halo', z=z, mass=mass_bin))
-
-            correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-            try:
-                assert correct == file_md5sum(os.path.join('figures', path)), path
-            except:
-                failed.append(path)
-
-        if len(failed):
-            raise AssertionError("failed: %s" %str(failed))
+    ax.legend(loc=0, fontsize=14)
+    return fig

@@ -2,10 +2,11 @@
 This module will compare the nonlinear biasing GP predicition (as measured
 from the RunPB sims) to that used in Vlah et al. 2013
 """
-from .utils import new_axes, savefig, file_md5sum
+from .utils import new_axes
 from pyRSD.rsd.simulation import NonlinearBiasFits
 from pyRSD import data_dir
 
+import pytest
 import numpy
 from matplotlib import pyplot as plt
 import os
@@ -38,13 +39,11 @@ def get_nonlinear_biases(z_str, mass):
 #-------------------------------------------------------------------------------
 # TESTS
 #-------------------------------------------------------------------------------
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
 def test_nonlinear_biasing():
     """
     Compare the nonlinear biasing interpolation to that of Vlah et al. 2013
     """
-    # set the random seed
-    numpy.random.seed(42)
-
     # initialize the GP
     gp = NonlinearBiasFits()
     b1s = numpy.linspace(0.9, 6, 500)
@@ -57,27 +56,21 @@ def test_nonlinear_biasing():
             x.append(get_linear_bias(z_str, mass_bin))
             y.append(get_nonlinear_biases(z_str, mass_bin))
 
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    # get a new axes
+    plt.clf()
+    ax = plt.gca()
 
-        # get a new axes
-        plt.clf()
-        ax = plt.gca()
+    # plot b2_00
+    ax.plot(b1s, [gp(b1=b1, select='b2_00_a') for b1 in b1s], c='r', label=r"$b_2^{00}$ (GP prediction)", zorder=0)
+    ax.scatter(x, [yy['b2_00'] for yy in y], c='r', alpha=0.8, zorder=10, label=r"$b_2^{00}$ (Vlah et al.)")
 
-        # plot b2_00
-        ax.plot(b1s, [gp(b1=b1, select='b2_00_a') for b1 in b1s], c='r', label=r"$b_2^{00}$ (GP prediction)", zorder=0)
-        ax.scatter(x, [yy['b2_00'] for yy in y], c='r', alpha=0.8, zorder=10, label=r"$b_2^{00}$ (Vlah et al.)")
+    # plot b2_01
+    ax.plot(b1s, [gp(b1=b1, select='b2_01_a') for b1 in b1s], c='b', label=r"$b_2^{01}$ (GP prediction)", zorder=0)
+    ax.scatter(x, [yy['b2_01'] for yy in y], c='b', alpha=0.8, zorder=10, label=r"$b_2^{01}$ (Vlah et al.)")
 
-        # plot b2_01
-        ax.plot(b1s, [gp(b1=b1, select='b2_01_a') for b1 in b1s], c='b', label=r"$b_2^{01}$ (GP prediction)", zorder=0)
-        ax.scatter(x, [yy['b2_01'] for yy in y], c='b', alpha=0.8, zorder=10, label=r"$b_2^{01}$ (Vlah et al.)")
+    # new axes
+    ax.set_xlabel(r"$b_1$", fontsize=16)
+    ax.set_ylabel(r"$b_2$", fontsize=16)
+    ax.legend(ncol=2, loc=0)
 
-        # new axes
-        ax.set_xlabel(r"$b_1$", fontsize=16)
-        ax.set_ylabel(r"$b_2$", fontsize=16)
-        ax.legend(ncol=2, loc=0)
-
-        # add bias and save
-        path = savefig(plt.gcf(), '.', "test_nonlinear_biasing" , "comparison.png")
-
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+    return plt.gcf()

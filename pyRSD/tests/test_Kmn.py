@@ -2,7 +2,7 @@
 This module will reproduce Figure 1 of Vlah et al. 2013., which
 shows the various Kmn integrals
 """
-from .utils import new_axes, savefig, file_md5sum
+from .utils import new_axes
 from . import cache_manager
 from pyRSD import data_dir
 
@@ -44,6 +44,7 @@ def model():
 
     return model
 
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
 def test_Kmn_0(model):
     """
     Reproduce top left panel of Figure 1.
@@ -56,21 +57,16 @@ def test_Kmn_0(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # this panel
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    # new axes
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-        # new axes
-        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    plt.loglog(k, model.K00(k), c='b', label=r'$K_{00}$')
+    plt.loglog(k, -model.K00s(k), c='b', ls='--', label=r"$-K_{00,s}$")
 
-        plt.loglog(k, model.K00(k), c='b', label=r'$K_{00}$')
-        plt.loglog(k, -model.K00s(k), c='b', ls='--', label=r"$-K_{00,s}$")
+    ax.legend(loc=0, fontsize=12)
+    return fig
 
-        ax.legend(loc=0, fontsize=16)
-        path = savefig(fig, '.', 'test_Kmn', "panel_0.png")
-
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
-
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
 def test_Kmn_1(model):
     """
     Reproduce top right panel of Figure 1.
@@ -83,22 +79,18 @@ def test_Kmn_1(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # this panel
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    # new axes
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-        # new axes
-        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    plt.loglog(k, model.K01(k), c='b', label=r'$K_{01}$')
+    plt.loglog(k, model.K01s(k), c='b', ls='dashdot', label=r"$K_{01,s}$")
+    plt.loglog(k, model.K02s(k), c='b', ls='dashed', label=r"$K_{02,s}$")
 
-        plt.loglog(k, model.K01(k), c='b', label=r'$K_{01}$')
-        plt.loglog(k, model.K01s(k), c='b', ls='dashdot', label=r"$K_{01,s}$")
-        plt.loglog(k, model.K02s(k), c='b', ls='dashed', label=r"$K_{02,s}$")
+    ax.legend(loc=0, fontsize=12)
+    return fig
 
-        ax.legend(loc=0, fontsize=16)
-        path = savefig(fig, '.', 'test_Kmn', "panel_1.png")
 
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
-
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
 def test_Kmn_2(model):
     """
     Reproduce bottom left panel of Figure 1.
@@ -111,23 +103,18 @@ def test_Kmn_2(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # this panel
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    # new axes
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
 
-        # new axes
-        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+    plt.loglog(k, model.K11(k), c='b', label=r'$K_{11}$')
+    plt.loglog(k, abs(model.K10(k)), c='b', ls='dashdot', label=r"$|K_{10}|$")
+    plt.loglog(k, abs(model.K11s(k)), c='b', ls='dashed', label=r"$|K_{11,s}|$")
+    plt.loglog(k, -model.K10s(k), c='b', ls='dotted', label=r"$-K_{10,s}$")
 
-        plt.loglog(k, model.K11(k), c='b', label=r'$K_{11}$')
-        plt.loglog(k, abs(model.K10(k)), c='b', ls='dashdot', label=r"$|K_{10}|$")
-        plt.loglog(k, abs(model.K11s(k)), c='b', ls='dashed', label=r"$|K_{11,s}|$")
-        plt.loglog(k, -model.K10s(k), c='b', ls='dotted', label=r"$-K_{10,s}$")
+    ax.legend(loc=0, fontsize=12)
+    return fig
 
-        ax.legend(loc=0, fontsize=16)
-        path = savefig(fig, '.', 'test_Kmn', 'panel_2.png')
-
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
-
+@pytest.mark.mpl_image_compare(style='seaborn-ticks')
 def test_Kmn_3(model):
     """
     Reproduce bottom right panel of Figure 1.
@@ -140,20 +127,14 @@ def test_Kmn_3(model):
     # k array
     k = numpy.logspace(-2, 0, 1000)
 
-    # this panel
+    # new axes
+    fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
+
     A = 1./k**2
-    with plt.style.context(['seaborn-paper', 'seaborn-ticks']):
+    plt.loglog(k, -A*model.K20_a(k), c='b', ls='dashed', label=r'$-K_{20}[\mu^2]$')
+    plt.loglog(k, A*abs(model.K20s_a(k)), c='b', label=r'$|K_{20,s}[\mu^2]|$')
+    plt.loglog(k, A*model.K20_b(k), c='b', ls='dotted', label=r'$K_{20}[\mu^4]$')
+    plt.loglog(k, -A*model.K20s_b(k), c='b', ls='dashdot', label=r'$-K_{20,s }[\mu^4]$')
 
-        # new axes
-        fig, ax = new_axes(ylabel, xlims=xlims, ylims=ylims)
-
-        plt.loglog(k, -A*model.K20_a(k), c='b', ls='dashed', label=r'$-K_{20}[\mu^2]$')
-        plt.loglog(k, A*abs(model.K20s_a(k)), c='b', label=r'$|K_{20,s}[\mu^2]|$')
-        plt.loglog(k, A*model.K20_b(k), c='b', ls='dotted', label=r'$K_{20}[\mu^4]$')
-        plt.loglog(k, -A*model.K20s_b(k), c='b', ls='dashdot', label=r'$-K_{20,s }[\mu^4]$')
-
-        ax.legend(loc=0, fontsize=16)
-        path = savefig(fig, '.', 'test_Kmn', 'panel_3.png')
-
-    correct = file_md5sum(os.path.join(data_dir, 'tests', path))
-    assert correct == file_md5sum(os.path.join('figures', path)), path
+    ax.legend(loc=0, fontsize=12)
+    return fig

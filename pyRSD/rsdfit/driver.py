@@ -444,7 +444,7 @@ class FittingDriver(object):
             return self._null_lnlike
         except:
             d = self.data.combined_power
-            self._null_lnlike = -0.5 * np.dot(d, np.dot(self.data.covariance.inverse, d))
+            self._null_lnlike = -0.5 * np.dot(d, np.dot(self.data.covariance_matrix.inverse, d))
             return self._null_lnlike
 
     @property
@@ -493,7 +493,7 @@ class FittingDriver(object):
             self.theory.set_free_parameters(theta)
 
         diff = self.combined_model - self.data.combined_power
-        return np.dot(diff, np.dot(self.data.covariance.inverse, diff))
+        return np.dot(diff, np.dot(self.data.covariance_matrix.inverse, diff))
 
     def reduced_chi2(self):
         """
@@ -709,7 +709,7 @@ class FittingDriver(object):
 
             # transform from model gradient to log likelihood gradient
             diff = self.data.combined_power - self.combined_model
-            grad_lnlike = np.dot(np.dot(self.data.covariance.inverse, diff), grad_lnlike.T)
+            grad_lnlike = np.dot(np.dot(self.data.covariance_matrix.inverse, diff), grad_lnlike.T)
             grad_minus_lnlike = -1 * grad_lnlike
 
         # test for inf
@@ -825,7 +825,7 @@ class FittingDriver(object):
             F = np.zeros((self.Np, self.Np))
             for i in range(self.Np):
                 for j in range(i, self.Np):
-                    F[i,j] =  np.dot(grad_lnlike[i], np.dot(self.data.covariance.inverse, grad_lnlike[j]))
+                    F[i,j] =  np.dot(grad_lnlike[i], np.dot(self.data.covariance_matrix.inverse, grad_lnlike[j]))
                     F[j,i] = F[i,j]
 
             # add priors??

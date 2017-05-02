@@ -21,6 +21,7 @@ if _githash:
 from .power.dm     import DarkMatterSpectrum
 from .power.biased import BiasedSpectrum, HaloSpectrum
 from .power.gal    import GalaxySpectrum
+from .power.qso    import QuasarSpectrum
 
 from .grid_transfer import PkmuTransfer, PolesTransfer, PkmuGrid
 from .power_extrapolator import ExtrapolatedPowerSpectrum

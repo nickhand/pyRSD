@@ -1,37 +1,10 @@
-import abc
-from six import add_metaclass
+from pyRSD.rsd.power.gradient import PkmuDerivative
 
-@add_metaclass(abc.ABCMeta)
-class PgalDerivative(object):
+class PgalDerivative(PkmuDerivative):
     """
-    Abstract base class for derivatives of the `Pgal` model
+    Abstract base class for derivatives of the `GalaxyPowerSpectrum` model
     """
-    @classmethod
-    def registry(cls):
-        """
-        Return the registered subclasses
-        """
-        d = {}
-        for subclass in cls.__subclasses__():
-            d[subclass.param] = subclass
-
-        return d
-
-    @staticmethod
-    @abc.abstractmethod
-    def eval(model, pars, k, mu):
-        pass
-
-def get_Pgal_derivative(name):
-    """
-    Given an input parameter name, return the
-    class that computes `dPgal/dname`
-    """
-    registry = PgalDerivative.registry()
-    if name not in registry:
-        raise ValueError("no registered subclass for dPgal/d%s" %name)
-    return registry[name]
-
+    pass
 
 from .alpha_par  import dPgal_dalpha_par
 from .alpha_perp import dPgal_dalpha_perp
@@ -47,8 +20,7 @@ from .nuisance   import (dPgal_dNsat_mult, dPgal_df1h_sBsB,
                         dPgal_df1h_cBs, dPgal_dlog10_fso)
 
 
-__all__ = [ 'get_Pgal_derivative',
-            'dPgal_dalpha_par',
+__all__ = [ 'dPgal_dalpha_par',
             'dPgal_dalpha_perp',
             'dPgal_df_so',
             'dPgal_dfcB',

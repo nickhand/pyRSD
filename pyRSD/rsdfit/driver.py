@@ -8,10 +8,9 @@ from .data import PowerData
 from .solvers import *
 from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
-from ..rsd import GalaxySpectrum
-from ..rsd.window import WindowTransfer
+from ..rsd._cache import Cache, parameter
 
-from six import add_metaclass, string_types
+from six import string_types
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
@@ -27,8 +26,112 @@ def load_results(filename):
         result = LBFGSResults.from_npz(filename)
     return result
 
-@add_metaclass(rsd_io.PickeableClass)
-class FittingDriver(object):
+class FittingDriverSchema(Cache):
+    """
+    The schema for the :class:`FittingDriver` class, defining the allowed
+    initialization parameters
+    """
+    @staticmethod
+    def help():
+        """
+        Print out the help information for the necessary initialization parameters
+        """
+        print("Initialization Parameters for FittingDriver" + '\n' + '-'*50)
+        for name in FittingDriverSchema._param_names:
+            par = getattr(FittingDriverSchema, name)
+            print(name+" :\n"+par.__doc__)
+
+    @parameter(default=0)
+    def burnin(self, val):
+        """
+        An integer specifying the number of MCMC steps to consider as part
+        of the "burn-in" period; default is 0
+        """
+        return val
+
+    @parameter(default=0.02)
+    def epsilon(self, val):
+        """
+        The Gelman-Rubin convergence criteria; default is 0.02
+        """
+        return val
+
+    @parameter(default=None)
+    def init_from(self, val):
+        """
+        How to initialize the optimization; can be 'nlopt', 'fiducial',
+        'result', or 'previous_run'; default is None
+        """
+        # check for deprecated init_values
+        if val == 'max-like':
+            raise ValueError("``init_from = max-like`` has been deprecated; use `nlopt` instead")
+        if val == 'chain':
+            raise ValueError("``init_from = chain`` has been deprecated; use `result` instead")
+
+        valid = ['nlopt', 'fiducial', 'result', 'previous_run']
+        if val is not None and val not in valid:
+            raise ValueError("valid values for 'init_from' are %s" % str(valid))
+
+        return val
+
+    @parameter(default=0)
+    def init_scatter(self, val):
+        """
+        The percentage of additional scatter to add to the initial fitting
+        parameters; default is 0
+        """
+        return val
+
+    @parameter(default=1e-4)
+    def lbfgs_epsilon(self, val):
+        """
+        The step-size for derivatives in LBFGS; default is 1e-4
+
+        A dictionary can supplied where keys specify the value to use
+        for specific free parameters
+        """
+        return val
+
+    @parameter(default={'gtol': 1e-05, 'ftol': 1e-10, 'xtol': 1e-10})
+    def lbfgs_options(self, val):
+        """
+        Configuration options to pass to the LBFGS solver
+        """
+        return val
+
+    @parameter(default=True)
+    def lbfgs_use_priors(self, val):
+        """
+        Whether to use priors when solving with the LBFGS algorithm; default
+        is ``True``
+        """
+        return val
+
+    @parameter()
+    def solver_type(self, val):
+        """
+        Configuration options to pass to the LBFGS solver
+        """
+        if val is None or val not in ['mcmc', 'nlopt']:
+            raise ValueError("'solver_type' parameter must be 'mcmc' or 'nlopt'")
+        return val
+
+    @parameter(default=None)
+    def start_from(self, val):
+        """
+        The name of a result file to initialize the optimization from
+        """
+        return val
+
+    @parameter(default=False)
+    def test_convergence(self, val):
+        """
+        Whether to test for convergence of the MCMC chains while running
+        the MCMC optimization; default is ``False``
+        """
+        return val
+
+class FittingDriver(FittingDriverSchema):
     """
     A class to handle the data analysis pipeline, merging together a model,
     theory, and fitting algorithm
@@ -67,6 +170,15 @@ class FittingDriver(object):
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
 
+        # set all of the valid ones
+        for name in FittingDriverSchema._param_names:
+            if name in self.params:
+                setattr(self, name, self.params[name].value)
+            try:
+                has_default = getattr(self, name)
+            except ValueError:
+                raise ValueError("FittingDriver class is missing the '%s' initialization parameter" %name)
+
         # setup the model for data
         if init_model: self._setup_for_data()
 
@@ -96,13 +208,15 @@ class FittingDriver(object):
             file exists in the specified directory, the model is loaded and
             no new model is initialized
         """
+        from pyRSD.rsd import DarkMatterSpectrum # import the base class to test for
+
         if not os.path.isdir(dirname):
             raise rsd_io.ConfigurationError('`%s` is not a valid directory' %dirname)
         params_path = os.path.join(dirname, params_filename)
 
         model_path = model_file
         existing_model = isinstance(model_path, string_types) and os.path.exists(model_path)
-        existing_model = existing_model or isinstance(model_path, GalaxySpectrum)
+        existing_model = existing_model or isinstance(model_path, DarkMatterSpectrum)
         if model_path is not None:
             if not existing_model:
                 raise rsd_io.ConfigurationError('provided model file `%s` does not exist' %model_path)
@@ -169,26 +283,21 @@ class FittingDriver(object):
             iterations to run
         """
         # tell driver we are starting from previous run
-        self.params['init_from'].value = 'previous_run'
+        self.init_from = 'previous_run'
 
         # set the results
         self.results = restart_file
         total_iterations = iterations + self.results.iterations
 
-        # the solver name
-        solver_name = self.params.get('solver_type', None).lower()
-        if solver_name is None:
-            raise ValueError("`solver_type` is `None` -- not sure how to restart")
-
         # set the number of iterations to the total sum we want to do
-        if solver_name == 'mcmc':
+        if self.solver_type == 'mcmc':
             if iterations is None:
                 raise ValueError("please specify the number of iterations to run when restarting")
             self.params.add('iterations', value=total_iterations)
             self.params.add('walkers', value=self.results.walkers)
 
-        elif solver_name == 'nlopt':
-            options = self.params.get('lbfgs_options', {})
+        elif self.solver_type == 'nlopt':
+            options = self.lbfgs_options
             options['max_iter'] = total_iterations
             self.params.add('lbfgs_options', value=options)
 
@@ -213,37 +322,29 @@ class FittingDriver(object):
         """
         Run the whole fitting analysis, from start to finish
         """
-        init_from = self.params.get('init_from', None)
         init_values = None
 
-        # check for deprecated init_values
-        if init_from == 'max-like':
-            raise ValueError("``init_from = max-like`` has been deprecated; use `nlopt` instead")
-        if init_from == 'chain':
-            raise ValueError("``init_from = chain`` has been deprecated; use `result` instead")
-
         # init from maximum probability solution
-        if init_from == 'nlopt':
+        if self.init_from == 'nlopt':
             init_values = self.find_peak_probability(pool=pool)
 
         # init from fiducial values
-        elif init_from == 'fiducial':
+        elif self.init_from == 'fiducial':
             init_values = self.theory.free_fiducial
 
         # init from previous result
-        elif init_from == 'result':
+        elif self.init_from == 'result':
 
             # the result to start from
-            start_from = self.params.get('start_from', None)
-            if start_from is None:
+            if self.start_from is None:
                 raise ValueError("if ``init_from = 'result'``, a `start_from` file path must be provided")
 
             # load the result and get the best-fit values
             try:
-                result = EmceeResults.from_npz(start_from)
+                result = EmceeResults.from_npz(self.start_from)
                 best_values = result.max_lnprob_values()
             except:
-                result = LBFGSResults.from_npz(start_from)
+                result = LBFGSResults.from_npz(self.start_from)
                 best_values = result.min_chi2_values
             best_values = dict(zip(result.free_names, best_values))
 
@@ -258,23 +359,18 @@ class FittingDriver(object):
                         raise ValueError("cannot initiate from previous result -- `%s` parameter missing" %key)
 
             # log the file name
-            logger.info("initializing run from previous result: '%s'" %start_from)
+            logger.info("initializing run from previous result: '%s'" %self.start_from)
 
         # restart from previous result
-        elif init_from  == 'previous_run':
+        elif self.init_from  == 'previous_run':
             init_values = self.results.copy()
-
-        # get the solver function
-        solver_name = self.params.get('solver_type', None).lower()
-        if solver_name is None:
-            raise ValueError("`solver_type` is `None` -- not sure what to do")
 
         kwargs = {'pool':pool}
         if init_values is not None:
             kwargs['init_values'] = init_values
 
         # emcee
-        if solver_name == 'mcmc':
+        if self.solver_type == 'mcmc':
 
             # do not use any analytic approximations for bounds and priors
             # since MCMC can handle discontinuity in log-prob
@@ -285,7 +381,7 @@ class FittingDriver(object):
             kwargs['chains_comm'] = chains_comm
 
         # lbfgs
-        elif solver_name == 'nlopt':
+        elif self.solver_type == 'nlopt':
             solver = lbfgs_solver.run
 
             # use analytic approximation for bounds and priors
@@ -295,13 +391,13 @@ class FittingDriver(object):
 
         # incorrect
         else:
-            raise NotImplementedError("solver with name '{}' not currently available".format(solver_name))
+            raise NotImplementedError("solver with name '{}' not currently available".format(self.solver_type))
 
         # run the solver and store the results
-        if init_from == 'previous_run':
-            logger.info("Restarting '{}' solver from a previous result".format(solver_name))
+        if self.init_from == 'previous_run':
+            logger.info("Restarting '{}' solver from a previous result".format(self.solver_type))
         else:
-            logger.info("Calling the '{}' solve function".format(solver_name))
+            logger.info("Calling the '{}' solve function".format(self.solver_type))
         self.results, exception = solver(self.params, self.theory, **kwargs)
 
         # store the model version in the results
@@ -309,7 +405,6 @@ class FittingDriver(object):
             self.results.model_version = self.theory.model.__version__
 
         logger.info("...fitting complete")
-
         return exception
 
     def finalize_fit(self, exception, results_file):

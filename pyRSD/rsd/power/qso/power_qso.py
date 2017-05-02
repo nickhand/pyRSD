@@ -15,8 +15,7 @@ class QuasarSpectrum(HaloSpectrum):
     The quasar redshift space power spectrum, a subclass of
     :class:`~pyRSD.rsd.HaloSpectrum` for biased redshift space power spectra
     """
-    def __init__(self, fog_model='gaussian',
-                       **kwargs):
+    def __init__(self, fog_model='gaussian', **kwargs):
         """
         Initialize the QuasarSpectrum
 

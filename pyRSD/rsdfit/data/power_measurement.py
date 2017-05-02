@@ -228,7 +228,7 @@ class PowerMeasurement(Cache):
 class PowerDataSchema(Cache):
     """
     The schema for the :class:`PowerData` class, defining the allowed
-    parameters
+    initialization parameters
     """
     @staticmethod
     def help():

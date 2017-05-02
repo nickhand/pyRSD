@@ -1,6 +1,7 @@
 from . import numdifftools, numpy as np
 import pytest
-from pyRSD.rsd.derivatives.gradient import compute
+from pyRSD.rsd.power.gradient import compute
+from pyRSD.rsd.power.gal.derivatives import PgalDerivative
 
 NMU = 41
 
@@ -27,7 +28,7 @@ def test_total(driver, socorr):
     args = (model, pars, k, mu)
 
     # our derivative
-    x = compute('alpha_par', *args)
+    x = compute(PgalDerivative.registry(), 'alpha_par', *args)
 
     # setup the numerical derivative
     index = driver.theory.free_names.index('alpha_par')
@@ -37,7 +38,7 @@ def test_total(driver, socorr):
         t = theta.copy()
         t[index] = x
         driver.theory.set_free_parameters(t)
-        return driver.theory.model.Pgal(k, mu)
+        return driver.theory.model.power(k, mu)
 
     g = numdifftools.Derivative(f, step=1e-3)
     y = g(theta[index])

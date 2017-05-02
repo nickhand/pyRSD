@@ -1,5 +1,5 @@
 from . import numdifftools, numpy as np
-from pyRSD.rsd.derivatives.Pgal import dPgal_dNsBsB
+from pyRSD.rsd.power.gal.derivatives import dPgal_dNsBsB
 
 NMU = 41
 
@@ -27,7 +27,7 @@ def test_dPgal_dNsBsB(driver):
     # numerical derivative
     def f(x):
         model.NsBsB = x
-        return driver.theory.model.Pgal(k, mu)
+        return driver.theory.model.power(k, mu)
     g = numdifftools.Derivative(f, step=1e-3)
     y = g(model.NsBsB)
 

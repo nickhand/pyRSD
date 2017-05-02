@@ -1,5 +1,5 @@
 from . import numdifftools, numpy as np
-from pyRSD.rsd.derivatives.Pgal import dPgal_df_so
+from pyRSD.rsd.power.gal.derivatives import dPgal_df_so
 
 NMU = 41
 
@@ -29,7 +29,7 @@ def test_partial(driver):
     # numerical derivative
     def f(x):
         model.f_so = x
-        return driver.theory.model.Pgal(k, mu)
+        return driver.theory.model.power(k, mu)
     g = numdifftools.Derivative(f, step=1e-3)
     y = g(model.f_so)
 

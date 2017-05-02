@@ -1,6 +1,8 @@
 import fnmatch
 import contextlib
 import warnings
+from scipy.special import legendre
+from scipy.integrate import simps
 
 from pyRSD.rsd._cache import Cache, parameter, interpolated_function, cached_property
 from pyRSD.rsd import tools, INTERP_KMIN, INTERP_KMAX, __version__
@@ -144,6 +146,22 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         k = 0.5*(self.kmin+self.kmax)
         return self.power(k, 0.5)
+
+    @contextlib.contextmanager
+    def use_cache(self):
+        """
+        Cache repeated calls to functions defined in this class, assuming
+        constant `k` and `mu` input values
+        """
+        from pyRSD.rsd.tools import cache_on, cache_off
+
+        try:
+            cache_on()
+            yield
+        except:
+            raise
+        finally:
+            cache_off()
 
     #---------------------------------------------------------------------------
     # parameters
@@ -928,6 +946,86 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         if flatten: pkmu = np.ravel(pkmu, order='F')
         return pkmu
 
+    def poles(self, k, poles, flatten=False, Nmu=41):
+        """
+        Return the multipole moments specified by `poles`, where `poles` is a
+        list of integers, i.e., [0, 2, 4]
+
+        Parameter
+        ---------
+        k : float, array_like
+            The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
+        poles : init, array_like
+            The `ell` values of the multipole moments
+        flatten : bool, optional
+            If `True`, flatten the return array, which will have a length of
+            `len(k) * len(poles)`
+
+        Returns
+        -------
+        poles : array_like
+            returns tuples of arrays for each ell value in ``poles``
+        """
+        scalar = np.isscalar(poles)
+        if scalar: poles = [poles]
+
+        mus = np.linspace(0., 1., Nmu)
+        Pkmus = self.power(k, mus)
+
+        if len(poles) != len(k):
+            toret = ()
+            for ell in poles:
+                kern = (2*ell+1.)*legendre(ell)(mus)
+                val = np.array([simps(kern*d, x=mus) for d in Pkmus])
+                toret += (val,)
+
+            if scalar:
+                return toret[0]
+            else:
+                return toret if not flatten else np.ravel(toret, order='F')
+        else:
+            kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
+            return np.array([simps(d, x=mus) for d in kern*Pkmus])
+
+    def from_transfer(self, transfer, flatten=False, **kws):
+        """
+        Return the power (either P(k,mu) or multipoles), accounting for
+        discrete binning effects using the input transfer function
+
+        This calls :func:`power` to evaluate the model at discrete ``k``
+        and ``mu`` values
+
+        Parameter
+        ---------
+        transfer : PkmuTransfer, PolesTransfer, WindowTransfer
+            the transfer class which accounts for the discrete binning effects
+        flatten : bool, optional
+            If `True`, flatten the return array, which will have a length of
+            `Nk * Nmu` or `Nk * Nell`
+        """
+        grid = transfer.grid
+
+        # check some bounds for window convolution
+        from pyRSD.rsd.window import WindowTransfer
+        if isinstance(transfer, WindowTransfer):
+
+            # check k-range inconsistency
+            kmin, kmax = transfer.kmin, transfer.kmax
+            if (kmin < self.kmin).any():
+                warnings.warn("min k of window transfer (%s) is less than model's kmin (%.2e)" %(kmin, self.kmin))
+            if (kmax > self.kmax).any():
+                warnings.warn("max k of window transfer (%s) is greater than model's kmax (%.2e)" %(kmax, self.kmax))
+
+            # check bad values
+            if self.kmin > 5e-3:
+                warnings.warn("doing window convolution with dangerous model kmin (%.2e)" %self.kmin)
+            if self.kmax < 0.5:
+                warnings.warn("doing window convolution with dangerous model kmax (%.2e)" %self.kmax)
+
+        power = self.power(grid.k[grid.notnull], grid.mu[grid.notnull])
+        transfer.power = power
+        return transfer(flatten=flatten, **kws)
+
     @tools.alcock_paczynski
     def _P_mu0(self, k, mu):
         """
@@ -1016,7 +1114,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The monopole moment of the power spectrum. Include mu terms up to
         mu**max_mu.
         """
-        return self.power(k, mu)
+        return self.power(k, mu, **kwargs)
 
     @tools.quadrupole
     def quadrupole(self, k, mu, **kwargs):
@@ -1024,7 +1122,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The quadrupole moment of the power spectrum. Include mu terms up to
         mu**max_mu.
         """
-        return self.power(k, mu)
+        return self.power(k, mu, **kwargs)
 
     @tools.hexadecapole
     def hexadecapole(self, k, mu, **kwargs):
@@ -1032,8 +1130,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The hexadecapole moment of the power spectrum. Include mu terms up to
         mu**max_mu.
         """
-        return self.power(k, mu)
+        return self.power(k, mu, **kwargs)
 
+    @tools.tetrahexadecapole
+    def tetrahexadecapole(self, k, mu, **kwargs):
+        """
+        The tetrahexadecapole (ell=6) moment of the power spectrum
+        """
+        return self.power(k, mu, **kwargs)
 
 class PowerTerm(object):
     """

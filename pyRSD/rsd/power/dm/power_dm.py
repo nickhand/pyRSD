@@ -969,6 +969,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         scalar = np.isscalar(poles)
         if scalar: poles = [poles]
 
+        if len(k) == Nmu: Nmu += 1
         mus = np.linspace(0., 1., Nmu)
         Pkmus = self.power(k, mus)
 

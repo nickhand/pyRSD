@@ -248,8 +248,10 @@ def monopole(f):
     """
     @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
-        k = args[0]
-        mus = np.linspace(0., 1., 101)
+        k = args[0]; Nmu = 41
+        if len(k) == Nmu: Nmu += 1
+        mus = np.linspace(0., 1., Nmu)
+        kwargs['flatten'] = False
         Pkmus = f(self, k, mus, **kwargs)
         return np.array([simps(pk, x=mus) for pk in Pkmus])
     return wrapper
@@ -260,8 +262,10 @@ def quadrupole(f):
     """
     @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
-        k = args[0]
-        mus = np.linspace(0., 1., 101)
+        k = args[0]; Nmu = 41
+        if len(k) == Nmu: Nmu += 1
+        mus = np.linspace(0., 1., Nmu)
+        kwargs['flatten'] = False
         Pkmus = f(self, k, mus, **kwargs)
         kern = 2.5*(3*mus**2 - 1.)
         return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
@@ -273,8 +277,10 @@ def hexadecapole(f):
     """
     @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
-        k = args[0]
-        mus = np.linspace(0., 1., 1001)
+        k = args[0]; Nmu = 41
+        if len(k) == Nmu: Nmu += 1
+        mus = np.linspace(0., 1., Nmu)
+        kwargs['flatten'] = False
         Pkmus = f(self, k, mus, **kwargs)
         kern = 9./8.*(35*mus**4 - 30.*mus**2 + 3.)
         return np.array([simps(kern*pk, x=mus) for pk in Pkmus])
@@ -286,8 +292,10 @@ def tetrahexadecapole(f):
     """
     @functools.wraps(f)
     def wrapper(self, *args, **kwargs):
-        k = args[0]
-        mus = np.linspace(0., 1., 1001)
+        k = args[0]; Nmu = 41
+        if len(k) == Nmu: Nmu += 1
+        mus = np.linspace(0., 1., Nmu)
+        kwargs['flatten'] = False
         Pkmus = f(self, k, mus, **kwargs)
         kern = 13./16.*(231*mus**6 - 315*mus**4 + 105*mus**2 - 5)
         return np.array([simps(kern*pk, x=mus) for pk in Pkmus])

@@ -240,13 +240,9 @@ def parameter(f, default=None):
         if _name not in self.__dict__:
 
             if default is not None:
-                if isinstance(default, string_types):
-                    if hasattr(self, default):
-                        val = getattr(self, default)
-                        return val
-                    else:
-                        args = (name, default)
-                        raise ValueError("required parameter '%s' has not yet been set and default '%s' does not exist" %args)
+                if isinstance(default, string_types) and hasattr(self, default):
+                    val = getattr(self, default)
+                    return val
                 else:
                     return f(self, default)
             else:

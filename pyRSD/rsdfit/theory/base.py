@@ -317,7 +317,7 @@ class BasePowerTheory(object):
 
         # now setup the model parameters; only the valid model kwargs are read
         allowable_model_params = model_cls.allowable_kwargs
-        for param in self.model_params.keys():
+        for param in list(self.model_params.keys()):
             if param not in allowable_model_params and param != '__version__':
                 del self.model_params[param]
 

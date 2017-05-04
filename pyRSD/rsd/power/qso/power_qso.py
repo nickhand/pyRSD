@@ -142,6 +142,7 @@ class QuasarSpectrum(HaloSpectrum):
         """
         return 1.686
 
+    @interpolated_function("k", "cosmo", interp="k")
     def alpha_png(self, k):
         """
         The primordial non-Gaussianity alpha value
@@ -162,6 +163,7 @@ class QuasarSpectrum(HaloSpectrum):
 
         return 2*k**2 * Tk * self.D / (3*self.cosmo.Omega0_m()) * (c/H0)**2 * g_ratio
 
+    @interpolated_function("k", "b1", "f_nl", interp="k")
     def delta_bias(self, k):
         """
         The scale-dependent bias introduced by primordial non-Gaussianity
@@ -170,6 +172,7 @@ class QuasarSpectrum(HaloSpectrum):
 
         return 2*(self.b1-self.p)*self.f_nl*self.delta_crit/self.alpha_png(k)
 
+    @interpolated_function("k", "b1", "delta_bias", interp="k")
     def btot(self, k):
         """
         The total bias, accounting for scale-dependent bias introduced by
@@ -180,21 +183,21 @@ class QuasarSpectrum(HaloSpectrum):
     #---------------------------------------------------------------------------
     # power as a function of mu
     #---------------------------------------------------------------------------
-    @interpolated_function("k", "sigma8_z", "b1", "_power_norm", interp="k")
+    @interpolated_function("k", "sigma8_z", "_power_norm", "btot", interp="k")
     def P_mu0(self, k):
         """
         The isotropic part of the Kaiser formula
         """
         return self.btot(k)**2 * self.normed_power_lin(k)
 
-    @interpolated_function("k", "sigma8_z", "b1", "f", "_power_norm", interp="k")
+    @interpolated_function("k", "sigma8_z", "f", "_power_norm", "btot", interp="k")
     def P_mu2(self, k):
         """
         The mu^2 term of the Kaiser formula
         """
         return 2*self.f*self.btot(k) * self.normed_power_lin(k)
 
-    @interpolated_function("k", "sigma8_z", "b1", "f", "_power_norm", interp="k")
+    @interpolated_function("k", "sigma8_z", "f", "_power_norm", interp="k")
     def P_mu4(self, k):
         """
         The mu^4 term of the Kaiser formula
@@ -252,7 +255,7 @@ class QuasarSpectrum(HaloSpectrum):
         Gprime = self.FOG.derivative_k(k, mu, self.sigma_fog)
 
         deriv = super(QuasarSpectrum, self).derivative_k(k, mu)
-        power = self.power(k, mu)
+        power = super(QuasarSpectrum, self).power(k, mu)
 
         return G**2 * deriv + 2 * G*Gprime * power
 
@@ -262,9 +265,9 @@ class QuasarSpectrum(HaloSpectrum):
         The derivative with respect to `mu_AP`
         """
         G = self.FOG(k, mu, self.sigma_fog)
-        Gprime = self.FOG.derivative_k(k, mu, self.sigma_fog)
+        Gprime = self.FOG.derivative_mu(k, mu, self.sigma_fog)
 
         deriv = super(QuasarSpectrum, self).derivative_mu(k, mu)
-        power = self.power(k, mu)
+        power = super(QuasarSpectrum, self).power(k, mu)
 
         return G**2 * deriv + 2 * G*Gprime * power

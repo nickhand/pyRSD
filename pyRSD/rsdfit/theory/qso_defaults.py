@@ -108,7 +108,7 @@ class DefaultQuasarPowerTheory(object):
         return {'fiducial':4., 'prior':'uniform', 'lower':2., 'upper':8.}
 
     @free(model_param=True)
-    def sigma_fog(self):
+    def f_nl(self):
         """
         The primordial non-Gaussianity amplitude
         """

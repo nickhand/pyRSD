@@ -14,11 +14,15 @@ class dPqso_df_nl(PqsoDerivative):
         kprime  = k_AP(k, mu, m.alpha_perp, m.alpha_par)
         muprime = mu_AP(mu, m.alpha_perp, m.alpha_par)
 
+        # finger-of-god
         G = m.FOG(kprime, muprime, m.sigma_fog)
-        btot = m.b1 + m.delta_bias(kprime)
 
         # derivative of scale-dependent bias term
         ddb_dfnl = 2*(m.b1-m.p)*m.delta_crit/m.alpha_png(kprime)
 
+        # do the volume rescaling
+        rescaling = (m.alpha_drag**3) / (m.alpha_perp**2 * m.alpha_par)
+
         # the final derivative
-        return G**2 * (2 * m.P_mu0(kprime) + m.P_mu2(kprime)*muprime**2) / btot * ddb_dfnl
+        btot = m.btot(kprime)
+        return rescaling * G**2 * (2 * m.P_mu0(kprime) + m.P_mu2(kprime)*muprime**2) / btot * ddb_dfnl

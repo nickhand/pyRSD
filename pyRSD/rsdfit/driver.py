@@ -3,7 +3,7 @@ from . import MPILoggerAdapter, logging
 from . import params_filename, model_filename
 
 from .parameters import ParameterSet
-from .theory import GalaxyPowerTheory
+from .theory import GalaxyPowerTheory, QuasarPowerTheory
 from .data import PowerData
 from .solvers import *
 from .util import rsd_io
@@ -40,6 +40,15 @@ class FittingDriverSchema(Cache):
         for name in FittingDriverSchema._param_names:
             par = getattr(FittingDriverSchema, name)
             print(name+" :\n"+par.__doc__)
+
+    @parameter(default='galaxy')
+    def tracer_type(self, val):
+        """
+        The type of tracer, either 'galaxy' or 'quasar'
+        """
+        if val not in ['galaxy', 'quasar']:
+            raise ValueError("``tracer_type`` should be 'quasar' or 'galaxy'")
+        return val
 
     @parameter(default=0)
     def burnin(self, val):
@@ -152,21 +161,6 @@ class FittingDriver(FittingDriverSchema):
         init_model : bool, optional
             if `True`, initialize the theoretical model upon initialization; default is `True`
         """
-        # initialize the data too
-        self.data = PowerData(param_file)
-        self.mode = self.data.mode # mode is either pkmu/poles
-
-        # initialize the theory
-        kwargs = {}
-        kwargs['extra_param_file'] = extra_param_file
-        kwargs['kmin'] = self.data.global_kmin
-        kwargs['kmax'] = self.data.global_kmax
-        self.theory = GalaxyPowerTheory(param_file, **kwargs)
-
-        # log the DOF
-        args = (self.Nb, self.Np, self.dof)
-        logger.info("number of degrees of freedom: %d - %d = %d" %args, on=0)
-
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
 
@@ -178,6 +172,24 @@ class FittingDriver(FittingDriverSchema):
                 has_default = getattr(self, name)
             except ValueError:
                 raise ValueError("FittingDriver class is missing the '%s' initialization parameter" %name)
+
+        # initialize the data too
+        self.data = PowerData(param_file)
+        self.mode = self.data.mode # mode is either pkmu/poles
+
+        # initialize the theory
+        kwargs = {}
+        kwargs['extra_param_file'] = extra_param_file
+        kwargs['kmin'] = self.data.global_kmin
+        kwargs['kmax'] = self.data.global_kmax
+        if self.tracer_type == 'galaxy':
+            self.theory = GalaxyPowerTheory(param_file, **kwargs)
+        else:
+            self.theory = QuasarPowerTheory(param_file, **kwargs)
+
+        # log the DOF
+        args = (self.Nb, self.Np, self.dof)
+        logger.info("number of degrees of freedom: %d - %d = %d" %args, on=0)
 
         # setup the model for data
         if init_model: self._setup_for_data()

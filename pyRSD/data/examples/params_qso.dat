@@ -1,0 +1,94 @@
+#-------------------------------------------------------------------------------
+# driver_params
+#-------------------------------------------------------------------------------
+driver.burnin = 0
+driver.epsilon = 0.02
+driver.init_from = 'fiducial'
+driver.init_scatter = 0.0
+driver.lbfgs_epsilon = {'Nsat_mult': 0.01, 'f1h_cBs': 0.01}
+driver.lbfgs_options = {'ftol': 1e-10, 'xtol': 1e-10, 'gtol': 1e-05}
+driver.lbfgs_use_priors = True
+driver.solver_type = 'nlopt'
+driver.start_from = None
+driver.test_convergence = False
+driver.tracer_type = 'quasar'
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# data params
+#-------------------------------------------------------------------------------
+data.columns = range(0, 3)
+data.covariance = '$(PYRSD_DATA)/examples/runPB_poles_gaussian_cov.dat'
+data.covariance_Nmocks = 0
+data.covariance_rescaling = 1.0
+data.data_file = '$(PYRSD_DATA)/examples/runPB_galaxy_poles.dat'
+data.ells = [0, 2, 4]
+data.fitting_range = [(0.02, 0.4), (0.02, 0.4), (0.02, 0.4)]
+data.grid_file = '$(PYRSD_DATA)/examples/runPB_pkmu_grid.dat'
+data.mode = 'poles'
+data.mu_bounds = None
+data.rescale_inverse_covariance = False
+data.statistics = ['pole_0', 'pole_2', 'pole_4']
+data.usedata = range(0, 3)
+data.window_file = None
+#-------------------------------------------------------------------------------
+
+#-------------------------------------------------------------------------------
+# theory params
+#-------------------------------------------------------------------------------
+theory.F_AP = {'vary': False, 'analytic': False, 'expr': 'alpha_par/alpha_perp', 'value': 1.0, 'name': 'F_AP'}
+theory.N = {'prior_name': 'uniform', 'vary': False, 'analytic': False, 'upper': 500.0, 'lower': -500.0, 'fiducial': 0.0, 'value': 0.0, 'name': 'N'}
+theory.alpha = {'vary': False, 'analytic': False, 'expr': '(alpha_perp**2 * alpha_par)**(1./3)', 'value': 1.0, 'name': 'alpha'}
+theory.alpha_drag = {'vary': False, 'analytic': False, 'fiducial': 1.0, 'value': 1.0, 'name': 'alpha_drag'}
+theory.alpha_par = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 1.2, 'lower': 0.8, 'fiducial': 0.9, 'value': 0.9, 'name': 'alpha_par'}
+theory.alpha_perp = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 1.2, 'lower': 0.8, 'fiducial': 1.1, 'value': 1.1, 'name': 'alpha_perp'}
+theory.b1 = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 6.0, 'lower': 1.2, 'fiducial': 2.0, 'value': 2.0, 'name': 'b1'}
+theory.b1sigma8 = {'vary': False, 'analytic': False, 'expr': 'b1*sigma8_z', 'value': 1.22, 'name': 'b1sigma8'}
+theory.epsilon = {'vary': False, 'analytic': False, 'expr': '(alpha_perp/alpha_par)**(-1./3) - 1.0', 'value': 0.0, 'name': 'epsilon'}
+theory.f = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 1.0, 'lower': 0.6, 'fiducial': 0.78, 'value': 0.78, 'name': 'f'}
+theory.f_nl = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 100.0, 'lower': -100.0, 'fiducial': 50.0, 'value': 50.0, 'name': 'f_nl'}
+theory.fsigma8 = {'vary': False, 'analytic': False, 'expr': 'f*sigma8_z', 'value': 0.4758, 'name': 'fsigma8'}
+theory.sigma8_z = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 0.9, 'lower': 0.3, 'fiducial': 0.61, 'value': 0.61, 'name': 'sigma8_z'}
+theory.sigma_fog = {'prior_name': 'uniform', 'vary': True, 'analytic': False, 'upper': 8.0, 'lower': 2.0, 'fiducial': 4.0, 'value': 4.0, 'name': 'sigma_fog'}
+
+#-------------------------------------------------------------------------------
+
+theory_extra.b2_00__0 =  'A0 for generic b2_00'
+theory_extra.gamma_b1sA =  'the relative fraction of b1_sA to b1_cA'
+theory_extra.delta_sigsA =  'the relative fraction of sigma_sA to sigma_s'
+theory_extra.nbar =  'the mean number density in (h/Mpc)^3'
+theory_extra.Nsat_mult =  'the mean number of satellites in halos with >1 sat'
+theory_extra.gamma_b1cB =  'the relative fraction of b1_cB, varying linear between b1_sA and b1_s'
+theory_extra.delta_sigsB =  'the relative fraction of sigma_sB to sigma_s'
+theory_extra.f_nbar =  'fraction multiplying nbar'
+theory_extra.f1h_sBsB =  'fraction multiplying 1-halo term, NsBsB'
+theory_extra.b2_00__4 =  'A4 for generic b2_00'
+theory_extra.f1h_cBs =  'fraction multiplying 1-halo term, NcBs'
+theory_extra.gamma_b1sB =  'the relative fraction of b1_sB to b1_cA'
+theory_extra.b2_00__2 =  'A2 for generic b2_00'
+
+#-------------------------------------------------------------------------------
+# model params
+#-------------------------------------------------------------------------------
+model.Pdv_model_type = 'jennings'
+model.correct_mu2 = False
+model.correct_mu4 = False
+model.cosmo_filename = 'runPB.ini'
+model.enhance_wiggles = False
+model.fog_model = 'modified_lorentzian'
+model.include_2loop = False
+model.interpolate = True
+model.max_mu = 4
+model.transfer_fit = 'CLASS'
+model.use_P00_model = True
+model.use_P01_model = True
+model.use_P11_model = True
+model.use_Pdv_model = True
+model.use_Phm_model = True
+model.use_mean_bias = False
+model.use_so_correction = False
+model.use_tidal_bias = False
+model.use_vlah_biasing = True
+model.vel_disp_from_sims = False
+model.z = 0.55
+#-------------------------------------------------------------------------------

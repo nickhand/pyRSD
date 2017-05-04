@@ -1,14 +1,45 @@
 from pyRSD.rsd._cache import parameter, cached_property, interpolated_function
 from pyRSD.rsd import tools, HaloSpectrum
-from pyRSD import numpy as np
+from pyRSD import numpy as np, pygcl
 from ..gal.fog_kernels import FOGKernel
 
 from scipy.special import legendre
-from scipy.integrate import simps
+from scipy.integrate import simps, quad
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import contextlib
 import warnings
 
+def vectorize_if_needed(func, *x):
+    """
+    Helper function to vectorize functions on array inputs;
+    borrowed from :mod:`astropy.cosmology.core`
+    """
+    if any(map(isiterable, x)):
+        return np.vectorize(func)(*x)
+    else:
+        return func(*x)
+
+def isiterable(obj):
+    """
+    Returns `True` if the given object is iterable;
+    borrowed from :mod:`astropy.cosmology.core`
+    """
+    try:
+        iter(obj)
+        return True
+    except TypeError:
+        return False
+
+def growth_function(cosmo, z):
+
+    # compute E(z)
+    Om0, Ode0, Ok0 = cosmo['Omega0_m'], cosmo['Omega0_lambda'], cosmo['Omega0_k']
+    efunc = lambda a: np.sqrt(a ** -3 * Om0 + Ok0 * a ** -2 + Ode0)
+
+    # this is 1 / (E(a) * a)**3, with H(a) = H0 * E(a)
+    integrand = lambda a: 1.0 / (a * efunc(a))**3
+    f = lambda red: quad(integrand, 0., 1./(1+red))[0]
+    return efunc(1./(1+z))*vectorize_if_needed(f, z)
 
 class QuasarSpectrum(HaloSpectrum):
     """
@@ -34,6 +65,10 @@ class QuasarSpectrum(HaloSpectrum):
         self.sigma_fog = 4.0
         self.include_2loop = False
         self.N = 0
+
+        # fnl parameters
+        self.f_nl = 0
+        self.p = 1.6 # good for quasars
 
     def default_params(self):
         """
@@ -65,6 +100,25 @@ class QuasarSpectrum(HaloSpectrum):
         return val
 
     @parameter
+    def p(self, val):
+        """
+        The value encoding the type of tracer; must be between 1 and 1.6,
+        with p=1 suitable for LRGs and p=1.6 suitable for quasars
+
+        The scale-dependent bias is proportional to: ``b1 - p``
+        """
+        if not 1 <= val <= 1.6:
+            raise ValueError("f_nl ``p`` value should be between 1 and 1.6 (inclusive)")
+        return val
+
+    @parameter
+    def f_nl(self, val):
+        """
+        The amplitude of the local-type non-Gaussianity
+        """
+        return val
+
+    @parameter
     def N(self, val):
         """
         Constant offset to model, set to 0 by default
@@ -79,6 +133,51 @@ class QuasarSpectrum(HaloSpectrum):
         return FOGKernel.factory(self.fog_model)
 
     #---------------------------------------------------------------------------
+    # primordial non-Gaussianity functions
+    #---------------------------------------------------------------------------
+    @cached_property()
+    def delta_crit(self):
+        """
+        The usual critical overdensity value for collapse from Press-Schechter
+        """
+        return 1.686
+
+    def alpha_png(self, k):
+        """
+        The primordial non-Gaussianity alpha value
+
+        see e.g., equation 2 of Mueller et al 2017
+        """
+        # transfer function, normalized to unity
+        Tk = (self.normed_power_lin(k)/k**self.cosmo.n_s())**0.5
+        Tk /= Tk.max()
+
+        # normalization
+        c = pygcl.Constants.c_light / pygcl.Constants.km # in km/s
+        H0 = 100 # in units of h km/s/Mpc
+
+        # normalizes growth function to unity in matter-dominated epoch
+        g_ratio = growth_function(self.cosmo, 0.)
+        g_ratio /= (1+100.) * growth_function(self.cosmo, 100.)
+
+        return 2*k**2 * Tk * self.D / (3*self.cosmo.Omega0_m()) * (c/H0)**2 * g_ratio
+
+    def delta_bias(self, k):
+        """
+        The scale-dependent bias introduced by primordial non-Gaussianity
+        """
+        if self.f_nl == 0: return k*0.
+
+        return 2*(self.b1-self.p)*self.f_nl*self.delta_crit/self.alpha_png(k)
+
+    def btot(self, k):
+        """
+        The total bias, accounting for scale-dependent bias introduced by
+        primordial non-Gaussianity
+        """
+        return self.b1 + self.delta_bias(k)
+
+    #---------------------------------------------------------------------------
     # power as a function of mu
     #---------------------------------------------------------------------------
     @interpolated_function("k", "sigma8_z", "b1", "_power_norm", interp="k")
@@ -86,14 +185,14 @@ class QuasarSpectrum(HaloSpectrum):
         """
         The isotropic part of the Kaiser formula
         """
-        return self.b1**2 * self.normed_power_lin(k)
+        return self.btot(k)**2 * self.normed_power_lin(k)
 
     @interpolated_function("k", "sigma8_z", "b1", "f", "_power_norm", interp="k")
     def P_mu2(self, k):
         """
         The mu^2 term of the Kaiser formula
         """
-        return 2*self.f*self.b1 * self.normed_power_lin(k)
+        return 2*self.f*self.btot(k) * self.normed_power_lin(k)
 
     @interpolated_function("k", "sigma8_z", "b1", "f", "_power_norm", interp="k")
     def P_mu4(self, k):

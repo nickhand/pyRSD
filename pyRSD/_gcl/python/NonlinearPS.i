@@ -5,9 +5,9 @@
 class NonlinearPS  {
 public:
     enum NonlinearFit {FrankenEmu, Halofit};
-    
+
     NonlinearPS();
-    NonlinearPS(const std::string& param_file, double z = 0, 
+    NonlinearPS(const std::string& param_file, double z = 0,
                 NonlinearFit fit = FrankenEmu, bool use_cmbh = false);
 
     double Evaluate(double k);
@@ -17,7 +17,6 @@ public:
 
     const double h() const;
     const double& GetRedshift() const;
-    ClassCosmology& GetCosmology();
+    ClassEngine& GetCosmology();
     NonlinearFit GetNonlinearFit() const;
 };
-

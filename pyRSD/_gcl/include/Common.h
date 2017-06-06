@@ -7,22 +7,23 @@
 
 // The directory of GCL. This is set to the absolute path to the GCL directory so this is just a failsafe.
 #ifndef GCLDIR
-#define GCLDIR "." 
+#define GCLDIR "."
 #endif
 
 // The directory of GCL. This is set to the absolute path to the data directory so this is just a failsafe.
 #ifndef DATADIR
-#define DATADIR "." 
+#define DATADIR "."
 #endif
 
 #include <cmath>
 #include <cstdio>
+#include <string>
 
 /* Forward declarations of generic classes */
 // class Closure;
 // class CorrelationFunction;
 class ClassParams;
-class ClassCosmology;
+class ClassEngine;
 class Cosmology;
 class Datafile;
 class PowerSpectrum;
@@ -35,7 +36,10 @@ class LinearPS;
 
 
 namespace Common {
-    
+
+    void throw_error(const char *msg, std::string file, int lineno);
+    void throw_error(std::string msg, std::string file, int lineno);
+
     /* Convenient print functions that flush the output buffer afterwards */
     //   Print to file
     void write(FILE * stream, const char* format, ...);
@@ -67,7 +71,7 @@ namespace Common {
 
 /* Physical constants in cgs units */
 namespace Constants {
-    
+
     // set up cgs units
     const double cm     = 1.;
     const double gram   = 1.;
@@ -105,11 +109,11 @@ namespace Constants {
     const double a_0      = 5.2917721092e-9;    /* Bohr radius */
 
     // length conversion factors
-    const double km       = 1e5 * cm;  
-    const double meter    = 1e2 * cm;  
-    const double inch     = 2.54 * cm;  
-    const double mm       = 1e-1 * cm;  
-    const double micron   = 1e-4 * cm;  
+    const double km       = 1e5 * cm;
+    const double meter    = 1e2 * cm;
+    const double inch     = 2.54 * cm;
+    const double mm       = 1e-1 * cm;
+    const double micron   = 1e-4 * cm;
     const double angstrom = 1e-8 * cm;
     const double jansky   = 1e-23;       /* in erg/s/cm/cm/Hz */
     const double barn     = 1e-24*cm*cm;

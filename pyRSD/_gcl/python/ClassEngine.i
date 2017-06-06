@@ -1,9 +1,29 @@
 %{
-#include "ClassCosmology.h"
+#include "ClassEngine.h"
 %}
 
+namespace std {
+    %template(VectorUnsigned) std::vector<unsigned>;
+};
 
-class ClassCosmology : public Engine {
+%rename(_compute) compute(const std::string& param_file);
+%rename(_compute) compute();
+%rename(_compute) compute(const ClassParams& pars);
+%rename(_clean) Clean();
+
+%pythoncode %{
+import contextlib
+%}
+
+%rename(cltypes) Cls;
+
+%nodefaultctor Cls;
+%nodefaultdtor Cls;
+struct Cls {
+    enum Type {TT=0,EE,TE,BB,PP,TP};
+};
+
+class ClassEngine  {
 
 public:
 
@@ -11,19 +31,32 @@ public:
     static std::string R_inf_hyrec_file;
     static std::string two_photon_tables_hyrec_file;
     static std::string sBBN_file;
+    
+    ClassEngine(bool verbose=false);  
+    ~ClassEngine();
 
-    ClassCosmology();
-    ClassCosmology(const ClassParams& pars, const std::string& precision_file = "");
-    ClassCosmology(const std::string& param_file, const std::string& precision_file = "");
-    ~ClassCosmology();
-
-    void Initialize(const ClassParams& pars, const std::string& precision_file);
-    int GetCls(const vector<unsigned>& lVec, parray& cltt, parray& clte, parray& clee, parray& clbb);
-    int GetLensing(const vector<unsigned>& lVec, parray& clphiphi, parray& cltphi, parray& clephi);
-    double GetPklin(double z, double k);
-    double GetPknl(double z, double k);
-    int GetTk(double z, const parray& k, parray& Tk);
-    int l_max_scalars() const;
+    // compute from a set of parameters
+    void compute(const std::string& param_file);
+    void compute();
+    void compute(const ClassParams& pars);
+    
+    // is ready?
+    bool isready() const;
+    
+    // set verbosity
+    void verbose(bool verbose=true);
+    
+    // Cls functions
+    parray GetRawCls(const parray& ell, Cls::Type cl=Cls::TT);
+    parray GetLensedCls(const parray& ell, Cls::Type cl=Cls::TT);
+    
+    // matter density/transfer
+    parray GetPklin(const parray& k, double z);
+    parray GetPknl(const parray& k, double z);
+    parray GetTk(const parray& k, double z);
+    
+    int lmax() const;
+    int lensed_lmax() const;
     
     double H0() const;
     double h() const;
@@ -35,6 +68,7 @@ public:
     double Omega0_r() const;
     double Omega0_g() const;
     double Omega0_lambda() const;
+    double Omega0_fld() const;
     double Omega0_k() const;
     double w0_fld() const;
     double wa_fld() const;
@@ -44,6 +78,7 @@ public:
     double ln_1e10_A_s() const;
     double sigma8() const;
     double k_max() const;
+    double k_min() const;
     double z_drag() const;
     double rs_drag() const;
     double tau_reio() const;
@@ -85,5 +120,19 @@ public:
     double V(double zmin, double zmax, int Nz=1024) const;
     parray V(const parray& zmin, const parray& zmax, int Nz=1024) const;
 
-    void PrintFC();
+    void Clean();
+    
+    %pythoncode %{
+
+        @contextlib.contextmanager
+        def compute(self, *args):
+            
+            try:
+                self._compute(*args)
+                yield
+            except Exception as e:
+                raise e
+            finally:
+                self._clean()
+    %}
 };

@@ -1,9 +1,11 @@
 import fnmatch
 import contextlib
 import warnings
+from six import string_types
 from scipy.special import legendre
 from scipy.integrate import simps
 
+from pyRSD import cosmology
 from pyRSD.rsd._cache import Cache, parameter, interpolated_function, cached_property
 from pyRSD.rsd import tools, INTERP_KMIN, INTERP_KMAX, __version__
 from pyRSD import pygcl, numpy as np, data as sim_data, os
@@ -26,7 +28,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        kmax=0.5,
                        Nk=200,
                        z=0.,
-                       cosmo_filename="planck1_WP.ini",
+                       cosmo=cosmology.Planck15,
                        include_2loop=False,
                        transfer_fit="CLASS",
                        max_mu=4,
@@ -51,10 +53,9 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         z : float, optional
             The redshift to compute the power spectrum at. Default = 0.
 
-        cosmo_filename : str
-            The cosmological parameters to use, specified as the name
-            of the file holding the `CLASS` parameter file. Default
-            is `planck1_WP.ini`.
+        cosmo : pyRSD.cosmology.Cosmology, str
+            Either a Cosmology instance or the name of a file to load
+            parameters from; see the 'data/params' directory for examples
 
         include_2loop : bool, optional
             If `True`, include 2-loop contributions in the model terms. Default
@@ -84,6 +85,10 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             power spectrum, from which the transfer function in ``cosmo``
             will be initialized
         """
+        # overload cosmo with a cosmo_filename kwargs to handle deprecated syntax
+        if 'cosmo_filename' in kwargs:
+            cosmo = kwargs.pop('cosmo_filename')
+
         # set and save the model version automatically
         self.__version__ = __version__
 
@@ -93,7 +98,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # set the input parameters
         self.interpolate       = interpolate
         self.transfer_fit      = transfer_fit
-        self.cosmo_filename    = cosmo_filename
+        self.input_cosmo       = cosmo
         self.max_mu            = max_mu
         self.include_2loop     = include_2loop
         self.z                 = z
@@ -293,10 +298,17 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         return val
 
     @parameter
-    def cosmo_filename(self, val):
+    def input_cosmo(self, val):
         """
-        The name of the file holding the cosmological parameters
+        The cosmology input by the user
         """
+        # check cosmology object
+        if val is None:
+            val = cosmology.Planck15
+        if not isinstance(val, (string_types, cosmology.Cosmology)):
+            raise TypeError(("input `cosmo` keyword should be a parameter file name"
+                             "or a pyRSD.cosmology.Cosmology object"))
+
         return val
 
     @parameter
@@ -470,18 +482,24 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         The integer value representing the transfer function fitting method
         """
-        return getattr(pygcl.Cosmology, self.transfer_fit)
+        return getattr(pygcl.transfers, self.transfer_fit)
 
-    @cached_property("cosmo_filename", "transfer_fit", "linear_power_file")
+    @cached_property("input_cosmo", "transfer_fit", "linear_power_file")
     def cosmo(self):
         """
         A `pygcl.Cosmology` object holding the cosmological parameters
         """
+        # convert from cosmology.Cosmology to pygcl.Cosmology
+        if isinstance(self.input_cosmo, cosmology.Cosmology):
+            kws = {'transfer':self.transfer_fit_int, 'linear_power_file':self.linear_power_file}
+            return self.input_cosmo.to_class(**kws)
+
+        # convert string to pygcl.Cosmology
         if self.linear_power_file is not None:
             k, Pk = np.loadtxt(self.linear_power_file, unpack=True)
-            return pygcl.Cosmology.from_power(self.cosmo_filename, k, Pk)
+            return pygcl.Cosmology.from_power(self.input_cosmo, k, Pk)
         else:
-            return pygcl.Cosmology(self.cosmo_filename, self.transfer_fit_int)
+            return pygcl.Cosmology(self.input_cosmo, self.transfer_fit_int)
 
     @cached_property("Nk", "kmin", "kmax")
     def k(self):
@@ -531,13 +549,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return pygcl.LinearPS(self.cosmo, 0.)
 
-    @cached_property("cosmo_filename")
+    @cached_property("cosmo")
     def power_lin_nw(self):
         """
         A 'pygcl.LinearPS' object holding the linear power spectrum at z = 0,
         using the Eisenstein-Hu no-wiggle transfer function
         """
-        cosmo = pygcl.Cosmology(self.cosmo_filename, pygcl.Cosmology.EH_NoWiggle)
+        cosmo = self.cosmo.clone(tf=pygcl.transfers.EH_NoWiggle)
         return pygcl.LinearPS(cosmo, 0.)
 
     @cached_property("sigma8_z", "cosmo")

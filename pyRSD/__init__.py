@@ -1,8 +1,8 @@
 """
 pyRSD
 
-``pyRSD`` is a collection of algorithms to compute the redshift space matter 
-power spectra using perturbation theory and the redshift space distortion (RSD) 
+``pyRSD`` is a collection of algorithms to compute the redshift space matter
+power spectra using perturbation theory and the redshift space distortion (RSD)
 model based on a distribution function velocity moments approach
 
 for all features of ``pyRSD``, you need to import one of the
@@ -32,33 +32,45 @@ import numpy
 
 try:
     from pyRSD import pygcl
-except Exception as msg:    
-    if on_rtd: 
+except Exception as msg:
+    if on_rtd:
         pygcl = None
     else:
         import traceback
         tb = traceback.format_exc()
         raise ImportError("Cannot use package without pygcl\n%s" %tb)
 
-def _init():
+def get_data_files():
     """
-    Set up the path of data files, which are installed to the package directory.
+    Returns the path of data files, which are installed to the package directory.
     """
 
     import os
 
     path = os.path.dirname(__file__)
     path = os.path.join(path, 'data', 'class')
+    r = dict(
+        Alpha_inf_hyrec_file = os.path.join(path, 'hyrec', 'Alpha_inf.dat'),
+        R_inf_hyrec_file = os.path.join(path, 'hyrec', 'R_inf.dat'),
+        two_photon_tables_hyrec_file = os.path.join(path, 'hyrec', 'two_photon_tables.dat'),
+        sBBN_file = os.path.join(path, 'bbn', 'sBBN.dat'),
+    )
+    return r
+
+def _init():
+    r = get_data_files()
 
     # setting static variables with swig is tricky.
     # see http://www.swig.org/Doc3.0/SWIGDocumentation.html#Python_nn20
 
-    pygcl.gcl.cvar.ClassCosmology_Alpha_inf_hyrec_file = os.path.join(path, 'hyrec', 'Alpha_inf.dat')
-    pygcl.gcl.cvar.ClassCosmology_R_inf_hyrec_file = os.path.join(path, 'hyrec', 'R_inf.dat')
-    pygcl.gcl.cvar.ClassCosmology_two_photon_tables_hyrec_file = os.path.join(path, 'hyrec', 'two_photon_tables.dat')
-    pygcl.gcl.cvar.ClassCosmology_sBBN_file = os.path.join(path, 'bbn', 'sBBN.dat')
+    from .gcl import cvar
+
+    cvar.ClassEngine_Alpha_inf_hyrec_file = r['Alpha_inf_hyrec_file']
+    cvar.ClassEngine_R_inf_hyrec_file = r['R_inf_hyrec_file']
+    cvar.ClassEngine_two_photon_tables_hyrec_file = r['two_photon_tables_hyrec_file']
+    cvar.ClassEngine_sBBN_file = r['sBBN_file']
 
 if pygcl is not None:
     _init(); del _init
-    
+
 from .version import __version__

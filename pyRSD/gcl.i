@@ -14,9 +14,10 @@
 
 %include "typemaps.i"
 %include "std_string.i"
-using std::string;
-
+%include "std_vector.i"
 %include exception.i
+
+using std::string;
 
 %exception {
     try {
@@ -37,9 +38,8 @@ using std::string;
 %include "_gcl/python/Spline.i"
 
 %include "_gcl/python/DiscreteQuad.i"
-%include "_gcl/python/Engine.i"
+%include "_gcl/python/ClassEngine.i"
 %include "_gcl/python/ClassParams.i"
-%include "_gcl/python/ClassCosmology.i"
 %include "_gcl/python/Cosmology.i"
 %include "_gcl/python/PowerSpectrum.i"
 %include "_gcl/python/LinearPS.i"
@@ -53,7 +53,3 @@ using std::string;
 %include "_gcl/python/ZeldovichPS.i"
 %include "_gcl/python/NonlinearPS.i"
 %include "_gcl/python/ZeldovichCF.i"
-
-
-
-

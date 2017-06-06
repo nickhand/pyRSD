@@ -1,5 +1,5 @@
 numpy
-pandas
+pandas<0.20
 scipy
 george
 scikit-learn>=0.17
@@ -8,3 +8,4 @@ mpi4py
 six
 lmfit>=0.9
 autograd
+astropy

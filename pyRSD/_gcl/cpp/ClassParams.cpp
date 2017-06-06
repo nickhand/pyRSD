@@ -78,53 +78,13 @@ int ClassParams::add(const std::string& key, const int val)
     return pars.size();
 }
 
-// int ClassParams::add(const std::string& key, const long val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
-//
-// int ClassParams::add(const std::string& key, const long long val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
-//
-// int ClassParams::add(const std::string& key, const unsigned val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
-//
-// int ClassParams::add(const std::string& key, const unsigned long val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
-//
-// int ClassParams::add(const std::string& key, const unsigned long long val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
-
-// int ClassParams::add(const std::string& key, const float val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
-
 int ClassParams::add(const std::string& key, const double val)
 {
-    pars[key] = std::to_string(val);
+    std::ostringstream os;
+    os << setprecision(16) << val;
+    pars[key] = os.str();
     return pars.size();
 }
-
-// int ClassParams::add(const std::string& key, const long double val)
-// {
-//     pars[key] = std::to_string(val);
-//     return pars.size();
-// }
 
 int ClassParams::add(const string& key, const bool val) {
 

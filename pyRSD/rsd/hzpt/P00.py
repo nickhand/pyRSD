@@ -39,13 +39,15 @@ class HaloZeldovichCF00(HaloZeldovichBase):
 
     def broadband(self, r):
         """
-        The correlation function broadband correction, given by the
-        Fourier transform of the Pade function
+        The correlation function broadband correction term
+
+        This is given by the Fourier transform of the Pade function
 
         Parameters
         ----------
         r : float, array_like
             the separation array, in units of :math:`\mathrm{Mpc}/h`
+
         """
         A0, R, R1, R1h, R2h = self.A0, self.R, self.R1, self.R1h, self.R2h
 

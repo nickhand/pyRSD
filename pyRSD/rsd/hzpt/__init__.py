@@ -238,14 +238,14 @@ class HaloZeldovichBase(Cache):
             setattr(self, k, v)
 
     def broadband(self, k):
-        """
+        r"""
         The broadband power in units of :math:`(\mathrm{Mpc}/h)^3`
 
         The functional form is given by:
 
         .. math::
 
-            P_\mathrm{BB} = A_0 F(k) \left[ \frac{1 + (k R_1)^2}{1 + (k*R_{1h})^2 + (k R_{2h})^4} \right],
+            P_\mathrm{BB} = A_0 F(k) \left[ \frac{1 + (k R_1)^2}{1 + (k R_{1h})^2 + (k R_{2h})^4} \right],
 
         as given by Eq. 1 in arXiv:1501.07512.
 

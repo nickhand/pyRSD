@@ -34,6 +34,9 @@ Index
 
 **RSD**
 
+The **RSD** module deals with computing the theoretical power spectrum predictions,
+given an input cosmology specified by the user.
+
 * :doc:`cosmo`
 * :doc:`hzpt`
 * :doc:`galaxy-power`
@@ -49,7 +52,10 @@ Index
   galaxy-power.rst
   qso-power.rst
 
-**RSDFiT**
+**RSDFit**
+
+The **RSDFit** module deals with running parameter estimation using the
+power spectrum models available in this package and data input by the user.
 
 * :doc:`specifying-data`
 * :doc:`specifying-theory`

@@ -2,45 +2,28 @@ Overview
 ========
 
 Users can specify cosmological parameters by creating a new
-:class:`~pyRSD.rsd.cosmology.Cosmology` object, or using one of the builtin
-cosmologies, see :ref:`available-cosmo`.
+:class:`~pyRSD.rsd.cosmology.Cosmology` object or by using one of the builtin
+cosmologies (see :ref:`available-cosmo`).
 
-When constructing new Cosmology, object, parameter values should be specified
+When constructing a new Cosmology object, parameter values should be specified
 as keyword parameters. The parameters that can be specified are:
 
-H0
-  the Hubble constant at z=0, in km/s/Mpc
-
-Om0
-  matter density/critical density at z=0
-
-Ob0
-  baryon density/critical density at z=0
-
-Ode0
-  dark energy density/critical density at z=0
-
-w0
-  dark energy equation of state
-
-Tcmb0
-  temperature of the CMB in K at z=0
-
-Neff
-  the effective number of neutrino species
-
-m_nu
-  mass of neutrino species in eV
-
-sigma8
-  the mass variance on the scale of R=8 Mpc/h at z=0, which sets the
-  normalization of the linear power spectrum
-
-n_s
-  the spectral index of the primoridal power spectrum
-
-flat
-  if True, automatically set Ode0 such that Ok0 is zero
+========= ======================================================================
+Parameter Description
+========= ======================================================================
+H0        The Hubble constant at z=0, in km/s/Mpc
+Om0       The matter density/critical density at z=0
+Ob0       The baryon density/critical density at z=0
+Ode0      The dark energy density/critical density at z=0
+w0        The dark energy equation of state
+Tcmb0     The temperature of the CMB in K at z=0
+Neff      The the effective number of neutrino species
+m_nu      The mass of neutrino species in eV
+sigma8    The the mass variance on the scale of R=8 Mpc/h at z=0, which sets the
+          normalization of the linear power spectrum
+n_s       The the spectral index of the primoridal power spectrum
+flat      if True, automatically set Ode0 such that Ok0 is zero
+========= ======================================================================
 
 .. note::
 

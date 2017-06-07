@@ -122,11 +122,11 @@ class Cosmology(dict):
     Any attributes or functions of the underlying astropy engine
     can be directly accessed as attributes or keys of this class
 
-    ..note::
+    .. note::
 
-    A default set of units is assumed, so attributes stored internally
-    as :class:`astropy.units.Quantity` instances will be returned
-    here as numpy arrays. Those units are:
+        A default set of units is assumed, so attributes stored internally
+        as :class:`astropy.units.Quantity` instances will be returned
+        here as numpy arrays. Those units are:
 
         - temperature: ``K``
         - distance: ``Mpc``
@@ -230,7 +230,7 @@ class Cosmology(dict):
         ----------
         cosmo : subclass of :class:`astropy.cosmology.FLRW`
             the astropy cosmology instance
-        ** kwargs :
+        **kwargs :
             extra key/value parameters to store in the dictionary
         """
         kwargs = {}
@@ -302,7 +302,7 @@ class Cosmology(dict):
         Returns
         -------
         newcos : Subclass of FLRW
-        A new instance of this class with the specified changes.
+            A new instance of this class with the specified changes.
 
         Notes
         -----

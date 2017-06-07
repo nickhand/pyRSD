@@ -5,9 +5,8 @@ from six import string_types
 from scipy.special import legendre
 from scipy.integrate import simps
 
-from pyRSD import cosmology
 from pyRSD.rsd._cache import Cache, parameter, interpolated_function, cached_property
-from pyRSD.rsd import tools, INTERP_KMIN, INTERP_KMAX, __version__
+from pyRSD.rsd import cosmology, tools, INTERP_KMIN, INTERP_KMAX, __version__
 from pyRSD import pygcl, numpy as np, data as sim_data, os
 
 from pyRSD.rsd.pt_integrals import PTIntegralsMixin
@@ -34,7 +33,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        max_mu=4,
                        interpolate=False,
                        k0_low=5e-3,
-                       enhance_wiggles=False,
                        linear_power_file=None,
                        Pdv_model_type='jennings',
                        **kwargs):
@@ -76,10 +74,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             below this wavenumber, evaluate any power in "low-k mode", which
             essentially just uses SPT at low-k
 
-        enhance_wiggles : bool, optional (`True`)
-            using the Hy1 model from arXiv:1509.02120, enhance the wiggles
-            of pure HZPT
-
         linear_power_file : str, optional (`None`)
             string specifying the name of a file which gives the linear
             power spectrum, from which the transfer function in ``cosmo``
@@ -106,7 +100,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         self.kmax              = kmax
         self.Nk                = Nk
         self.k0_low            = k0_low
-        self.enhance_wiggles   = enhance_wiggles
         self.linear_power_file = linear_power_file
         self.Pdv_model_type    = Pdv_model_type
 
@@ -280,14 +273,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         return val
 
     @parameter
-    def enhance_wiggles(self, val):
-        """
-        Whether to enhance the wiggles over the default HZPT model
-        """
-        self._update_models('enhance_wiggles', ['hzpt'], val)
-        return val
-
-    @parameter
     def transfer_fit(self, val):
         """
         The transfer function fitting method
@@ -298,9 +283,17 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         return val
 
     @parameter
-    def input_cosmo(self, val):
+    def cosmo_filename(self, val):
         """
-        The cosmology input by the user
+        The cosmology filename; this is deprecated, use attr:`params` instead
+        """
+        self.params = val
+        return val
+
+    @parameter
+    def params(self, val, default="cosmo_filename"):
+        """
+        The cosmology parameters by the user
         """
         # check cosmology object
         if val is None:
@@ -308,7 +301,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         if not isinstance(val, (string_types, cosmology.Cosmology)):
             raise TypeError(("input `cosmo` keyword should be a parameter file name"
                              "or a pyRSD.cosmology.Cosmology object"))
-
         return val
 
     @parameter
@@ -484,7 +476,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return getattr(pygcl.transfers, self.transfer_fit)
 
-    @cached_property("input_cosmo", "transfer_fit", "linear_power_file")
+    @cached_property("params", "transfer_fit", "linear_power_file")
     def cosmo(self):
         """
         A `pygcl.Cosmology` object holding the cosmological parameters
@@ -636,7 +628,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         The class holding the (possibly interpolated) HZPT models
         """
-        kw = {'interpolate':self.interpolate, 'enhance_wiggles':self.enhance_wiggles}
+        kw = {'interpolate':self.interpolate}
         return InterpolatedHZPTModels(self.cosmo, self.sigma8_z, self.f, **kw)
 
     @cached_property("power_lin")
@@ -838,7 +830,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             norm = self._power_norm
             return self.f**2 * norm*(self.power_lin(k) + norm*self._Pvv_0(k))
 
-    @cached_property("z", "sigma8_z", "use_P00_model", "power_lin", "P00_mu0_loaded", "enhance_wiggles")
+    @cached_property("z", "sigma8_z", "use_P00_model", "power_lin", "P00_mu0_loaded")
     def P00(self):
         """
         The isotropic, zero-order term in the power expansion, corresponding
@@ -848,7 +840,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         return P00PowerTerm(self)
 
     @cached_property("f",  "z", "sigma8_z", "use_P01_model", "power_lin",
-                     "max_mu", "P01_mu2_loaded", "enhance_wiggles")
+                     "max_mu", "P01_mu2_loaded")
     def P01(self):
         """
         The correlation of density and momentum density, which contributes

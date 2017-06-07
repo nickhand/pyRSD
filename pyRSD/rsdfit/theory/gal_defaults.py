@@ -26,7 +26,6 @@ class DefaultGalaxyPowerTheory(object):
                     'max_mu' : 4,
                     'interpolate' : True,
                     'use_so_correction' : False,
-                    'enhance_wiggles' : False,
                     'use_vlah_biasing' : True}
 
     @property

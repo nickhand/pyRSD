@@ -28,7 +28,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        kmax=0.5,
                        Nk=200,
                        z=0.,
-                       cosmo=cosmology.Planck15,
+                       params="planck1_WP.ini",
                        include_2loop=False,
                        transfer_fit="CLASS",
                        max_mu=4,
@@ -53,7 +53,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         z : float, optional
             The redshift to compute the power spectrum at. Default = 0.
 
-        cosmo : pyRSD.cosmology.Cosmology, str
+        params : pyRSD.cosmology.Cosmology, str
             Either a Cosmology instance or the name of a file to load
             parameters from; see the 'data/params' directory for examples
 
@@ -98,7 +98,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # set the input parameters
         self.interpolate       = interpolate
         self.transfer_fit      = transfer_fit
-        self.input_cosmo       = cosmo
+        self.params            = params
         self.max_mu            = max_mu
         self.include_2loop     = include_2loop
         self.z                 = z
@@ -490,16 +490,16 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         A `pygcl.Cosmology` object holding the cosmological parameters
         """
         # convert from cosmology.Cosmology to pygcl.Cosmology
-        if isinstance(self.input_cosmo, cosmology.Cosmology):
+        if isinstance(self.params, cosmology.Cosmology):
             kws = {'transfer':self.transfer_fit_int, 'linear_power_file':self.linear_power_file}
-            return self.input_cosmo.to_class(**kws)
+            return self.params.to_class(**kws)
 
         # convert string to pygcl.Cosmology
         if self.linear_power_file is not None:
             k, Pk = np.loadtxt(self.linear_power_file, unpack=True)
-            return pygcl.Cosmology.from_power(self.input_cosmo, k, Pk)
+            return pygcl.Cosmology.from_power(self.params, k, Pk)
         else:
-            return pygcl.Cosmology(self.input_cosmo, self.transfer_fit_int)
+            return pygcl.Cosmology(self.params, self.transfer_fit_int)
 
     @cached_property("Nk", "kmin", "kmax")
     def k(self):

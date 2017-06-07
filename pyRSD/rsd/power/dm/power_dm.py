@@ -28,7 +28,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        kmax=0.5,
                        Nk=200,
                        z=0.,
-                       params="planck1_WP.ini",
+                       params=cosmology.Planck15,
                        include_2loop=False,
                        transfer_fit="CLASS",
                        max_mu=4,
@@ -87,7 +87,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         # overload cosmo with a cosmo_filename kwargs to handle deprecated syntax
         if 'cosmo_filename' in kwargs:
-            cosmo = kwargs.pop('cosmo_filename')
+            params = kwargs.pop('cosmo_filename')
 
         # set and save the model version automatically
         self.__version__ = __version__

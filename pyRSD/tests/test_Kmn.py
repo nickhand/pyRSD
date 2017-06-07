@@ -20,7 +20,7 @@ def model():
     config                       = {}
     config['include_2loop']      = False
     config['transfer_fit']       = 'CLASS'
-    config['cosmo_filename']     = 'teppei_sims.ini'
+    config['params']             = 'teppei_sims.ini'
     config['max_mu']             = 4
     config['use_P00_model']      = False
     config['use_P01_model']      = False
@@ -44,7 +44,7 @@ def model():
 
     return model
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=25)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
 def test_Kmn_0(model):
     """
     Reproduce top left panel of Figure 1.
@@ -66,7 +66,7 @@ def test_Kmn_0(model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=25)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=25)
 def test_Kmn_1(model):
     """
     Reproduce top right panel of Figure 1.
@@ -90,7 +90,7 @@ def test_Kmn_1(model):
     return fig
 
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=25)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=25)
 def test_Kmn_2(model):
     """
     Reproduce bottom left panel of Figure 1.
@@ -114,7 +114,7 @@ def test_Kmn_2(model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', tolerance=25)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=25)
 def test_Kmn_3(model):
     """
     Reproduce bottom right panel of Figure 1.

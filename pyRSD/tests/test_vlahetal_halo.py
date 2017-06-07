@@ -134,7 +134,7 @@ def update_model(model, z, b1):
 # TESTS
 #-------------------------------------------------------------------------------
 @pytest.mark.parametrize("bins", [(0, [0, 1, 2, 3]), (1, [0, 1, 2, 3]), (2, [0, 1, 2])])
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_halo_Phm(model, bins):
     """
     Reproduce Figure 3
@@ -173,7 +173,7 @@ def test_halo_Phm(model, bins):
     return fig
 
 @pytest.mark.parametrize("bins", [(0, [0, 1, 2, 3]), (1, [0, 1, 2, 3]), (2, [0, 1, 2])])
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_halo_P00(model, bins):
     """
     Reproduce Figure 4
@@ -213,7 +213,7 @@ def test_halo_P00(model, bins):
     ax.axhline(y=1, c='k', ls='--')
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_halo_P01(model, binning):
     """
     Reproduce Figure 5
@@ -266,7 +266,7 @@ def test_halo_P01(model, binning):
     ax.legend(loc=0, fontsize=14)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_halo_P11_plus_P02(model, binning):
     """
     Reproduce Figure 9
@@ -313,7 +313,7 @@ def test_halo_P11_plus_P02(model, binning):
     ax.legend(loc=0, fontsize=14)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_halo_P11_mu4(model, binning):
     """
     Reproduce Figure 10
@@ -361,7 +361,7 @@ def test_halo_P11_mu4(model, binning):
     ax.legend(loc=0, fontsize=14)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_halo_higher_order_mu4(model, binning):
     """
     Reproduce Figure 11

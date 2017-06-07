@@ -84,7 +84,7 @@ def get_sigma_bv4(z):
 #------------------------------------------------------------------------------
 # TESTS
 #------------------------------------------------------------------------------
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P00(redshift, model):
     """
     Reproduce Figure 1.
@@ -117,7 +117,7 @@ def test_dm_P00(redshift, model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P01(redshift, model):
     """
     Reproduce Figure 2.
@@ -151,7 +151,7 @@ def test_dm_P01(redshift, model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P11_scalar(redshift, model):
     """
     Reproduce Figure 3.
@@ -184,7 +184,7 @@ def test_dm_P11_scalar(redshift, model):
         ax.legend(loc=0, fontsize=12)
         return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P11(redshift, model):
     """
     Reproduce Figure 4.
@@ -221,7 +221,7 @@ def test_dm_P11(redshift, model):
     ax.legend(loc=0, fontsize=12, ncol=2)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P02(redshift, model):
     """
     Reproduce Figure 5.
@@ -257,7 +257,7 @@ def test_dm_P02(redshift, model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P12(redshift, model):
     """
     Reproduce Figure 6.
@@ -293,7 +293,7 @@ def test_dm_P12(redshift, model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P22(redshift, model):
     """
     Reproduce Figure 7.
@@ -325,7 +325,7 @@ def test_dm_P22(redshift, model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P03_and_P13(redshift, model):
     """
     Reproduce Figure 8.
@@ -360,7 +360,7 @@ def test_dm_P03_and_P13(redshift, model):
     ax.legend(loc=0, fontsize=12)
     return fig
 
-@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=10)
+@pytest.mark.mpl_image_compare(style='seaborn-ticks', remove_text=True, tolerance=16)
 def test_dm_P13_and_P04(redshift, model):
     """
     Reproduce Figure 9.

@@ -1,5 +1,4 @@
 from astropy import cosmology, units
-from scipy.integrate import quad
 import numpy as np
 import functools
 from pyRSD.pygcl import transfers
@@ -201,10 +200,6 @@ class Cosmology(dict):
             if hasattr(self.engine, k):
                 kwargs[k] = getattr(self.engine, k)
         dict.__init__(self, H0=H0, Om0=Om0, sigma8=sigma8, n_s=n_s, **kwargs)
-
-        # store D_z normalization
-        integrand = lambda a: a ** (-3) * self.engine.inv_efunc(1/a-1.) ** 3
-        self._Dz_norm = 1. / quad(integrand, 0., 1. )[0]
 
     def __getstate__(self):
         return dict(self)

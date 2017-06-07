@@ -16,7 +16,7 @@ Top-level functions
 
     Cosmology
     ClassCosmology
-    
+
 Power Spectrum
 ==============
 
@@ -24,8 +24,14 @@ Power Spectrum
 
 .. autosummary::
    :toctree: generated/
-    
-   GalaxySpectrum.Pgal
+
+   GalaxySpectrum.power
+   GalaxySpectrum.poles
+   GalaxySpectrum.monopole
+   GalaxySpectrum.quadrupole
+   GalaxySpectrum.hexadecapole
+   GalaxySpectrum.from_transfer
+   GalaxySpectrum.tetrahexadecapole
    GalaxySpectrum.Pgal_cAcA
    GalaxySpectrum.Pgal_cAcB
    GalaxySpectrum.Pgal_cBcB
@@ -42,15 +48,6 @@ Power Spectrum
    GalaxySpectrum.Pgal_sAsB
    GalaxySpectrum.Pgal_sBsB
    GalaxySpectrum.Pgal_ss
-   GalaxySpectrum.Pgal_mono
-   GalaxySpectrum.Pgal_quad
-   GalaxySpectrum.Pgal_hexadec
-   GalaxySpectrum.Pgal_tetrahex
-   GalaxySpectrum.Pgal_poles
    GalaxySpectrum.__init__
    GalaxySpectrum.default_params
-   GalaxySpectrum.from_transfer
-   GalaxySpectrum.hexadecapole
-   GalaxySpectrum.monopole
-   GalaxySpectrum.quadrupole
    GalaxySpectrum.initialize

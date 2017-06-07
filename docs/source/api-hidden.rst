@@ -2,7 +2,8 @@
 
 .. autosummary::
    :toctree: generated/
-    
+
     GalaxySpectrum
     BiasedSpectrum
-    DMSpectrum
+    HaloSpectrum
+    DarkMatterSpectrum

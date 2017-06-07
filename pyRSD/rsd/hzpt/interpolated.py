@@ -2,7 +2,7 @@ from . import parameter
 from .. import INTERP_KMIN, INTERP_KMAX
 from ... import pygcl, numpy as np
 from .._interpolate import RegularGridInterpolator, InterpolationDomainError
-from . import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11, HaloZeldovichPhm 
+from . import HaloZeldovichP00, HaloZeldovichP01, HaloZeldovichP11, HaloZeldovichPhm
 
 
 def zeldovich_from_table(self, interpolator, k):
@@ -20,7 +20,7 @@ def zeldovich_from_table(self, interpolator, k):
 
 class InterpolationTable(dict):
     """
-    Dict that returns an interpolation table for 
+    Dict that returns an interpolation table for
     the given Zel'dovich terms
     """
     grid = {}
@@ -29,7 +29,7 @@ class InterpolationTable(dict):
 
     def __init__(self, models):
         self.models = models
-        
+
     def __missing__(self, key):
         """
         Evaluate the Zeldovich terms and store in an interpolation table.
@@ -49,7 +49,7 @@ class InterpolationTable(dict):
             model = self.models._Phm
         else:
             raise KeyError("key '%s' not understood" %key)
-        
+
         # save the original sigma8_z to restore later
         original_s8z = model.sigma8_z
 
@@ -60,23 +60,23 @@ class InterpolationTable(dict):
         # get the grid values
         grid_vals = []
         for i, s8 in enumerate(sigma8s):
-            model.zeldovich.SetSigma8AtZ(s8)
-            grid_vals += list(model.__zeldovich__(ks))
+            model._driver.SetSigma8AtZ(s8)
+            grid_vals += list(model.zeldovich(ks))
         grid_vals = np.array(grid_vals).reshape((len(sigma8s), len(ks)))
 
         # create the interpolator
         model.sigma8_z = original_s8z
         interpolator = RegularGridInterpolator((sigma8s, ks), grid_vals)
-        
+
         super(InterpolationTable, self).__setitem__(key, interpolator)
         return interpolator
-    
+
 
 class InterpolatedHZPTModels(object):
     """
     Class to handle interpolating HZPT models
     """
-    def __init__(self, cosmo, sigma8_z, f, interpolate=True, enhance_wiggles=False):
+    def __init__(self, cosmo, sigma8_z, f, interpolate=True):
         """
         Parameters
         ----------
@@ -88,42 +88,38 @@ class InterpolatedHZPTModels(object):
             the growth rate
         interpolate : bool, optional
             whether to turn on interpolation
-        enhance_wiggles : bool, optional
-            whether to enhance the BAO wiggles
         """
         # the base Zel'dovich object
         self._base_zeldovich = pygcl.ZeldovichPS(cosmo, 0.)
-        
+
         self.cosmo           = cosmo
         self.sigma8_z        = sigma8_z
         self.f               = f
         self.interpolate     = interpolate
-        self.enhance_wiggles = enhance_wiggles
-        
+
         # the interpolation table
         self.table = InterpolationTable(self)
-    
-        
+
     def _hasattr(self, m):
         """
         Internal utility function
         """
         return '_%s_driver' %m in self.__dict__
-        
+
     @parameter
     def interpolate(self, val):
         """
         If `True`, return the Zel'dovich power term from an interpolation table
-        """        
+        """
         return val
-    
+
     @property
     def sigma8_z(self):
         """
         The value of sigma8 at z
         """
         return self._sigma8_z
-        
+
     @sigma8_z.setter
     def sigma8_z(self, val):
         """
@@ -131,19 +127,19 @@ class InterpolatedHZPTModels(object):
         """
         self._sigma8_z = val
         self._base_zeldovich.SetSigma8AtZ(val)
-        
+
         for model in ['P00', 'P01', 'P11', 'Phm']:
             if self._hasattr(model):
                 m = getattr(self, '_'+model)
                 m.sigma8_z = val
-                
+
     @property
     def f(self):
         """
         The value of the growth rate
         """
         return self._f
-        
+
     @f.setter
     def f(self, val):
         """
@@ -154,27 +150,7 @@ class InterpolatedHZPTModels(object):
             if self._hasattr(model):
                 m = getattr(self, '_'+model)
                 m.f = val
-                
-    @property
-    def enhance_wiggles(self):
-        """
-        Whether to enhance the BAO wiggles
-        """
-        return self._enhance_wiggles
-        
-    @enhance_wiggles.setter
-    def enhance_wiggles(self, val):
-        """
-        Set `enhance_wiggles` for each existing model
-        """
-        self._enhance_wiggles = val
-        
-        for model in ['P00', 'P01', 'P11', 'Phm']:
-            if self._hasattr(model):
-                m = getattr(self, '_'+model)
-                m.enhance_wiggles = val
-        
-    
+
     #--------------------------------------------------------------------------
     # the models
     #--------------------------------------------------------------------------
@@ -187,9 +163,9 @@ class InterpolatedHZPTModels(object):
             return self._P00_driver
         except AttributeError:
             Pzel = pygcl.ZeldovichP00(self._base_zeldovich)
-            self._P00_driver = HaloZeldovichP00(Pzel, self.sigma8_z, self.enhance_wiggles)
+            self._P00_driver = HaloZeldovichP00.from_zeldovich(Pzel, self.sigma8_z)
             return self._P00_driver
-            
+
     @property
     def _P01(self):
         """
@@ -199,9 +175,9 @@ class InterpolatedHZPTModels(object):
             return self._P01_driver
         except AttributeError:
             Pzel = pygcl.ZeldovichP01(self._base_zeldovich)
-            self._P01_driver = HaloZeldovichP01(Pzel, self.sigma8_z, self.f, self.enhance_wiggles)
+            self._P01_driver = HaloZeldovichP01.from_zeldovich(Pzel, self.sigma8_z, self.f)
             return self._P01_driver
-            
+
     @property
     def _P11(self):
         """
@@ -211,9 +187,9 @@ class InterpolatedHZPTModels(object):
             return self._P11_driver
         except AttributeError:
             Pzel = pygcl.ZeldovichP11(self._base_zeldovich)
-            self._P11_driver = HaloZeldovichP11(Pzel, self.sigma8_z, self.f, self.enhance_wiggles)
+            self._P11_driver = HaloZeldovichP11.from_zeldovich(Pzel, self.sigma8_z, self.f)
             return self._P11_driver
-            
+
     @property
     def _Phm(self):
         """
@@ -223,9 +199,9 @@ class InterpolatedHZPTModels(object):
             return self._Phm_driver
         except AttributeError:
             Pzel = pygcl.ZeldovichP00(self._base_zeldovich)
-            self._Phm_driver = HaloZeldovichPhm(Pzel, self.sigma8_z, self.enhance_wiggles)
+            self._Phm_driver = HaloZeldovichPhm.from_zeldovich(Pzel, self.sigma8_z)
             return self._Phm_driver
-            
+
     #--------------------------------------------------------------------------
     # the callables
     #--------------------------------------------------------------------------
@@ -233,61 +209,55 @@ class InterpolatedHZPTModels(object):
         """
         Return HZPT P00
         """
-        m = self._P00 
-        if m.zeldovich.GetSigma8AtZ() != m.sigma8_z:
-            m.zeldovich.SetSigma8AtZ(m.sigma8_z)
-            
+        m = self._P00
+        if m._driver.GetSigma8AtZ() != m.sigma8_z:
+            m._driver.SetSigma8AtZ(m.sigma8_z)
+
         if self.interpolate:
             zel = zeldovich_from_table(m, self.table['P00'], k)
         else:
-            zel = m.__zeldovich__(k)
-        return m.__broadband__(k) + zel + m.__wiggles__(k)
-        
+            zel = m.zeldovich(k)
+        return m.broadband(k) + zel
+
     def P01(self, k):
         """
         Return HZPT P01
         """
         m = self._P01
-        if m.zeldovich.GetSigma8AtZ() != m.sigma8_z:
-            m.zeldovich.SetSigma8AtZ(m.sigma8_z)
-            
+        if m._driver.GetSigma8AtZ() != m.sigma8_z:
+            m._driver.SetSigma8AtZ(m.sigma8_z)
+
         if self.interpolate:
             zel = zeldovich_from_table(m, self.table['P01'], k)
         else:
-            zel = m.__zeldovich__(k)
-        return m.__broadband__(k) + 2*m.f*zel + m.__wiggles__(k)
-        
+            zel = m.zeldovich(k)
+        return m.broadband(k) + 2*m.f*zel
+
     def P11(self, k):
         """
         Return HZPT P11
         """
         m = self._P11
-        if m.zeldovich.GetSigma8AtZ() != m.sigma8_z:
-            m.zeldovich.SetSigma8AtZ(m.sigma8_z)
-            
+        if m._driver.GetSigma8AtZ() != m.sigma8_z:
+            m._driver.SetSigma8AtZ(m.sigma8_z)
+
         if self.interpolate:
             zel = zeldovich_from_table(m, self.table['P11'], k)
         else:
-            zel = m.__zeldovich__(k)
-        return m.__broadband__(k) + m.f**2 * zel + m.__wiggles__(k)
-        
+            zel = m.zeldovich(k)
+        return m.broadband(k) + m.f**2 * zel
+
     def Phm(self, b1, k):
         """
         Return HZPT Phm
         """
         m = self._Phm
-        if m.zeldovich.GetSigma8AtZ() != m.sigma8_z:
-            m.zeldovich.SetSigma8AtZ(m.sigma8_z)
-        
+        if m._driver.GetSigma8AtZ() != m.sigma8_z:
+            m._driver.SetSigma8AtZ(m.sigma8_z)
+
         m.b1 = b1
         if self.interpolate:
             zel = zeldovich_from_table(m, self.table['Phm'], k)
         else:
-            zel = m.__zeldovich__(k)
-        return m.__broadband__(k) + b1 * zel + b1 * m.__wiggles__(k)
-        
-            
-            
-        
-        
-    
+            zel = m.zeldovich(k)
+        return m.broadband(k) + b1 * zel

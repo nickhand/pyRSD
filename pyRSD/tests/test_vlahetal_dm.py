@@ -112,7 +112,7 @@ def test_dm_P00(redshift, model):
 
     # zeldovich
     kws = {'c':'Magenta', 'ls':'dashdot', 'label':"Zel'dovich"}
-    plt.plot(model.k, model.hzpt._P00.__zeldovich__(model.k) / norm, **kws)
+    plt.plot(model.k, model.hzpt._P00.zeldovich(model.k) / norm, **kws)
 
     ax.legend(loc=0, fontsize=12)
     return fig
@@ -146,7 +146,7 @@ def test_dm_P01(redshift, model):
 
     # zeldovich
     kws = {'c':'Magenta', 'ls':'dashdot', 'label':"Zel'dovich"}
-    plt.plot(model.k, A*model.hzpt._P01.__zeldovich__(model.k) / norm, **kws)
+    plt.plot(model.k, A*model.hzpt._P01.zeldovich(model.k) / norm, **kws)
 
     ax.legend(loc=0, fontsize=12)
     return fig

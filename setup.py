@@ -17,13 +17,14 @@ import shutil
 
 descr = """pyRSD
 
-Algorithms to compute the redshift space matter power spectra using
-perturbation theory and the redshift space distortion (RSD) model based
-on a distribution function velocity moments approach
+pyRSD is a Python package for computing the theoretical predictions of the
+redshift-space power spectrum of galaxies. The package also includes
+functionality for fitting data measurements and finding the optimal model
+parameters, using both MCMC and nonlinear optimization techniques.
 """
 
 DISTNAME         = 'pyRSD'
-DESCRIPTION      = 'Anisotropic RSD Fourier space modeling in Python'
+DESCRIPTION      = 'Accurate predictions for the clustering of galaxies in redshift-space in Python'
 LONG_DESCRIPTION = descr
 MAINTAINER       = 'Nick Hand'
 MAINTAINER_EMAIL = 'nicholas.adam.hand@gmail.com'

@@ -1,11 +1,12 @@
 [![Build Status](https://travis-ci.org/nickhand/pyRSD.svg?branch=master)](https://travis-ci.org/nickhand/pyRSD)
-    
+
 pyRSD
 =======
 
-A Python package for computing the redshift-space galaxy power spectrum using 
-perturbation theory and the redshift space distortion (RSD) model based
-on a distribution function velocity moments approach
+pyRSD is a Python package for computing the theoretical predictions of the
+redshift-space power spectrum of galaxies. The package also includes
+functionality for fitting data measurements and finding the optimal model
+parameters, using both MCMC and nonlinear optimization techniques.
 
 Installation
 ============

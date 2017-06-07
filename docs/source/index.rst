@@ -19,7 +19,8 @@ Index
 **Getting Started**
 
 * :doc:`install`
-* :doc:`examples-tutorials`
+* :doc:`use-cases`
+* :doc:`examples`
 
 .. toctree::
    :maxdepth: 1
@@ -27,4 +28,42 @@ Index
    :caption: Getting Started
 
    install.rst
-   examples-tutorials.rst
+   use-cases.rst
+   examples.rst
+
+
+**RSD**
+
+* :doc:`cosmo`
+* :doc:`hzpt`
+* :doc:`galaxy-power`
+* :doc:`qso-power`
+
+.. toctree::
+  :maxdepth: 1
+  :hidden:
+  :caption: RSD
+
+  cosmo.rst
+  hzpt.rst
+  galaxy-power.rst
+  qso-power.rst
+
+**RSDFiT**
+
+* :doc:`specifying-data`
+* :doc:`specifying-theory`
+* :doc:`covariance-matrix`
+* :doc:`parameter-fits`
+* :doc:`analyzing-results`
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+   :caption: RSDFit
+
+   specifying-data.rst
+   specifying-theory.rst
+   covariance-matrix.rst
+   parameter-fits.rst
+   analyzing-results.rst

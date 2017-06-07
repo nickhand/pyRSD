@@ -108,6 +108,8 @@ def isiterable(obj):
 
 class Cosmology(dict):
     """
+    Dict-like object for cosmological parameters and related calculations
+
     An extension of the :mod:`astropy.cosmology` framework that can
     store additional, orthogonal parameters and behaves like a read-only
     dictionary

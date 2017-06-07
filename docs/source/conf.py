@@ -16,8 +16,7 @@ import os
 import shlex
 
 import mock
-MOCK_MODULES = ['scipy', 'scipy.integrate', 'scipy.interpolate', 'scipy.optimize', 'scipy.special', 'scipy.stats',
-                'george', 'emcee', 'pandas', 'sklearn', 'mpi4py', 'lmfit', 'autograd', 'lsskit']
+MOCK_MODULES = ['lsskit']
 for mod_name in MOCK_MODULES:
     sys.modules[mod_name] = mock.Mock()
 
@@ -138,7 +137,7 @@ if not on_rtd:
     import sphinx_rtd_theme
     html_theme = 'sphinx_rtd_theme'
     html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-    
+
 #html_theme = 'nature'
 
 # Theme options are theme-specific and customize the look and feel of a theme

@@ -34,6 +34,7 @@ deploy:
   provider: pypi
   skip_upload_docs: true
   user: nickhand
+  url: https://upload.pypi.org/legacy/
   password:
     secure: PAi3JFQW+XsQIou0PUh37kJqYwub35WU+JmJlKUZHSeRFurfYcJz7KfoMb1DJ3tEBrzk/yipFLO3PNE6YaCOjY6658Uwf2yNQns3tzKthSWLEXrFRIHb79c8pf4fv/+5xG0RN23OaFrZYNEddjbGbvoOjPUbJ2NxTdyR16PKWTK5yVn3JvHKoZJG23FXO+sHtZNtLEa1nr5CA7gAOsIb6Z4CHKJs2h4q1y3N+PvgnjC7aTPcl1LsayADAeLFqqA0wtk+uqt6Sj8zmYeP1JHaIN1mcTqbhz1WoVUN0M5AIg/xI/ofJiPNXEoBfzHpaygXZqGXHomH4LI+1WJMxz24Ess8rdIuWHC+vHTebzoAD9HHwrXTAUPDpX9SKCwBxDnJTmAUHuw6jN8uEZr0i34XPZrdc8v8PZgzifRKnoQBYlj/f5BJHO/PinT8b8HGL2+gvwqOJ8/+mQsR6WrDOqYu/EjzXzOc0GeePVHIEGdp0yhKdwQkoEu/ARZ25SQlmL0SvXDi8G/aESVsE8R0NEP58EyfONTT6vCVjwwjIgNKSVXxDUQbZO6lptdWBamZtKSBb+Zz294QVKLGT5H6EN61WW48TuVz7+0UWaMofM9DJ0M9YqfltnqgfmakLWms+Ie6cRSTyQxYwrXT9bzJMUq9GgR40QGW1Wle6K34PAUD5nI=
   on:

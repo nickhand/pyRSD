@@ -51,6 +51,7 @@ public:
 
     // set the sigma8 value
     inline void SetSigma8(double sigma8) { sigma8_ = sigma8; NormalizeTransferFunction(sigma8); }
+    inline double Sigma8_z(double z) const { return ClassEngine::Sigma8_z(z) * (sigma8_/ClassEngine::sigma8()); }
 
     // normalization of linear power spectrum at z = 0
     inline double delta_H() const { return delta_H_; }

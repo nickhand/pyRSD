@@ -44,6 +44,7 @@ public:
     double ln_1e10_A_s() const;
     double delta_H() const;
     double sigma8() const;
+    double Sigma8_z(double z) const;
 
     TransferFit::Type GetTransferFit() const;
     const std::string& GetParamFile() const;

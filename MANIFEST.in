@@ -1,6 +1,7 @@
 include pyRSD/gcl_wrap.cpp
 include pyRSD/gcl.py
-include pyRSD/_gcl/include/*h
+include pyRSD/gcl.i
+include pyRSD/_gcl/include/*
 recursive-include pyRSD/_gcl/extern *.h
 include pyRSD/_gcl/python/*.i
 

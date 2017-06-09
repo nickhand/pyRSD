@@ -107,10 +107,6 @@ void NonlinearPS::VerifyFrankenEmu() {
     double sigma8 = C.sigma8();
     double w = C.w0_fld();
     double H0 = 100.*h();
-    std::cout << C.Omega0_m() << std::endl;
-    std::cout << h() << std::endl;
-    std::cout << pow(h(), 2) << std::endl;
-    std::cout << ommh2 << std::endl;
 
     // omega_m h^2
     if ( (ommh2 < 0.120) || (ommh2 > 0.155) )

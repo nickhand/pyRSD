@@ -1,61 +1,43 @@
 language: python
 python:
-    - 2.7
-    - 3.5
-
+- 2.7
+- 3.5
 env:
-    - NUMPY_VERSION=1.11
-
+- NUMPY_VERSION=1.11
 cache:
-    directories:
-        - $HOME/.cache/pip
-        - $HOME/.conda
-        - $HOME/.cache/pyRSD
-
+  directories:
+  - $HOME/.cache/pip
+  - $HOME/.conda
+  - $HOME/.cache/pyRSD
 before_install:
-    - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-    - chmod +x miniconda.sh
-    - ./miniconda.sh -b -p $HOME/miniconda
-    - export PATH=$HOME/miniconda/bin:$PATH
-    - conda update --yes conda
-
+- wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+- chmod +x miniconda.sh
+- ./miniconda.sh -b -p $HOME/miniconda
+- export PATH=$HOME/miniconda/bin:$PATH
+- conda update --yes conda
 install:
-    - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
-    - source activate test
-
-    # search astropy and bccp channels for dependencies
-    - conda config --add channels astropy
-    - conda config --add channels bccp
-    - conda config --prepend channels nickhand
-    - conda config --append channels conda-forge
-
-    # build dependencies
-    - conda install --yes swig gcc gsl fftw libgcc
-
-    # install specific numpy version and pin it
-    - conda install --yes numpy=$NUMPY_VERSION
-    - echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
-
-    # install base dependencies
-    - conda install --yes --file requirements.txt
-
-    # install test dependencies
-    - pip install -r requirements-tests.txt
-
-    # install nbodykit itself
-    - pip install .[tests]
-
+- conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
+- source activate test
+- conda config --add channels astropy
+- conda config --add channels bccp
+- conda config --prepend channels nickhand
+- conda config --append channels conda-forge
+- conda install --yes swig gcc gsl fftw libgcc
+- conda install --yes numpy=$NUMPY_VERSION
+- echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
+- conda install --yes --file requirements.txt
+- pip install -r requirements-tests.txt
+- pip install .[tests]
 script:
-    - python runtests.py --mpl
-
+- python runtests.py --mpl
 deploy:
-    - provider: pypi
-      distributions: sdist
-      server: https://upload.pypi.org/legacy/
-      user: "nickhand"
-      skip_upload_docs: true
-      password:
-          secure: "HgbpYapyGiOpi51rRGx6H5u1PbkaUp9QgLemg5XjfuKt660QAcDFH3KSDJzl6f2PKvnlkLis8f0fieDYrx8pT3PmuvhwZjQi03ArDpdjVSFn+rQvU1ir3f1Qf1gqdlMWttwfdHjLzHQOF3IMomLGDU6+TXQK+4iRJIprufJFSemNOJ9fTx+Qos6/oWo2q566SLVtdHZZsz1N3tuGzdY9gUGdJLx07g2IsE+WX14v9jwPupgZU+uR1o6twA/I+mvqvbcb9BBKBOQGp7XYtSv61H35SNz+GB6SZeOR3pyG4xKXEB6NsKyIU+7YDPLCwPGAJJZ9rGKviErC8ayTaAhcWDLgLahvWze9IkbGmULoqa4Hs/M5sOkI6ETI7mITl6W9LtFTAwDlUcsZNrtRRYtMM7ygI9xqztU3PuKzzAi50HC7aKRncbj0xhzozCT7ocm1bpICeu+vHh7qsIsVAP4dAC8DqeplN1qSsfkS157/bFYoAWhCJclK1i2KScq7ZQR/Ekc+H0fRBZzVmjbP/2Mv7ukuipn7VBqY5PAoQPWsYLMGutKsRoWcU6TmpL/uxU7iZo2ht8OB7aJ5B+vueqlR7sADw0S37HwtspQGlSQ9OV7KLxLGegGaOu9ajxVo0Bidb+RY+ID4rTSVz4qbbNeJkRD1lhjMG0kCcEyzOwmC+Wc="
-      on:
-        tags   : true
-        condition : $TRAVIS_PYTHON_VERSION = "2.7"
+  provider: pypi
+  skip_upload_docs: true
+  user: nickhand
+  password:
+    secure: PAi3JFQW+XsQIou0PUh37kJqYwub35WU+JmJlKUZHSeRFurfYcJz7KfoMb1DJ3tEBrzk/yipFLO3PNE6YaCOjY6658Uwf2yNQns3tzKthSWLEXrFRIHb79c8pf4fv/+5xG0RN23OaFrZYNEddjbGbvoOjPUbJ2NxTdyR16PKWTK5yVn3JvHKoZJG23FXO+sHtZNtLEa1nr5CA7gAOsIb6Z4CHKJs2h4q1y3N+PvgnjC7aTPcl1LsayADAeLFqqA0wtk+uqt6Sj8zmYeP1JHaIN1mcTqbhz1WoVUN0M5AIg/xI/ofJiPNXEoBfzHpaygXZqGXHomH4LI+1WJMxz24Ess8rdIuWHC+vHTebzoAD9HHwrXTAUPDpX9SKCwBxDnJTmAUHuw6jN8uEZr0i34XPZrdc8v8PZgzifRKnoQBYlj/f5BJHO/PinT8b8HGL2+gvwqOJ8/+mQsR6WrDOqYu/EjzXzOc0GeePVHIEGdp0yhKdwQkoEu/ARZ25SQlmL0SvXDi8G/aESVsE8R0NEP58EyfONTT6vCVjwwjIgNKSVXxDUQbZO6lptdWBamZtKSBb+Zz294QVKLGT5H6EN61WW48TuVz7+0UWaMofM9DJ0M9YqfltnqgfmakLWms+Ie6cRSTyQxYwrXT9bzJMUq9GgR40QGW1Wle6K34PAUD5nI=
+  on:
+    tags: true
+    distributions: sdist bdist_wheel
+    repo: nickhand/pyRSD
+    condition : $TRAVIS_PYTHON_VERSION = "2.7"

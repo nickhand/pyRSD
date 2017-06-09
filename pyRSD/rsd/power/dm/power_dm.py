@@ -513,20 +513,6 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         return self.cosmo.D_z(self.z)
 
-    @cached_property("cosmo")
-    def _cosmo_sigma8(self):
-        """
-        The sigma8 value from the cosmology
-        """
-        return self.cosmo.sigma8()
-
-    @cached_property("cosmo", "z")
-    def _cosmo_sigma8_z(self):
-        """
-        The sigma8(z) value from the cosmology
-        """
-        return self.cosmo.Sigma8_z(self.z)
-
     @cached_property("z", "cosmo")
     def conformalH(self):
         """

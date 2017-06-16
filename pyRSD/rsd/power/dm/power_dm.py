@@ -31,7 +31,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        include_2loop=False,
                        transfer_fit="CLASS",
                        max_mu=4,
-                       interpolate=False,
+                       interpolate=True,
                        k0_low=5e-3,
                        linear_power_file=None,
                        Pdv_model_type='jennings',
@@ -918,8 +918,9 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     @tools.broadcast_kmu
     def power(self, k, mu, flatten=False):
         """
-        Return the redshift space power spectrum at the specified value of mu,
-        including terms up to ``mu**self.max_mu``.
+        The redshift space power spectrum as a function of ``k`` and ``mu``
+
+        This includes terms up to ``mu**self.max_mu``.
 
         Parameters
         ----------
@@ -942,16 +943,15 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         if flatten: pkmu = np.ravel(pkmu, order='F')
         return pkmu
 
-    def poles(self, k, poles, flatten=False, Nmu=41):
+    def poles(self, k, ells, flatten=False, Nmu=41):
         """
-        Return the multipole moments specified by `poles`, where `poles` is a
-        list of integers, i.e., [0, 2, 4]
+        The multipole moments of the redshift-space power spectrum
 
-        Parameter
-        ---------
+        Parameters
+        ----------
         k : float, array_like
             The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
-        poles : init, array_like
+        ells : int, array_like
             The `ell` values of the multipole moments
         flatten : bool, optional
             If `True`, flatten the return array, which will have a length of
@@ -962,16 +962,16 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         poles : array_like
             returns tuples of arrays for each ell value in ``poles``
         """
-        scalar = np.isscalar(poles)
-        if scalar: poles = [poles]
+        scalar = np.isscalar(ells)
+        if scalar: ells = [ells]
 
         if len(k) == Nmu: Nmu += 1
         mus = np.linspace(0., 1., Nmu)
         Pkmus = self.power(k, mus)
 
-        if len(poles) != len(k):
+        if len(ells) != len(k):
             toret = ()
-            for ell in poles:
+            for ell in ells:
                 kern = (2*ell+1.)*legendre(ell)(mus)
                 val = np.array([simps(kern*d, x=mus) for d in Pkmus])
                 toret += (val,)
@@ -986,15 +986,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
 
     def from_transfer(self, transfer, flatten=False, **kws):
         """
-        Return the power (either P(k,mu) or multipoles), accounting for
-        discrete binning effects using the input transfer function
+        Return the power accounting for discrete binning effects using the input transfer function
 
         This calls :func:`power` to evaluate the model at discrete ``k``
         and ``mu`` values
 
-        Parameter
-        ---------
-        transfer : PkmuTransfer, PolesTransfer, WindowTransfer
+        Parameters
+        ----------
+        transfer : :class:`~pyRSD.rsd.PkmuTransfer`, :class:`~pyRSD.rsd.PolesTransfer`, :class:`~pyRSD.rsd.window.WindowTransfer`
             the transfer class which accounts for the discrete binning effects
         flatten : bool, optional
             If `True`, flatten the return array, which will have a length of

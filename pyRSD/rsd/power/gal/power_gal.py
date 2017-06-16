@@ -9,8 +9,66 @@ from . import Pgal
 
 class GalaxySpectrum(BiasedSpectrum):
     """
-    The galaxy redshift space power spectrum, a subclass of
-    :class:`~pyRSD.rsd.BiasedSpectrum` for biased redshift space power spectra
+    The model for the galaxy redshift space power spectrum
+
+    Parameters
+    ----------
+    kmin : float, optional
+        The minimum wavenumber to compute the power spectrum at
+        [units: :math:`h/\mathrm{Mpc}`]; default is 1e-3
+
+    kmax : float, optional
+        The maximum wavenumber to compute the power spectrum at
+        [units: :math:`h/\mathrm{Mpc}`]; default is 0.5
+
+    Nk : int, optional
+        The number of log-spaced bins to use as the underlying domain for
+        splines; default is 200
+
+    z : float, optional
+        The redshift to compute the power spectrum at. Default = 0.
+
+    params : :class:`~pyRSD.rsd.cosmology.Cosmology`, str
+        Either a :class:`~pyRSD.rsd.cosmology.Cosmology` instance or the name
+        of a file to load parameters from; see the 'data/params' directory
+        for examples
+
+    include_2loop : bool, optional
+        If `True`, include 2-loop contributions in the model terms. Default
+        is `False`.
+
+    transfer_fit : str, optional
+        The name of the transfer function fit to use. Default is `CLASS`
+        and the options are {`CLASS`, `EH`, `EH_NoWiggle`, `BBKS`},
+        or the name of a data file holding (k, T(k))
+
+    max_mu : {0, 2, 4, 6, 8}, optional
+        Only compute angular terms up to mu**(``max_mu``). Default is 4.
+
+    interpolate: bool, optional
+        Whether to return interpolated results for underlying power moments
+
+    k0_low : float, optional (`5e-3`)
+        below this wavenumber, evaluate any power in "low-k mode", which
+        essentially just uses SPT at low-k
+
+    linear_power_file : str, optional (`None`)
+        string specifying the name of a file which gives the linear
+        power spectrum, from which the transfer function in ``cosmo``
+        will be initialized
+
+    Pdv_model_type : {'jennings', 'sim', None}, optional
+        The type of model to use to evaluate Pdv
+
+    fog_model : str, optional
+        the string specifying the FOG model to use; one of
+        ['modified_lorentzian', 'lorentzian', 'gaussian'].
+        Default is 'modified_lorentzian'
+
+    use_so_correction : bool, optional
+        Boost the centrals auto spectrum with a correction
+        accounting for extra structure around centrals due
+        to SO halo finders; default is `False`
     """
     def __init__(self, fog_model='modified_lorentzian',
                        use_so_correction=False,
@@ -20,8 +78,8 @@ class GalaxySpectrum(BiasedSpectrum):
 
         Additional `GalaxySpectrum`-specific parameters are listed
         below. Keywords accepted by :class:`pyRSD.rsd.BiasedSpectrum`
-        and :class:`pyRSD.rsd.DMSpectrum`. See their documenation for further
-        details.
+        and :class:`pyRSD.rsd.DarkMatterSpectrum`. See their documenation for
+        further details.
 
         Parameters
         ----------
@@ -65,8 +123,7 @@ class GalaxySpectrum(BiasedSpectrum):
 
     def default_params(self):
         """
-        Return a GalaxyPowerParameters instance holding the default
-        model parameters configuration
+        A GalaxyPowerParameters object holding the default model parameters
 
         The model associated with the parameter is ``self``
         """
@@ -347,8 +404,7 @@ class GalaxySpectrum(BiasedSpectrum):
     @tools.alcock_paczynski
     def power(self, k, mu, flatten=False):
         """
-        The total redshift-space galaxy power spectrum, combining the individual
-        terms.
+        The total redshift-space galaxy power spectrum at ``k`` and ``mu``
 
         Parameters
         ----------

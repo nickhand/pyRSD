@@ -22,7 +22,6 @@ Index
 
 * :doc:`install`
 * :doc:`overview`
-* :doc:`quickstart`
 
 .. toctree::
    :maxdepth: 1
@@ -31,7 +30,6 @@ Index
 
    install.rst
    overview.rst
-   quickstart.rst
 
 
 **RSD**

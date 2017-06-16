@@ -1,3 +1,5 @@
+.. _galaxy-power:
+
 Galaxy Power Spectrum
 =====================
 

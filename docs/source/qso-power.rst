@@ -1,3 +1,5 @@
+.. _qso-power:
+
 Quasar Power Spectrum
 =====================
 

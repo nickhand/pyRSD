@@ -1,16 +1,18 @@
 pyRSD
-===================================================
+=====
 
 *Accurate predictions for the clustering of galaxies in redshift-space in Python*
-
 
 pyRSD is a Python package for computing the theoretical predictions of
 the redshift-space power spectrum of galaxies. The package also includes
 functionality for fitting data measurements and finding the optimal model parameters,
 using both MCMC and nonlinear optimization techniques.
 
-provides a high-level, Python user interface for
-interacting with the theoretical models and
+.. note::
+
+  The theoretical models used in this paper are described in more detail
+  in `Hand et al. 2017 <https://arxiv.org/abs/1706.02362>`_. Please cite
+  this work if you use this package in your research.
 
 
 Index
@@ -19,8 +21,8 @@ Index
 **Getting Started**
 
 * :doc:`install`
-* :doc:`use-cases`
-* :doc:`examples`
+* :doc:`overview`
+* :doc:`quickstart`
 
 .. toctree::
    :maxdepth: 1
@@ -28,8 +30,8 @@ Index
    :caption: Getting Started
 
    install.rst
-   use-cases.rst
-   examples.rst
+   overview.rst
+   quickstart.rst
 
 
 **RSD**
@@ -38,6 +40,7 @@ The **RSD** module deals with computing the theoretical power spectrum predictio
 given an input cosmology specified by the user.
 
 * :doc:`cosmo`
+* :doc:`interfacing-class`
 * :doc:`hzpt`
 * :doc:`galaxy-power`
 * :doc:`qso-power`
@@ -48,6 +51,7 @@ given an input cosmology specified by the user.
   :caption: RSD
 
   cosmo.rst
+  interfacing-class.rst
   hzpt.rst
   galaxy-power.rst
   qso-power.rst

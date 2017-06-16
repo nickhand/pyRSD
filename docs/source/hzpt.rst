@@ -1,3 +1,5 @@
+.. _hzpt:
+
 Halo Zel'dovich Perturbation Theory
 ===================================
 

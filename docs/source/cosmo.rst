@@ -9,5 +9,4 @@ to interface with the `CLASS <https://class-code.net>`_ CMB Boltzmann code.
    :maxdepth: 1
 
    cosmo-overview.rst
-   cosmo-class.rst
    cosmo-api.rst

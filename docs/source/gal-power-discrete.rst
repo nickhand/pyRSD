@@ -36,11 +36,7 @@ The class that handles setting up the :math:`P(k,\mu)` grid is
     :suppress:
 
     import numpy
-    from matplotlib import pyplot as plt
-    from pyRSD.rsd import PkmuTransfer, PolesTransfer, PkmuGrid, GalaxySpectrum
-
-    model = GalaxySpectrum.from_npy('data/galaxy_power.npy')
-
+    from pyRSD.rsd import PkmuGrid
     numpy.random.seed(100)
 
 .. ipython:: python
@@ -92,7 +88,7 @@ desired transfer function. Imagine we want to compute the power
 spectrum in 5 :math:`\mu` bins, accounting for discrete binning effects.
 This can be achieved as
 
-.. ipython:: python
+.. code-block:: python
 
     # edges of the mu bins
     mu_bounds = [(0., 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.0)]
@@ -109,12 +105,8 @@ This can be achieved as
     for i in range(mu.shape[1]):
       plt.loglog(k[:,i], Pkmu_binned[:,i], label=r"$\mu = %.1f$" % mu[:,i].mean())
 
-    plt.legend(loc=0)
-    plt.xlabel(r"$k$ $[h \mathrm{Mpc}^{-1}]$", fontsize=10)
-    plt.ylabel(r"$P$ $[h^{-3} \mathrm{Mpc}^3]$", fontsize=10)
-
-    @savefig pkmu_binned_plot.png width=6in
-    plt.show()
+.. image:: _static/pkmu_binned_plot.png
+  :align: center
 
 Discrete :math:`P_\ell(k)`
 --------------------------
@@ -122,7 +114,7 @@ Discrete :math:`P_\ell(k)`
 We can similarly compute multipoles while accounting for discrete binning
 effects. This can be achieved as
 
-.. ipython:: python
+.. code-block:: python
 
     # the multipoles to compute
     ells = [0, 2, 4]
@@ -139,9 +131,5 @@ effects. This can be achieved as
     for i, iell in enumerate(ells):
       plt.loglog(k[:,i], poles_binned[:,i], label=r"$\ell = %d$" % iell)
 
-    plt.legend(loc=0)
-    plt.xlabel(r"$k$ $[h \mathrm{Mpc}^{-1}]$", fontsize=10)
-    plt.ylabel(r"$P_\ell$ $[h^{-3} \mathrm{Mpc}^3]$", fontsize=10)
-
-    @savefig poles_binned_plot.png width=6in
-    plt.show()
+.. image:: _static/poles_binned_plot.png
+  :align: center

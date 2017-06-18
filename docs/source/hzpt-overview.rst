@@ -52,12 +52,10 @@ Examples
 For example, to compute the dark matter auto spectrum for the Planck 2015
 cosmology,
 
-.. ipython:: python
+.. code-block:: python
 
     from pyRSD.rsd.cosmology import Planck15
     from pyRSD.rsd.hzpt import HaloZeldovichP00
-    import numpy as np
-    import matplotlib.pyplot as plt
 
     # power spectrum at z = 0
     P00 = HaloZeldovichP00(Planck15, z=0.)
@@ -73,17 +71,13 @@ cosmology,
     plt.loglog(k, Pzel, label='Zeldovich term')
     plt.loglog(k, Pbb, label='broadband term')
 
-    plt.legend(loc=0)
-    plt.xlabel(r"$k$ $[h \mathrm{Mpc}^{-1}]$", fontsize=10)
-    plt.ylabel(r"$P$ $[h^{-3} \mathrm{Mpc}^3]$", fontsize=10)
-
-    @savefig P00_hzpt_plot.png width=6in
-    plt.show()
+.. image:: _static/P00_hzpt_plot.png
+  :align: center
 
 Similary, the dark matter correlation function and the various terms can
 be computed as:
 
-.. ipython:: python
+.. code-block:: python
 
     from pyRSD.rsd.hzpt import HaloZeldovichCF00
 
@@ -101,9 +95,5 @@ be computed as:
     plt.loglog(r, r**2 * xi_zel, label='Zeldovich term')
     plt.loglog(r, r**2 * xi_bb, label='broadband term')
 
-    plt.legend(loc=0)
-    plt.xlabel(r"$r$ $[h^{-1} \mathrm{Mpc}]$", fontsize=10)
-    plt.ylabel(r"$r^2 \xi$ $[h^{2} \mathrm{Mpc}^{-2}]$", fontsize=10)
-
-    @savefig CF_hzpt_plot.png width=6in
-    plt.show()
+.. image:: _static/CF_hzpt_plot.png
+  :align: center

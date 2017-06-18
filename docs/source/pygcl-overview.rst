@@ -15,7 +15,6 @@ from a :class:`pyRSD.rsd.cosmology.Cosmology` object via the
     :suppress:
 
     import numpy
-    import matplotlib as plt
 
 .. ipython:: python
 
@@ -49,7 +48,7 @@ functionality to compute the linear matter power spectrum using CLASS.
 The main object for this calculation is the :class:`pyRSD.pygcl.LinearPS`
 class, which can be initialized as
 
-.. ipython:: python
+.. code-block:: python
 
     # initialize at z = 0
     Plin = pygcl.LinearPS(class_cosmo, 0)
@@ -64,12 +63,8 @@ class, which can be initialized as
     # plot
     plt.loglog(k, Pk, c='k')
 
-    # format
-    plt.xlabel(r"$k$ $[h \mathrm{Mpc}^{-1}]$", fontsize=10)
-    plt.ylabel(r"$P$ $[h^{-3} \mathrm{Mpc}^3]$", fontsize=10)
-
-    @savefig Plin_plot.png width=6in
-    plt.show()
+.. image:: _static/Plin_plot.png
+  :align: center
 
 
 Zel'dovich Power Spectra
@@ -78,7 +73,7 @@ Zel'dovich Power Spectra
 The :mod:`pyRSD.pygcl` module can also be used to directly compute
 power spectra in the Zel'dovich approximation. For example,
 
-.. ipython:: python
+.. code-block:: python
 
     # density auto power
     P00 = pygcl.ZeldovichP00(class_cosmo, 0)
@@ -95,13 +90,8 @@ power spectra in the Zel'dovich approximation. For example,
     plt.loglog(k, P01(k), label=r'$P_{01}^\mathrm{zel}$')
     plt.loglog(k, P11(k), label=r'$P_{11}^\mathrm{zel}$')
 
-    # format
-    plt.legend(loc=0)
-    plt.xlabel(r"$k$ $[h \mathrm{Mpc}^{-1}]$", fontsize=10)
-    plt.ylabel(r"$P$ $[h^{-3} \mathrm{Mpc}^3]$", fontsize=10)
-
-    @savefig Pzel_plot.png width=6in
-    plt.show()
+.. image:: _static/Pzel_plot.png
+  :align: center
 
 The Correlation Function
 ~~~~~~~~~~~~~~~~~~~~~~~~
@@ -110,7 +100,7 @@ The :mod:`pyRSD.pygcl` module also includes functionality for computing
 the linear and Zel'dovich correlation functions. This is computed by
 taking the Fourier transform of the power spectrum using FFTLog.
 
-.. ipython:: python
+.. code-block:: python
 
     # linear correlation function
     CF = pygcl.CorrelationFunction(Plin)
@@ -123,10 +113,5 @@ taking the Fourier transform of the power spectrum using FFTLog.
     plt.plot(r, r**2 * CF(r), label=r'$\xi^\mathrm{lin}$')
     plt.plot(r, r**2 * CF_zel(r), label=r'$\xi^\mathrm{zel}$')
 
-    # format
-    plt.legend(loc=0)
-    plt.xlabel(r"$r$ $[h^{-1} \mathrm{Mpc}]$", fontsize=10)
-    plt.ylabel(r"$r^2 \xi$ $[h^{2} \mathrm{Mpc}^{-2}]$", fontsize=10)
-
-    @savefig cf_plot.png width=6in
-    plt.show()
+.. image:: _static/cf_plot.png
+  :align: center

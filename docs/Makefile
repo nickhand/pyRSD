@@ -14,7 +14,11 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) sou
 # the i18n builder cannot share the environment and doctrees with the others
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
-.PHONY: help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
+PNG_FILES = pkmu_model_plot.png poles_model_plot.png pkmu_binned_plot.png poles_binned_plot.png window_poles_plot.png poles_conv_plot.png \
+					Plin_plot.png Pzel_plot.png P00_hzpt_plot.png CF_hzpt_plot.png
+ALLPLOTS = $(addprefix source/_static/, $(PNG_FILES))
+
+.PHONY: cleanplots plots help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
 
 help:
 	@echo "Please use \`make <target>' where <target> is one of"
@@ -40,9 +44,38 @@ help:
 
 clean:
 	rm -rf $(BUILDDIR)/*
-	rm -rf source/generated/*
 
-html:
+cleanplots:
+	rm -rf $(ALLPLOTS)
+
+source/_static/pkmu_model_plot.png source/_static/poles_model_plot.png:
+ifneq ($(READTHEDOCS), True)
+	python make_figures.py gal_power_compute
+endif
+
+source/_static/pkmu_binned_plot.png source/_static/poles_binned_plot.png:
+ifneq ($(READTHEDOCS), True)
+	python make_figures.py gal_power_discrete
+endif
+
+source/_static/window_poles_plot.png source/_static/poles_conv_plot.png:
+ifneq ($(READTHEDOCS), True)
+	python make_figures.py gal_power_window
+endif
+
+source/_static/Plin_plot.png source/_static/Pzel_plot.png:
+ifneq ($(READTHEDOCS), True)
+	python make_figures.py pygcl_overview
+endif
+
+source/_static/P00_hzpt_plot.png source/_static/CF_hzpt_plot.png:
+ifneq ($(READTHEDOCS), True)
+	python make_figures.py hzpt_overview
+endif
+
+plots: $(ALLPLOTS)
+
+html: plots
 	$(SPHINXBUILD) -b html $(ALLSPHINXOPTS) $(BUILDDIR)/html
 	@echo
 	@echo "Build finished. The HTML pages are in $(BUILDDIR)/html."

@@ -39,7 +39,7 @@ BOSS DR12 CMASS sample.
     import numpy
     from matplotlib import pyplot as plt
 
-.. ipython:: python
+.. code-block:: python
 
     # load the window function correlation multipoles array from disk
     # first column is s, followed by W_ell
@@ -49,12 +49,8 @@ BOSS DR12 CMASS sample.
     for i in range(1, Q.shape[1]):
       plt.semilogx(Q[:,0], Q[:,i], label=r"$\ell=%d$" %(2*(i-1)))
 
-    plt.legend(loc=0, ncol=2)
-    plt.xlabel(r"$s$ $[\mathrm{Mpc}/h]$", fontsize=14)
-    plt.ylabel(r"$Q_\ell$", fontsize=14)
-
-    @savefig window_poles_plot.png width=6in
-    plt.show()
+.. image:: _static/window_poles_plot.png
+  :align: center
 
 From this plot we can see that the :math:`Q_\ell` vanish for scales
 approaching 3000 :math:`\mathrm{Mpc}/h`, as these are the largest scales in the
@@ -72,21 +68,14 @@ multipoles with the transfer function class, :class:`WindowTransfer`.
 For example, to evalute the convolved monopole, quadrupole, and
 hexadecapole, we simply do
 
-.. ipython:: python
-    :suppress:
+.. code-block:: python
 
-    from pyRSD.rsd.window import WindowTransfer
-    from pyRSD.rsd import GalaxySpectrum
-
-    model = GalaxySpectrum.from_npy('data/galaxy_power.npy')
+    # adjust the model kmin/kmax
     model.kmin = 1e-4
     model.kmax = 0.7
 
-
-.. ipython:: python
-
     # the multipoles to compute
-    ells = numpy.array([0., 2., 4.])
+    ells = [0, 2, 4]
 
     # the window transfer function, with specified valid k range
     transfer = WindowTransfer(Q, ells, grid_kmin=1e-3, grid_kmax=0.6)
@@ -100,9 +89,5 @@ hexadecapole, we simply do
     for i, iell in enumerate(ells):
       plt.loglog(k[:,i], Pell_conv[:,i], label=r"$\ell = %d$" % iell)
 
-    plt.legend(loc=0)
-    plt.xlabel(r"$k$ $[h \mathrm{Mpc}^{-1}]$", fontsize=10)
-    plt.ylabel(r"$P_\ell$ $[h^{-3} \mathrm{Mpc}^3]$", fontsize=10)
-
-    @savefig poles_conv_plot.png width=6in
-    plt.show()
+.. image:: _static/poles_conv_plot.png
+  :align: center

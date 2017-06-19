@@ -13,13 +13,19 @@ The software is compatible with Python versions 2.7, 3.5, and 3.6.
 Installation
 ============
 
-The preferred installation method is via ``conda``:
+The package is installable via the ``conda`` utility as
 
 ```bash
 conda install -c nickhand -c astropy pyrsd
 ```
 
+Reference
+==========
+The theoretical models used in this paper are described in more detail
+in [Hand et al. 2017](https://arxiv.org/abs/1706.02362). Please cite
+this work if you use this package in your research.
+
 Documentation
 =============
 
-Documentation is under active development and is available on [Read the Docs](http://pyrsd.readthedocs.io/en/latest/).
+For installation instructions, examples, and full API documentation, please see [Read the Docs](http://pyrsd.readthedocs.io/en/latest/).

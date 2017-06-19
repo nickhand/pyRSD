@@ -53,13 +53,30 @@ at :math:`z=0` for the Planck 2015 cosmology parameters as
 
 Once the model object has been created, the underlying elements of the model
 need to be initialized. Depending on your machine, this will take several minutes
-to complete. This only needs to be done once, and once the model initialized,
-the evaluation of the model will be fast (typically < 1 second).
+to complete.
 
 .. code-block:: python
 
     # model takes several minutes to initialize once
     model.initialize()
+
+    # set kmin/kmax limits
+    model.kmin = 1e-3
+    model.kmax = 0.5
+
+The initialization only needs to be done once, and once the model initialized,
+the evaluation of the model will be fast (typically < 1 second), as long
+as the desired :math:`k` value is valid, as specified by the :attr:`kmin`
+and :attr:`kmax` attributes of the model.
+
+.. warning::
+
+    The :class:`~pyRSD.rsd.GalaxySpectrum` class has attributes :attr:`kmin` and :attr:`kmax`
+    that specify where the valid wavenumber range over which the underlying model
+    has been initialized. Outside of this range, the model must evaluate
+    each component of the model for each :math:`k` value, which can be
+    time-consuming. A warning will be printed when this occurs.
+
 
 .. ipython:: python
     :suppress:

@@ -91,3 +91,21 @@ hexadecapole, we simply do
 
 .. image:: _static/poles_conv_plot.png
   :align: center
+
+In this plot, we show the unconvoled :math:`P_0`, :math:`P_2`, and :math:`P_4`
+multipoles in black, and the correpsonding window-convolved multipoles in
+color. The effects of the window function, mostly on large scales
+(small :math:`k`) are clearly evident.
+
+.. warning::
+
+    The convolution is performed in configuration space using the
+    Convolution Theorem. FFTLog is used to perform the Fourier transfrom on
+    a grid, and to achieve the best results, the grid bounds should be padded
+    to cover a wider range than the wavenumbers of interest. Typically,
+    if one is interested in the power at :math:`k = 0.4 \ h/\mathrm{Mpc}`,
+    the :attr:`grid_kmax` keyword should be set to
+    :math:`k = 0.6 \ h/\mathrm{Mpc}` or :math:`k = 0.7 \ h/\mathrm{Mpc}`,
+    as was done in the example above. Also, note that to avoid slowdowns,
+    the model :attr:`kmin` and :attr:`kmax` attributes should be adjusted
+    to include the desired grid range, as was done above.

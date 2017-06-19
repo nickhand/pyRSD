@@ -332,7 +332,14 @@ class InterpolatedFunction(object):
 
             # return spline results in bounds, and call the function out of bounds
             if numpy.isscalar(k) or numpy.ndim(k) == 0:
-                return self.function(k)[0]
+                ans = self.function(k)
+                try:
+                    if len(k) == 1:
+                        return ans[0]
+                    else:
+                        return ans
+                except:
+                    return ans
             else:
                 k = numpy.asarray(k)
                 out_of_bounds = self.spline._check_bounds(k)
@@ -371,7 +378,7 @@ def interpolated_function(*parents, **kwargs):
                 spline_kwargs = getattr(self, 'spline_kwargs', {})
 
                 # the function that will explicitly evaluate the original function
-                g = wrapped.__get__(self, self.__class__)
+                g = f.__get__(self, self.__class__)
 
                 # tuple of splines
                 if isinstance(val, tuple):

@@ -2,6 +2,7 @@ from ... import numpy as np
 from .. import logging
 import scipy.stats
 from collections import OrderedDict
+import warnings
 
 logger = logging.getLogger('rsdfit.emcee_results')
 logger.addHandler(logging.NullHandler())
@@ -690,7 +691,9 @@ class EmceeResults(object):
             additional keyword arguments to pass to ``seaborn``
         """
         import pandas as pd
-        import seaborn as sns
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import seaborn as sns
         from ..analysis import tex_names
 
         names = self.free_names + self.constrained_names
@@ -750,7 +753,9 @@ class EmceeResults(object):
             additional keyword arguments to pass to ``seaborn``
         """
         import pandas as pd
-        import seaborn as sns
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import seaborn as sns
         from ..analysis import tex_names
 
         names = self.free_names + self.constrained_names
@@ -955,7 +960,9 @@ class EmceeResults(object):
             labels; default is `True`. You might want to set this to `False`
             if you are trying to use mpld3
         """
-        import seaborn as sns
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import seaborn as sns
         sns.set(style="white")
         f, ax = sns.plt.subplots(figsize=(11, 9))
 

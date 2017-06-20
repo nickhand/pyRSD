@@ -578,7 +578,10 @@ class CovarianceMatrix(Cache):
         Plot the correlation matrix (normalized covariance matrix), optionally
         saving if `filename != None`
         """
-        import seaborn as sns
+        import warnings
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            import seaborn as sns
         sns.set(style="white")
 
         # compute the correlation matrix

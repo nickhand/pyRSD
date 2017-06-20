@@ -262,5 +262,6 @@ if __name__ == '__main__':
           extras_require=extras,
           package_data={'pyRSD': pkg_data},
           entry_points={'console_scripts' :
-                      ['rsdfit = pyRSD.rsdfit.rsdfit:main']}
+                      ['rsdfit = pyRSD.rsdfit.rsdfit:main',
+                       'pyrsd-quickstart = pyRSD.quickstart.core:main']}
     )

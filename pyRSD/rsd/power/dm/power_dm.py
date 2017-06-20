@@ -298,9 +298,19 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # check cosmology object
         if val is None:
             val = cosmology.Planck15
-        if not isinstance(val, (string_types, cosmology.Cosmology)):
+
+        if not isinstance(val, (string_types, cosmology.Cosmology, dict)):
             raise TypeError(("input `cosmo` keyword should be a parameter file name"
-                             "or a pyRSD.cosmology.Cosmology object"))
+                             "dictionary, or a pyRSD.cosmology.Cosmology object"))
+
+        # convert from dictionary
+        if isinstance(val, dict):
+            val = cosmology.Cosmology(**val)
+
+        # name of available cosmo?
+        if isinstance(val, string_types) and hasattr(cosmology, val):
+            val = getattr(cosmology, val)
+
         return val
 
     @parameter

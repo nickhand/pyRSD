@@ -30,8 +30,7 @@ class SmartSymTable(dict):
 
 class ParameterSet(lmfit.Parameters):
     """
-    A subclass of `lmfit.Parameters` that adds the ability to update values
-    based on constraints in place
+    A subclass of :class:`lmfit.parameter.Parameters` that adds the ability to update values based on constraints in place
     """
     def __init__(self, *args, **kwargs):
 
@@ -216,7 +215,7 @@ class ParameterSet(lmfit.Parameters):
 
         return toret
 
-    def to_file(self, filename, mode='w', header_name=None, footer=False, as_dict=True):
+    def to_file(self, filename, prefix=None, mode='w', header_name=None, footer=False, as_dict=True):
         """
         Output the `ParameterSet` to a file, using the mode specified.
         Optionally, add a header and/or footer to make it look nice.
@@ -226,6 +225,18 @@ class ParameterSet(lmfit.Parameters):
 
         Parameters
         ----------
+        filename : str
+            the name of the file to write
+        prefix : str, optional
+            include a prefix when writing out parameter keys
+        mode : str, optional
+            the file mode, i.e., 'w' to write, 'a' to append
+        header_name : str, optional
+            write out a comment header first
+        footer : bool, optional
+            whether to write out a footer comment
+        as_dict : bool, optional
+            write out Parameter objects as a dictionary, instead of just the value
         """
         if hasattr(filename, 'write'):
             f = filename
@@ -238,9 +249,12 @@ class ParameterSet(lmfit.Parameters):
             header = "#{x}\n# {hdr}\n#{x}\n".format(hdr=header_name, x="-"*79)
             f.write(header)
 
+        tag = prefix
+        if self.tag is not None: tag = self.tag
+
         output = []
         for name, par in sorted(self.items()):
-            key = name if self.tag is None else "{}.{}".format(self.tag, name)
+            key = name if tag is None else "{}.{}".format(tag, name)
             if as_dict:
                 par_dict = par.to_dict(output=True)
                 if len(par_dict):

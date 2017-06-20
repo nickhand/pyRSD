@@ -122,6 +122,20 @@ class BasePowerParameters(ParameterSet):
     defaults = None
     _model_cls = None
 
+    def to_file(self, filename, mode='w'):
+        """
+        Output the theory `ParameterSet` to a file, using the mode specified.
+
+        Parameters
+        ----------
+        filename : str
+            the name of the file to write
+        mode : str, optional
+            the file mode, i.e., 'w' to write, 'a' to append
+        """
+        kwargs = {'header_name':'theory params', 'prefix':'theory', 'footer':True, 'as_dict':True}
+        ParameterSet.to_file(self, filename, mode=mode, **kwargs)
+
     @classmethod
     def from_defaults(cls, model=None, extra_params=[]):
         """
@@ -435,8 +449,7 @@ class BasePowerTheory(object):
         Save the parameters of this theory in a file
         """
         # first save the fit params
-        kwargs = {'mode':mode, 'header_name':'theory params', 'footer':True, 'as_dict':True}
-        self.fit_params.to_file(filename, **kwargs)
+        self.fit_params.to_file(filename, mode='a')
 
         # now any extra params
         if self.extra_params is not None:

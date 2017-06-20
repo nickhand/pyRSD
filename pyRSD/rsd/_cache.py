@@ -210,11 +210,12 @@ def obj_eq(new_val, old_val):
     return equal
 
 @doublewrap
-def parameter(f, default=None):
+def parameter(f, **kwargs):
     """
     Decorator to represent a model parameter that must
     be set by the user
     """
+    default = kwargs.get('default', None)
     name = f.__name__
     _name = '__'+name
     def _set_property(self, value, deps=[]):
@@ -258,6 +259,8 @@ def parameter(f, default=None):
 
     prop = ParameterProperty(_get_property, _set_property, _del_property)
     prop._deps = set() # track things that depend on this parameter
+    if 'default' in kwargs:
+        prop._default = default
     return prop
 
 def cached_property(*parents, **kws):

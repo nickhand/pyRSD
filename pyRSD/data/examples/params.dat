@@ -16,7 +16,6 @@ driver.test_convergence = False
 #-------------------------------------------------------------------------------
 # data params
 #-------------------------------------------------------------------------------
-data.columns = range(0, 3)
 data.covariance = '$(PYRSD_DATA)/examples/runPB_poles_gaussian_cov.dat'
 data.covariance_Nmocks = 0
 data.covariance_rescaling = 1.0
@@ -26,7 +25,6 @@ data.fitting_range = [(0.02, 0.4), (0.02, 0.4), (0.02, 0.4)]
 data.grid_file = '$(PYRSD_DATA)/examples/runPB_pkmu_grid.dat'
 data.mode = 'poles'
 data.mu_bounds = None
-data.rescale_inverse_covariance = False
 data.statistics = ['pole_0', 'pole_2', 'pole_4']
 data.usedata = range(0, 3)
 data.window_file = None

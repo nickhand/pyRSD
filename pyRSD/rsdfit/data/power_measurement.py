@@ -11,10 +11,129 @@ from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.data'))
 
+class PowerMeasurements(list):
+    """
+    A list of :class:`PowerMeasurement` objects
+    """
+    def __str__(self):
+        labels = [m.label for m in self]
+        return "<PowerMeasurements: %s>" %str(labels)
+
+    def to_plaintext(self, filename):
+        """
+        Write out the data from the power measurements to a plaintext file
+        """
+        if not len(self):
+            raise ValueError("cannot write empty data to plaintext file")
+
+        # define the shape and columns to write
+        shape = (len(self[0]._power_input), len(self))
+        columns = self[0].columns
+
+        # do we need to make the structured array
+        if hasattr(self, '_data'):
+            data = self._data
+        else:
+            dtype = [(col, 'f8') for col in columns]
+            data = np.empty(shape, dtype=dtype)
+            for col in columns:
+                data[col] = np.vstack([getattr(m, '_'+col+'_input') for m in self]).T
+
+        # now output
+        with open(filename, 'wb') as ff:
+            ff.write(("{:d} {:d}\n".format(*shape)).encode())
+            ff.write((" ".join(columns)+"\n").encode())
+            np.savetxt(ff, data[columns].ravel(order='F'), fmt='%.5e')
+
+
+
+    @classmethod
+    def from_array(cls, names, data):
+        """
+        Create a PowerMeasurement from the input structured array of data
+
+        Parameters
+        ----------
+        names : list of str
+            the list of names for each measurement to load; each name must
+            begin with ``pkmu_`` or ``pole_`` depending on the type of data.
+            Examples of names include ``pkmu_0.1`` for a :math:`\mu=0.1`
+            :math:`P(k,\mu)` bin, or ``pole_0`` for the monopole, ``pole_2``
+            for the quadrupole, etc
+        data : array_like
+            a structured array holding the data fields; this have `k`, `mu`,
+            `power` fields for :math:`P(k,\mu)` data or `k`, `power` fields
+            for multipole data
+        """
+        # check right number of names
+        if len(names) != data.shape[1]:
+            args = (data.shape[1], len(names))
+            raise ValueError("Loaded %d statistics from file, but you provided names for %d statistics" %args)
+
+        # check prefix
+        if not all(name.lower().split('_')[0] in ['pkmu', 'pole'] for name in names):
+            raise ValueError("all names must begin with either ``pkmu_`` or ``pole_``")
+
+        # loop over each statistic
+        toret = cls()
+        for i, name in enumerate(names):
+
+            # parse the name
+            power_type, value = name.lower().split('_')
+            value = float(value)
+
+            # get the relevant data for the PowerMeasurement
+            fields = ['k', 'mu', 'power', 'error']
+            d = {}
+            for field in fields:
+                if field in data.dtype.names:
+                    d[field] = data[field][:,i]
+            if power_type == 'pole':
+                d['ell'] = value
+
+            # add the power measurement, with no k limits (yet)
+            toret.append(PowerMeasurement(power_type, d))
+
+        #toret._data = data
+        return toret
+
+    @classmethod
+    def from_plaintext(cls, names, filename):
+        """
+        Load a set of power measurements from a plaintex file
+
+        Parameters
+        ----------
+        names : list of str
+            the list of names for each measurement to load; each name must
+            begin with ``pkmu_`` or ``pole_`` depending on the type of data.
+            Examples of names include ``pkmu_0.1`` for a :math:`\mu=0.1`
+            :math:`P(k,\mu)` bin, or ``pole_0`` for the monopole, ``pole_2``
+            for the quadrupole, etc
+        filename : str
+            the name of the file to load to load a structured array of data
+            from
+        """
+        # read the data first
+        with open(filename, 'r') as ff:
+            shape = tuple(map(int, ff.readline().split()))
+            columns = ff.readline().split()
+            N = np.prod(shape)
+            data0 = np.loadtxt(ff)
+
+        # return a structured array
+        dtype = [(col, 'f8') for col in columns]
+        data = np.empty(shape, dtype=dtype)
+        for i, col in enumerate(columns):
+            data[col] = data0[...,i].reshape(shape, order='F')
+
+        return cls.from_array(names, data)
+
+
+
 class PowerMeasurement(Cache):
     """
-    Class representing a power spectrum measurement, either P(k, mu) or
-    P(k, ell)
+    A power spectrum measurement, either P(k, mu) or P(k, ell)
     """
     def __init__(self, kind, data, kmin=None, kmax=None):
         """
@@ -42,6 +161,8 @@ class PowerMeasurement(Cache):
             setattr(self, '_%s_input' %field, data[field])
         if 'error' in data:
             setattr(self, '_error_input', data['error'])
+        else:
+            self._error_input = None
 
         # mu/ell
         if self.type == 'pkmu':
@@ -125,6 +246,17 @@ class PowerMeasurement(Cache):
     #--------------------------------------------------------------------------
     # cached properties
     #--------------------------------------------------------------------------
+    @cached_property()
+    def columns(self):
+        """
+        The valid columns for this measurement
+        """
+        toret = []
+        for name in ['k', 'mu', 'power', 'error']:
+            if getattr(self, '_'+name+'_input') is not None:
+                toret.append(name)
+        return toret
+
     @cached_property("_k_input", "kmin", "kmax")
     def _trim_idx(self):
         """
@@ -236,9 +368,12 @@ class PowerDataSchema(Cache):
         Print out the help information for the necessary initialization parameters
         """
         print("Initialization Parameters for PowerData" + '\n' + '-'*50)
-        for name in PowerDataSchema._param_names:
+        for name in sorted(PowerDataSchema._param_names):
             par = getattr(PowerDataSchema, name)
-            print(name+" :\n"+par.__doc__)
+            doc = name+" :\n"+par.__doc__
+            if getattr(par, '_default', False):
+                doc += "\n\n\tDefault: %s\n" %str(par._default)
+            print(doc)
 
     @parameter
     def mode(self, val):
@@ -252,8 +387,9 @@ class PowerDataSchema(Cache):
     @parameter
     def statistics(self, val):
         """
-        A list of the string names for each statistic that
-        will be read from file; these strings should be of the form:
+        A list of the string names for each statistic that will be read from file
+
+        These strings should be of the form:
 
         >> ['pole_0', 'pole_2', ...]
         >> ['pkmu_0.1', 'pkmu_0.3', ...]
@@ -267,7 +403,7 @@ class PowerDataSchema(Cache):
     @parameter
     def fitting_range(self, val):
         """
-        The fitting range for each statistics.
+        The :math:`k` fitting range for each statistics.
 
         This can either be a tuple of (kmin, kmax), which will be
         used for each statistic or a list of tuples of (kmin, kmax)
@@ -284,16 +420,18 @@ class PowerDataSchema(Cache):
     @parameter(default=None)
     def grid_file(self, val):
         """
-        A string specifying the name of the file holding a
-        :class:`pyRSD.rsd.transfer.PkmuGrid` to read
+        A string specifying the name of the file holding a :class:`pyRSD.rsd.transfer.PkmuGrid` to read
         """
         return val
 
     @parameter(default=None)
     def window_file(self, val):
         """
-        A string specifying the name of the file holding a
-        the multipoles of the window function in configuration space
+        A string specifying the name of the file holding the correlation function multipoles of the window function
+
+        The file should contain columns of data, with the first column
+        specifying the separation array :math:`s`, and the other columns
+        giving the even-numbered correlation function multipoles of the window
         """
         return val
 
@@ -307,10 +445,10 @@ class PowerDataSchema(Cache):
     @parameter(default=None)
     def usedata(self, val):
         """
-        A list of statistic numbers that will be included in the final
-        analysis. This allows one to exclude certain statistics read from file
+        A list of the statistic numbers that will be included in the final analysis.
 
-        By default (``None``), all statistics are included
+        This allows the user to exclude certain statistics read from file. By
+        default (``None``), all statistics are included
         """
         return val
 
@@ -334,8 +472,7 @@ class PowerDataSchema(Cache):
     @parameter(default=None)
     def ells(self, val):
         """
-        A list of integers specifying the multipole numbers, corresponding
-        to each statistic in the final analysis
+        A list of integers specifying multipole numbers for each statistic in the final analysis
 
         This must be supplied when the :attr:`mode` is ``poles``
         """
@@ -344,8 +481,10 @@ class PowerDataSchema(Cache):
     @parameter(default=None)
     def mu_bounds(self, val):
         """
-        A list of tuples specifying (mu_min, mu_max), corresponding
-        to the edges of the mu bins for each statistic in the final analysis
+        A list of tuples specifying the edges of the :math:`\mu` bins
+
+        This should have (mu_min, mu_max), corresponding
+        to the edges of the bins for each statistic in the final analysis
 
         This must be supplied when the :attr:`mode` is ``pkmu``
         """
@@ -354,8 +493,7 @@ class PowerDataSchema(Cache):
     @parameter(default=4)
     def max_ellprime(self, val):
         """
-        When convolving a multipoles of order ``ell``, include contributions up
-        to and including this multipole number
+        When convolving a multipole of order ``ell``, include contributions up to and including this number
         """
         return val
 
@@ -363,6 +501,17 @@ class PowerData(PowerDataSchema):
     """
     Class to hold several `PowerMeasurement` objects and combine the
     associated covariance matrices
+
+    .. note::
+
+        See the :func:`PowerData.help` function for a list of the parameters
+        needed to initialize this class
+
+    Parameters
+    ----------
+    param_file : str
+        the name of the parameter file holding the necessary parameters
+        needed to initialize the object
     """
     def __init__(self, param_file):
         """
@@ -487,29 +636,6 @@ class PowerData(PowerDataSchema):
                 args = (t.size, self.covariance_matrix.N)
                 raise ValueError(msg + "grid size =  %d, cov size = %d" %args)
 
-    def read_data(self):
-        """
-        Read the data file, storing either the measured
-        `P(k,mu)` or `P(k,ell)` data
-
-        Notes
-        -----
-        *   sets `data` to be a structured array of shape
-            `(Nk, Nmu)` or `(Nk, Nell)`
-        """
-        # read the data first
-        with open(self.data_file, 'r') as ff:
-            shape = tuple(map(int, ff.readline().split()))
-            columns = ff.readline().split()
-            N = np.prod(shape)
-            data = np.loadtxt(ff)
-
-        # return a structured array
-        dtype = [(col, 'f8') for col in columns]
-        self.data = np.empty(shape, dtype=dtype)
-        for i, col in enumerate(columns):
-            self.data[col] = data[...,i].reshape(shape, order='F')
-
     def read_grid(self):
         """
         If `grid_file` is present, initialize `PkmuGrid`, which
@@ -582,29 +708,8 @@ class PowerData(PowerDataSchema):
             raise ValueError(("mismatch between number of data columns read and number of statistics:"
                             + " %d statistics and %d data columns read" %args))
 
-        # loop over each statistic
-        self.measurements = []
-        for i, stat_name in enumerate(stats):
-
-            # parse the name
-            power_type, value = stat_name.lower().split('_')
-            value = float(value)
-
-            if power_type not in ['pkmu', 'pole']:
-                logger.error("measurement must be of type 'pkmu' or 'pole', not '%s'" %power_type)
-                raise ValueError("measurement type must be either `pkmu` or `pole`")
-
-            # get the relevant data for the PowerMeasurement
-            fields = ['k', 'mu', 'power', 'error']
-            data = {}
-            for field in fields:
-                if field in self.data.dtype.names:
-                    data[field] = self.data[field][:,i]
-            if power_type == 'pole':
-                data['ell'] = value
-
-            # add the power measurement, with no k limits (yet)
-            self.measurements.append(PowerMeasurement(power_type, data))
+        # create the measuements object
+        self.measurements = PowerMeasurements.from_plaintext(self.statistics, self.data_file)
 
         # log the number of measurements read
         logger.info("read {N} measurements: {stats}".format(N=self.size, stats=stats), on=0)
@@ -761,6 +866,13 @@ class PowerData(PowerDataSchema):
     def to_file(self, filename, mode='w'):
         """
         Save the parameters of this data class to a file
+
+        Parameters
+        ----------
+        filename : str
+            the name of the file to write out the parameters to
+        mode : str
+            the mode to use when writing the parameters to file; i.e., 'w', 'a'
         """
         # save the params
         self.params.to_file(filename, mode=mode, header_name='data params',

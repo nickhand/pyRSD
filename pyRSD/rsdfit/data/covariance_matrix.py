@@ -7,18 +7,18 @@ from . import indexing
 
 def is_array_like(d, shape):
     return not np.isscalar(d) and np.shape(d) == shape
-    
+
 def is_square(d):
     shape = np.shape(d)
     return np.ndim(d) == 2 and all(s == shape[0] for s in shape)
-    
+
 def condensed_to_full(data, N):
     toret = np.empty((N, N))
-    
+
     # set the upper triangle and the diagonal
     upper_inds = np.triu_indices(N)
     toret[upper_inds] = data[:]
-    
+
     # and now set the lower triangle
     i, j = np.tril_indices(N)
     toret[i, j] = toret[j, i]
@@ -26,19 +26,19 @@ def condensed_to_full(data, N):
 
 def flat_and_nonnull(arr):
     """
-    Flatten the input array using `Fortran` format 
-    (i.e., col #1 then col #2, etc), and remove 
+    Flatten the input array using `Fortran` format
+    (i.e., col #1 then col #2, etc), and remove
     any NaNs along the way
     """
     flat = arr.ravel(order='F')
     return flat[np.isfinite(flat)]
-        
+
 class CovarianceMatrix(Cache):
     """
     Class to represent a covariance matrix. The class has coordinates associated
     with the covariance matrix, which can be used to index the matrix
     """
-    
+
     def __init__(self, data, coords=[], names=[], attrs=None, verify=True):
         """
         Parameters
@@ -60,31 +60,31 @@ class CovarianceMatrix(Cache):
         verify : bool, optional
             If `True`, verify that the matrix is positive-semidefinite and
             symmetric
-        """        
+        """
         # make local copies
         data = np.asarray(data).copy()
-        
+
         # make a diagonal 2D matrix from input
         if data.ndim == 1: data = np.diag(data)
-        
+
         # has to be square
         if not is_square(data):
             raise ValueError("sorry, the input data must at least be square")
-            
+
         # check basic properties
         if verify: self.check_properties(data)
-                
-        # initialize the backend        
+
+        # initialize the backend
         self._setup(data, coords=coords, names=names)
         self.inverse_rescaling = 1.0
-        
+
         # setup the attrs for metadata
         if attrs is None: attrs = OrderedDict()
         self.attrs = attrs
-    
+
     #--------------------------------------------------------------------------
     # Parameters
-    #--------------------------------------------------------------------------        
+    #--------------------------------------------------------------------------
     @parameter
     def _data(self, val):
         """
@@ -92,21 +92,21 @@ class CovarianceMatrix(Cache):
         elements of the symmetric matrix
         """
         return val
-    
+
     @parameter
     def attrs(self, val):
         """
         Dictionary of local attributes on this variable.
         """
         return val
-        
+
     @parameter
     def inverse_rescaling(self, val):
         """
         Rescale the inverse of the covariance matrix by this factor
         """
         return val
-        
+
     #--------------------------------------------------------------------------
     # Internal functions
     #--------------------------------------------------------------------------
@@ -124,7 +124,7 @@ class CovarianceMatrix(Cache):
             obj.attrs = attrs.copy()
 
         return obj
-        
+
     def __finalize__(self, data, indices):
         """
         Finalize a new instance, by slicing the `coords` and `attrs` and
@@ -133,7 +133,7 @@ class CovarianceMatrix(Cache):
         attrs = self.__slice_attrs__(indices)
         coords = self.__slice_coords__(indices)
         return self.__class__.__construct_direct__(data, coords=coords, names=self.dims, attrs=attrs)
-        
+
     def __write_attrs__(self, ff):
         """
         Write out the `attrs` dictionary to an open file
@@ -150,12 +150,12 @@ class CovarianceMatrix(Cache):
                 N = (0,) if np.isscalar(v) else np.shape(v)
                 args = (k, max(1, np.product(N)), cast, " ".join(map(str, N)))
                 ff.write(("%s %d %s %s\n" %args).encode())
-                
+
                 if np.isscalar(v):
                     ff.write(("%s\n" %str(v)).encode())
                 else:
                     np.savetxt(ff, v.ravel())
-                    
+
     @classmethod
     def __read_attrs__(cls, ff):
         """
@@ -167,7 +167,7 @@ class CovarianceMatrix(Cache):
         if tot:
             tot = int(tot)
             for i in range(tot):
-                
+
                 # read the header, which has format
                 # 1. attribute name
                 # 2. lines to read
@@ -176,7 +176,7 @@ class CovarianceMatrix(Cache):
                 info = ff.readline().split()
                 key, N_lines, dtype = info[0], int(info[1]), info[2]
                 shape = tuple(map(int, info[3:]))
-                
+
                 # get the cast function
                 if dtype in __builtins__:
                     dtype = __builtins__[dtype]
@@ -184,14 +184,14 @@ class CovarianceMatrix(Cache):
                     dtype = getattr(np, dtype)
                 else:
                     raise TypeError("``attrs`` values must have builtin or numpy type")
-                
+
                 if shape == (0,):
                     toret[key] = dtype(ff.readline())
                 else:
                     toret[key] = np.array([dtype(ff.readline()) for i in range(N_lines)]).reshape(shape)
 
         return toret
-            
+
     def _get_contracted_index(self, i, j):
         """
         Given the matrix element (i, j) return the index of the corresponding
@@ -199,39 +199,39 @@ class CovarianceMatrix(Cache):
         """
         if i < 0: i += self.N
         if j < 0: j += self.N
-        
+
         if not 0 <= i < self.N: raise IndexError("index value %d out of range" %i)
         if not 0 <= j < self.N: raise IndexError("index value %d out of range" %j)
-        
-        if i > j: i, j = j, i 
+
+        if i > j: i, j = j, i
         return i*(self.N-1) - sum(range(i)) + j
-                
+
     def _setup(self, data, coords=[], names=[]):
         """
-        Setup the class by veryifying the input and storing the 
+        Setup the class by veryifying the input and storing the
         upper triangle + diagonal elements of the input data (N*(N+1)/2 elements)
-        
+
         This also initializes the GridIndexer object as the `_indexer` attribute
         """
         self.N = np.shape(data)[0]
-        
+
         if not len(coords):
             coords = [range(self.N)] * np.ndim(data)
-        
+
         # coords and names must have same length
         if len(coords) != len(names):
             if len(coords) and not len(names):
                 names = ['dim_%d' %i for i in range(len(coords))]
             else:
                 raise ValueError("size mismatch between supplied `coords` and `names`")
-        
+
         # initialize the grid indexer
         self._indexer = indexing.GridIndexer(names, coords)
-            
+
         # only store the upper triangle (including diagonals)
         inds = np.triu_indices(self.N)
         self._data = data[inds]
-    
+
     #---------------------------------------------------------------------------
     # builtin math manipulations
     #---------------------------------------------------------------------------
@@ -242,7 +242,7 @@ class CovarianceMatrix(Cache):
 
     def __radd__(self, other):
         return self.__add__(other)
-        
+
     def __sub__(self, other):
         toret = self.copy()
         toret._data = toret._data - other
@@ -250,7 +250,7 @@ class CovarianceMatrix(Cache):
 
     def __rsub__(self, other):
         return self.__sub__(other)
-    
+
     def __mul__(self, other):
         toret = self.copy()
         toret._data = toret._data * other
@@ -258,7 +258,7 @@ class CovarianceMatrix(Cache):
 
     def __rmul__(self, other):
         return self.__mul__(other)
-        
+
     def __div__(self, other):
         toret = self.copy()
         toret._data = toret._data / other
@@ -266,19 +266,19 @@ class CovarianceMatrix(Cache):
 
     def __rdiv__(self, other):
         return self.__div__(other)
-        
+
     def __pow__(self, other):
         toret = self.copy()
         toret._data = toret._data**other
         return toret
-    
+
     #---------------------------------------------------------------------------
     # utility functions
-    #---------------------------------------------------------------------------    
+    #---------------------------------------------------------------------------
     def __repr__(self):
         name = str(self.__class__).split('.')[-1].split("'")[0]
         return "<{name}: size {N}x{N}>".format(name=name, N=self.N)
-    
+
     def __str__(self):
         return str(self.values)
 
@@ -289,7 +289,7 @@ class CovarianceMatrix(Cache):
         """
         if not np.allclose(data, data.T):
             raise ValueError("Covariance matrix is not symmetric")
-        
+
         if not np.all(np.linalg.eigvals(data) >= 0.):
             raise ValueError("Covariance matrix is not positive-semidefinite")
 
@@ -299,14 +299,14 @@ class CovarianceMatrix(Cache):
         """
         import copy
         return copy.deepcopy(self)
-        
+
     def to_pickle(self, filename):
         """
         Save the covariance matrix as a pickle file
         """
         import pickle
         pickle.dump(self, open(filename, 'w'))
-        
+
     @classmethod
     def from_pickle(cls, filename):
         """
@@ -314,36 +314,36 @@ class CovarianceMatrix(Cache):
         """
         import pickle
         return pickle.load(open(filename, 'r'))
-        
+
     def to_plaintext(self, filename):
         """
         Save the covariance matrix to a plain text file
         """
         with open(filename, 'wb') as ff:
-            
+
             # first line is the data size
             header = "%d\n" %self.N
             ff.write(header.encode())
-            
+
             # then the data
             ff.write(("\n".join(map(str, self._data)) + "\n").encode())
-            
+
             # then the dims and coords
             dims = self._indexer.dims_flat
             coords = np.vstack(self[d] for d in dims).T
             ff.write((" ".join(dims) + "\n").encode())
             np.savetxt(ff, coords)
-            
+
             # then the attrs
             self.__write_attrs__(ff)
-    
+
     @classmethod
     def from_plaintext(cls, filename):
         """
         Load the covariance matrix from a plain text file
         """
         with open(filename, 'r') as ff:
-            
+
             # read the data
             N = int(ff.readline())
             data = np.array([float(ff.readline()) for i in range(N*(N+1)//2)])
@@ -358,14 +358,14 @@ class CovarianceMatrix(Cache):
             coords = np.array([[float(x) for x in ff.readline().split()] for i in range(N)])
             coords = np.squeeze(np.hsplit(coords, 2))
             coords = [y.T.tolist() for y in coords]
-            
+
             # and the meta data
             attrs = cls.__read_attrs__(ff)
-        
+
         data = condensed_to_full(data, N)
         covar = cls.__construct_direct__(data, coords=coords, names=dims, attrs=attrs)
         return covar
-        
+
     #---------------------------------------------------------------------------
     # indexing functions
     #---------------------------------------------------------------------------
@@ -387,11 +387,11 @@ class CovarianceMatrix(Cache):
                         return self.coords[axis][key]
             else:
                 raise KeyError("are you trying to access one of these dimensions %s?" %self.dims)
-            
+
         # if only one key provided, duplicate it
         if not isinstance(key, tuple):
             key = (key, key)
-            
+
         key = list(key)
         if len(key) == 2 and all(isinstance(k, (int, slice, list, np.ndarray)) for k in key):
             for i, k in enumerate(key):
@@ -413,7 +413,7 @@ class CovarianceMatrix(Cache):
             return np.squeeze(np.array(toret).reshape(shapes))
         else:
             raise KeyError("exactly two integer keys must be supplied")
-            
+
     def __slice_attrs__(self, indices):
         """
         Slice the ``attrs``, returning a new `OrderedDict` instance
@@ -427,14 +427,14 @@ class CovarianceMatrix(Cache):
             else:
                 toret[k] = v
         return toret
-        
+
     def __slice_coords__(self, indices):
         """
         Slice the coordinates, returning a new `OrderedDict` instance
         """
         coords = []
         for axis, idx in enumerate(indices):
-            icoords = []    
+            icoords = []
             for dim in self.dims[axis]:
                 c = self.coords[axis][dim]
                 if idx is None:
@@ -443,19 +443,19 @@ class CovarianceMatrix(Cache):
                     icoords.append(np.array(np.take(c, idx, axis=0), ndmin=1))
             coords.append(icoords)
         return coords
-            
+
     def nearest(self, dim, coord):
         """
         Return the nearest match along the specified dimension for the
         input coordinate value
-        
+
         Parameters
         ----------
         dim : str
             string specifying the dimension name
         coord : float
             value to find the nearest match to
-            
+
         Returns
         -------
         idx : int
@@ -464,16 +464,16 @@ class CovarianceMatrix(Cache):
             the nearest element value
         """
         return self._indexer.nearest(dim, coord)
-        
+
     def sel(self, **kwargs):
         """
         Label-based indexing by coordinate name
-        
+
         Notes
         -----
         Returns a new class instance if the resulting sliced data
         is symmetric, otherwise, returns the sliced data array
-        
+
         Parameters
         ----------
         kwargs : dict
@@ -486,16 +486,16 @@ class CovarianceMatrix(Cache):
             return data
         else:
             return self.__finalize__(data, indices)
-    
+
     def isel(self, **kwargs):
         """
         Interger-based indexing by coordinate name
-        
+
         Notes
         -----
         Returns a new class instance if the resulting sliced data
         is symmetric, otherwise, returns the sliced data array
-        
+
         Parameters
         ----------
         kwargs : dict
@@ -508,35 +508,35 @@ class CovarianceMatrix(Cache):
             return data
         else:
             return self.__finalize__(data, indices)
-        
+
     #---------------------------------------------------------------------------
     # cached properties
-    #---------------------------------------------------------------------------        
+    #---------------------------------------------------------------------------
     @cached_property()
     def index(self):
         """
         A list of GridIndex objects for each axis
         """
         return self._indexer.index
-        
+
     @cached_property()
     def dims(self):
         """
         The dimension names
         """
         return self._indexer.dims
-                
+
     @cached_property()
     def coords(self):
         """
         A list of dictionaries holding (dim, coord) pairs for each axis
         """
         return self._indexer.coords
-        
+
     @cached_property()
     def shape(self):
         return (self.N, self.N)
-            
+
     @cached_property('_data')
     def diag(self):
         """
@@ -544,21 +544,21 @@ class CovarianceMatrix(Cache):
         """
         inds = [self._get_contracted_index(i, i) for i in range(self.N)]
         return self._data[inds]
-        
+
     @cached_property('_data', 'inverse_rescaling')
     def inverse(self):
         """
         The inverse of the covariance matrix, returned as a 2D ndarray
         """
         return np.linalg.inv(self.values) * self.inverse_rescaling
-    
+
     @cached_property('_data')
     def values(self):
         """
         Return the total 2D covariance matrix array
         """
         return condensed_to_full(self._data, self.N)
-    
+
     @cached_property('_data')
     def normalized(self):
         """
@@ -566,37 +566,37 @@ class CovarianceMatrix(Cache):
         """
         ii, jj = np.triu_indices(self.N)
         toret = self.copy()
-        
+
         # normalize by the diagonals
         diag = self.diag
         norm = np.array([np.sqrt(diag[i]*diag[j]) for (i, j) in zip(ii, jj)])
         toret._data = toret._data/norm
         return toret
-        
+
     def plot(self, vmin=-1.0, vmax=1.0, include_diagonal=True):
         """
         Plot the correlation matrix (normalized covariance matrix), optionally
         saving if `filename != None`
         """
-        import seaborn as sns        
+        import seaborn as sns
         sns.set(style="white")
 
         # compute the correlation matrix
         corr = self.normalized.values
-        
+
         # generate a mask for the upper triangle, optionally
         # masking the diagonal
         mask = np.zeros_like(corr, dtype=np.bool)
         k = 0 if not include_diagonal else 1
         mask[np.triu_indices_from(mask, k=k)] = True
-        
+
         # generate a custom diverging colormap
         cmap = sns.diverging_palette(220, 10, as_cmap=True)
-        
+
         # draw the heatmap with the mask and no labels
         ax = sns.heatmap(corr, mask=mask, cmap=cmap, vmax=vmax, vmin=vmin, square=True,
                     xticklabels=False, yticklabels=False)
-                                
+
         return ax
 
 
@@ -605,7 +605,20 @@ class CovarianceMatrix(Cache):
 #--------------------------------------------------------------------------
 class PkmuCovarianceMatrix(CovarianceMatrix):
     """
-    Class to hold a covariance matrix for P(k, mu).
+    Class to hold a covariance matrix for P(k, mu)
+
+    Parameters
+    ----------
+    data : array_like (N, ) or (N, N)
+        The data representing the covariance matrix. If 1D, the input
+        is interpreted as the diagonal elements, with all other elements
+        zero
+    k_center : array_like
+        The wavenumbers where the center of the measurement k-bins are defined,
+        for each element of the data matrix along one axis
+    mu_center : array_like,
+        The values where the center of the measurement mu-bins are defined,
+        for each element of the data matrix along one axis
     """
     def __init__(self, data, k_center, mu_center, **kwargs):
         """
@@ -616,78 +629,85 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             is interpreted as the diagonal elements, with all other elements
             zero
         k_center : array_like, (N, )
-            The wavenumbers where the center of the measurement k-bins are defined, 
+            The wavenumbers where the center of the measurement k-bins are defined,
             for each element of the data matrix along one axis
         mu_center : array_like, (N, )
-            The values where the center of the measurement mu-bins are defined, 
+            The values where the center of the measurement mu-bins are defined,
             for each element of the data matrix along one axis
         """
         # check the input
         N = np.shape(data)[0]
+
+        # assume statistics are concatenated
+        Nk, Nmu = len(k_center), len(mu_center)
+        if Nk != N and Nmu != N and Nk*Nmu==N:
+            k_center = np.concatenate([k_cen]*Nmu)
+            mu_center = np.repeat(mu_center, Nk)
+
         if len(k_center) != N:
             raise ValueError("size mismatch between supplied `k` index array and data")
         if len(mu_center) != N:
             raise ValueError("size mismatch between supplied `mu` index array and data")
-        
+
         # setup coords and dims
         names = [['mu1', 'k1'], ['mu2', 'k2']]
         coords = [[mu_center, k_center], [mu_center, k_center]]
-        
+
         # initialize the base class
         super(PkmuCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
 
-    @classmethod 
+    @classmethod
     def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
         """
         Return a PkmuCovarianceMatrix from a SpectraSet of P(k,mu) measurements
-        
+
         Parameters
         ----------
         data : lsskit.specksis.SpectraSet
             the set of P(k, mu) measurements to compute the data covariance from
         mean_pkmu : nbodykit.PkmuResult, optional
-            the mean P(k,mu) defined on a finely-binned grid to use to compute the 
+            the mean P(k,mu) defined on a finely-binned grid to use to compute the
             Gaussian theory covariance from
         kmin : float or array_like, optional
-            minimum wavenumber to include in the covariance matrix; if an array is provided, 
+            minimum wavenumber to include in the covariance matrix; if an array is provided,
             it is intepreted as the minimum value for each mu bin
         kmax : float or array_like, optional
-            maximum wavenumber to include in the covariance matrix; if an array is provided, 
-            it is intepreted as the minimum value for each mu bin 
+            maximum wavenumber to include in the covariance matrix; if an array is provided,
+            it is intepreted as the minimum value for each mu bin
         """
         from lsskit.specksis import covariance
 
         # data covariance
         C, coords, extras = covariance.compute_pkmu_covariance(data, kmin=kmin, kmax=kmax, extras=True, **kwargs)
         k_cen, mu_cen = coords
-                  
+
         # construct
         names = [['mu1', 'k1'], ['mu2', 'k2']]
         coords = [[mu_cen, k_cen], [mu_cen, k_cen]]
         toret = cls.__construct_direct__(C, coords=coords, names=names)
-        
-        # compute the Gaussian theory covariance 
+
+        # compute the Gaussian theory covariance
         if mean_pkmu is not None:
-            
+
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
             x = data[0].values
             mu_bounds = zip(x.muedges[:-1], x.muedges[1:])
             (mean_power, modes), coords = covariance.data_pkmu_gausscov(mean_pkmu, mu_bounds, kmin=kmin, kmax=kmax, components=True)
-            
+
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
             toret.attrs['modes'] = modes/len(data)
-            
-        else:            
+
+        else:
             P = extras['mean_power']
             toret.attrs['mean_power'] = np.diag(flat_and_nonnull(P))
 
-        
+
         return toret
-    
+
     #--------------------------------------------------------------------------
     # main functions
-    #--------------------------------------------------------------------------        
+    #--------------------------------------------------------------------------
     def __iter__(self):
         """
         Iterate across mu blocks
@@ -697,24 +717,24 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         for i in range(len(mu1)):
             for j in range(len(mu2)):
                 yield self.sel(mu1=mu1[i], mu2=mu2[j])
-                
+
     def enumerate(self, upper=True):
         """
         Enumerate across the upper mu triangle of blocks
         """
         mu1 = self.mus(unique=True, name='mu1')
         mu2 = self.mus(unique=True, name='mu2')
-        
+
         for iblock, block in enumerate(self):
             i,j = np.unravel_index(iblock, (len(mu1), len(mu2)))
             if upper and i > j: continue
             yield mu1[i], mu2[j], block
-      
+
     def trim_k(self, kmin=-np.inf, kmax=np.inf):
         """
         Trim the k bounds of the covariance matrix, returning a new, trimmed
         PkmuCovarianceMatrix object
-        
+
         Parameters
         ----------
         kmin : float or array_like
@@ -723,35 +743,35 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         kmax : float or array_like
             the maximum k value; if an array is provided, it is interpreted as the values
             for each mu bin
-        """        
+        """
         # get the unique mu values
         mus = self.mus()
         Nmu = len(mus)
-        
+
         # format the kmin and kmax
         kmin_ = np.empty(Nmu)
         kmax_ = np.empty(Nmu)
         kmin_[:] = kmin
         kmax_[:] = kmax
-        
+
         total = []
         for i, mu in enumerate(mus):
             k_slice = slice(kmin_[i], kmax_[i])
             _, indices = self._indexer.sel(self.values, return_indices=True, mu1=mu, mu2=mu, k1=k_slice, k2=k_slice)
             total.append(indices)
-            
+
         total = np.concatenate(total, axis=1).tolist()
         data = self.values
         for axis, idx in enumerate(total):
             data = np.take(data, idx, axis=axis)
         attrs = self.__slice_attrs__(total)
         coords = self.__slice_coords__(total)
-        
+
         return self.__class__.__construct_direct__(data, coords=coords, names=self.dims, attrs=attrs)
-        
+
     def mus(self, unique=True, name='mu1'):
         """
-        The unique center values of the `mu` bins, optionally 
+        The unique center values of the `mu` bins, optionally
         returning all (non-unique) values
         """
         if not unique:
@@ -760,10 +780,10 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             for index in self.index:
                 if name in index:
                     return index.to_pandas(key=name, unique=True)
-           
+
     def ks(self, unique=True, name='k1'):
         """
-        The unique center values of the `k` bins, optionally 
+        The unique center values of the `k` bins, optionally
         returning all (non-unique) values
         """
         if not unique:
@@ -772,7 +792,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             for index in self.index:
                 if name in index:
                     return index.to_pandas(key=name, unique=True)
-    
+
     def gaussian_covariance(self):
         """
         Return the Gaussian prediction for the variance of the diagonal
@@ -934,10 +954,10 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
         # loop over each mu
         for mu, mu_bar in zip(mus, mu_bars):
-            
+
             # slice at mu1 = mu, mu2 = mu_bar
             this_slice = self.sel(mu1=mu, mu2=mu_bar)
-        
+
             # ks for this mu
             ks = this_slice.ks(name='k1')
             kbars = this_slice.ks(name='k2')
@@ -947,7 +967,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
             # get the closest value in the matrix
             kbar_index, kbar = this_slice.nearest('k2', kbar)
-            
+
             # covariance at the kbar slice
             cov = this_slice.values[:,kbar_index]
 
@@ -1002,6 +1022,48 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 class PoleCovarianceMatrix(CovarianceMatrix):
     """
     Class to hold a covariance matrix for multipole measurements
+
+    Parameters
+    ----------
+    data : array_like (N, ) or (N, N)
+        The data representing the covariance matrix. If 1D, the input
+        is interpreted as the diagonal elements, with all other elements
+        zero
+    k_center : array_like, (N, )
+        The wavenumbers where the center of the measurement k-bins are defined,
+        for each element of the data matrix along one axis
+    ells : array_like, (N, )
+        The multipole numbers for each element of the data matrix along one axis
+
+    Examples
+    --------
+
+    >>> from pyRSD.rsdfit.data import PoleCovarianceMatrix
+    >>> import numpy as np
+
+    >>> # generate 20 k bins from 0.01 to 0.4
+    >>> Nk = 20
+    >>> k_edges = np.linspace(0.01, 0.4, Nk+1)
+    >>> k_cen = 0.5 * (k_edges[1:] + k_edges[:-1])
+
+    >>> # generate 100 fake monopoles
+    >>> P0 = np.random.random(size=(100, Nk)) # Nk = 20, see above
+
+    >>> # 100 fake quadrupoles
+    >>> P2 = np.random.random(size=(100, Nk))
+
+    >>> # 100 fake hexadecapoles
+    >>> P4 = np.random.random(size=(100, Nk))
+
+    >>> # make the full data vector
+    >>> D = np.concatenate([P0, P2, P4], axis=-1) # shape is (100, 60)
+
+    >>> # compute the covariance matrix
+    >>> cov = np.cov(D, rowvar=False) # shape is (20,20)
+
+    >>> # initialize the PoleCovarianceMatrix
+    >>> ells = [0,2,4]
+    >>> C = PoleCovarianceMatrix(cov, k_cen, ells)
     """
     def __init__(self, data, k_center, ells, **kwargs):
         """
@@ -1012,76 +1074,83 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             is interpreted as the diagonal elements, with all other elements
             zero
         k_center : array_like, (N, )
-            The wavenumbers where the center of the measurement k-bins are defined, 
+            The wavenumbers where the center of the measurement k-bins are defined,
             for each element of the data matrix along one axis
         ells : array_like, (N, )
             The multipole numbers for each element of the data matrix along one axis
         """
         # check the input
         N = np.shape(data)[0]
+
+        # assume statistics are concatenated
+        Nk, Nell = len(k_center), len(ells)
+        if Nk != N and Nell != N and Nk*Nell==N:
+            k_center = np.concatenate([k_center]*Nell)
+            ells = np.repeat(ells, Nk)
+
         if len(k_center) != N:
             raise ValueError("size mismatch between supplied `k` index array and data")
         if len(ells) != N:
-            raise ValueError("size mismatch between supplied `mu` index array and data")
-        
+            raise ValueError("size mismatch between supplied `ell` index array and data")
+
         # setup coords and dims
         names = [['ell1', 'k1'], ['ell2', 'k2']]
         coords = [[ells, k_center], [ells, k_center]]
-        
+
         # initialize the base class
         super(PoleCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
 
-    @classmethod 
+    @classmethod
     def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
         """
-        Return a PoleCovarianceMatrix from a SpectraSet of multipole measurements, 
+        Return a PoleCovarianceMatrix from a SpectraSet of multipole measurements,
         and a SpectraSet of P(k,mu), which are used to compute the mean power
-        
+
         Parameters
         ----------
         data : lsskit.specksis.SpectraSet
             the set of multipole measurements to estimate the data covariance from
         mean_pkmu : nbodykit.PkmuResult, optional
-            the mean P(k,mu) defined on a finely-binned grid to use to compute the 
+            the mean P(k,mu) defined on a finely-binned grid to use to compute the
             Gaussian theory covariance from
         kmin : float or array_like, optional
-            minimum wavenumber to include in the covariance matrix; if an array is provided, 
+            minimum wavenumber to include in the covariance matrix; if an array is provided,
             it is intepreted as the minimum value for each mu bin
         kmax : float or array_like, optional
-            maximum wavenumber to include in the covariance matrix; if an array is provided, 
-            it is intepreted as the minimum value for each mu bin 
+            maximum wavenumber to include in the covariance matrix; if an array is provided,
+            it is intepreted as the minimum value for each mu bin
         """
         from lsskit.specksis import covariance
-        
+
         # data covariance
         ells = kwargs.pop('ells', data['ell'].values)
         C, coords, extras = covariance.compute_pole_covariance(data, ells, kmin=kmin, kmax=kmax, extras=True, **kwargs)
         k_cen, ell_cen = coords
-        
+
         # construct
         names = [['ell1', 'k1'], ['ell2', 'k2']]
         coords = [[ell_cen, k_cen], [ell_cen, k_cen]]
         toret = cls.__construct_direct__(C, coords=coords, names=names)
-        
+
         # add the Gaussian theory covariance
         if mean_pkmu is not None:
-                    
+
             # the theory covariance, using the underlying finely-binned P(k,mu) grid
             (mean_power, modes), coords = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
 
             # store the mean power and modes
             toret.attrs['mean_power'] = mean_power
             toret.attrs['modes'] = modes/len(data)
-            
-        else:            
+
+        else:
             P = extras['mean_power']
             toret.attrs['mean_power'] = np.diag(flat_and_nonnull(P))
-                   
+
         return toret
-    
+
     #--------------------------------------------------------------------------
     # main functions
-    #--------------------------------------------------------------------------        
+    #--------------------------------------------------------------------------
     def __iter__(self):
         """
         Iterate across ``ell`` blocks
@@ -1091,24 +1160,24 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         for i in range(len(ell1)):
             for j in range(len(ell2)):
                 yield self.sel(ell1=ell1[i], ell2=ell2[j])
-                
+
     def enumerate(self, upper=True):
         """
         Enumerate across the upper triangle of blocks
         """
         ell1 = self.ells(unique=True, name='ell1')
         ell2 = self.ells(unique=True, name='ell2')
-        
+
         for iblock, block in enumerate(self):
             i,j = np.unravel_index(iblock, (len(ell1), len(ell2)))
             if upper and i > j: continue
             yield ell1[i], ell2[j], block
-            
+
     def trim_k(self, kmin=-np.inf, kmax=np.inf):
         """
         Trim the k bounds of the covariance matrix, returning a new, trimmed
         PkmuCovarianceMatrix object
-        
+
         Parameters
         ----------
         kmin : float or array_like
@@ -1117,35 +1186,35 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         kmax : float or array_like
             the maximum k value; if an array is provided, it is interpreted as the values
             for each mu bin
-        """        
+        """
         # get the unique mu values
         ells = self.ells()
         Nell = len(ells)
-        
+
         # format the kmin and kmax
         kmin_ = np.empty(Nell)
         kmax_ = np.empty(Nell)
         kmin_[:] = kmin
         kmax_[:] = kmax
-        
+
         total = []
         for i, ell in enumerate(ells):
             k_slice = slice(kmin_[i], kmax_[i])
             _, indices = self._indexer.sel(self.values, return_indices=True, ell1=ell, ell2=ell, k1=k_slice, k2=k_slice)
             total.append(indices)
-            
+
         total = np.concatenate(total, axis=1).tolist()
         data = self.values
         for axis, idx in enumerate(total):
             data = np.take(data, idx, axis=axis)
         attrs = self.__slice_attrs__(total)
         coords = self.__slice_coords__(total)
-        
+
         return self.__class__.__construct_direct__(data, coords=coords, names=self.dims, attrs=attrs)
-        
+
     def ells(self, unique=True, name='ell1'):
         """
-        The unique center values of the `ell` bins, optionally 
+        The unique center values of the `ell` bins, optionally
         returning all (non-unique) values
         """
         if not unique:
@@ -1154,10 +1223,10 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             for index in self.index:
                 if name in index:
                     return index.to_pandas(key=name, unique=True)
-           
+
     def ks(self, unique=True, name='k1'):
         """
-        The unique center values of the `k` bins, optionally 
+        The unique center values of the `k` bins, optionally
         returning all (non-unique) values
         """
         if not unique:
@@ -1166,7 +1235,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             for index in self.index:
                 if name in index:
                     return index.to_pandas(key=name, unique=True)
-    
+
     def gaussian_covariance(self):
         """
         Return the Gaussian prediction for the variance of the diagonal
@@ -1181,7 +1250,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             raise AttributeError("`modes` key must exist in `attrs` to compute gaussian covariance")
 
         return 2./self.attrs['modes'] * self.attrs['mean_power']**2
-        
+
     #---------------------------------------------------------------------------
     # plotting
     #---------------------------------------------------------------------------
@@ -1211,7 +1280,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
                     Subtract out the Gaussian prediction
         """
         from matplotlib import pyplot as plt
-        
+
         # get the current axes
         if ax is None: ax = plt.gca()
 
@@ -1240,7 +1309,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             # get sigma for this mu sub matrix
             this_slice = self.sel(ell1=ell, ell2=ell_bar)
             sigma = this_slice.diag**0.5
-            
+
             norm = 1.
             if options['subtract_gaussian']:
                 norm = sigma.copy()
@@ -1334,10 +1403,10 @@ class PoleCovarianceMatrix(CovarianceMatrix):
 
         # loop over each mu
         for (ell, ell_bar) in ells:
-            
-            # slice 
+
+            # slice
             this_slice = self.sel(ell1=ell, ell2=ell_bar)
-        
+
             # ks for this ell
             ks = this_slice.ks(name='k1')
             kbars = this_slice.ks(name='k2')
@@ -1347,7 +1416,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
 
             # get the closest value in the matrix
             kbar_index, kbar = this_slice.nearest('k2', kbar)
-            
+
             # covariance at the kbar slice
             cov = this_slice.values[:,kbar_index]
 
@@ -1395,7 +1464,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         # add the legend and axis labels
         ax.legend(loc=0, ncol=2)
         ax.set_xlabel(r'$k$ ($h$/Mpc)', fontsize=16)
-        if options['norm_by_power'] and 'mean_power' in this_slice.attrs: 
+        if options['norm_by_power'] and 'mean_power' in this_slice.attrs:
             ax.set_ylabel(r"$\mathrm{Cov}(k, \bar{k}) / (P(k, \ell) P(\bar{k}, \bar{\ell}))$", fontsize=16)
         else:
             ax.set_ylabel(r"$\mathrm{Cov}(k, \bar{k})$  $(\mathrm{Mpc}/h)^3$", fontsize=16)

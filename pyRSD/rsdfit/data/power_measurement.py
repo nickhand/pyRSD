@@ -698,18 +698,11 @@ class PowerData(PowerDataSchema):
             a `PowerMeasurement` for each column in `data`, with
             no k limits applied
         """
-        # verify that the stats list has same length as data columns
-        stats = self.statistics
-        if len(stats) != np.shape(self.data)[-1]:
-            args = (len(stats), np.shape(self.data)[-1])
-            raise ValueError(("mismatch between number of data columns read and number of statistics:"
-                            + " %d statistics and %d data columns read" %args))
-
         # create the measuements object
         self.measurements = PowerMeasurements.from_plaintext(self.statistics, self.data_file)
 
         # log the number of measurements read
-        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=stats), on=0)
+        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=self.sstats), on=0)
 
     def set_covariance(self):
         """

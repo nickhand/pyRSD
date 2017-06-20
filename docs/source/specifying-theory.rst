@@ -1,3 +1,5 @@
+.. _specifying-theory:
+
 Specifying the Theory
 =====================
 

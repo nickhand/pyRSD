@@ -26,6 +26,7 @@ for mod_name in MOCK_MODULES:
 #sys.path.insert(0, os.path.abspath('.'))
 
 import pyRSD
+print(pyRSD)
 
 # -- General configuration ------------------------------------------------
 
@@ -45,6 +46,7 @@ extensions = [
     'IPython.sphinxext.ipython_directive',
     'IPython.sphinxext.ipython_console_highlighting',
     'sphinx.ext.todo',
+    'sphinxcontrib.programoutput'
 ]
 
 autosummary_generate = True

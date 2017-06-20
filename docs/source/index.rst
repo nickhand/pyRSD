@@ -59,19 +59,21 @@ given an input cosmology specified by the user.
 The **RSDFit** module deals with running parameter estimation using the
 power spectrum models available in this package and data input by the user.
 
+* :doc:`rsdfit-getting-started`
 * :doc:`specifying-data`
 * :doc:`specifying-theory`
-* :doc:`covariance-matrix`
 * :doc:`parameter-fits`
 * :doc:`analyzing-results`
+* :doc:`rsdfit-advanced`
 
 .. toctree::
    :maxdepth: 1
    :hidden:
    :caption: RSDFit
 
+   rsdfit-getting-started.rst
    specifying-data.rst
    specifying-theory.rst
-   covariance-matrix.rst
    parameter-fits.rst
    analyzing-results.rst
+   rsdfit-advanced.rst

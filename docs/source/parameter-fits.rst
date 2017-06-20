@@ -1,3 +1,5 @@
+.. _parameter-fits:
+
 Finding the Best-fit Parameters
 ===============================
 

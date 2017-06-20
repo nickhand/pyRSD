@@ -37,6 +37,7 @@ where :math:`f_s` is the satellite fraction and :math:`P^{cc}`,
 :math:`P^{cs}`, and :math:`P^{ss}` are the centrals auto power, central-satellite
 cross power, and satellite auto power, respectively.
 
+.. _model-initialization:
 
 Model Initialization
 --------------------

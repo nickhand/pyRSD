@@ -1,3 +1,6 @@
+.. _discrete-binning:
+
+
 Discrete Binning Effects
 ========================
 

@@ -1,3 +1,5 @@
+.. _window-power:
+
 Window-convolved Power Spectra
 ==============================
 

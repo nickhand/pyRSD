@@ -65,11 +65,12 @@ def positive_int(string):
         raise ap.ArgumentTypeError("argument requires a positive integer")
 
 
-def setup_run_subparser(parent):
+def setup_mcmc_subparser(parent):
     """
-    Setup the subparser for the ``run`` subcommand
+    Setup the subparser for the ``mcmc`` subcommand
     """
-    subparser = parent.add_parser('run', help="run the parameter estimation from scratch")
+    h = "find the best-fitting parameters using emcee to run MCMC chains"
+    subparser = parent.add_parser('mcmc', help=h)
 
     # the path to the model to read
     h = 'file name holding the model path'
@@ -89,17 +90,56 @@ def setup_run_subparser(parent):
     h = 'silence the standard output to the console'
     subparser.add_argument('--silent', help=h, action='store_true')
 
-    # number of walkers (OPTIONAL)
-    h = 'number of walkers to use if running a MCMC chain'
-    subparser.add_argument('-w', help=h, type=positive_int, dest='walkers')
+    # number of walkers
+    h = 'number of emcee walkers to run the MCMC chain (required)'
+    subparser.add_argument('-w', help=h, type=positive_int, dest='walkers', required=True)
 
-    # number of iterations (OPTIONAL)
-    h = 'number of steps to run in the parameter estimation'
-    subparser.add_argument('-i', help=h, type=positive_int, dest='iterations')
+    # number of iterations
+    h = 'number of steps to run in the MCMC chain (required)'
+    subparser.add_argument('-i', help=h, type=positive_int, dest='iterations', required=True)
 
     # number of chains to run concurrently
     h = 'number of MCMC chains to run concurrently'
     subparser.add_argument('-n', '--nchains', help=h, type=positive_int, default=1)
+
+    # the output folder
+    h = 'the folder where the results will be written (required)'
+    kwargs = {'help':h, 'type':str, 'required':True, 'dest':'folder'}
+    subparser.add_argument('-o', '--output', **kwargs)
+
+    # debug
+    h = 'whether to print more info about the mpi4py.Pool object'
+    subparser.add_argument('--debug', help=h, action='store_true', default=False)
+
+
+def setup_nlopt_subparser(parent):
+    """
+    Setup the subparser for the ``nlopt`` subcommand
+    """
+    h = "use nonlinear optimization to find the best-fitting using the LBFGS algorithm"
+    subparser = parent.add_parser('nlopt', help=h)
+
+    # the path to the model to read
+    h = 'file name holding the model path'
+    kwargs = {'dest':'model', 'type':existing_file, 'help':h}
+    subparser.add_argument('-m', '--model', **kwargs)
+
+    # the general driver parameters
+    h = 'file name holding the driver, theory, and data parameters'
+    kwargs = {'dest':'params', 'type':existing_file, 'help':h}
+    subparser.add_argument('-p', '--params', **kwargs)
+
+    h = 'file name holding the names of any extra theory parameters'
+    kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
+    subparser.add_argument('-xp', '--extra_params', **kwargs)
+
+    # silence the output (OPTIONAL)
+    h = 'silence the standard output to the console'
+    subparser.add_argument('--silent', help=h, action='store_true')
+
+    # number of iterations
+    h = 'the maximum number of iterations to run (required)'
+    subparser.add_argument('-i', help=h, type=positive_int, dest='iterations', required=True)
 
     # the output folder
     h = 'the folder where the results will be written (required)'
@@ -261,10 +301,11 @@ def rsdfit_parser():
     of a specific subcommand, i.e., run code:`rsdfit run -h`.
     """
     # set up the main parser
-    usage = """%(prog)s [-h] [--version] {run,restart,analyze} ... """
+    usage = """%(prog)s [-h] [--version] {mcmc,nlopt,restart,analyze} ... """
     usage += tw.dedent("""\n
         From more help on each of the subcommands, type:
-        %(prog)s run -h
+        %(prog)s mcmc -h
+        %(prog)s nlopt -h
         %(prog)s restart -h
         %(prog)s analyze -h\n\n""")
     desc = "fitting redshift space power spectrum observations with the `pyRSD` model"
@@ -279,8 +320,10 @@ def rsdfit_parser():
     # add the subparsers
     subparser = parser.add_subparsers(dest='subparser_name')
 
-    # run subcommand
-    setup_run_subparser(subparser)
+    # mcmc subcommand
+    setup_mcmc_subparser(subparser)
+    # nlopt subcommand
+    setup_nlopt_subparser(subparser)
     # restart subcommand
     setup_restart_subparser(subparser)
     # analyze subcommand
@@ -317,7 +360,7 @@ def verify_arguments(ns):
         logger.warning("Restarting from %s and using associated params.dat" %ns.restart_files[0])
 
     ## run from new
-    elif ns.subparser_name == "run":
+    elif ns.subparser_name in ['mcmc', 'nlopt']:
 
         # if the folder already exists, and no parameter files were specified
         # try to use an existing params.dat

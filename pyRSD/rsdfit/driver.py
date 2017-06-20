@@ -37,9 +37,12 @@ class FittingDriverSchema(Cache):
         Print out the help information for the necessary initialization parameters
         """
         print("Initialization Parameters for FittingDriver" + '\n' + '-'*50)
-        for name in FittingDriverSchema._param_names:
+        for name in sorted(FittingDriverSchema._param_names):
             par = getattr(FittingDriverSchema, name)
-            print(name+" :\n"+par.__doc__)
+            doc = name+" :\n"+par.__doc__
+            if getattr(par, '_default', False):
+                doc += "\n\n\tDefault: %s\n" %str(par._default)
+            print(doc)
 
     @parameter(default='galaxy')
     def tracer_type(self, val):
@@ -114,15 +117,6 @@ class FittingDriverSchema(Cache):
         Whether to use priors when solving with the LBFGS algorithm; default
         is ``True``
         """
-        return val
-
-    @parameter()
-    def solver_type(self, val):
-        """
-        Configuration options to pass to the LBFGS solver
-        """
-        if val is None or val not in ['mcmc', 'nlopt']:
-            raise ValueError("'solver_type' parameter must be 'mcmc' or 'nlopt'")
         return val
 
     @parameter(default=None)
@@ -281,18 +275,19 @@ class FittingDriver(FittingDriverSchema):
 
         return np.asarray(toret)
 
-    def set_restart(self, restart_file, iterations=None):
+    def set_restart(self, solver_type, restart_file, iterations):
         """
         Initialize the `restart` mode by loading the results from a previous
         run
 
         Parameters
         ----------
+        solver_type : {'mcmc', 'nlopt'}
+            either run a MCMC fit with emcee or a nonlinear optimization using LBFGS
         restart_file : str
             the name of the file holding the results to restart from
-        iterations : int, optional
-            if `solver_type` is `mcmc`, this gives the the number of additional
-            iterations to run
+        iterations : int
+            the  number of additional iterations to run
         """
         # tell driver we are starting from previous run
         self.init_from = 'previous_run'
@@ -302,13 +297,11 @@ class FittingDriver(FittingDriverSchema):
         total_iterations = iterations + self.results.iterations
 
         # set the number of iterations to the total sum we want to do
-        if self.solver_type == 'mcmc':
-            if iterations is None:
-                raise ValueError("please specify the number of iterations to run when restarting")
+        if solver_type == 'mcmc':
             self.params.add('iterations', value=total_iterations)
             self.params.add('walkers', value=self.results.walkers)
 
-        elif self.solver_type == 'nlopt':
+        elif solver_type == 'nlopt':
             options = self.lbfgs_options
             options['max_iter'] = total_iterations
             self.params.add('lbfgs_options', value=options)
@@ -330,10 +323,21 @@ class FittingDriver(FittingDriverSchema):
         self.data.to_file(filename, mode='a')
         self.theory.to_file(filename, mode='a')
 
-    def run(self, pool=None, chains_comm=None):
+    def run(self, solver_type, pool=None, chains_comm=None):
         """
         Run the whole fitting analysis, from start to finish
+
+        Parameters
+        ----------
+        solver_type : {'mcmc', 'nlopt'}
+            either run a MCMC fit with emcee or a nonlinear optimization using LBFGS
+        pool : MPIPool, optional
+            a MPI pool object to distribute tasks too
+        chains_comm : MPI communicator, optional
+            a communicator for communicating between multiple MCMC chains
         """
+        if solver_type not in ['mcmc', 'nlopt']:
+            raise ValueError("'solver_type' parameter must be 'mcmc' or 'nlopt'")
         init_values = None
 
         # init from maximum probability solution
@@ -382,7 +386,7 @@ class FittingDriver(FittingDriverSchema):
             kwargs['init_values'] = init_values
 
         # emcee
-        if self.solver_type == 'mcmc':
+        if solver_type == 'mcmc':
 
             # do not use any analytic approximations for bounds and priors
             # since MCMC can handle discontinuity in log-prob
@@ -393,7 +397,7 @@ class FittingDriver(FittingDriverSchema):
             kwargs['chains_comm'] = chains_comm
 
         # lbfgs
-        elif self.solver_type == 'nlopt':
+        elif solver_type == 'nlopt':
             solver = lbfgs_solver.run
 
             # use analytic approximation for bounds and priors
@@ -401,15 +405,11 @@ class FittingDriver(FittingDriverSchema):
             for name in self.theory.free_names:
                 self.theory.fit_params[name].analytic = True
 
-        # incorrect
-        else:
-            raise NotImplementedError("solver with name '{}' not currently available".format(self.solver_type))
-
         # run the solver and store the results
         if self.init_from == 'previous_run':
-            logger.info("Restarting '{}' solver from a previous result".format(self.solver_type))
+            logger.info("Restarting '{}' solver from a previous result".format(solver_type))
         else:
-            logger.info("Calling the '{}' solve function".format(self.solver_type))
+            logger.info("Calling the '{}' solve function".format(solver_type))
         self.results, exception = solver(self.params, self.theory, **kwargs)
 
         # store the model version in the results
@@ -466,7 +466,12 @@ class FittingDriver(FittingDriverSchema):
         """
         # initialize the model
         logger.info("Initializing theoretical model", on=0)
-        self.theory.update_model()
+
+        # update the model parameters
+        pars = self.theory.fit_params
+        self.theory.model.update(**pars.to_dict())
+
+        # initialize
         self.theory.model.initialize()
         logger.info("...theoretical model initialized", on=0)
 

@@ -197,11 +197,31 @@ class Cosmology(dict):
         self.engine = getattr(cosmology, cls)(H0=H0, Om0=Om0, **kws)
 
         # add valid params to the underlying dict
-        kwargs = {}
+        kwargs = {'flat':flat, 'w0':w0}
         for k in kws:
             if hasattr(self.engine, k):
                 kwargs[k] = getattr(self.engine, k)
         dict.__init__(self, H0=H0, Om0=Om0, sigma8=sigma8, n_s=n_s, **kwargs)
+
+    def copy(self):
+        return Cosmology(**dict.copy(self))
+
+    def __eq__(self, other):
+
+        if self is other:
+            return True
+        if not isinstance(other, self.__class__):
+            return False
+        if self.flat is not other.flat:
+            return False
+        if not np.allclose(self.m_nu, other.m_nu, rtol=1e-4):
+            return False
+        keys = ['H0', 'Om0', 'Ob0', 'Ode0', 'w0', 'Tcmb0','Neff','n_s','sigma8']
+        for key in keys:
+            if not np.isclose(getattr(self, key), getattr(other, key), rtol=1e-4):
+                return False
+
+        return True
 
     def __getstate__(self):
         return dict(self)
@@ -222,7 +242,7 @@ class Cosmology(dict):
         return list(this_attrs|engine_attrs)
 
     @classmethod
-    def from_astropy(self, cosmo, n_s=0.9667, sigma8=0.8159):
+    def from_astropy(self, cosmo, n_s=0.9667, sigma8=0.8159, **kwargs):
         """
         Return a :class:`Cosmology` instance from an astropy cosmology
 
@@ -233,7 +253,6 @@ class Cosmology(dict):
         **kwargs :
             extra key/value parameters to store in the dictionary
         """
-        kwargs = {}
         valid = ['H0', 'Om0', 'Ob0', 'Ode0', 'w0', 'Tcmb0', 'Neff', 'm_nu']
         for name in valid:
             if hasattr(cosmo, name):

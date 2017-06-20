@@ -92,7 +92,6 @@ model.Pdv_model_type = 'jennings'
 model.correct_mu2 = False
 model.correct_mu4 = False
 model.params = 'runPB.ini'
-model.enhance_wiggles = False
 model.fog_model = 'modified_lorentzian'
 model.include_2loop = False
 model.interpolate = True

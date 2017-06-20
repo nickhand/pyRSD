@@ -702,7 +702,7 @@ class PowerData(PowerDataSchema):
         self.measurements = PowerMeasurements.from_plaintext(self.statistics, self.data_file)
 
         # log the number of measurements read
-        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=self.sstats), on=0)
+        logger.info("read {N} measurements: {stats}".format(N=self.size, stats=self.statistics), on=0)
 
     def set_covariance(self):
         """

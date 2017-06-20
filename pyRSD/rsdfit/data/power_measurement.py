@@ -536,9 +536,6 @@ class PowerData(PowerDataSchema):
         """
         Do the initialization steps after reading the params
         """
-        # read the data file and (optional) grid for binning effects
-        self.read_data()
-
         # store ells as floats
         if self.ells is not None:
             self.ells = np.asarray(self.ells, dtype=float)

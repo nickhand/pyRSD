@@ -119,7 +119,7 @@ class PkmuGradient(object):
         self.numerical_indices = []
         for i, name in enumerate(self.pars.free_names):
             try:
-                d = compute(name, self.model, self.pars, 0.05, 0.5)[:]
+                d = compute(self.registry, name, self.model, self.pars, 0.05, 0.5)[:]
             except Exception as e:
                 logging.info("analytic derivative for parameter '%s' not available; %s" %(name, str(e)))
                 self.numerical_names.append(name)

@@ -319,5 +319,6 @@ intersphinx_mapping = {
     'pandas': ('http://pandas.pydata.org/pandas-docs/stable/', None),
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'xarray': ('http://xarray.pydata.org/en/stable/', None),
-    'astropy': ('http://docs.astropy.org/en/stable/', None)
+    'astropy': ('http://docs.astropy.org/en/stable/', None),
+    'lmfit': ('http://cars9.uchicago.edu/software/python/lmfit/', None)
 }

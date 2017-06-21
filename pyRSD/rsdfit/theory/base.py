@@ -587,7 +587,7 @@ class BasePowerTheory(object):
             return functools.partial(self.model.power, k, mu)
 
         # computing P(k, ell) with no binning effects (i.e., integrating over P(k,mu))
-        elif mode == 'poles':
+        elif data.mode == 'poles':
             k = data.combined_k
             ell = data.combined_ell
             return functools.partial(self.model.poles, k, ell)

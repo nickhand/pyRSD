@@ -1,44 +1,42 @@
 language: python
 python:
-- 2.7
-- 3.5
+  - 2.7
+  - 3.5
 env:
-- NUMPY_VERSION=1.11
+  - NUMPY_VERSION=1.11
 cache:
   directories:
-  - $HOME/.cache/pip
-  - $HOME/.conda
-  - $HOME/.cache/pyRSD
+    - $HOME/.cache/pip
+    - $HOME/.conda
+    - $HOME/.cache/pyRSD
 before_install:
-- wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-- chmod +x miniconda.sh
-- ./miniconda.sh -b -p $HOME/miniconda
-- export PATH=$HOME/miniconda/bin:$PATH
-- conda update --yes conda
+  - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
+  - chmod +x miniconda.sh
+  - ./miniconda.sh -b -p $HOME/miniconda
+  - export PATH=$HOME/miniconda/bin:$PATH
+  - conda update --yes conda
 install:
-- conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
-- source activate test
-- conda config --add channels astropy
-- conda config --add channels bccp
-- conda config --prepend channels nickhand
-- conda config --append channels conda-forge
-- conda install --yes swig gcc gsl fftw libgcc
-- conda install --yes numpy=$NUMPY_VERSION
-- echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
-- conda install --yes --file requirements.txt
-- pip install -r requirements-tests.txt
-- pip install .[tests]
+  - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
+  - source activate test
+  - conda config --add channels astropy
+  - conda config --add channels bccp
+  - conda config --prepend channels nickhand
+  - conda config --append channels conda-forge
+  - conda install --yes swig gcc gsl fftw libgcc
+  - conda install --yes numpy=$NUMPY_VERSION
+  - echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
+  - conda install --yes --file requirements.txt
+  - pip install -r requirements-tests.txt
+  - pip install .[tests]
 script:
-- python runtests.py --mpl
+  - python runtests.py --mpl
 deploy:
-  provider: pypi
-  skip_upload_docs: true
-  user: nickhand
-  url: https://upload.pypi.org/legacy/
-  password:
-    secure: PAi3JFQW+XsQIou0PUh37kJqYwub35WU+JmJlKUZHSeRFurfYcJz7KfoMb1DJ3tEBrzk/yipFLO3PNE6YaCOjY6658Uwf2yNQns3tzKthSWLEXrFRIHb79c8pf4fv/+5xG0RN23OaFrZYNEddjbGbvoOjPUbJ2NxTdyR16PKWTK5yVn3JvHKoZJG23FXO+sHtZNtLEa1nr5CA7gAOsIb6Z4CHKJs2h4q1y3N+PvgnjC7aTPcl1LsayADAeLFqqA0wtk+uqt6Sj8zmYeP1JHaIN1mcTqbhz1WoVUN0M5AIg/xI/ofJiPNXEoBfzHpaygXZqGXHomH4LI+1WJMxz24Ess8rdIuWHC+vHTebzoAD9HHwrXTAUPDpX9SKCwBxDnJTmAUHuw6jN8uEZr0i34XPZrdc8v8PZgzifRKnoQBYlj/f5BJHO/PinT8b8HGL2+gvwqOJ8/+mQsR6WrDOqYu/EjzXzOc0GeePVHIEGdp0yhKdwQkoEu/ARZ25SQlmL0SvXDi8G/aESVsE8R0NEP58EyfONTT6vCVjwwjIgNKSVXxDUQbZO6lptdWBamZtKSBb+Zz294QVKLGT5H6EN61WW48TuVz7+0UWaMofM9DJ0M9YqfltnqgfmakLWms+Ie6cRSTyQxYwrXT9bzJMUq9GgR40QGW1Wle6K34PAUD5nI=
-  on:
-    tags: true
+  - provider: pypi
     distributions: sdist bdist_wheel
-    repo: nickhand/pyRSD
-    condition : $TRAVIS_PYTHON_VERSION = "2.7"
+    server: https://pypi.python.org/pypi
+    user: "nickhand"
+    password:
+        secure: "SFknKu4DDcBYI6iQNhu4ihtqtQE15uKZ5KSU9qIdNRxLEZKp6urCWt67R3WM0wm6vj81fsSiCh9qvE0i8X3dZ1d2YOLm1CATeT+3zLIwY4GTmKRYv1l26uSmXiMye0LQOcRQu4o4qaitwHhMz3BtJzZ61JpelnSBnpT9MZfPKYdLS1Fgo5EL3WrxwMsztpnlI4WWCiZN+JJk0Ajo37PS7Oq1SjuKz0QNDMnraGo5XggBd3ZhlOolf/vW3q7jQlw6Pj9Xs9Aw+C66syMos/f3i7Hj1oO+F2Gv8qlvjDGvdBOjBJu/z39jJRXqKNfZr4uDT6cMP6qaWahnDQJeHFdH2Bc8XYvSVCOIqGT0qbVK7JoLefHIOJImRNyFzb0cV3dYWsYTwJZHz/RtQvMVZWEnB1Ev3Dvw3gxj7N8GMPigBa0dg7Pkey2cEaUFfvQcVk2gzRKWb3lAsfivzOacDW1sS9tAhyFIQdL8MFr/EvgN+IepktBnMVXGXacrVBgZHHTNcxCpnqgJtnMZzSXMfRkzc0oB1jE5opN06nKPvJJK0N+I5CLhvdJ3zn8Bn0Oxbg7BofVFnzPLAcYTsdVYdGSionsjaHjxEYf5sNGaAP0FoBulrwaCsXmMKIWLIpVsGMS2D7v2gZor1/zCBBvjwOf9O4yfRTSeDUo1wWFEWj3CqI4="
+    on:
+      tags   : true
+      condition : $TRAVIS_PYTHON_VERSION = "2.7"

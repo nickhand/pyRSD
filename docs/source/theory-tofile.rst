@@ -37,10 +37,3 @@ This will write out to the file each :class:`~pyRSD.rsdfit.theory.parameters.Par
 in the parameter set as a dictionary. Now, the ``params.dat`` looks like
 
 .. literalinclude:: ../params.dat
-
-
-.. ipython:: python
-    :suppress:
-
-    import os
-    os.remove('params.dat')

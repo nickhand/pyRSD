@@ -627,7 +627,7 @@ class PowerData(PowerDataSchema):
             raise ValueError(msg)
 
         # verify the grid
-        if self.transfer is not None:
+        if self.transfer is not None and hasattr(self, 'binning_transfer'):
             if self.binning_transfer.size != self.covariance_matrix.N:
                 msg = "size mismatch between grid transfer function and covariance: "
                 args = (t.size, self.covariance_matrix.N)
@@ -673,19 +673,26 @@ class PowerData(PowerDataSchema):
 
             # initialize the transfer function
             self.binning_transfer = cls(self.grid, x, **kws)
-            if self.window is None:
-                self.transfer = self.binning_transfer
+
+        if self.window is None:
+            self.transfer = self.binning_transfer
+        else:
+            kws = {}
+
+            # determine max ell prime and which poles we need
+            if max(self.ells) < self.max_ellprime:
+                kws['ells_mask'] = [True if ell in self.ells else False for ell in range(0, self.max_ellprime+1, 2)]
+                x = list(range(0, self.max_ellprime+1, 2))
+            kws['max_ellprime'] = self.max_ellprime
+
+
+            if self.grid_file is not None:
+                k_out = self.binning_transfer.coords[0]
             else:
-                kws = {}
+                k_out = np.vstack([m.k for m in self.measurements]).T
 
-                # determine max ell prime and which poles we need
-                if max(x) < self.max_ellprime:
-                    kws['ells_mask'] = [True if ell in x else False for ell in range(0, self.max_ellprime+1, 2)]
-                    x = list(range(0, self.max_ellprime+1, 2))
-                kws['max_ellprime'] = self.max_ellprime
-
-                # evaluate at k_out of the binning grid
-                self.transfer = WindowTransfer(self.window, x, k_out=self.binning_transfer.coords[0], **kws)
+            # evaluate at k_out of the binning grid
+            self.transfer = WindowTransfer(self.window, self.ells, k_out=k_out, **kws)
 
     def set_all_measurements(self):
         """

@@ -64,7 +64,8 @@ the :class:`pyRSD.rsdfit.results.LBFGSResults` class.
 .. ipython:: python
     :suppress:
 
-    cd data
+    import os
+    os.chdir('data')
 
 For example, to explore the fitting results from a ``mcmc`` fit
 
@@ -147,3 +148,9 @@ the included result file ``nlopt_result.npz`` produces the following figure:
 This plot shows the best-fit theory and data for 5 wide :math:`\mu` bins, normalized
 by the linear Kaiser :math:`P(k,\mu)`, using the no-wiggle Eisenstein and Hu
 linear power spectrum.
+
+.. ipython:: python
+    :suppress:
+
+    import os
+    os.chdir('..'')

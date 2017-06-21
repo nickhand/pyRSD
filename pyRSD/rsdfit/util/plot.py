@@ -195,11 +195,11 @@ def plot_fit_comparison(driver, ax=None, colors=None, use_labels=True, **kws):
 
     # plot the theory
     c = colors[::2][:driver.data.size]
-    plot_normalized_theory(ax, driver, offset=offset, color=c, **kws)
+    plot_normalized_theory(ax, driver, offset=offset, color=c, zorder=1, **kws)
 
     # plot the data
     c = colors[1::2][:driver.data.size]
-    plot_normalized_data(ax, driver, offset=offset, use_labels=use_labels, zorder=2, color=c, **kws)
+    plot_normalized_data(ax, driver, offset=offset, use_labels=use_labels, zorder=10, color=c, **kws)
 
     # format the axes
     add_axis_labels(ax, driver)

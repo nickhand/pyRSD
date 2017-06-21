@@ -20,7 +20,7 @@ the :func:`PowerData.help` function,
 
 These parameters should be specified in the parameter file that is passed
 to the ``rsdfit`` executable and the names of the parameters should be
-prefixed with the "data." prefix. In our example parameter file
+prefixed with the ``data.`` prefix. In our example parameter file
 discussed previously, we specify multipoles data to read from file as
 
 .. literalinclude:: ../../pyRSD/data/examples/params.dat

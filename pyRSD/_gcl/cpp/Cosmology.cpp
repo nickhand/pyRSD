@@ -152,7 +152,7 @@ void Cosmology::LoadTransferFunction(const parray& kin, const parray& Tin) {
 
 double Cosmology::EvaluateTransfer(double k) const
 {
-    if (transfer_fit_ == TransferFit::CLASS) {
+    if (transfer_fit_ == TransferFit::CLASS or transfer_fit_ == TransferFit::FromArrays) {
         return GetSplineTransfer(k);
     } else if (transfer_fit_ == TransferFit::EH) {
         return GetEisensteinHuTransfer(k);
@@ -160,8 +160,8 @@ double Cosmology::EvaluateTransfer(double k) const
         return GetNoWiggleTransfer(k);
     } else if (transfer_fit_ == TransferFit::BBKS) {
         return GetBBKSTransfer(k);
-    } else
-        throw_error("unknown TransferFit type", __FILE__, __LINE__);
+    } else 
+        throw_error("unknown TransferFit type ", __FILE__, __LINE__);
     return 0.;
 }
 

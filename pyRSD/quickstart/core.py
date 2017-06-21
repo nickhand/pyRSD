@@ -3,6 +3,8 @@ from six.moves.urllib import request
 import tarfile
 import argparse
 
+EXAMPLES = ['galaxy/survey-poles', 'galaxy/periodic-poles', 'galaxy/periodic-pkmu']
+
 def download_data(dirname, example):
     """
     Download the pyRSD-data github tarball to the specified directory
@@ -14,7 +16,7 @@ def download_data(dirname, example):
     example : str
         the path of the example to download
     """
-    assert example in ['galaxy', 'qso']
+    assert example in EXAMPLES
 
     # make the cache dir if it doesnt exist
     if not os.path.exists(dirname):
@@ -38,9 +40,10 @@ def download_data(dirname, example):
         basepath = os.path.join(topdir, example)
 
         for m in members[1:]:
-            name = os.path.relpath(m.name, basepath)
-            m.name = name
-            tar.extract(m, path=dirname)
+            if example in m.name:
+                name = os.path.relpath(m.name, basepath)
+                m.name = name
+                tar.extract(m, path=dirname)
 
     # remove the downloaded tarball file
     if os.path.exists(tarball_local):
@@ -52,8 +55,8 @@ def main():
     desc = "download example data and parameter files to get up and running with pyRSD"
     parser = argparse.ArgumentParser(description=desc)
 
-    h = "which example to download, either 'galaxy' or 'qso'"
-    parser.add_argument('example', choices=['galaxy', 'qso'], help=h)
+    h = "which example to download"
+    parser.add_argument('example', choices=EXAMPLES, help=h)
 
     h = "the output directory to save the downloaded files; if it doesn't exist it will be created"
     parser.add_argument('dirname', type=str, help=h)

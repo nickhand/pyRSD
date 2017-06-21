@@ -47,7 +47,10 @@ def compute(registry, name, m, pars, k, mu):
     """
     if name not in set(pars.valid_model_params)|set(pars.free_names):
         logging.debug("ignoring parameter '%s'" %name)
-        return numpy.zeros(len(k))
+        if numpy.isscalar(k):
+            return 0.
+        else:
+            return numpy.zeros(len(k))
 
     args = (m, pars, k, mu)
     par = pars[name]
@@ -119,7 +122,7 @@ class PkmuGradient(object):
         self.numerical_indices = []
         for i, name in enumerate(self.pars.free_names):
             try:
-                d = compute(self.registry, name, self.model, self.pars, 0.05, 0.5)[:]
+                d = compute(self.registry, name, self.model, self.pars, 0.05, 0.5)
             except Exception as e:
                 logging.info("analytic derivative for parameter '%s' not available; %s" %(name, str(e)))
                 self.numerical_names.append(name)
@@ -148,6 +151,14 @@ class PkmuGradient(object):
         numerical : bool, optional
             if `True`, evaluate gradients of P(k,mu) numerically using finite difference
         """
+        scalar = False
+        if numpy.isscalar(k):
+            k = numpy.array([k])
+            scalar = True
+        if numpy.isscalar(mu):
+            mu = numpy.array([mu])
+            scalar = True
+
         # the result value
         toret = numpy.zeros((len(theta), len(k)))
 
@@ -192,6 +203,7 @@ class PkmuGradient(object):
         finally:
             self._update(theta)
 
+        if scalar: toret = toret[0]
         return toret
 
     def _update(self, theta):

@@ -15,15 +15,20 @@ via
 
 .. command-output:: rsdfit -h
 
-The ``rsdfit`` command contains three sub-commands: **run**, **restart**,
-and **analyze**. The most important one of these sub-commands is ``run``.
-This allows the user to execute fresh parameter fits from scratch -- it
-is the main use case for the ``rsdfit`` executable. The
-calling sequence for this command is
+The ``rsdfit`` command contains four sub-commands: **nlopt**, **mcmc**, **restart**,
+and **analyze**. The most important of these sub-commands are ``nlopt``
+and ``mcmc``. This allows the user to run fresh parameter fits from scratch, which
+is the main use case for the ``rsdfit`` executable.
 
-.. command-output:: rsdfit run -h
+The calling sequence for the ``mcmc`` command is
 
-The three most important options for the user are:
+.. command-output:: rsdfit mcmc -h
+
+and for the ``nlopt`` command is
+
+.. command-output:: rsdfit nlopt -h
+
+The three most important options for these sub-commands are:
 
 1. **-p, ---params**
 

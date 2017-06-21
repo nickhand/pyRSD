@@ -2,19 +2,19 @@
 #include <cstdarg>
 #include <cstdlib>
 #include <stdexcept>
-
+#include <iostream>
 #include "Common.h"
 
 void Common::throw_error(const char* msg, std::string file, int lineno)
 {
     std::string emsg(msg);
-    std::string out = emsg + ", file: " __FILE__ + ", line: " + std::to_string(__LINE__);
+    std::string out = emsg + ", file: " + file + ", line: " + std::to_string(lineno);
     throw std::runtime_error(out);
 }
 
 void Common::throw_error(std::string msg, std::string file, int lineno)
 {
-    std::string out = msg + " (file: " __FILE__ + ", line: " + std::to_string(__LINE__) + ")";
+    std::string out = msg + " (file: " + file + ", line: " + std::to_string(lineno) + ")";
     throw std::runtime_error(out);
 }
 

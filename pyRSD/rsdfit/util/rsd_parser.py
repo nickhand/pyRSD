@@ -82,10 +82,6 @@ def setup_mcmc_subparser(parent):
     kwargs = {'dest':'params', 'type':existing_file, 'help':h}
     subparser.add_argument('-p', '--params', **kwargs)
 
-    h = 'file name holding the names of any extra theory parameters'
-    kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
-    subparser.add_argument('-xp', '--extra_params', **kwargs)
-
     # silence the output (OPTIONAL)
     h = 'silence the standard output to the console'
     subparser.add_argument('--silent', help=h, action='store_true')
@@ -128,10 +124,6 @@ def setup_nlopt_subparser(parent):
     h = 'file name holding the driver, theory, and data parameters'
     kwargs = {'dest':'params', 'type':existing_file, 'help':h}
     subparser.add_argument('-p', '--params', **kwargs)
-
-    h = 'file name holding the names of any extra theory parameters'
-    kwargs = {'dest':'extra_params', 'type':existing_file, 'help':h}
-    subparser.add_argument('-xp', '--extra_params', **kwargs)
 
     # silence the output (OPTIONAL)
     h = 'silence the standard output to the console'

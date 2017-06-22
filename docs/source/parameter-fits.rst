@@ -1,7 +1,7 @@
 .. _parameter-fits:
 
-Finding the Best-fit Parameters
-===============================
+Running the Fits
+================
 
 Once the data, covariance matrix, and theory parameters have be set, the
 user can run a likelihood analysis to find the best-fitting

@@ -40,7 +40,7 @@ class FittingDriverSchema(Cache):
         for name in sorted(FittingDriverSchema._param_names):
             par = getattr(FittingDriverSchema, name)
             doc = name+" :\n"+par.__doc__
-            if getattr(par, '_default', False):
+            if hasattr(par, '_default'):
                 doc += "\n\n\tDefault: %s\n" %str(par._default)
             print(doc)
 
@@ -57,14 +57,19 @@ class FittingDriverSchema(Cache):
     def burnin(self, val):
         """
         An integer specifying the number of MCMC steps to consider as part
-        of the "burn-in" period; default is 0
+        of the "burn-in" period when saving the results
+
+        This doesn't affect the parameter estimation at all; it simply
+        changes what best-fit parameters are printed to the screen when
+        the fitting is over. All iterations are saved to file regardless of
+        the value of this parameter.
         """
         return val
 
     @parameter(default=0.02)
     def epsilon(self, val):
         """
-        The Gelman-Rubin convergence criteria; default is 0.02
+        The Gelman-Rubin convergence criterion
         """
         return val
 
@@ -72,7 +77,7 @@ class FittingDriverSchema(Cache):
     def init_from(self, val):
         """
         How to initialize the optimization; can be 'nlopt', 'fiducial',
-        'result', or 'previous_run'; default is None
+        'prior', or 'result'; default is None
         """
         # check for deprecated init_values
         if val == 'max-like':
@@ -80,7 +85,7 @@ class FittingDriverSchema(Cache):
         if val == 'chain':
             raise ValueError("``init_from = chain`` has been deprecated; use `result` instead")
 
-        valid = ['nlopt', 'fiducial', 'result', 'previous_run']
+        valid = ['nlopt', 'fiducial', 'prior', 'result']
         if val is not None and val not in valid:
             raise ValueError("valid values for 'init_from' are %s" % str(valid))
 
@@ -104,7 +109,7 @@ class FittingDriverSchema(Cache):
         """
         return val
 
-    @parameter(default={'gtol': 1e-05, 'ftol': 1e-10, 'xtol': 1e-10})
+    @parameter(default={'factr': 1e5, 'gtol': 1e-5})
     def lbfgs_options(self, val):
         """
         Configuration options to pass to the LBFGS solver
@@ -129,32 +134,32 @@ class FittingDriverSchema(Cache):
     @parameter(default=False)
     def test_convergence(self, val):
         """
-        Whether to test for convergence of the MCMC chains while running
-        the MCMC optimization; default is ``False``
+        Whether to test for convergence of the parameter fits
+
+        For MCMC fits, the Gelman-Rubin criteria is used as specified
+        by the 'epsilon' parameter. For the LBFGS solver, the
+        convergence criteria is set by the 'lbfgs_options' attribute.
         """
         return val
 
 class FittingDriver(FittingDriverSchema):
     """
-    A class to handle the data analysis pipeline, merging together a model,
-    theory, and fitting algorithm
+    A driver to run the parameter fitting pipeline, merging together a model, theory, and fitting algorithm
+
+    Parameters
+    ----------
+    param_file : str
+        a string specifying the name of the main parameter file
+    init_model : bool, optional
+        if `True`, initialize the theoretical model upon initialization; default is `True`
     """
     def __init__(self,
                     param_file,
-                    extra_param_file=None,
-                    init_model=True):
-        """
-        Initialize the driver with the specified parameters
+                    init_model=True,
+                    **kwargs):
 
-        Parameters
-        ----------
-        param_file : str
-            a string specifying the name of the main parameter file
-        extra_param_file : str, optional
-            a string specifying the name of a file holding extra extra theory parameters
-        init_model : bool, optional
-            if `True`, initialize the theoretical model upon initialization; default is `True`
-        """
+        extra_param_file = kwargs.get('extra_param_file', None)
+
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
 
@@ -197,9 +202,10 @@ class FittingDriver(FittingDriverSchema):
     @classmethod
     def from_directory(cls, dirname, results_file=None, model_file=None, init_model=True, **kwargs):
         """
-        Load a ``FittingDriver`` from a results directory, reading the
-        ``params.dat`` file, and optionally loading a pickled model and
-        a results object
+        Load a :class:`FittingDriver` from a results directory
+
+        This reads ``params.dat`` file, optionally loading a pickled model and
+        a results object from file
 
         Parameters
         ----------
@@ -377,6 +383,9 @@ class FittingDriver(FittingDriverSchema):
             # log the file name
             logger.info("initializing run from previous result: '%s'" %self.start_from)
 
+        elif self.init_from == 'prior' and solver_type == 'nlopt':
+            raise ValueError("initializing from prior is only valid for MCMC solver type")
+
         # restart from previous result
         elif self.init_from  == 'previous_run':
             init_values = self.results.copy()
@@ -541,8 +550,7 @@ class FittingDriver(FittingDriverSchema):
 
         Notes
         -----
-        *   the model callable should already returned the flattened
-            `combined` values
+        The model callable should already returned the flattened `combined` values
         """
         return self._model_callable()
 
@@ -562,22 +570,23 @@ class FittingDriver(FittingDriverSchema):
     @property
     def dof(self):
         """
-        Return the degrees of freedom, equal to number of data points minus
-        the number of free parameters
+        The number of degrees of freedom
+
+        This is equal to the number of data points minus the number of free parameters
         """
         return self.Nb - self.Np
 
     @property
     def Nb(self):
         """
-        Return number of data points
+        The number of data points
         """
         return self.data.ndim
 
     @property
     def Np(self):
         """
-        Return the number of free parameters
+        The number of free parameters
         """
         return self.theory.ndim
 
@@ -586,19 +595,26 @@ class FittingDriver(FittingDriverSchema):
     #---------------------------------------------------------------------------
     def lnprior(self):
         """
-        Return the log of the prior, based on the current values of the free
-        parameters in  `GalaxyPowerTheory`
+        Return the log of the prior, based on the current values of the free parameters
         """
         return self.theory.lnprior
 
     def chi2(self, theta=None):
-        """
-        The chi-squared for the specified model function, based
-        on the current values of the free parameters in `GalaxyPowerTheory`
+        r"""
+        The chi-squared for the specified model function
 
         This returns
 
-        ..math: (model - data)^T C^{-1} (model - data)
+        .. math::
+
+            \chi^2 = (\mathcal{M} - \mathcal{D})^T C^{-1} (\mathcal{M} - \mathcal{D})
+
+        Parameters
+        ----------
+        theta : array_like, optional
+            an array of the free parameters to evaluate the statistic at; if ``None``,
+            the current values of the free parameters in :attr:`theory.fit_params`
+            is used
         """
         # set the free parameters
         if theta is not None:
@@ -609,25 +625,35 @@ class FittingDriver(FittingDriverSchema):
 
     def reduced_chi2(self):
         """
-        The reduced chi squared value
+        The reduced chi squared value, using the current values of the free parameters
         """
         return self.chi2() / self.dof
 
     def lnlike(self, theta=None):
         """
-        The log of the likelihood, equal to -0.5 * chi2
+        The log of the likelihood, equal to -0.5 * :func:`chi2`
+
+        Parameters
+        ----------
+        theta : array_like, optional
+            an array of the free parameters to evaluate the statistic at; if ``None``,
+            the current values of the free parameters in :attr:`theory.fit_params`
+            is used
         """
         return -0.5*self.chi2(theta=theta)
 
     def lnprob(self, theta=None):
         """
-        Set the theory free parameters, update the model, and return the log of
-        the posterior probability function (to within a constant), defined
-        as likelihood * prior.
+        Set the theory free parameters, update the model, and return the log of the posterior probability function
 
-        This returns:
+        This returns -0.5 :func:`chi2` + :func:`lnprior`
 
-        ..math: -0.5 * self.chi2 + self.lnprior
+        Parameters
+        ----------
+        theta : array_like, optional
+            an array of the free parameters to evaluate the statistic at; if ``None``,
+            the current values of the free parameters in :attr:`theory.fit_params`
+            is used
         """
         # set the free parameters
         if theta is not None:
@@ -665,9 +691,9 @@ class FittingDriver(FittingDriverSchema):
         Parameters
         ----------
         theta : array_like, optional
-            if provided, the values of the free parameters to compute the probability
-            at; it not provided, use the current values of free parameters from
-            `theory.fit_params`
+            an array of the free parameters to evaluate the statistic at; if ``None``,
+            the current values of the free parameters in :attr:`theory.fit_params`
+            is used
         use_priors : bool, optional
             whether to include the log priors in the objective function when
             minimizing the negative log probability
@@ -709,8 +735,7 @@ class FittingDriver(FittingDriverSchema):
     def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True,
                             numerical=False, numerical_from_lnlike=False):
         """
-        Return the vector of the gradient of the negative log likelihood,
-        with respect to the free parameters, optionally evaluating at `theta`
+        Return the vector of the gradient of the negative log likelihood, with respect to the free parameters
 
         This uses a central-difference finite-difference approximation to
         compute the numerical derivatives
@@ -720,7 +745,7 @@ class FittingDriver(FittingDriverSchema):
         theta : array_like, optional
             if provided, the values of the free parameters to compute the
             gradient at; if not provided, the current values of free parameters
-            from `theory.fit_params` will be used
+            from :attr:`theory.fit_params` will be used
         epsilon : float or array_like, optional
             the step-size to use in the finite-difference derivative calculation;
             default is `1e-4` -- can be different for each parameter
@@ -844,13 +869,15 @@ class FittingDriver(FittingDriverSchema):
 
     def fisher(self, theta=None, epsilon=1e-4, pool=None, use_priors=True,
                 numerical=False, numerical_from_lnlike=False):
-        """
-        Return the Fisher information matrix, defined as the negative Hessian
-        of the log likelihood with respect to the parameter vector
+        r"""
+        Return the Fisher information matrix
 
-        ..math::
+        This is defined as the negative Hessian of the log likelihood with
+        respect to the parameter vector
 
-                F_{ij} = - \frac{\partial \partial \log \mathcal{L}}{\partial \theta_i \partial \theta_j}
+        .. math::
+
+            F_{ij} = - \frac{\partial^2 \log \mathcal{L}}{\partial \theta_i \partial \theta_j}
 
         This uses a central-difference finite-difference approximation to
         compute the numerical derivatives
@@ -1006,8 +1033,9 @@ class FittingDriver(FittingDriverSchema):
 
     def marginalized_errors(self, params=None, theta=None, fixed=[], **kws):
         """
-        Return the marginalized errors on the specified parameters, as
-        computed from the Fisher matrix: (F^(-1))^(1/2)
+        Return the marginalized errors on the specified parameters, as computed from the Fisher matrix
+
+        This is given by: :math:`(\mathcal{F}^{-1}))^(1/2)`
 
         Optionally, we can fix certain parameters, specified in ``fixed``
 
@@ -1130,8 +1158,7 @@ class FittingDriver(FittingDriverSchema):
     #---------------------------------------------------------------------------
     def plot_residuals(self):
         """
-        Plot the residuals of the measurements with respect to the model,
-        model - measurement
+        Plot the residuals of the best-fit theory and data
         """
         from matplotlib import pyplot as plt
 
@@ -1161,8 +1188,7 @@ class FittingDriver(FittingDriverSchema):
 
     def plot(self, usetex=False, ax=None, colors=None, use_labels=True, **kws):
         """
-        Plot the model and data points for the measurements, plotting the
-        P(k, mu) and multipoles on separate figures
+        Plot the best-fit theory and data points
         """
         from .util import plot
 

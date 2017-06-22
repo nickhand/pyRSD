@@ -292,7 +292,7 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     start_chain = None
 
     # 1) initialixe from initial provided values
-    if init_from in ['maximum_probability', 'fiducial', 'result']:
+    if init_from in ['nlopt', 'fiducial', 'result']:
         if init_values is None:
             raise ValueError("EMCEE: cannot initialize around best guess -- none provided")
 

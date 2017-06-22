@@ -320,5 +320,6 @@ intersphinx_mapping = {
     'numpy': ('http://docs.scipy.org/doc/numpy/', None),
     'xarray': ('http://xarray.pydata.org/en/stable/', None),
     'astropy': ('http://docs.astropy.org/en/stable/', None),
-    'lmfit': ('http://cars9.uchicago.edu/software/python/lmfit/', None)
+    'lmfit': ('http://cars9.uchicago.edu/software/python/lmfit/', None),
+    'emcee': ('http://dan.iel.fm/emcee/current/', None)
 }

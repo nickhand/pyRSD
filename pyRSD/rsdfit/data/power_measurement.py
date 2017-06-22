@@ -371,7 +371,7 @@ class PowerDataSchema(Cache):
         for name in sorted(PowerDataSchema._param_names):
             par = getattr(PowerDataSchema, name)
             doc = name+" :\n"+par.__doc__
-            if getattr(par, '_default', False):
+            if hasattr(par, '_default'):
                 doc += "\n\n\tDefault: %s\n" %str(par._default)
             print(doc)
 

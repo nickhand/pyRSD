@@ -5,8 +5,9 @@ pyRSD
 
 pyRSD is a Python package for computing the theoretical predictions of
 the redshift-space power spectrum of galaxies. The package also includes
-functionality for fitting data measurements and finding the optimal model parameters,
-using both MCMC and nonlinear optimization techniques.
+functionality for performing Bayesian parameter estimation using
+the MCMC sampling technique or Maximum a posteriori estimation using
+the LBFGS algorithm to perform the nonlinear optimization.
 
 .. note::
 

@@ -62,10 +62,11 @@ files, depending on the type of fit that was run. For ``mcmc`` fits, use the
 the :class:`pyRSD.rsdfit.results.LBFGSResults` class.
 
 .. ipython:: python
-
+    :suppress:
     import os
-    os.chdir('data')
-    print(os.path.abspath('.'))
+    startdir = os.path.abspath('.')
+    home = startdir.split('docs')[0]
+    os.chdir(home); os.chdir('docs/data')
 
 For example, to explore the fitting results from a ``mcmc`` fit
 
@@ -153,4 +154,4 @@ linear power spectrum.
     :suppress:
 
     import os
-    os.chdir('..'')
+    os.chdir(startdir)

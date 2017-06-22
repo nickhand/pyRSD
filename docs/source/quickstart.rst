@@ -63,6 +63,7 @@ the :class:`pyRSD.rsdfit.results.LBFGSResults` class.
 
 .. ipython:: python
     :suppress:
+    
     import os
     startdir = os.path.abspath('.')
     home = startdir.split('docs')[0]

@@ -62,10 +62,10 @@ files, depending on the type of fit that was run. For ``mcmc`` fits, use the
 the :class:`pyRSD.rsdfit.results.LBFGSResults` class.
 
 .. ipython:: python
-    :suppress:
 
     import os
     os.chdir('data')
+    print(os.path.abspath('.'))
 
 For example, to explore the fitting results from a ``mcmc`` fit
 

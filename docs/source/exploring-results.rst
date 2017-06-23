@@ -1,4 +1,4 @@
-Analyzing the Results
+Exploring the Results
 =====================
 
 Here, we describe how pyRSD saves the results of the parameter estimation

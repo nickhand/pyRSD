@@ -17,7 +17,7 @@ def thin_chains(info):
     """
     t = info.thin
     for r in info.chains:
-        r.constrained_chain = r.constrained_chain[:,::t,:] 
+        r.constrained_chain = r.constrained_chain[:,::t,:]
         r.chain = r.chain[:,::t,:]
         r.lnprobs = r.lnprobs[:,::t]
         r._save_results()
@@ -28,17 +28,17 @@ def format_scaled_param(name, number):
     """
     if number == 1:
         return name
-        
+
     left = name.find('$')
     right = name.rfind('$')
     if left != -1 and right != -1 and left != right:
         name = name[left+1:right]
-        
+
     if number < 1000 and number > 1:
         name = "$%0.d~%s$" % (number, name)
     else:
         import re
-        
+
         temp_name = "$%0.e%s$" % (number, name)
         m = re.search(r'(?:\$[0-9]*e\+[0]*)([0-9]*)(.*)', temp_name)
         sign = '+'
@@ -48,24 +48,24 @@ def format_scaled_param(name, number):
         name = '$10^{'+sign+m.groups()[0]+'}'+m.groups()[1]
 
     return name
-    
+
 def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
     """
     Create an array with all the points from the chains, after burnin
-    
+
     Returns
     -------
     chains : list of arrays
         A list of chains, where each chain contains
-        the free + constrained params and 'burn-in' iterations have 
+        the free + constrained params and 'burn-in' iterations have
         been removed
     combined_result : EmceeResults
-        a EmceeResults object holding the combined chains 
+        a EmceeResults object holding the combined chains
     """
     # prepare, if we need to
     if not info.prepared:
         info.prepare()
-        
+
     # spam will brutally contain all the chains with sufficient number of
     # points, after the burn-in was removed.
     spam = list()
@@ -80,7 +80,7 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
     new_results = []
     for index, chain_file in enumerate(info.files):
         result = info.chains[index].copy()
-        
+
         # To improve presentation, and print only once the full path of the
         # analyzed folder, we recover the length of the path name, and
         # create an empty complementary string of this length
@@ -98,7 +98,7 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
         if info.burnin is not None:
             burnin = int(info.burnin*result.iterations)
             inds[:burnin] = False
-            
+
         steps += len(inds)
         accepted_steps += inds.sum()
         if not inds.sum():
@@ -109,8 +109,8 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
 
         # deal with single file case
         if len(info.chains) == 1:
-            logger.warning("convergence computed for a single file...uh oh")
-            bacon, egg, sausauge = result.copy(), result.copy(), result.copy()
+            logger.warning("convergence computed for a single file...this is usually not a good idea")
+            bacon, egg, sausage = result.copy(), result.copy(), result.copy()
             for i, x in enumerate([bacon, egg, sausage]):
                 x.chain = np.copy(result.chain[:,inds,:][:, i::3, :])
                 x.constrained_chain = np.copy(result.constrained_chain[:,inds][:, i::3])
@@ -129,16 +129,16 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
         raise rsd_io.AnalyzeError("no sufficiently sized chains were found.")
 
     for r in new_results:
-        
+
         # flatten to (XX, Np)
         x = r.chain.reshape((-1, len(r.free_names)))
-        
-        # flatten the structured array 
+
+        # flatten the structured array
         y = r.constrained_chain.flatten()
         # grab only the constrained parameters that aren't vectors
         y = np.vstack([y[name] for name in info.constrained_names]).T
         spam.append(np.hstack((x,y)))
-        
+
     # Applying now new rules for scales, if the name is contained in the
     # referenced names
     for name in info.ref_names:
@@ -153,14 +153,14 @@ def remove_burnin(info, cutoff=LOG_LKL_CUTOFF):
     if len(new_results) > 1:
         for r in new_results[1:]: info.combined_result += r
     info.combined_result.burnin = 0
-    
+
     if info.rescale_errors:
         logger.info("rescaling error on parameters by %.3f" %info.error_rescaling)
         info.combined_result.error_rescaling = info.error_rescaling
-    
+
     # compute the mean
-    info.mean = np.array([info.combined_result[par].flat_trace.mean() for par in info.ref_names]) 
-    
+    info.mean = np.array([info.combined_result[par].flat_trace.mean() for par in info.ref_names])
+
     return spam, info.combined_result
 
 
@@ -189,7 +189,7 @@ def prepare(info):
     info_path = os.path.join(folder, 'info')
     if info.save_output and not os.path.exists(info_path):
         os.makedirs(info_path)
-    
+
     # load the theory params as a ParameterSet
     if not os.path.exists(os.path.join(folder, params_filename)):
         raise rsd_io.AnalyzeError("no parameter file in directory to analyze")
@@ -201,7 +201,7 @@ def prepare(info):
         info.param_set.update_fiducial()
     except Exception as e:
         logger.warning("unable to update fiducial values: %s" %str(e))
-        
+
     # also load the data so we get can number of bins
     data_params = PowerData(param_path)
     info.Nb = data_params.ndim
@@ -212,10 +212,10 @@ def prepare(info):
     info.free_tex_path = os.path.join(folder, 'info', 'free_params.tex')
     info.constrained_tex_path = os.path.join(folder, 'info', 'constrained_params.tex')
     info.cov_path = os.path.join(folder, 'info', 'covmat.dat')
-    
+
     # recover parameter names and scales, creating tex names, etc
     extract_parameter_names(info)
-    
+
     # we are prepared
     info.prepared = True
 
@@ -229,29 +229,25 @@ def recover_folder_and_files(files):
     for f in files:
         if not os.path.exists(f):
             raise rsd_io.AnalyzeError('you provided a nonexistent file/folder: `%s`' %f)
-        
+
     # The following list defines the substring that a chain should contain for
     # the code to recognise it as a proper chain.
-    substrings = ['.npz', '__']
-    limit = 10
     if len(files) == 1 and os.path.isdir(files[0]):
-            folder = os.path.normpath(files[0])
-            files = [os.path.join(folder, elem) for elem in os.listdir(folder)
-                     if not os.path.isdir(os.path.join(folder, elem))
-                     and not os.path.getsize(os.path.join(folder, elem)) < limit
-                     and all([x in elem for x in substrings])]
-        
+        folder = os.path.normpath(files[0])
     else:
         folder = os.path.relpath(
                 os.path.dirname(os.path.realpath(files[0])), os.path.curdir)
-        files = [os.path.join(folder, elem) for elem in os.listdir(folder)
-                 if os.path.join(folder, elem) in np.copy(files)
-                 and not os.path.isdir(os.path.join(folder, elem))
-                 and not os.path.getsize(os.path.join(folder, elem)) < limit
-                 and all([x in elem for x in substrings])]
+
+    files = []; chains = []
+    for elem in os.listdir(folder):
+        try:
+            chain = EmceeResults.from_npz(os.path.join(folder, elem))
+            chains.append(chain)
+            files.append(elem)
+        except:
+            pass
     basename = os.path.basename(folder)
-    
-    chains = [EmceeResults.from_npz(f) for f in files]
+
     for i in range(1, len(chains)):
         chains[i].verify_param_ordering(chains[0].free_names, chains[0].constrained_names)
     return folder, files, basename, chains
@@ -261,45 +257,45 @@ def extract_parameter_names(info):
     Extract parameter names from the results files
     """
     import itertools
-    
+
     if not hasattr(info, 'chains'):
         raise rsd_io.AnalyzeError('cannot extract parameter names without ``chains`` attribute')
-    
+
     # make sure all the free parameter names are the same
     free_names = [sorted(chain.free_names) for chain in info.chains]
     if not all(names == free_names[0] for names in free_names):
         raise rsd_io.AnalyzeError('mismatch in free parameters for loaded results to analyze')
-        
+
     # make sure all the constrained parameter names are the same
     constrained_names = [sorted(chain.constrained_names) for chain in info.chains]
     if not all(names == constrained_names[0] for names in constrained_names):
         raise rsd_io.AnalyzeError('mismatch in constrained parameters for loaded results to analyze')
-        
+
     # find constrained parameters that are vector
     info.vector_params = []
     for name in constrained_names:
         if info.chains[0].constrained_chain[name].dtype.subdtype is not None:
             info.vector_params.append(name)
-                
+
     # remove vector parameters
     for name in info.vector_params:
         i = constrained_params.index(name)
         constrained_params.pop(i)
-        
+
     # get the free and constrained param names
     info.free_names = free_names[0]
     info.constrained_names = constrained_names[0]
     param_names = info.free_names + info.constrained_names
-    
+
     plot_params_1d = defaultdict(list)
     plot_params_2d = defaultdict(list)
-    
+
     boundaries = []
     ref_names = []
     tex_names = []
     scales = []
     param_indices = {}
-    
+
     # do 2D plot groups
     if len(info.to_plot_2d):
         keys = info.to_plot_2d.keys()
@@ -317,10 +313,10 @@ def extract_parameter_names(info):
                         plot_params_2d[tag].append(k)
     else:
         plot_params_2d['free'] += info.free_names
-                
+
     # loop over all parameters
     for name in param_names:
-        par = info.param_set[name]       
+        par = info.param_set[name]
         if not len(info.to_plot_1d):
             if name in info.free_names:
                 plot_params_1d['free'].append(name)
@@ -329,7 +325,7 @@ def extract_parameter_names(info):
         else:
             if name in info.to_plot_1d:
                 plot_params_1d['subset'].append(name)
-        
+
         # append to the boundaries array
         bounds = [None, None]
         for i, k in enumerate(['min', 'max']):
@@ -349,23 +345,22 @@ def extract_parameter_names(info):
             tex_names.append(info.tex_names[name])
         else:
             raise ValueError("please specify a proper tex name for `%s`" %name)
-            
+
         if name in info.free_names:
             param_indices[name] = info.free_names.index(name)
         else:
             param_indices[name] = len(info.free_names) + info.constrained_names.index(name)
-            
+
     scales = np.diag(scales)
     info.ref_names = ref_names
     info.plot_tex_names = tex_names
     info.boundaries = boundaries
     info.scales = scales
     info.param_indices = param_indices
-    
+
     # Beware, the following two numbers are different. The first is the total
     # number of parameters stored in the chain, whereas the second is for
     # plotting purpose only.
     info.number_parameters = len(ref_names)
     info.plot_params_1d    = plot_params_1d
     info.plot_params_2d    = plot_params_2d
-    

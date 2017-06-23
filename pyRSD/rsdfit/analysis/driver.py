@@ -5,16 +5,16 @@
     __author__ : Nick Hand
     __email__  : nhand@berkeley.edu
     __desc__   : extract data from rsdfit chains and produce plots
-    
+
     notes:
-        parts of this moduel are directly adapted from the 
+        parts of this moduel are directly adapted from the
         `Monte Python` <http://montepython.net/>` code from Baudren et. al.
 """
 from __future__ import print_function
 
 from ... import os, numpy as np
 from ..util import rsd_io
-from . import tools, stats, plot
+from . import tools, stats, plot, tex_names
 from .. import logging
 
 logger = logging.getLogger('rsdfit.analyze')
@@ -23,7 +23,7 @@ logger.addHandler(logging.NullHandler())
 def add_console_logger():
     """
     Add a logger that logs to the console at level `INFO`.
-    """ 
+    """
     logging.basicConfig(level=logging.INFO,
                         format='%(asctime)s %(name)-12s %(levelname)-8s %(message)s',
                         datefmt='%m-%d %H:%M')
@@ -46,7 +46,7 @@ def set_analysis_defaults(kwargs):
     kwargs.setdefault('decimal', 3)
     kwargs.setdefault('ticknumber', 3)
     kwargs.setdefault('optional_plot_file', '')
-    kwargs.setdefault('tex_names', {})
+    kwargs.setdefault('tex_names', tex_names)
     kwargs.setdefault('to_plot_1d', [])
     kwargs.setdefault('to_plot_2d', {})
     kwargs.setdefault('scales', {})
@@ -56,12 +56,12 @@ def set_analysis_defaults(kwargs):
     kwargs.setdefault('burnin', None)
     kwargs.setdefault('thin', 1)
     kwargs.setdefault('rescale_errors', False)
-    
+
 
 class AnalysisDriver(object):
     """
-    A class to serve as the driver for analyzing runs
-    """    
+    A class to serve as the driver for analyzing MCMC chains
+    """
     # Global colormap for the 1d plots. Colours will get chosen from this.
     # Some old versions of matplotlib do not have CMRmap, so the colours will
     # be harcoded
@@ -79,64 +79,64 @@ class AnalysisDriver(object):
     alphas = [1.0, 0.8, 0.6, 0.4]
 
     def __init__(self, **kwargs):
-        """    
+        """
+        Initialize the object by passing key/value pairs
+
         Parameters
         ----------
-        kwargs : key/value pairs
-            the relevant keyword arguments are:
-                files : list of str
-                    list of a directory or series of files to analyze
-                minimal : bool, optional (`False`)
-                    if `True`, only write the covmat and bestfit, without 
-                    computing the posterior or making plots. 
-                bins : int, optional (20)
-                    number of bins in the histograms used to derive posterior 
-                mean_likelihood : bool, optional (`True`)
-                    show the mean likelihood on the 1D posterior plots
-                plot : bool, optional (`True`)
-                    if `False`, do not make any plots, simply compute the posterior
-                plot_2d : bool, optional (`True`)
-                    if `False`, do not produce the 2D posterior plots
-                contours_only : bool, optional (`False`)
-                    if `True`, do not fill the contours on the 2d plots
-                subplot : bool, optional (`False`)
-                    if `True`, output every subplot and data in separate files
-                extension : {'pdf', 'png', 'eps'}, optional (`pdf`)
-                    the extension to use for output plots
-                fontsize : int, optional (16)
-                    the fontsize to use on the plots
-                ticksize : int, optional (14)
-                    the ticksize to use on the plots
-                line_width : int, optional (4)
-                    the line-width of 1D plots
-                decimal : int, optional (3)
-                    the number of decimal places on ticks
-                ticknumber : int, optional (3)
-                    the number of ticks on each axis
-                optional_plot_file : str, optional ("")
-                    extra file to customize the output plots
-                tex_names : dict, optional, (`{}`)
-                    dict holding a latex name to use for each parameter
-                to_plot_1d : list, optional (`[]`)
-                    list of parameters to plot 1D posteriors of
-                to_plot_2d : dict, optional (`{}`)
-                    dict holding groups of parameters to make 2D plots of
-                scales : dict, optional (`{}`)
-                    dict holding the rescaling factors that the posterior
-                    will be divided by
-                save_output : bool, optional (`True`)
-                    if `False`, do not save any output or make new directories
-                show_fiducial : bool, optional (`True`)
-                    whether to show the fiducial values as vertical lines on 
-                    the 1D posterior plots
-                fiducial : dict, optional {`{}`}
-                    a dictionary holding fidicual values to use, which will override
-                    the original fiducial values
-                burnin : float, optional (`None`)
-                    the fraction of samples to consider burnin
+        files : list of str
+            list of a directory or series of files to analyze
+        minimal : bool, optional (`False`)
+            if `True`, only write the covmat and bestfit, without
+            computing the posterior or making plots.
+        bins : int, optional (20)
+            number of bins in the histograms used to derive posterior
+        mean_likelihood : bool, optional (`True`)
+            show the mean likelihood on the 1D posterior plots
+        plot : bool, optional (`True`)
+            if `False`, do not make any plots, simply compute the posterior
+        plot_2d : bool, optional (`True`)
+            if `False`, do not produce the 2D posterior plots
+        contours_only : bool, optional (`False`)
+            if `True`, do not fill the contours on the 2d plots
+        subplot : bool, optional (`False`)
+            if `True`, output every subplot and data in separate files
+        extension : {'pdf', 'png', 'eps'}, optional (`pdf`)
+            the extension to use for output plots
+        fontsize : int, optional (16)
+            the fontsize to use on the plots
+        ticksize : int, optional (14)
+            the ticksize to use on the plots
+        line_width : int, optional (4)
+            the line-width of 1D plots
+        decimal : int, optional (3)
+            the number of decimal places on ticks
+        ticknumber : int, optional (3)
+            the number of ticks on each axis
+        optional_plot_file : str, optional ("")
+            extra file to customize the output plots
+        tex_names : dict, optional, (`{}`)
+            dict holding a latex name to use for each parameter
+        to_plot_1d : list, optional (`[]`)
+            list of parameters to plot 1D posteriors of
+        to_plot_2d : dict, optional (`{}`)
+            dict holding groups of parameters to make 2D plots of
+        scales : dict, optional (`{}`)
+            dict holding the rescaling factors that the posterior
+            will be divided by
+        save_output : bool, optional (`True`)
+            if `False`, do not save any output or make new directories
+        show_fiducial : bool, optional (`True`)
+            whether to show the fiducial values as vertical lines on
+            the 1D posterior plots
+        fiducial : dict, optional {`{}`}
+            a dictionary holding fidicual values to use, which will override
+            the original fiducial values
+        burnin : float, optional (`None`)
+            the fraction of samples to consider burnin
         """
         add_console_logger()
-        
+
         # set the defaults in kwargs
         if 'files' not in kwargs:
             raise rsd_io.AnalyzeError("please specify a list of files or directories to analyze")
@@ -159,26 +159,26 @@ class AnalysisDriver(object):
             with open(kwargs['optional_plot_file'], 'r') as f:
                 code = compile(f.read(), kwargs['optional_plot_file'], 'exec')
                 exec(code, plot_file_vars)
-            
+
         self.prepared = False
         self.ticks_defined = False
-    
+
     def run(self):
         """
         Run the full analysis of the input mcmc files
         """
         # load the files into the `chains` attribute
         tools.prepare(self)
-        
+
         # Compute the mean, maximum of likelihood, 1-sigma variance for this
         # main folder. This will create the info.chain object, which contains
         # all the points computed stacked in one big array.
         stats.convergence(self)
-        
+
         # compute the convariance matrix
         logger.info('computing covariance matrix')
         self.write_covariance()
-                         
+
         if not self.minimal:
             # Computing 1,2 and 3-sigma errors, and plot. This will create the
             # triangle and 1d plot by default.
@@ -186,12 +186,12 @@ class AnalysisDriver(object):
 
             logger.info('writing .info and .tex files')
             self.write_information_files()
-            
+
         # save the combined output
         bestfit_path = os.path.join(self.folder, 'info', 'combined_result.npz')
         self.combined_result.to_npz(bestfit_path)
         print(self.combined_result)
-    
+
     #--------------------------------------------------------------------------
     # Properties
     #--------------------------------------------------------------------------
@@ -210,7 +210,7 @@ class AnalysisDriver(object):
             B = (Ns - Nb - 2.) / (Ns - Nb - 1.) / (Ns - Nb - 4.)
             self._error_rescaling = ((1 + B*(Nb-Np)) / (1 + A + B*(Np+1)))**0.5
             return self._error_rescaling
-            
+
     @property
     def min_minus_lkl(self):
         """
@@ -224,7 +224,7 @@ class AnalysisDriver(object):
                 raise AttributeError("trying to compute ``min_minus_lkl`` without the ``chains`` attribute")
             self._min_minus_lkl = min([-result.lnprobs.mean(axis=0).max() for result in self.chains])
             return self._min_minus_lkl
-            
+
     @property
     def covar(self):
         """
@@ -237,7 +237,7 @@ class AnalysisDriver(object):
                 raise AttributeError("trying to compute ``covar`` without the ``chain`` attribute")
             self._covar = np.cov(self.chain, rowvar=0)
             return self._covar
-    
+
     @property
     def bounds(self):
         """
@@ -249,7 +249,7 @@ class AnalysisDriver(object):
             if not hasattr(self, 'combined_result'):
                 raise AttributeError("trying to compute ``bounds`` without the ``combined_result`` attribute")
         bounds = np.zeros((len(self.ref_names), 3, 2))
-        
+
         # bounds from the 1,2,3 sigma percentiles
         for index, name in enumerate(self.ref_names):
             par = self.combined_result[name]
@@ -260,7 +260,7 @@ class AnalysisDriver(object):
             bounds[index] = this_bounds / scale
         self._bounds = bounds
         return self._bounds
-            
+
     @property
     def bestfit_params(self):
         """
@@ -272,30 +272,30 @@ class AnalysisDriver(object):
             from . import bestfit
             names = self.free_names + self.constrained_names
             indices = [self.ref_names.index(name) for name in names]
-            
+
             data = []
             best_idx = self.combined_result.lnprobs.argmax()
             for i, name in zip(indices, names):
-                par = self.combined_result[name] 
+                par = self.combined_result[name]
                 best = par.flat_trace[best_idx] / self.scales[i,i]
                 median = par.median / self.scales[i, i]
-                d = [self.tex_names[name], 
+                d = [self.tex_names[name],
                         self.scales[i, i],
-                        self.R[i], 
-                        best, 
+                        self.R[i],
+                        best,
                         median,
                         0.5*(self.bounds[i, 0, 1]-self.bounds[i, 0, 0]),
-                        self.bounds[i, 0, 0], 
+                        self.bounds[i, 0, 0],
                         self.bounds[i, 0, 1],
-                        self.bounds[i, 1, 0], 
+                        self.bounds[i, 1, 0],
                         self.bounds[i, 1, 1],
                         median+self.bounds[i, 0, 0],
                         median+self.bounds[i, 0, 1],
                         median+self.bounds[i, 1, 0],
-                        median+self.bounds[i, 1, 1], 
+                        median+self.bounds[i, 1, 1],
                         name in self.free_names]
                 data.append(d)
-                
+
             columns = ['tex_name', 'scale', 'R', 'best_fit', 'median', 'sigma', 'lower_1sigma', 'upper_1sigma',
                         'lower_2sigma', 'upper_2sigma', 'gt_1sigma', 'lt_1sigma',
                         'lt_2sigma', 'gt_2sigma', 'free']
@@ -303,11 +303,11 @@ class AnalysisDriver(object):
             meta = {'min_minus_lkl' : self.min_minus_lkl, 'Np' : self.Np, 'Nb' : self.Nb}
             self._bestfit_params.add_metadata(**meta)
             return self._bestfit_params
-                
+
     def define_ticks(self):
         """
         Define the min and max x-range values and set the axis ticks accordingly
-        """        
+        """
         self.max_values = np.empty(len(self.ref_names))
         self.min_values = np.empty(len(self.ref_names))
         for i, name in enumerate(self.ref_names):
@@ -344,9 +344,9 @@ class AnalysisDriver(object):
                 if abs(x_range[-1]-bounds[-1]) < self.span[i]/self.bins:
                     self.ticks[i][-1] = bounds[-1]
                     self.x_range[i][-1] = bounds[-1]
-                    
+
         self.ticks_defined = True
-        
+
     def write_covariance(self):
         """
         Write out the covariance matrix
@@ -360,18 +360,14 @@ class AnalysisDriver(object):
         """
         if not self.prepared:
             self.prepare()
-        
+
         # write down to the .info file all necessary information
         self.bestfit_params.to_info(self.info_path)
-        
+
         # write out the latex table for free parameters
         free_params = self.bestfit_params.loc[self.free_names]
         free_params.to_latex(self.free_tex_path)
-        
+
         # write out the latex table for free parameters
         constrained_params = self.bestfit_params.loc[self.constrained_names]
         constrained_params.to_latex(self.constrained_tex_path)
-
-
-
-

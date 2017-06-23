@@ -65,7 +65,7 @@ power spectrum models available in this package and data input by the user.
 * :doc:`specifying-data`
 * :doc:`specifying-theory`
 * :doc:`parameter-fits`
-* :doc:`analyzing-results`
+* :doc:`exploring-results`
 * :doc:`rsdfit-advanced`
 
 .. toctree::
@@ -77,7 +77,7 @@ power spectrum models available in this package and data input by the user.
    specifying-data.rst
    specifying-theory.rst
    parameter-fits.rst
-   analyzing-results.rst
+   exploring-results.rst
    rsdfit-advanced.rst
 
 Get in touch

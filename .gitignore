@@ -14,6 +14,6 @@ pyRSD/gcl/python/_gcl.cpython*
 depends/tmp*
 *.sh
 *.tar*
-docs/generated
+docs/source/generated
 docs/params.dat
 docs/source/savefig

@@ -9,10 +9,10 @@ from pyRSD.rsd.cosmology import Planck15
 from pyRSD.rsd.hzpt import HaloZeldovichP00, HaloZeldovichCF00
 from pyRSD.rsd import GalaxySpectrum, PkmuTransfer, PolesTransfer, PkmuGrid
 
-def savefig(filename):
+def savefig(filename, size=(6,3)):
 
     fig = plt.gcf()
-    fig.set_size_inches(6,3)
+    fig.set_size_inches(*size)
     fig.subplots_adjust(left=0.13, top=0.97, bottom=0.2, right=0.97)
     plt.savefig(os.path.join("source", "_static", filename), dpi=300)
     plt.clf()
@@ -252,12 +252,38 @@ def gal_power_window(model):
     plt.xlim(5e-3, 0.6)
     savefig("poles_conv_plot.png")
 
+def visualizing_results(*args):
+
+    from pyRSD.rsdfit.results import EmceeResults
+
+    r = EmceeResults.from_npz('data/mcmc_result.npz')
+
+    # 2D kernel density plot
+    r.kdeplot_2d('b1_cA', 'fsigma8', thin=10)
+    savefig('kdeplot.png', size=(8,6))
+
+    # 2D joint plot
+    r.jointplot_2d('b1_cA', 'fsigma8', thin=10)
+    savefig('jointplot.png', size=(8,6))
+
+    # timeline plot
+    r.plot_timeline('fsigma8', 'b1_cA', thin=10)
+    savefig('timeline.png', size=(8,6))
+
+    # correlation between free parameters
+    r.plot_correlation(params='free')
+    savefig('correlation.png', size=(8,6))
+
+    # make a triangle plot
+    r.plot_triangle('fsigma8', 'alpha_perp', 'alpha_par', thin=10)
+    savefig('triangle.png', size=(8,6))
+
 if __name__ == '__main__':
 
     desc = 'make the documenation plots'
     parser = argparse.ArgumentParser(description=desc)
 
-    choices = ['gal_power_compute', 'gal_power_discrete', 'gal_power_window', 'pygcl_overview', 'hzpt_overview']
+    choices = ['gal_power_compute', 'gal_power_discrete', 'gal_power_window', 'pygcl_overview', 'hzpt_overview', 'visualizing_results']
     parser.add_argument('which', choices=choices)
     ns = parser.parse_args()
 

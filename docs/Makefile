@@ -15,7 +15,7 @@ ALLSPHINXOPTS   = -d $(BUILDDIR)/doctrees $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) sou
 I18NSPHINXOPTS  = $(PAPEROPT_$(PAPER)) $(SPHINXOPTS) source
 
 PNG_FILES = pkmu_model_plot.png poles_model_plot.png pkmu_binned_plot.png poles_binned_plot.png window_poles_plot.png poles_conv_plot.png \
-					Plin_plot.png Pzel_plot.png P00_hzpt_plot.png CF_hzpt_plot.png
+					Plin_plot.png Pzel_plot.png P00_hzpt_plot.png CF_hzpt_plot.png triangle.png correlation.png timeline.png kdeplot.png jointplot.png
 ALLPLOTS = $(addprefix source/_static/, $(PNG_FILES))
 
 .PHONY: cleanplots plots help clean html dirhtml singlehtml pickle json htmlhelp qthelp devhelp epub latex latexpdf text man changes linkcheck doctest gettext
@@ -47,6 +47,11 @@ clean:
 
 cleanplots:
 	rm -rf $(ALLPLOTS)
+
+source/_static/correlation.png source/_static/timeline.png source/_static/triangle.png source/_static/jointplot.png source/_static/kdeplot.png:
+ifneq ($(READTHEDOCS), True)
+	python make_figures.py visualizing_results
+endif
 
 source/_static/pkmu_model_plot.png source/_static/poles_model_plot.png:
 ifneq ($(READTHEDOCS), True)

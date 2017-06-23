@@ -2,15 +2,21 @@
 
 .. currentmodule:: pyRSD.rsd.data
 
-.. ipython:: python
-    :suppress:
-    
-    import os
-    if not os.path.exists('generated'):
-      os.makedirs('generated')
-
 File Formats for Data Files
 ===========================
+
+.. ipython:: python
+
+    import os
+
+    startdir = os.path.abspath('.')
+    home = startdir.rsplit('docs' , 1)[0]
+    os.chdir(home);
+    os.chdir('docs/source')
+
+    if not os.path.exists('generated'):
+      os.makedirs('generated')
+    os.chdir('generated')
 
 The data statistics, covariance matrix, and grid file are all read
 from plaintext files by the :mod:`pyRSD.rsdfit` module, and
@@ -86,12 +92,12 @@ plaintext file with the correct format.
     measurements
 
     # save to file
-    measurements.to_plaintext("generated/pkmu_data.dat")
+    measurements.to_plaintext("pkmu_data.dat")
 
 Our fake data has been saved to a plaintext text file with the desired format.
 The first few lines of this plaintext file look like:
 
-.. literalinclude:: ../generated/pkmu_data.dat
+.. literalinclude:: generated/pkmu_data.dat
     :lines: 1-10
 
 We can easily re-initialize a :class:`PowerMeasurements` object from this plaintext
@@ -100,7 +106,7 @@ file using
 .. ipython:: python
 
     names = ['pkmu_0.1', 'pkmu_0.3', 'pkmu_0.5', 'pkmu_0.7', 'pkmu_0.9']
-    measurements_2 = PowerMeasurements.from_plaintext(names, 'generated/pkmu_data.dat')
+    measurements_2 = PowerMeasurements.from_plaintext(names, 'pkmu_data.dat')
     measurements_2
 
 .. note::
@@ -158,12 +164,12 @@ plaintext file with the correct format as an example.
     measurements
 
     # save to file
-    measurements.to_plaintext("generated/pole_data.dat")
+    measurements.to_plaintext("pole_data.dat")
 
 Our fake data has been saved to a plaintext text file with the desired format.
 The first few lines of this plaintext file look like:
 
-.. literalinclude:: ../generated/pole_data.dat
+.. literalinclude:: generated/pole_data.dat
     :lines: 1-10
 
 We can easily re-initialize a :class:`PowerMeasurements` object from this plaintext
@@ -172,7 +178,7 @@ file using
 .. ipython:: python
 
     names = ['pole_0', 'pole_2', 'pole_4']
-    measurements_2 = PowerMeasurements.from_plaintext(names, 'generated/pole_data.dat')
+    measurements_2 = PowerMeasurements.from_plaintext(names, 'pole_data.dat')
     measurements_2
 
 .. note::
@@ -243,12 +249,12 @@ covariance below,
     C
 
     # write to plaintext file
-    C.to_plaintext('generated/pole_cov.dat')
+    C.to_plaintext('pole_cov.dat')
 
 The covariance matrix of our fake data has been saved to a plaintext text file
 with the desired format. The first few lines of this plaintext file look like:
 
-    .. literalinclude:: ../generated/pole_cov.dat
+    .. literalinclude:: generated/pole_cov.dat
         :lines: 1-10
 
 We can easily re-initialize a :class:`PoleCovarianceMatrix` object from this plaintext
@@ -257,7 +263,7 @@ file using
 .. ipython:: python
 
     names = ['pole_0', 'pole_2', 'pole_4']
-    C_2 = PoleCovarianceMatrix.from_plaintext('generated/pole_cov.dat')
+    C_2 = PoleCovarianceMatrix.from_plaintext('pole_cov.dat')
     C_2
 
 The case of :math:`P(k,\mu)` data is very similar to multipoles, except now
@@ -302,3 +308,8 @@ function. See :ref:`discrete-binning` for a full example of how to do this.
 
     If the user is fitting window-convolved multipoles, the grid file does not
     need to be specified.
+
+.. ipython:: python
+    :suppress:
+
+    os.chdir(startdir)

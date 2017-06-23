@@ -1,6 +1,20 @@
 Writing to a Parameter File
 ===========================
 
+.. ipython:: python
+    :suppress:
+
+    import os
+
+    startdir = os.path.abspath('.')
+    home = startdir.rsplit('docs' , 1)[0]
+    os.chdir(home);
+    os.chdir('docs/source')
+
+    if not os.path.exists('generated'):
+      os.makedirs('generated')
+    os.chdir('generated')
+
 The desired theoretical model parameterization must be written out to
 the parameter file that will be passed to the ``rsdfit`` executable. The
 easiest way to do this is to use the
@@ -36,4 +50,10 @@ we can write out our parameters as
 This will write out to the file each :class:`~pyRSD.rsdfit.theory.parameters.Parameter`
 in the parameter set as a dictionary. Now, the ``params.dat`` looks like
 
-.. literalinclude:: ../params.dat
+.. literalinclude:: generated/params.dat
+
+.. ipython:: python
+    :suppress:
+
+    import os
+    os.chdir(startdir)

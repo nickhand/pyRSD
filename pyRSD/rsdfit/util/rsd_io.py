@@ -83,12 +83,15 @@ def create_output_file(folder, solver_type, chain_number, iterations, walkers=0,
     if restart is None:
         outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
     else:
-        # need to extract the original chain number
-        fields = os.path.basename(restart).split('_')
-        if solver_type == 'mcmc':
-            outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
-        else:
-            outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[3])
+        try:
+            # need to extract the original chain number
+            fields = os.path.basename(restart).split('_')
+            if solver_type == 'mcmc':
+                outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[2])
+            else:
+                outname_base = '{0}_{1}_{2}__'.format(date.today(), tag, fields[3])
+        except:
+            outname_base = '{0}_{1}_chain{2}__'.format(date.today(), tag, chain_number)
 
     suffix = 0
     for files in os.listdir(folder):

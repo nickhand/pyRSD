@@ -247,7 +247,10 @@ class RSDFitDriver(object):
                 # set the restart file for this rank
                 if self.mode == 'restart':
                     logger.restart = self.restart_file = self.restart_files[mpi_master.rank]
-                    self.algorithm.set_restart(self.mode, self.restart_file, self.iterations)
+                    self.mode = self.algorithm.set_restart(self.restart_file, self.iterations)
+
+                    # set the solver type
+                    self.algorithm.params.add('solver_type', value=self.mode) # either nlopt or mcmc
 
                 # run the algorithm
                 kws = {'solver_type':self.mode, 'pool':mpi_master.pool, 'chains_comm':mpi_master.par_runs_comm}

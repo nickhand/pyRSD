@@ -217,18 +217,6 @@ class LBFGS(object):
         self.data['prev_state'] = self.data['curr_state'].copy()
 
     @classmethod
-    def from_restart(cls, f, fprime, data, **kwargs):
-        """
-        Initialize a new ``LBFGS`` class, using ``data`` from
-        an exisiting class
-        """
-        p0 = data['curr_state']['X']
-        kwargs['M'] = len(data['H'])
-        obj = cls(f, fprime, p0, **kwargs)
-        obj.data = data
-        return obj
-
-    @classmethod
     def default_options(cls):
         """
         Return a dictionary of the default options for the LBFGS

@@ -7,7 +7,7 @@ def minus_lnlike(x=None, scaling=False):
     driver = GlobalFittingDriver.get()
     if scaling: x = driver.theory.inverse_scale(x)
     return driver.minus_lnlike(x, use_priors=False)
-    
+
 def minus_lnprob(x=None, scaling=False):
     """
     Wrapper for the negative log-probability (including priors)
@@ -23,7 +23,7 @@ def lnprob(x=None, scaling=False):
     driver = GlobalFittingDriver.get()
     if scaling: x = driver.theory.inverse_scale(x)
     return driver.lnprob(x)
-            
+
 def grad_minus_lnlike(x, **kwargs):
     """
     Wrapper for ``FittingDriver.gradient`` which explictly
@@ -31,9 +31,9 @@ def grad_minus_lnlike(x, **kwargs):
     """
     scaling = kwargs.pop('scaling', False)
     driver = GlobalFittingDriver.get()
-    
+
     if scaling: x = driver.theory.inverse_scale(x)
     grad = driver.grad_minus_lnlike(x, **kwargs)
     if scaling: grad = driver.theory.scale_gradient(grad)
-    
+
     return grad

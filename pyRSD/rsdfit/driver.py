@@ -85,7 +85,7 @@ class FittingDriverSchema(Cache):
         if val == 'chain':
             raise ValueError("``init_from = chain`` has been deprecated; use `result` instead")
 
-        valid = ['nlopt', 'fiducial', 'prior', 'result']
+        valid = ['nlopt', 'fiducial', 'prior', 'result', 'previous_run']
         if val is not None and val not in valid:
             raise ValueError("valid values for 'init_from' are %s" % str(valid))
 
@@ -281,26 +281,34 @@ class FittingDriver(FittingDriverSchema):
 
         return np.asarray(toret)
 
-    def set_restart(self, solver_type, restart_file, iterations):
+    def set_restart(self, restart_file, iterations):
         """
-        Initialize the `restart` mode by loading the results from a previous
-        run
+        Initialize the `restart` mode by loading the results from a previous run
 
         Parameters
         ----------
-        solver_type : {'mcmc', 'nlopt'}
-            either run a MCMC fit with emcee or a nonlinear optimization using LBFGS
         restart_file : str
             the name of the file holding the results to restart from
         iterations : int
             the  number of additional iterations to run
+
+        Returns
+        -------
+        solver_type : {'mcmc', 'nlopt'}
+            the solver type
         """
         # tell driver we are starting from previous run
         self.init_from = 'previous_run'
+        self.params['init_from'].value = self.init_from
 
         # set the results
         self.results = restart_file
         total_iterations = iterations + self.results.iterations
+
+        if isinstance(self.results, LBFGSResults):
+            solver_type = 'nlopt'
+        else:
+            solver_type = 'mcmc'
 
         # set the number of iterations to the total sum we want to do
         if solver_type == 'mcmc':
@@ -312,6 +320,7 @@ class FittingDriver(FittingDriverSchema):
             options['max_iter'] = total_iterations
             self.params.add('lbfgs_options', value=options)
 
+        return solver_type
 
     def to_file(self, filename, mode='w'):
         """
@@ -343,7 +352,7 @@ class FittingDriver(FittingDriverSchema):
             a communicator for communicating between multiple MCMC chains
         """
         if solver_type not in ['mcmc', 'nlopt']:
-            raise ValueError("'solver_type' parameter must be 'mcmc' or 'nlopt'")
+            raise ValueError("'solver_type' parameter must be 'mcmc' or 'nlopt', not '%s'" %solver_type)
         init_values = None
 
         # init from maximum probability solution

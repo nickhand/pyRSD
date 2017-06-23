@@ -377,7 +377,7 @@ class EmceeResults(object):
         Add two `EmceeResults` objects together
         """
         if not isinstance(other, self.__class__):
-            raise NotImplemented("Can only add two `EmceeResults` objects together")
+            raise NotImplementedError("Can only add two `EmceeResults` objects together")
 
         # check a few things first
         if self.walkers != other.chain.shape[0]:
@@ -391,7 +391,10 @@ class EmceeResults(object):
 
         # add the chains together
         toret.chain = np.concatenate((self.chain, other.chain), axis=1)
-        toret.constrained_chain = np.concatenate((self.constrained_chain, other.constrained_chain), axis=1)
+        tmp = np.empty((toret.walkers, toret.iterations), dtype=self.constrained_chain.dtype)
+        for name in tmp.dtype.names:
+            tmp[name][:] = np.concatenate([self.constrained_chain[name], other.constrained_chain[name]], axis=1)[:]
+        toret.constrained_chain = tmp
 
         # add the log probs together
         toret.lnprobs = np.concatenate((self.lnprobs, other.lnprobs), axis=1)

@@ -150,12 +150,14 @@ def setup_restart_subparser(parent):
     subparser = parent.add_parser('restart', help=h)
 
     # the path to the model to read
-    h = 'file name holding the model path'
-    kwargs = {'dest':'model', 'type':existing_file, 'help':h}
+    h = 'file name holding the model path to load (required)'
+    kwargs = {'dest':'model', 'type':existing_file, 'help':h, 'required':True}
     subparser.add_argument('-m', '--model', **kwargs)
 
     # the general driver parameters (REQUIRED)
-    h = 'the name of the existing results file to restart from'
+    h = """the name of the existing results file to restart from; multiple files can
+    be restarted at once, but as many parallel processes as files must be present
+    """
     subparser.add_argument('restart_files', type=existing_file, nargs="+", help=h)
 
     # number of iterations (REQUIRED)
@@ -341,7 +343,7 @@ def verify_arguments(ns):
 
         # if we are restarting, automatically use the same folder,
         # and the driver.pickle
-        ns.folder = os.path.sep.join(ns.restart_files[0].split(os.path.sep)[:-1])
+        ns.folder = os.path.abspath(os.path.dirname(ns.restart_files[0]))
         ns.params = os.path.join(ns.folder, params_filename)
         if not os.path.exists(ns.params):
             raise ConfigurationError("Restarting but associated `%s` doesn't exist" %params_filename)

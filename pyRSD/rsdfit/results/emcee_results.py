@@ -20,7 +20,7 @@ class EmceeParameter(object):
     def __repr__(self):
         sig1 = self.one_sigma
         sig2 = self.two_sigma
-        args = (self.name+":", self.mean, sig1[-1], sig1[0], sig2[-1], sig2[0])
+        args = (self.name+":", self.median, sig1[-1], sig1[0], sig2[-1], sig2[0])
         return "<Parameter {:<15s} {:.4g} (+{:.4g} {:.4g}) (+{:.4g} {:.4g})>".format(*args)
 
     def __str__(self):
@@ -98,10 +98,9 @@ class EmceeParameter(object):
     @property
     def mean(self):
         """
-        Return the "mean" as the the median, i.e., the 50th percentile of
-        the trace
+        Return the average value of the chain
         """
-        return self.median
+        return self.flat_trace.mean()
 
     @property
     def peak(self):
@@ -123,8 +122,9 @@ class EmceeParameter(object):
     @property
     def one_sigma(self):
         """
-        Return the upper and lower one-sigma error intervals, as computed from
-        the percentiles, `50 - 15.86555` and `84.13445 - 50`
+        Return the lower and upper one-sigma error intervals
+
+        These are computed from the percentiles, ``50 - 15.86555`` and ``84.13445 - 50``
 
         Returns
         -------
@@ -146,13 +146,14 @@ class EmceeParameter(object):
     @property
     def two_sigma(self):
         """
-        Return the upper and lower two-sigma error intervals, as computed from
-        the percentiles, `50 - 2.2775` and `97.7225 - 50`
+        Return the lower and upper two-sigma error intervals.
+
+        These are computed from the percentiles, ``50 - 2.2775`` and ``97.7225 - 50``
 
         Returns
         -------
         lower, upper
-            The lower and upper 1-sigma error intervals
+            The lower and upper 2-sigma error intervals
         """
         try:
             return self._two_sigma
@@ -169,13 +170,14 @@ class EmceeParameter(object):
     @property
     def three_sigma(self):
         """
-        Return the upper and lower three-sigma error intervals, as computed from
-        the percentiles, `50 - 0.135` and `99.865 - 50`
+        Return the lower and upper three-sigma error intervals
+
+        There are computed from the percentiles, ``50 - 0.135`` and ``99.865 - 50``
 
         Returns
         -------
         lower, upper
-            The lower and upper 1-sigma error intervals
+            The lower and upper 3-sigma error intervals
         """
         try:
             return self._three_sigma
@@ -323,10 +325,10 @@ class EmceeResults(object):
         constrained_params = [self[name] for name in self.constrained_names]
 
         # first get the parameters
-        toret = "Free parameters [ mean (+/-68%) (+/-95%) ]\n" + "_"*15 + "\n"
+        toret = "Free parameters [ median (+/-68%) (+/-95%) ]\n" + "_"*15 + "\n"
         toret += "\n".join(map(str, free_params))
 
-        toret += "\n\nConstrained parameters [ mean (+/-68%) (+/-95%) ]\n" + "_"*22 + "\n"
+        toret += "\n\nConstrained parameters [ median (+/-68%) (+/-95%) ]\n" + "_"*22 + "\n"
         toret += "\n".join(map(str, constrained_params))
 
         return toret
@@ -574,10 +576,14 @@ class EmceeResults(object):
     def plot_timeline(self, *names, **kwargs):
         """
         Plot the chain timeline for as many parameters as specified in the
-        `names` tuple. This plots the value of each walker as a function
-        of iteration
+        `names` tuple.
 
-        Note: any iterations during the "burnin" period are excluded
+        This plots the value of each walker as a function
+        of iteration.
+
+        Notes
+        ------
+        Any iterations during the "burnin" period are excluded
 
         Parameters
         ----------
@@ -593,6 +599,7 @@ class EmceeResults(object):
         """
         from matplotlib import pyplot as plt
         from matplotlib.ticker import MaxNLocator
+        from ..analysis import tex_names
 
         outfile = kwargs.get('outfile', None)
         N = len(names)
@@ -611,7 +618,10 @@ class EmceeResults(object):
             for t in trace:
                 axes[i].plot(iter_num, t, color="k", alpha=0.4)
             axes[i].yaxis.set_major_locator(MaxNLocator(5))
-            axes[i].axhline(param.mean, color="#888888", lw=2)
+            axes[i].axhline(param.median, color="#888888", lw=2)
+
+            if name in tex_names:
+                name = tex_names[name]
             axes[i].set_ylabel(name)
 
         axes[-1].set_xlabel('iteration number', fontsize=16)
@@ -622,10 +632,12 @@ class EmceeResults(object):
 
     def plot_triangle(self, *names, **kwargs):
         """
-        Make the triange plot for as many parameters as specified in the
-        `names` tuple, optionally thinning the number of samples plotted.
+        Make a triange plot for the desired parameters using the
+        :func:`corner.corner` function.
 
-        Note: any iterations during the "burnin" period are excluded
+        Notes
+        -----
+        Any iterations during the "burnin" period are excluded
 
         Parameters
         ----------
@@ -642,6 +654,8 @@ class EmceeResults(object):
         fig : matplotlib.Figure
             The figure object
         """
+        from ..analysis import tex_names
+
         try: import corner
         except: raise ImportError("`corner` must be installed")
 
@@ -650,7 +664,8 @@ class EmceeResults(object):
 
         thin = kwargs.pop('thin', 1)
         outfile = kwargs.pop('outfile', None)
-        kwargs.setdefault('labels', names)
+        labels = [tex_names.get(name, name) for name in names]
+        kwargs.setdefault('labels', labels)
 
         # make the sample array for the desired parameters
         samples = []
@@ -670,9 +685,11 @@ class EmceeResults(object):
                         crosshairs={},
                         **kwargs):
         """
-        Plot the 2D traces of the given parameters, using KDE via ``seaborn.jointplot``
+        Plot the 2D traces of the given parameters, using KDE via the :func:`seaborn.jointplot` function.
 
-        Note: any iterations during the "burnin" period are excluded
+        Notes
+        -----
+        Any iterations during the "burnin" period are excluded
 
         Parameters
         ----------
@@ -732,9 +749,11 @@ class EmceeResults(object):
                         crosshairs={},
                         **kwargs):
         """
-        Plot the 2D traces of the given parameters, using KDE via ``seaborn.kdeplot``
+        Plot the 2D traces of the given parameters, using KDE via :func:`seaborn.kdeplot`
 
-        Note: any iterations during the "burnin" period are excluded
+        Notes
+        -----
+        Any iterations during the "burnin" period are excluded
 
         Parameters
         ----------
@@ -803,7 +822,7 @@ class EmceeResults(object):
 
     def as_dict(self, kind=None):
         """
-        Return a dictionary of the values, either the `mean`,
+        Return a dictionary of the values, either the `median`,
         `peak`, or `max_lnprob`
         """
         if kind is None or kind in ['mean', 'median']:
@@ -813,7 +832,7 @@ class EmceeResults(object):
         elif kind == 'max_lnprob':
             funcs = [self.max_lnprob_values, self.max_lnprob_constrained_values]
         else:
-            raise ValueError("`kind` must be one of ['mean', 'peak', 'max_lnprob']")
+            raise ValueError("`kind` must be one of ['mean', 'median', 'peak', 'max_lnprob']")
 
         toret = {}
         names = [self.free_names, self.constrained_names]

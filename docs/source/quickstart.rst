@@ -32,6 +32,8 @@ Running Parameter Fits
 
 With the example downloaded, the user can run MCMC or nonlinear optimization
 fits using the default model parametrization with the ``rsdfit`` command.
+See :ref:`free-params` for a table of the default free parameters and
+:ref:`constrained-params` for a table of the default constrained parameters.
 
 For example, to run 10 nonlinear optimization steps (using the LBFGS
 optimization algorithm), you can do

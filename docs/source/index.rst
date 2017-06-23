@@ -79,3 +79,8 @@ power spectrum models available in this package and data input by the user.
    parameter-fits.rst
    analyzing-results.rst
    rsdfit-advanced.rst
+
+Get in touch
+------------
+
+Report bugs, suggest feature ideas, or view the source code `on GitHub <http://github.com/nickhand/pyRSD>`_.

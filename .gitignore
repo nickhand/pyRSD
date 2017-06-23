@@ -16,3 +16,4 @@ depends/tmp*
 *.tar*
 docs/generated
 docs/params.dat
+docs/source/savefig

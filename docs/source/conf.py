@@ -321,5 +321,7 @@ intersphinx_mapping = {
     'xarray': ('http://xarray.pydata.org/en/stable/', None),
     'astropy': ('http://docs.astropy.org/en/stable/', None),
     'lmfit': ('http://cars9.uchicago.edu/software/python/lmfit/', None),
-    'emcee': ('http://dan.iel.fm/emcee/current/', None)
+    'emcee': ('http://dan.iel.fm/emcee/current/', None),
+    'seaborn': ('http://seaborn.pydata.org', None),
+    'corner': ('https://corner.readthedocs.io/en/latest/', None)
 }

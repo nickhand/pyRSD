@@ -1,12 +1,12 @@
 params_filename = 'params.dat'
-model_filename = 'model.pickle'
+model_filename = 'model.npy'
 
 class GlobalFittingDriver(object):
     """
     The global :class:`~pyRSD.rsdfit.driver.FittingDriver` instance
     """
-    _instance = None 
-    
+    _instance = None
+
     @classmethod
     def get(cls):
         """
@@ -15,7 +15,7 @@ class GlobalFittingDriver(object):
         if cls._instance is None:
             raise ValueError("global driver has not been set yet")
         return cls._instance
-        
+
     @classmethod
     def set(cls, driver):
         """

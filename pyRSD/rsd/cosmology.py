@@ -203,6 +203,12 @@ class Cosmology(dict):
                 kwargs[k] = getattr(self.engine, k)
         dict.__init__(self, H0=H0, Om0=Om0, sigma8=sigma8, n_s=n_s, **kwargs)
 
+    def __repr__(self):
+        """
+        Representation that removes Quantity
+        """
+        return repr({k:self[k] for k in self.keys()})
+
     def copy(self):
         return Cosmology(**dict.copy(self))
 
@@ -256,7 +262,10 @@ class Cosmology(dict):
         valid = ['H0', 'Om0', 'Ob0', 'Ode0', 'w0', 'Tcmb0', 'Neff', 'm_nu']
         for name in valid:
             if hasattr(cosmo, name):
-                kwargs[name] = getattr(cosmo, name)
+                par = getattr(cosmo, name)
+                if isinstance(par, units.Quantity):
+                    par = par.value
+                kwargs[name] = par
         kwargs['flat'] = cosmo.Ok0 == 0.
         kwargs.setdefault('name', getattr(cosmo, 'name', None))
 

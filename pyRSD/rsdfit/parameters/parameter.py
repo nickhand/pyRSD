@@ -154,6 +154,13 @@ class Parameter(PickeableCache, lmfit.Parameter):
             self._val = self.max
         self.setup_bounds()
 
+    def update(self, **kwargs):
+        """
+        Update the attributes of the Parameter
+        """
+        for k in kwargs:
+            setattr(self, k, kwargs[k])
+
     def _getval(self):
         """get value, with bounds applied"""
 

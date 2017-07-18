@@ -271,3 +271,20 @@ class QuasarSpectrum(HaloSpectrum):
         power = super(QuasarSpectrum, self).power(k, mu)
 
         return G**2 * deriv + 2 * G*Gprime * power
+
+    def get_gradient(self, pars):
+        """
+        Return a :class:`PkmuGradient` object which can compute
+        the gradient of :func:`GalaxySpectrum.power` for a set of
+        desired parameters
+
+        Parameters
+        ----------
+        pars : ParameterSet
+
+        """
+        from pyRSD.rsd.power.qso.derivatives import PqsoDerivative
+        from pyRSD.rsd.power.gradient import PkmuGradient
+
+        registry = PqsoDerivative.registry()
+        return PkmuGradient(self, registry, pars)

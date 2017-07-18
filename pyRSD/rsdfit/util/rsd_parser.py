@@ -324,9 +324,10 @@ def rsdfit_parser():
     setup_analyze_subparser(subparser)
 
     # set the parse_args functions
-    def parse_known_args(parser, args=None, namespace=None):
+    def parse_known_args(parser, args=None, namespace=None, verify_args=True):
         ns, unknown = ap.ArgumentParser.parse_known_args(parser, args=args, namespace=namespace)
-        ns = verify_arguments(ns)
+        if verify_args:
+            ns = verify_arguments(ns)
         return ns, unknown
 
     parser.parse_known_args = lambda *args, **kwargs: parse_known_args(parser, *args, **kwargs)

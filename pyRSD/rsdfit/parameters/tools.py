@@ -1,6 +1,7 @@
 from ... import os, sys
 import ast
 from six import string_types
+import numpy
 
 def get_abspath(value):
     if isinstance(value, string_types) and os.path.exists(value):
@@ -142,18 +143,23 @@ def import_function_modules(line):
         if len(mod):
             mod = __import__(mod)
             modules[mod.__name__] = mod
+        else:
+            # handle numpy function calls explicitly
+            if hasattr(numpy, function):
+                modules[function] = getattr(numpy, function)
+
 
     return modules
-    
+
 def verify_line(line, length, lineno):
     """
     Verify the line read makes sense
     """
-    if (len(line) == 0 or line[0] == ''): 
+    if (len(line) == 0 or line[0] == ''):
         return False
     if len(line) == 1:
         raise ValueError("Error reading parameter %s on line %d" %(line[0], lineno))
     elif len(line) != length:
         raise ValueError("Cannot understand line %d" %lineno)
-        
+
     return True

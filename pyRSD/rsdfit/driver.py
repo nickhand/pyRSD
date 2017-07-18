@@ -2,7 +2,7 @@ from .. import numpy as np, os
 from . import MPILoggerAdapter, logging
 from . import params_filename, model_filename
 
-from .parameters import ParameterSet
+from .parameters import ParameterSet, Parameter
 from .theory import GalaxyPowerTheory, QuasarPowerTheory
 from .data import PowerData
 from .solvers import *
@@ -11,6 +11,7 @@ from .results import EmceeResults, LBFGSResults
 from ..rsd._cache import Cache, parameter
 
 from six import string_types
+import warnings
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.fitting_driver'))
 
@@ -73,7 +74,7 @@ class FittingDriverSchema(Cache):
         """
         return val
 
-    @parameter(default=None)
+    @parameter(default='fiducial')
     def init_from(self, val):
         """
         How to initialize the optimization; can be 'nlopt', 'fiducial',
@@ -153,6 +154,9 @@ class FittingDriver(FittingDriverSchema):
     init_model : bool, optional
         if `True`, initialize the theoretical model upon initialization; default is `True`
     """
+    schema = FittingDriverSchema
+    required_params = set([par for par in FittingDriverSchema._param_names if not hasattr(getattr(FittingDriverSchema, par), '_default')])
+
     def __init__(self,
                     param_file,
                     init_model=True,
@@ -253,6 +257,41 @@ class FittingDriver(FittingDriverSchema):
 
 
         return driver
+
+    @classmethod
+    def default_params(cls, **params):
+        """
+        Return a :class:`ParameterSet` object using a mix of the default
+        parameters and the parameters specified as keywords
+
+        .. note::
+            All required parameters (see :attr:`required_params`) must be
+            specified as keywords or an exception will be raised
+
+        Parameters
+        ----------
+        **params :
+            parameter values specified as key/value pairs
+        """
+        for name in cls.schema._param_names:
+            par = getattr(cls.schema, name)
+            if hasattr(par, '_default'):
+                params.setdefault(name, par._default)
+
+        # check for missing parameters
+        missing = cls.required_params - set(params)
+        if len(missing):
+            raise ValueError("missing the following required parameters: %s" %str(missing))
+
+        # make the set of parameters
+        toret = ParameterSet()
+        for name in params:
+            if name not in cls.schema._param_names:
+                warnings.warn("'%s' is not a valid parameter name for FittingDriver" %name)
+            toret[name] = Parameter(name=name, value=params[name])
+        toret.tag = 'driver'
+
+        return toret
 
     def apply(self, func, pattern):
         """
@@ -462,13 +501,13 @@ class FittingDriver(FittingDriverSchema):
             self.theory.fit_params[name].analytic = True
 
         # get the solver and objective
-        solver = bfgs_solver.run
+        solver = lbfgs_solver.run
 
         # init values from fiducial
         init_values = self.theory.free_fiducial
 
         logger.info("using L-BFGS soler to find the maximum probability values to use as initialization")
-        results, exception = solver(params, self.theory, pool=pool, init_values=init_values)
+        results, exception = solver(self.params, self.theory, pool=pool, init_values=init_values)
         logger.info("...done compute maximum probability")
 
         values = results.min_chi2_values

@@ -123,7 +123,7 @@ class RSDFitDriver(object):
             # initalize a new object from scratch
             else:
                 init_model = self.model is None
-                driver = FittingDriver(self.params, extra_param_file=self.extra_params, init_model=init_model)
+                driver = FittingDriver(self.params, init_model=init_model)
 
                 # initialize and save a model, if we need to
                 if not init_model:

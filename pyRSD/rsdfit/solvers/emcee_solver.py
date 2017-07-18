@@ -296,7 +296,7 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
         if init_values is None:
             raise ValueError("EMCEE: cannot initialize around best guess -- none provided")
 
-        labels = {'maximum_probability' : 'maximum probability', 'fiducial': 'fiducial', 'result': "previous result best-fit"}
+        labels = {'nlopt' : 'maximum probability', 'fiducial': 'fiducial', 'result': "previous result best-fit"}
         lab = labels[init_from]
 
         # initialize in random ball

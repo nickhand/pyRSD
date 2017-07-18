@@ -364,7 +364,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Minimum observed wavenumber needed for results
         """
         if val < INTERP_KMIN:
-            raise ValueError("cannot compute model below %.2e h/Mpc due to PT integrals")
+            raise ValueError("kmin = %.2e h/Mpc below PT integrals interpolation lower bound" %val)
         return val
 
     @parameter
@@ -373,7 +373,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         Maximum observed wavenumber needed for results
         """
         if val > INTERP_KMAX:
-            raise ValueError("cannot compute model above %.2f h/Mpc due to PT integrals")
+            raise ValueError("kmax = %.2e h/Mpc above PT integrals interpolation upper bound" %val)
         return val
 
     @parameter

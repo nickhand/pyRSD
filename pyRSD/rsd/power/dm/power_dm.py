@@ -715,6 +715,33 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             except Exception as e:
                 raise RuntimeError("failure to set parameter `%s` to value %s: %s" %(k, str(v), str(e)))
 
+    @classmethod
+    def default_config(cls, **params):
+        """
+        Return a :class:`ParameterSet` object holding the default
+        model configuration parameters, updated with any values passed on
+        as keywords
+
+        Parameters
+        ----------
+        **params :
+            parameter values specified as key/value pairs
+        """
+        from pyRSD.rsdfit.parameters import Parameter, ParameterSet
+
+        allowed = cls.allowable_kwargs
+        model = cls()
+        for name in allowed:
+            params.setdefault(name, getattr(model, name))
+
+        # make the set of parameters
+        toret = ParameterSet()
+        for name in params:
+            toret[name] = Parameter(name=name, value=params[name])
+        toret.tag = 'model'
+
+        return toret
+
     @property
     def config(self):
         """

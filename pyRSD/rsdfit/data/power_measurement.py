@@ -6,8 +6,9 @@ from ...rsd import PkmuTransfer, PolesTransfer, PkmuGrid, INTERP_KMAX
 from ...rsd.window import WindowTransfer
 
 from .. import logging, MPILoggerAdapter
-from ..parameters import ParameterSet
+from ..parameters import ParameterSet, Parameter
 from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
+import warnings
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.data'))
 
@@ -79,7 +80,8 @@ class PowerMeasurements(list):
         for i, name in enumerate(names):
 
             # parse the name
-            power_type, value = name.lower().split('_')
+            split_name = name.lower().split('_')
+            power_type, value = split_name[0], split_name[-1]
             value = float(value)
 
             # get the relevant data for the PowerMeasurement
@@ -513,6 +515,9 @@ class PowerData(PowerDataSchema):
         the name of the parameter file holding the necessary parameters
         needed to initialize the object
     """
+    schema = PowerDataSchema
+    required_params = set([par for par in PowerDataSchema._param_names if not hasattr(getattr(PowerDataSchema, par), '_default')])
+
     def __init__(self, param_file):
         """
         Initialize and setup up the measurements
@@ -529,8 +534,51 @@ class PowerData(PowerDataSchema):
             except ValueError:
                 raise ValueError("PowerData class is missing the '%s' initialization parameter" %name)
 
+        # make we have the necessary params
+        mode = self.params['mode'].value
+        assert mode in ['pkmu', 'poles'], "PowerData 'mode' must be 'pkmu' or 'poles'"
+        if mode == 'pkmu':
+            assert self.params['mu_bounds'].value is not None, "'mu_bounds' must be supplied if mode='pkmu'"
+        elif mode == 'poles':
+            assert self.params['ells'].value is not None, "'ells' must be supplied if mode='poles'"
+
         # and initialize
         self.initialize()
+
+    @classmethod
+    def default_params(cls, **params):
+        """
+        Return a :class:`ParameterSet` object using a mix of the default
+        parameters and the parameters specified as keywords
+
+        .. note::
+            All required parameters (see :attr:`required_params`) must be
+            specified as keywords or an exception will be raised
+
+        Parameters
+        ----------
+        **params :
+            parameter values specified as key/value pairs
+        """
+        for name in cls.schema._param_names:
+            par = getattr(cls.schema, name)
+            if hasattr(par, '_default'):
+                params.setdefault(name, par._default)
+
+        # check for missing parameters
+        missing = cls.required_params - set(params)
+        if len(missing):
+            raise ValueError("missing the following required parameters: %s" %str(missing))
+
+        # make the set of parameters
+        toret = ParameterSet()
+        for name in params:
+            if name not in cls.schema._param_names:
+                warnings.warn("'%s' is not a valid parameter name for PowerData" %name)
+            toret[name] = Parameter(name=name, value=params[name])
+        toret.tag = 'data'
+
+        return toret
 
     def initialize(self):
         """
@@ -627,7 +675,7 @@ class PowerData(PowerDataSchema):
             raise ValueError(msg)
 
         # verify the grid
-        if self.transfer is not None and hasattr(self, 'binning_transfer'):
+        if self.transfer is not None and self.binning_transfer is not None:
             if self.binning_transfer.size != self.covariance_matrix.N:
                 msg = "size mismatch between grid transfer function and covariance: "
                 args = (t.size, self.covariance_matrix.N)
@@ -673,6 +721,8 @@ class PowerData(PowerDataSchema):
 
             # initialize the transfer function
             self.binning_transfer = cls(self.grid, x, **kws)
+        else:
+            self.binning_transfer = None
 
         if self.window is None:
             self.transfer = self.binning_transfer

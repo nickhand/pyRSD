@@ -179,6 +179,9 @@ class BasePowerParameters(ParameterSet):
         params.prepare_params()
         params.update_constraints()
 
+        # set the tag to "theory"
+        params.tag = "theory"
+
         return params
 
     @classmethod

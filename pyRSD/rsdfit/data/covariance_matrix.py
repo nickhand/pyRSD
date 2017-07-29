@@ -264,6 +264,9 @@ class CovarianceMatrix(Cache):
         toret._data = toret._data / other
         return toret
 
+    def __truediv__(self, other):
+        return self.__div__(other)
+
     def __rdiv__(self, other):
         return self.__div__(other)
 
@@ -660,6 +663,105 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         super(PkmuCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
 
     @classmethod
+    def periodic_gaussian_covariance(cls, model, k, mu_edges, nbar, volume, Nmu=100):
+        """
+        Return the Gaussian prediction for the covariance between
+        :math:`P(k,\mu)` wedges for a periodic box simulation, where the number
+        density is constant.
+
+        See eq. 17 of Grieb et al. 2015 arxiv:1509.04293
+
+        Parameters
+        ----------
+        model : GalaxySpectrum, QuasarSpectrum
+            the model instance used to evaluate the theoretical :math:`P(k,\mu)`
+        k : array_like
+            the array of wavenumbers (units of :math:`h/\mathrm{Mpc}`) where
+            the covariance matrix will be evaluated
+        mu_edges : array_like
+            the edges of the :math:`\mu` bins
+        nbar : float
+            the constant number density in the box in units of
+            :math:`(\mathrm{Mpc}/h)^{-3}` -- the shot noise contribution
+            to the covariance is the inverse of this value
+        volume : float
+            the volume of the box, in units of :math:`(\mathrm{Mpc}/h)^3`
+        Nmu : int, optional
+            the number of mu bins to use when performing the multipole integration
+            over :math:`\mu`
+
+        Returns
+        -------
+        PkmuCovarianceMatrix :
+            the covariance matrix object holding the Gaussian prediction for
+            the covariance between the specified wedges
+
+        Examples
+        --------
+        >>> import numpy
+        >>> from pyRSD.rsd import GalaxySpectrum
+        >>> from pyRSD.rsdfit.data import PkmuCovarianceMatrix
+        >>> volume = 1380.0**3
+        >>> nbar = 3e-4
+        >>> model = GalaxySpectrum(params='boss_dr12_fidcosmo.ini')
+        >>> k = numpy.arange(0., 0.4, 0.005) + 0.005/2
+        >>> mu_edges = [0., 0.2, 0.4, 0.6, 0.8, 1.0]
+        >>> C = PkmuCovarianceMatrix.periodic_gaussian_covariance(model, k, ells, nbar, volume)
+        """
+        Nwedge = len(mu_edges) - 1
+        ndims = (len(k)+2, Nwedge+2)
+        mu_edges = np.asarray(mu_edges)
+
+        # the best-fit P(k,mu)
+        fine_mu_edges = np.linspace(0, 1, Nmu+1)
+        mu_cen = 0.5*(fine_mu_edges[1:] + fine_mu_edges[:-1])
+        Pkmu = model.power(k, mu_cen)
+        _, mus = np.meshgrid(k, mu_cen, indexing='ij')
+
+        # determine the mu indices for binning
+        k_idx = np.arange(len(k), dtype=int)[:,None]
+        dig_k = np.repeat(k_idx, Nmu, axis=1) + 1
+        dig_mu = np.digitize(mus, mu_edges)
+        mu_indices = np.ravel_multi_index([dig_k, dig_mu], ndims)
+
+        # determine the number of modes
+        dk = np.diff(k).mean()
+        Vk  = 4*np.pi*k**2*dk
+        N = Vk * volume / (2*np.pi)**3
+        N = np.repeat(N[:,None], Nmu, axis=1) * np.diff(fine_mu_edges)
+
+        Psq = (Pkmu + 1./nbar)**2
+
+        def bin(d, average=False):
+            toret = np.zeros(ndims)
+            minlength = np.prod(ndims)
+            toret.flat = np.bincount(mu_indices.flat, weights=d.flat, minlength=minlength)
+            norm = 1.0
+            if average:
+                norm = np.zeros(ndims)
+                norm.flat = np.bincount(mu_indices.flat, minlength=minlength)
+                norm = np.squeeze(norm.reshape(ndims)[1:-1, 1:-1])
+            toret = np.squeeze(toret.reshape(ndims)[1:-1, 1:-1])
+            return toret/norm
+
+        Psq = bin(Psq, average=True)
+        modes = bin(N, average=False)
+
+        N1 = len(k); N2 = Nwedge
+        C = numpy.zeros((N1,N2)*2)
+        for i in range(Nwedge):
+            C[:,i,:,i] = np.diag(np.nan_to_num(2*Psq[:,i]/modes[:,i]))
+
+        C = C.reshape((N1*N2,)*2, order='F')
+
+        # the coordinate arrays
+        k_coord = np.concatenate([k for i in range(Nwedge)])
+        mu_cen = (mu_edges[1:] + mu_edges[:-1])*0.5
+        mu_coord = np.concatenate([np.ones(len(k), dtype=int)*mu for mu in mu_cen])
+
+        return cls(C, k_coord, mu_coord, verify=False)
+
+    @classmethod
     def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
         """
         Return a PkmuCovarianceMatrix from a SpectraSet of P(k,mu) measurements
@@ -795,21 +897,6 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
             for index in self.index:
                 if name in index:
                     return index.to_pandas(key=name, unique=True)
-
-    def gaussian_covariance(self):
-        """
-        Return the Gaussian prediction for the variance of the diagonal
-        elements, given by:
-
-        :math: 2 / N_{modes}(k,\mu)) * [ P(k,\mu) + P_{shot}(k,\mu) ]**2
-        """
-        # check the prequisites
-        if 'mean_power' not in self.attrs:
-            raise AttributeError("`mean_power` key must exist in `attrs` to compute gaussian covariance")
-        if 'modes' not in self.attrs:
-            raise AttributeError("`modes` key must exist in `attrs` to compute gaussian covariance")
-
-        return np.nan_to_num(2./self.attrs['modes'] * self.attrs['mean_power']**2)
 
     #---------------------------------------------------------------------------
     # plotting
@@ -1104,6 +1191,242 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         super(PoleCovarianceMatrix, self).__init__(data, names=names, coords=coords, **kwargs)
 
     @classmethod
+    def periodic_gaussian_covariance(cls, model, k, ells, nbar, volume, Nmu=100):
+        """
+        Return the Gaussian prediction for the covariance between multipoles
+        for a periodic box simulation, where the number density is constant.
+
+        See eq. 16 of Grieb et al. 2015 arxiv:1509.04293
+
+        Parameters
+        ----------
+        model : GalaxySpectrum, QuasarSpectrum
+            the model instance used to evaluate the theoretical :math:`P(k,\mu)`
+        k : array_like
+            the array of wavenumbers (units of :math:`h/\mathrm{Mpc}`) where
+            the covariance matrix will be evaluated
+        ells : list of int
+            the list of multipole numbers to compute the covariance of
+        nbar : float
+            the constant number density in the box in units of
+            :math:`(\mathrm{Mpc}/h)^{-3}` -- the shot noise contribution
+            to the covariance is the inverse of this value
+        volume : float
+            the volume of the box, in units of :math:`(\mathrm{Mpc}/h)^3`
+        Nmu : int, optional
+            the number of mu bins to use when performing the multipole integration
+            over :math:`\mu`
+
+        Returns
+        -------
+        PoleCovarianceMatrix :
+            the covariance matrix object holding the Gaussian prediction for
+            the covariance between the specified multipoles
+
+        Examples
+        --------
+        >>> import numpy
+        >>> from pyRSD.rsd import GalaxySpectrum
+        >>> from pyRSD.rsdfit.data import PoleCovarianceMatrix
+        >>> volume = 1380.0**3
+        >>> nbar = 3e-4
+        >>> model = GalaxySpectrum(params='boss_dr12_fidcosmo.ini')
+        >>> k = numpy.arange(0., 0.4, 0.005) + 0.005/2
+        >>> ells = [0,2,4]
+        >>> C = PoleCovarianceMatrix.periodic_gaussian_covariance(model, k, ells, nbar, volume)
+        """
+        from scipy.special import legendre
+
+        if np.isscalar(ells):
+            ells = [ells]
+
+        # the best-fit P(k,mu)
+        mus = np.linspace(0, 1, Nmu+1)
+        Pkmu = model.power(k, mus)
+        _, mus = np.meshgrid(k, mus, indexing='ij')
+
+        N1 = Pkmu.shape[0]
+        N2 = len(ells)
+
+        # determine the number of modes
+        dk = np.diff(k).mean()
+        Vk  = 4*np.pi*k**2*dk
+        N = Vk * volume / (2*np.pi)**3
+
+        # initialize the return array
+        Psq = np.zeros((N2, N1)*2)
+        modes = np.zeros((N2, N1)*2)
+
+        # leg weights
+        leg = np.array([(2*ell+1)*legendre(ell)(mus) for ell in ells])
+
+        # P(k,mu)^2 * L_ell(mu)*L_ellprime
+        weights = leg[:,None]*leg[None,:]
+        power = (Pkmu + 1./nbar)**2
+        tobin = weights * power[None,...]
+
+        # fill the covariance for each ell, ell_prime
+        for i in range(N2):
+            for j in range(i, N2):
+
+                # do the sum over redshift first
+                Psq[i,:,j,:] = np.diag(np.nanmean(tobin[i,j,:], axis=-1))
+                modes[i,:,j,:] = N
+                if i != j:
+                    Psq[j,:,i,:] = Psq[i,:,j,:]
+                    modes[j,:,i,:] = modes[i,:,j,:]
+
+        # reshape squared power and modes
+        Psq = Psq.reshape((N1*N2,)*2)
+        modes = modes.reshape((N1*N2,)*2)
+        C = np.nan_to_num(2*Psq/modes)
+
+        # the coordinate arrays
+        k_coord = np.concatenate([k for i in range(len(ells))])
+        ell_coord = np.concatenate([np.ones(len(k), dtype=int)*ell for ell in ells])
+
+        return cls(C, k_coord, ell_coord, verify=False)
+
+
+    @classmethod
+    def cutsky_gaussian_covariance(cls, model, k, ells, nbar, fsky, zmin, zmax,
+                                    FKP_P0=1e4, Nmu=100, Nz=50):
+        """
+        Return the Gaussian prediction for the covariance between multipoles
+        for a "cutsky" survey, i.e., a survey with a varying :math:`n(z)`
+        distribution
+
+        Parameters
+        ----------
+        model : GalaxySpectrum, QuasarSpectrum
+            the model instance used to evaluate the theoretical :math:`P(k,\mu)`
+        k : array_like
+            the array of wavenumbers (units of :math:`h/\mathrm{Mpc}`) where
+            the covariance matrix will be evaluated
+        ells : list of int
+            the list of multipole numbers to compute the covariance of
+        nbar : callable
+            a callable function returning the number density as a function of
+            redshift
+        fsky : float
+            the sky fraction, used to normalized the effective volume calculation
+        zmin : float
+            the minimum redshift value to include when performing the effective
+            volume calculation
+        zmax : float
+            the maximum redshift value to include when performing the effective
+            volume calculation
+        FKP_P0 : float, optional
+            the FKP P0 value to use, where the FKP weights are :math:`1/(1+n(z)P_0)`;
+            default is 1e4
+        Nmu : int, optional
+            the number of mu bins to use when performing the multipole integration
+            over :math:`\mu`
+        Nz : int, optional
+            the number of redshift bins to use when performing the integral over
+            redshift
+
+        Returns
+        -------
+        PoleCovarianceMatrix :
+            the covariance matrix object holding the Gaussian prediction for
+            the covariance between the specified multipoles
+
+        Examples
+        --------
+        >>> import numpy
+        >>> from scipy.interpolate import InterpolatedUnivariateSpline as spline
+        >>> from pyRSD.rsd import GalaxySpectrum
+        >>> from pyRSD.rsdfit.data import PoleCovarianceMatrix
+        >>> filename = 'nbar_DR12v5_CMASSLOWZ_North_om0p31_Pfkp10000.dat'
+        >>> nbar = numpy.loadtxt(filename, skiprows=3)
+        >>> nbar = spline(nbar[:,0], nbar[:,3])
+        >>> fsky = 0.1436
+        >>> model = GalaxySpectrum(params='boss_dr12_fidcosmo.ini')
+        >>> k = numpy.arange(0., 0.4, 0.005) + 0.005/2
+        >>> ells = [0,2,4]
+        >>> zmin = 0.2
+        >>> zmax = 0.5
+        >>> C = PoleCovarianceMatrix.cutsky_gaussian_covariance(model, k, ells, nbar, fsky, zmin, zmax)
+        """
+        from scipy.special import legendre
+
+        if not callable(nbar):
+            raise ValueError("``nbar`` must be a callable function returning n(z)")
+
+        if np.isscalar(ells):
+            ells = [ells]
+
+        # the model cosmology
+        cosmo = model.cosmo
+
+        # the best-fit P(k,mu)
+        mus = np.linspace(0, 1, Nmu+1)
+        Pkmu = model.power(k, mus)
+        _, mus = np.meshgrid(k, mus, indexing='ij')
+
+        N1 = Pkmu.shape[0]
+        N2 = len(ells)
+
+        # volume of redshift shells for integral over z
+        zbins = np.linspace(zmin, zmax, Nz+1)
+        R_hi = cosmo.Dc_z(zbins[1:]) * cosmo.h() # in Mpc/h
+        R_lo = cosmo.Dc_z(zbins[:-1]) * cosmo.h() # in Mpc/h
+        dV = (4./3.)*np.pi*(R_hi**3 - R_lo**3)
+
+        # compute nbar
+        zcen = 0.5*(zbins[:-1] + zbins[1:])
+        nbar_ = nbar(zcen)
+
+        # weights
+        w = 1. / (1 + nbar_*FKP_P0) # FKP weights
+
+        # properly calibrate fsky
+        W = ((nbar_*w)**2 * dV).sum()
+        dV *= fsky
+        W *= fsky
+
+        # k-shell volume
+        dk = np.diff(k).mean()
+        Vk  = 4*np.pi*k**2*dk
+        modes = 2 * Vk / (2*np.pi)**3
+
+        # initialize the return array
+        Psq = np.zeros((N2, N1)*2)
+        modes = np.zeros((N2, N1)*2)
+
+        # leg weights
+        leg = np.array([(2*ell+1)*legendre(ell)(mus) for ell in ells])
+
+        # P(k,mu)^2 * L_ell(mu)*L_ellprime
+        weights = leg[:,None]*leg[None,:]
+        power = (Pkmu[...,None] + 1./nbar_)**2
+        tobin = weights[...,None] * power[None,...]
+
+        # fill the covariance for each ell, ell_prime
+        for i in range(N2):
+            for j in range(i, N2):
+
+                # do the sum over redshift first
+                x = ( (w*nbar_)**4 * dV * tobin).sum(axis=-1) / W**2
+                Psq[i,:,j,:] = np.diag(np.nanmean(x[i,j,:], axis=-1))
+                modes[i,:,j,:] = 2 * Vk / (2*np.pi)**3
+                if i != j:
+                    Psq[j,:,i,:] = Psq[i,:,j,:]
+                    modes[j,:,i,:] = modes[i,:,j,:]
+
+        # reshape squared power and modes
+        Psq = Psq.reshape((N1*N2,)*2)
+        modes = modes.reshape((N1*N2,)*2)
+        C = np.nan_to_num(2*Psq/modes)
+
+        # the coordinate arrays
+        k_coord = np.concatenate([k for i in range(len(ells))])
+        ell_coord = np.concatenate([np.ones(len(k), dtype=int)*ell for ell in ells])
+
+        return cls(C, k_coord, ell_coord, verify=False)
+
+    @classmethod
     def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
         """
         Return a PoleCovarianceMatrix from a SpectraSet of multipole measurements,
@@ -1238,21 +1561,6 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             for index in self.index:
                 if name in index:
                     return index.to_pandas(key=name, unique=True)
-
-    def gaussian_covariance(self):
-        """
-        Return the Gaussian prediction for the variance of the diagonal
-        elements, given by:
-
-        :math: 2 / N_{modes}(k,\mu)) * [ P(k,\mu) + P_{shot}(k,\mu) ]**2
-        """
-        # check the prequisites
-        if 'mean_power' not in self.attrs:
-            raise AttributeError("`mean_power` key must exist in `attrs` to compute gaussian covariance")
-        if 'modes' not in self.attrs:
-            raise AttributeError("`modes` key must exist in `attrs` to compute gaussian covariance")
-
-        return 2./self.attrs['modes'] * self.attrs['mean_power']**2
 
     #---------------------------------------------------------------------------
     # plotting

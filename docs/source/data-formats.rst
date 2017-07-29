@@ -189,6 +189,8 @@ file using
     must begin with ``pole_`` and are typically followed by the multipole
     number, i.e., ``pole_0`` identifies the monopole (:math:`\ell=0`).
 
+.. _covariance-matrix:
+
 The Covariance Matrix
 ---------------------
 
@@ -196,14 +198,14 @@ The parameter estimation procedure relies on the likelihood function, which tell
 use the probability of the measured data given our theoretical model. In order
 to evaluate the likelihood, we need the covariance matrix of the data statistics.
 pyRSD provides two classes for dealing with covariance matrices,
-:class:`pyRSD.rsd.data.PkmuCovarianceMatrix` for :math:`P(k,\mu)` data and
-:class:`pyRSD.rsd.data.PoleCovarianceMatrix` for :math:`P_\ell(k)` data.
+:class:`pyRSD.rsdfit.data.PkmuCovarianceMatrix` for :math:`P(k,\mu)` data and
+:class:`pyRSD.rsdfit.data.PoleCovarianceMatrix` for :math:`P_\ell(k)` data.
 
 Again, when running the ``rsdfit`` command, the covariance matrix will be
 loaded from a plaintext file with a specific format. The easiest way to
 save your desired covariance matrix is take advantage of the functionality
-provided by the :class:`~pyRSD.rsd.data.PkmuCovarianceMatrix` and
-:class:`pyRSD.rsd.data.PoleCovarianceMatrix` classes.
+provided by the :class:`~pyRSD.rsdfit.data.PkmuCovarianceMatrix` and
+:class:`pyRSD.rsdfit.data.PoleCovarianceMatrix` classes.
 
 The most important thing to realize when dealing with the covariance matrix
 is that it is the covariance matrix of the full, concatenated data vector.

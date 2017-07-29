@@ -12,4 +12,5 @@ we provide an overview and examples of how to accomplish that using the
 
    data-overview.rst
    data-formats.rst
+   data-gaussian-covariance.rst
    data-api.rst

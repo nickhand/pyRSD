@@ -3,7 +3,7 @@
 API
 ---
 
-The main class for handiling the power measurements is the :class:`PowerData`
+The main class for handling the power measurements is the :class:`PowerData`
 class. To initialize this class, the parameters are:
 
 .. currentmodule:: pyRSD.rsdfit.data.PowerData
@@ -38,7 +38,7 @@ Covariance Matrix
 ~~~~~~~~~~~~~~~~~
 
 .. autoclass:: PoleCovarianceMatrix
-  :members: from_plaintext, to_plaintext
+  :members: from_plaintext, to_plaintext, periodic_gaussian_covariance, cutsky_gaussian_covariance
 
 .. autoclass:: PkmuCovarianceMatrix
-  :members: from_plaintext, to_plaintext
+  :members: from_plaintext, to_plaintext, periodic_gaussian_covariance

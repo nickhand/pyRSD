@@ -2,8 +2,12 @@ from .. import numpy as np
 import itertools
 
 class InterpolationDomainError(Exception):
-    pass
-    
+    def __init__(self, *args, **kwargs):
+        self.above_bounds = kwargs.pop('above_bounds', False)
+        self.below_bounds = kwargs.pop('below_bounds', False)
+        Exception.__init__(self, *args, **kwargs)
+
+
 #-------------------------------------------------------------------------------
 # Regular grid interpolator from scipy
 #-------------------------------------------------------------------------------

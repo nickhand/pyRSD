@@ -341,7 +341,7 @@ class RSDSpline(interp.InterpolatedUnivariateSpline):
         below_bounds = x_new < self.x[0]
         above_bounds = x_new > self.x[-1]
         out_of_bounds = np.logical_or(below_bounds, above_bounds)
-        return out_of_bounds
+        return out_of_bounds, above_bounds.any(), below_bounds.any()
 
     def __call__(self, x_new):
         """
@@ -353,15 +353,15 @@ class RSDSpline(interp.InterpolatedUnivariateSpline):
         """
         Evaluate the spline
         """
-        out_of_bounds = self._check_bounds(x_new)
+        out_of_bounds, above, below = self._check_bounds(x_new)
         y_new = interp.InterpolatedUnivariateSpline.__call__(self, x_new)
         if np.isscalar(y_new) or y_new.ndim == 0:
             if out_of_bounds:
-                raise InterpolationDomainError()
+                raise InterpolationDomainError(above_bounds=above, below_bounds=below)
             return y_new
         else:
             if out_of_bounds.sum():
-                raise InterpolationDomainError()
+                raise InterpolationDomainError(above_bounds=above, below_bounds=below)
             return y_new
 
 #-------------------------------------------------------------------------------

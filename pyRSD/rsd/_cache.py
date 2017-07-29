@@ -310,9 +310,8 @@ class InterpolatedFunction(object):
     either evaluate a spline or evaluate the underlying function,
     if a domain error occurs
     """
-    def __init__(self, spline, function, name):
+    def __init__(self, spline, name):
         self.spline   = spline
-        self.function = function
         self.name     = name
 
     def __call__(self, k, derivative=False):
@@ -327,29 +326,13 @@ class InterpolatedFunction(object):
                     return self.spline(k)
                 else:
                     return self.spline.derivative()(k)
-        except InterpolationDomainError:
-
-            # print a warning
-            import warnings
-            warnings.warn("evaluating interpolated function %s outside of domain...will be slow!!" %(self.name))
-
-            # return spline results in bounds, and call the function out of bounds
-            if numpy.isscalar(k) or numpy.ndim(k) == 0:
-                ans = self.function(k)
-                try:
-                    if len(k) == 1:
-                        return ans[0]
-                    else:
-                        return ans
-                except:
-                    return ans
-            else:
-                k = numpy.asarray(k)
-                out_of_bounds = self.spline._check_bounds(k)
-                toret = numpy.zeros_like(k)
-                toret[out_of_bounds] = self.function(k[out_of_bounds])
-                toret[~out_of_bounds] = self.spline(k[~out_of_bounds])
-                return toret
+        except InterpolationDomainError as e:
+            msg = "wavenumber range outside interpolation domain"
+            if e.above_bounds:
+                msg += "\ndesired wavenumbers greater than max of interpolation domain, try adusting ``kmax`` attribute"
+            if e.below_bounds:
+                msg += "\ndesired wavenumbers less than min of interpolation domain, try adusting ``kmin`` attribute"
+            raise InterpolationDomainError(msg)
         except:
             raise
 
@@ -380,17 +363,14 @@ def interpolated_function(*parents, **kwargs):
                 val = f(self, interp_domain)
                 spline_kwargs = getattr(self, 'spline_kwargs', {})
 
-                # the function that will explicitly evaluate the original function
-                g = f.__get__(self, self.__class__)
-
                 # tuple of splines
                 if isinstance(val, tuple):
                     splines = [self.spline(interp_domain, x, **spline_kwargs) for x in val]
-                    self._cache[name] = InterpolatedFunction(splines, g, name)
+                    self._cache[name] = InterpolatedFunction(splines, name)
                 # single spline
                 else:
                     spl = self.spline(interp_domain, val, **spline_kwargs)
-                    self._cache[name] = InterpolatedFunction(spl, g, name)
+                    self._cache[name] = InterpolatedFunction(spl, name)
 
             return self._cache[name](*args, **kws)
 

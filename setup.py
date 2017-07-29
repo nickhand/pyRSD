@@ -40,7 +40,7 @@ os.environ.setdefault("CXX", "g++")
 os.environ.setdefault("F90", "gfortran")
 
 # the CLASS version to install
-CLASS_VERSION = "2.6.0"
+CLASS_VERSION = "2.6.1"
 
 def check_swig_version():
     """

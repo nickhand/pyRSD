@@ -14,7 +14,8 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
-  - conda update --yes conda
+  # do not update due to https://github.com/conda/conda/issues/6030
+  #- conda update --yes conda d
 install:
   - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
   - source activate test

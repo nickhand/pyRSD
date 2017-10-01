@@ -35,11 +35,11 @@ install:
 
     - conda install --yes swig gcc gsl fftw libgcc
     - conda install --yes numpy=$NUMPY_VERSION
-    - echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
+    - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
     - conda install --yes --file requirements.txt
     - pip install -r requirements-tests.txt
     - pip install .[tests]
-    
+
     # To ease debugging, list installed packages
     - conda info -a
 

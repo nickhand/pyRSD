@@ -10,9 +10,10 @@ cache:
     - $HOME/.cache/pip
     - $HOME/.conda
     - $HOME/.cache/pyRSD
-before_install:
-    - CONDA_INSTALL_LOCN="${HOME}/miniconda"
+
+install:
     # Install and set up miniconda.
+    - CONDA_INSTALL_LOCN="${HOME}/miniconda"
     - if [ $TRAVIS_OS_NAME == "linux" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh; fi
     - if [ $TRAVIS_OS_NAME == "osx" ]; then wget http://repo.continuum.io/miniconda/Miniconda3-latest-MacOSX-x86_64.sh -O miniconda.sh; fi
     - bash miniconda.sh -b -p $CONDA_INSTALL_LOCN
@@ -24,21 +25,27 @@ before_install:
     - echo "conda ==4.3.22" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
 
     - conda install --quiet conda
-install:
-  - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
-  - source activate test
-  - conda config --add channels astropy
-  - conda config --add channels bccp
-  - conda config --prepend channels nickhand
-  - conda config --append channels conda-forge
-  - conda install --yes swig gcc gsl fftw libgcc
-  - conda install --yes numpy=$NUMPY_VERSION
-  - echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
-  - conda install --yes --file requirements.txt
-  - pip install -r requirements-tests.txt
-  - pip install .[tests]
+
+    # set the ordering of additional channels
+    - conda config --prepend channels defaults
+    - conda config --prepend channels nickhand
+    - conda config --append channels bccp
+    - conda config --append channels astropy
+    - conda config --append channels conda-forge # for conda-build-all (will be moved to defaults soon)
+
+    - conda install --yes swig gcc gsl fftw libgcc
+    - conda install --yes numpy=$NUMPY_VERSION
+    - echo "numpy $NUMPY_VERSION.*" >> $CONDA_PREFIX/conda-meta/pinned
+    - conda install --yes --file requirements.txt
+    - pip install -r requirements-tests.txt
+    - pip install .[tests]
+    
+    # To ease debugging, list installed packages
+    - conda info -a
+
 script:
-  - python runtests.py --mpl
+    - python runtests.py --mpl
+
 deploy:
   - provider: pypi
     distributions: sdist

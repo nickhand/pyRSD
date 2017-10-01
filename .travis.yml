@@ -4,7 +4,8 @@ python:
   - 3.5
 env:
   - NUMPY_VERSION=1.11
-  - CONDA_INSTALL_LOCN="${HOME}/miniconda"
+  global:
+    - CONDA_INSTALL_LOCN="${HOME}/miniconda"
 cache:
   directories:
     - $HOME/.cache/pip

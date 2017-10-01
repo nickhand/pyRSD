@@ -14,13 +14,15 @@ before_install:
   - chmod +x miniconda.sh
   - ./miniconda.sh -b -p $HOME/miniconda
   - export PATH=$HOME/miniconda/bin:$PATH
-  # pin conda verson to 4.3.22
-  - conda config --set auto_update_conda False
-  - echo "conda ==4.3.22" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
   # do not update due to https://github.com/conda/conda/issues/6030
   - conda update --yes conda
 
 install:
+
+  # pin conda verson to 4.3.22
+  - conda config --set auto_update_conda False
+  - echo "conda ==4.3.22" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
+  - conda install --yes conda
   - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
   - source activate test
   - conda config --add channels astropy

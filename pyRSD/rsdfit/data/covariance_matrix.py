@@ -237,6 +237,9 @@ class CovarianceMatrix(Cache):
     #---------------------------------------------------------------------------
     def __add__(self, other):
         toret = self.copy()
+        if isinstance(other, CovarianceMatrix):
+            assert self.shape == other.shape
+            other = other._data
         toret._data = toret._data + other
         return toret
 
@@ -245,6 +248,9 @@ class CovarianceMatrix(Cache):
 
     def __sub__(self, other):
         toret = self.copy()
+        if isinstance(other, CovarianceMatrix):
+            assert self.shape == other.shape
+            other = other._data
         toret._data = toret._data - other
         return toret
 
@@ -253,6 +259,9 @@ class CovarianceMatrix(Cache):
 
     def __mul__(self, other):
         toret = self.copy()
+        if isinstance(other, CovarianceMatrix):
+            assert self.shape == other.shape
+            other = other._datas
         toret._data = toret._data * other
         return toret
 
@@ -261,6 +270,9 @@ class CovarianceMatrix(Cache):
 
     def __div__(self, other):
         toret = self.copy()
+        if isinstance(other, CovarianceMatrix):
+            assert self.shape == other.shape
+            other = other._data
         toret._data = toret._data / other
         return toret
 

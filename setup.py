@@ -193,7 +193,7 @@ def libgcl_config():
     gcl_info['sources'] =  gcl_sources + fftlog_sources + emu_sources
     gcl_info['include_dirs'] = ['pyRSD/_gcl/include', emu_inc]
     gcl_info['language'] = 'c++'
-    gcl_info['extra_compiler_args'] = ["-fopenmp", "-O2", '-std=c++11']
+    gcl_info['extra_compiler_args'] = ["-O2", '-std=c++11']
     return ('gcl', gcl_info)
 
 def gcl_extension_config():
@@ -202,8 +202,8 @@ def gcl_extension_config():
     config = {}
     config['name'] = 'pyRSD._gcl'
     config['extra_link_args'] = ['-g', '-fPIC']
-    config['extra_compile_args'] = ['-fopenmp']
-    config['libraries'] = ['gcl', 'class', 'gomp', 'gsl', 'gfortran']
+    config['extra_compile_args'] = []
+    config['libraries'] = ['gcl', 'class', 'gsl', 'gfortran']
 
     # determine if swig needs to be called
     if not swig_needed:

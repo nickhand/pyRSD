@@ -215,7 +215,9 @@ def parameter(f, **kwargs):
     Decorator to represent a model parameter that must
     be set by the user
     """
-    default = kwargs.get('default', None)
+    have_default = 'default' in kwargs
+    if have_default:
+        default = kwargs.get('default')
     name = f.__name__
     _name = '__'+name
     def _set_property(self, value, deps=[]):
@@ -240,7 +242,7 @@ def parameter(f, **kwargs):
     def _get_property(self):
         if _name not in self.__dict__:
 
-            if default is not None:
+            if have_default:
                 if isinstance(default, string_types) and hasattr(self, default):
                     val = getattr(self, default)
                     return val
@@ -259,7 +261,7 @@ def parameter(f, **kwargs):
 
     prop = ParameterProperty(_get_property, _set_property, _del_property)
     prop._deps = set() # track things that depend on this parameter
-    if 'default' in kwargs:
+    if have_default:
         prop._default = default
     return prop
 

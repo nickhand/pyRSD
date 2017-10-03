@@ -1021,9 +1021,10 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
             return np.array([simps(d, x=mus) for d in kern*Pkmus])
 
-    def from_transfer(self, transfer, flatten=False, **kws):
+    def from_transfer(self, transfer, binval, **kws):
         """
-        Return the power accounting for discrete binning effects using the input transfer function
+        Return the power accounting for discrete binning effects using the
+        input transfer function.
 
         This calls :func:`power` to evaluate the model at discrete ``k``
         and ``mu`` values
@@ -1032,9 +1033,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         ----------
         transfer : :class:`~pyRSD.rsd.PkmuTransfer`, :class:`~pyRSD.rsd.PolesTransfer`, :class:`~pyRSD.rsd.window.WindowTransfer`
             the transfer class which accounts for the discrete binning effects
-        flatten : bool, optional
-            If `True`, flatten the return array, which will have a length of
-            `Nk * Nmu` or `Nk * Nell`
+        binval : int, tuple
+            the bin value to compute, either the multipole number ``ell``, or
+            the ``mu`` bin bounds. This argument is passed directly to the
+            :func:`__call__` function of ``transfer``
+        **kws :
+            additional keyword arguments to the :func:`__call__` of the
+            ``transfer`` object
         """
         grid = transfer.grid
 
@@ -1042,11 +1047,11 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         from pyRSD.rsd.window import WindowTransfer
         if isinstance(transfer, WindowTransfer):
 
-            # check k-range inconsistency
-            kmin, kmax = transfer.kmin, transfer.kmax
-            if (kmin < self.kmin).any():
+            kmin = transfer.get_kmin()
+            kmax = transfer.get_kmax()
+            if (kmin < self.kmin):
                 warnings.warn("min k of window transfer (%s) is less than model's kmin (%.2e)" %(kmin, self.kmin))
-            if (kmax > self.kmax).any():
+            if (kmax > self.kmax):
                 warnings.warn("max k of window transfer (%s) is greater than model's kmax (%.2e)" %(kmax, self.kmax))
 
             # check bad values
@@ -1057,7 +1062,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
 
         power = self.power(grid.k[grid.notnull], grid.mu[grid.notnull])
         transfer.power = power
-        return transfer(flatten=flatten, **kws)
+        return transfer(binval, kmin=kmin, kmax=kmax, **kws)
 
     @tools.alcock_paczynski
     def _P_mu0(self, k, mu):

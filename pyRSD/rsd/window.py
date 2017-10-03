@@ -106,22 +106,7 @@ class WindowConvolution(object):
     See Wilson et al, MNRAS Volume 464, Issue 3, p.3121-3130, 2017
     """
     def __init__(self, s, W, max_ellprime=4, max_ell=4):
-        """
-        Parameters
-        ----------
-        s : array_like, (Ns,)
-            the separation vector
-        W : array_like, (Ns, Nl)
-            the even-ell configuration space window function multipoles,
-            where Nl must be >= 5; the first column is the ell=0, second
-            is ell=2, etc
-        max_ellprime : int, optional
-            the maximum value of ``ellprime`` to include when performing
-            the linear combination of higher-order multipoles leaking
-            into a mulitpole of order ``ell
-        max_ell : int, optional
-            maximum multipole number we want to convolve
-        """
+
         # the values of the separation where window is defined
         self.s = s
         self.smin = s.min()
@@ -229,7 +214,8 @@ class WindowConvolution(object):
 
 class WindowTransfer(PolesTransfer):
     """
-    The transfer function associated with the window function convolution of the power spectrum multipoles
+    The transfer function associated with the window function convolution of
+    the power spectrum multipoles.
 
     Notes
     -----
@@ -244,8 +230,8 @@ class WindowTransfer(PolesTransfer):
     window : array_like
         the window function multipoles in configuration space, as columns;
         the first column should be the separation vector ``s``
-    ells : list of int
-        the multipole numbers of the desired convolved multipoles
+    max_ell : int
+        the maximum ell value we wish to compute
     grid_kmin : float, optional
         the minimum ``k`` value on the grid used when FFTing during the convolution
     grid_kmax : float, optional
@@ -263,28 +249,19 @@ class WindowTransfer(PolesTransfer):
         the power values defined on the grid -- can have shape
         (Nk,Nmu) or (N,), in which case it is interpreted
         as the values at all valid grid points
-    ells_mask : list, None, optional
-        boolean mask specifying which ell values to return; this is needed in the
-        case that we are doing a window convolution and need more ell values
-    k_out : array_like; optional
-        return the multipoles at these k values
 
     References
     ----------
     See Wilson et al, MNRAS Volume 464, Issue 3, p.3121-3130, 2017
     """
-    def __init__(self, window, ells,
+    def __init__(self, window, max_ell,
                     grid_kmin=1e-4,
                     grid_kmax=100.,
                     Nk=1024,
                     Nmu=40,
                     kmax=0.7,
                     max_ellprime=4,
-                    power=None,
-                    ells_mask=None,
-                    k_out=None):
-
-        ells = np.array(ells, dtype=float)
+                    power=None):
 
         # make the grid
         k = np.logspace(np.log10(grid_kmin), np.log10(grid_kmax), Nk)
@@ -295,24 +272,32 @@ class WindowTransfer(PolesTransfer):
         weights = np.ones_like(grid_k)
         weights[grid_k > kmax] = 0.
         grid = PkmuGrid([k,mu], grid_k, grid_mu, weights)
+        self._kmax = kmax
+        self._grid_kmin = grid_kmin
 
         # init the base class
-        super(WindowTransfer, self).__init__(grid, ells, kmin=grid_kmin, kmax=kmax, power=power, ells_mask=ells_mask)
+        super(WindowTransfer, self).__init__(grid, power=power)
 
         # the convolver object
-        self.convolver = WindowConvolution(window[:,0], window[:,1:], max_ellprime=max_ellprime, max_ell=int(max(ells)))
+        self.convolver = WindowConvolution(window[:,0], window[:,1:],
+                                            max_ellprime=max_ellprime,
+                                            max_ell=max_ell)
 
-        # the output k
-        self.k_out = k_out
 
-    def __call__(self, flatten=False, qbias=0.7, dry_run=False, no_convolution=False):
+    def get_kmin(self):
+        return self._grid_kmin
+    def get_kmax(self):
+        return self._kmax
+
+    def __call__(self, ells, qbias=0.7, dry_run=False, no_convolution=False,
+                    k_out=None, **kws):
         """
         Do the convolution
 
         Parameters
         ----------
-        flatten : bool; optional
-            return the array flattened, column-wise
+        ells : list of int
+            the multipole numbers of the desired convolved multipoles
         qbias : float; optional
             when using FFTLog to perform the convolution, bias the transform
             with a power-law of this value
@@ -322,17 +307,29 @@ class WindowTransfer(PolesTransfer):
             to check the reversability of the transform
         no_convolution : bool; optional
             do not perform the convolution at all (no FFTs)
+        k_out : array_like, optional
+            return the multipoles at these ``k`` values
 
         Returns
         -------
         Pell_conv : array_like
             the convolved multipoles
         """
+        ells = np.array(ells, ndmin=1)
+        self.ells = np.array(range(0, self.convolver.max_ellprime+1, 2))
+        ells_mask = np.array([ell in ells for ell in self.ells])
+
+        self.kmin = self._grid_kmin
+        self.kmax = self._kmax
+
         # zero-pad beyond the accuracy of the model
         self.power[~self.grid.notnull] = 0.
 
         # do the legendre-weighted sum of self.power
-        Pell = super(WindowTransfer, self).__call__(flatten=False, full_grid_output=True)
+        Pell = super(WindowTransfer, self).__call__(ells=self.ells,
+                                                    kmin=self.kmin,
+                                                    kmax=self.kmax,
+                                                    full_grid_output=True)
         Pell = np.nan_to_num(Pell)
 
         # do the convolution
@@ -364,28 +361,23 @@ class WindowTransfer(PolesTransfer):
         Pell_conv = self.restrict_k(Pell_conv)
 
         # interpolate to k_out
-        if self.k_out is not None:
-            if self.k_out.shape[1] != Pell_conv.shape[1]:
-                raise ValueError("shape mismatch in second dimension of ``k_out``")
+        if k_out is not None:
 
-            toret = np.ones_like(self.k_out) * np.nan
-            for i, ell in enumerate(self.ells[self.ells_mask]):
+            shape = (len(k_out), len(self.ells))
+            toret = np.ones(shape) * np.nan
+            for i, ell in enumerate(self.ells):
 
                 kk = self.coords[0][:,i]
                 idx = np.isfinite(kk)
                 spl = spline(kk[idx], Pell_conv[idx,i])
 
-                idx = np.isfinite(self.k_out[:,i])
-                toret[idx,i] = spl(self.k_out[idx,i])
+                idx = np.isfinite(k_out)
+                toret[idx,i] = spl(k_out[idx])
         else:
             toret = Pell_conv
 
-        # flatten
-        if flatten:
-            toret = toret.ravel(order='F')
-            toret = toret[np.isfinite(toret)]
-
-        return toret
+        toret = np.squeeze(toret[:,ells_mask])
+        return tuple(toret.T)
 
 def convolve_multipoles(k, Pell, ells, convolver, qbias=0.7, dry_run=False, legacy=True):
     """

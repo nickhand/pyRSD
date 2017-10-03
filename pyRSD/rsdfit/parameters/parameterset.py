@@ -242,12 +242,13 @@ class ParameterSet(lmfit.Parameters):
             f = filename
             close = False
         else:
+            if 'b' not in mode: mode += 'b'
             f = open(filename, mode=mode)
             close = True
 
         if header_name is not None:
             header = "#{x}\n# {hdr}\n#{x}\n".format(hdr=header_name, x="-"*79)
-            f.write(header)
+            f.write(header.encode())
 
         tag = prefix
         if self.tag is not None: tag = self.tag
@@ -262,8 +263,8 @@ class ParameterSet(lmfit.Parameters):
             else:
                 output.append("{} = {}".format(key, repr(par(output=True))))
 
-        f.write("%s\n" %("\n".join(output)))
-        if footer: f.write("#{}\n\n".format("-"*79))
+        f.write(("%s\n" %("\n".join(output))).encode())
+        if footer: f.write(("#{}\n\n".format("-"*79)).encode())
 
         if close: f.close()
 

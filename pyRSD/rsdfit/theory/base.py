@@ -1,5 +1,7 @@
 from pyRSD.rsdfit.parameters import Parameter, ParameterSet
 from pyRSD.rsd._cache import Property
+from pyRSD.rsd.window import WindowTransfer
+
 import numpy as np
 
 from six import string_types
@@ -572,32 +574,41 @@ class BasePowerTheory(object):
         """
         return self.fit_params.set_free_parameters(theta)
 
-    def model_callable(self, data):
+    def evaluate_model(self, data):
         """
-        Return the correct model function based on the `PowerData`
+        Yield the model evaluation for each data measurement.
         """
-        import functools
+        for i, m in enumerate(data):
+            toret = None
 
-        # if `data.transfer` is there, use it to evaluate power, accounting
-        # for binning effects
-        if data.transfer is not None and hasattr(self.model, 'from_transfer'):
-            return functools.partial(self.model.from_transfer, data.transfer, flatten=True)
+            # if `data.transfer` is there, use it to evaluate power, accounting
+            # for binning effects
+            if data.transfer is not None and hasattr(self.model, 'from_transfer'):
 
-        # computing P(k,mu) with no binning effects
-        if data.mode == 'pkmu':
-            k = data.combined_k
-            mu = data.combined_mu
-            return functools.partial(self.model.power, k, mu)
+                if isinstance(data.transfer, WindowTransfer):
+                    toret = self.model.from_transfer(data.transfer, data.ells[i], k_out=m.k)
+                else:
+                    kws = {'kmin':data.kmin, 'kmax':data.kmax}
+                    if data.mode == 'poles':
+                        toret = self.model.from_transfer(data.transfer, data.ells[i], **kws)
+                    elif data.mode == 'pkmu':
+                        toret = self.model.from_transfer(data.transfer, data.mu_bounds[i], **kws)
 
-        # computing P(k, ell) with no binning effects (i.e., integrating over P(k,mu))
-        elif data.mode == 'poles':
-            k = data.combined_k
-            ell = data.combined_ell
-            return functools.partial(self.model.poles, k, ell)
+            # computing P(k,mu) with no binning effects
+            elif data.mode == 'pkmu':
+                toret = self.model.power(m.k, m.mu)
 
-        # all is lost...
-        # something has gone horribly wrong...
-        raise NotImplementedError("failure trying to get model callable... all is lost")
+            # computing P(k, ell) with no binning effects (i.e., integrating over P(k,mu))
+            elif data.mode == 'poles':
+                return self.model.poles(m.k, m.ell)
+
+            if toret is None:
+                # all is lost...
+                # something has gone horribly wrong...
+                raise NotImplementedError("failure trying to get model callable... all is lost")
+
+            yield toret
+
 
     def check(self, return_errors=False):
         """

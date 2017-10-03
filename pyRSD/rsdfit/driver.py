@@ -9,6 +9,7 @@ from .solvers import *
 from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
 from ..rsd._cache import Cache, parameter
+from pyRSD.rsdfit.theory import decorators
 
 from six import string_types
 import warnings
@@ -52,6 +53,26 @@ class FittingDriverSchema(Cache):
         """
         if val not in ['galaxy', 'quasar']:
             raise ValueError("``tracer_type`` should be 'quasar' or 'galaxy'")
+        return val
+
+    @parameter(default={})
+    def theory_decorator(self, val):
+        """
+        A decorator to wrap the default theory output.
+
+        Users can use this to compute linear combinations of multipoles, for
+        example.
+        """
+        from pyRSD.rsdfit.theory.decorators import valid
+
+        if val is not None:
+            assert isinstance(val, dict), "'theory_decorator' should be a dict"
+            for k in val:
+                # check value is a valid decorator name
+                if not isinstance(val[k], string_types) or val[k] not in valid:
+                    args = (str(valid), val[k])
+                    raise ValueError("theory_decorator values should be one of %s, not %s" %args)
+
         return val
 
     @parameter(default=0)
@@ -199,6 +220,13 @@ class FittingDriver(FittingDriverSchema):
 
         # results are None for now
         self.results = None
+
+        # check theory decorator keys
+        for k in self.theory_decorator:
+            if k not in self.data.statistics:
+                msg = "keys of 'theory_decorator' should be one of "
+                msg += "'data.statistics' = %s" % str(self.data.statistics)
+                raise ValueError(msg)
 
     #---------------------------------------------------------------------------
     # class methods to start from directory
@@ -532,9 +560,6 @@ class FittingDriver(FittingDriverSchema):
         self.theory.model.initialize()
         logger.info("...theoretical model initialized", on=0)
 
-        # the model callable
-        self._model_callable = self.theory.model_callable(self.data)
-
     @property
     def results(self):
         """
@@ -585,22 +610,35 @@ class FittingDriver(FittingDriverSchema):
         msg = "running with model parameters:\n\n"
         msg += "\n".join(["%-25s: %s" %(k, str(v)) for k,v in sorted(params.items())])
         logger.info(msg, on=0)
-
-        # model callable
-        self._model_callable = self.theory.model_callable(self.data)
         logger.info("...theoretical model successfully read", on=0)
 
     @property
     def combined_model(self):
         """
         The model values for each measurement, flattened column-wise
-        into a single array
+        into a single array.
+
+        Optionally, ``theory_decorator`` is applied.
 
         Notes
         -----
         The model callable should already returned the flattened `combined` values
         """
-        return self._model_callable()
+        out = []
+
+        # loop over each theory statistic
+        for i, theory in enumerate(self.theory.evaluate_model(self.data)):
+
+            stat = self.data.statistics[i]
+            dec = self.theory_decorator.get(stat, None)
+            if dec is not None:
+                dec = getattr(decorators, dec)
+                theory = dec(*theory)
+
+            assert np.ndim(theory) == 1
+            out.append(theory)
+
+        return np.concatenate(out, axis=0)
 
     @property
     def null_lnlike(self):

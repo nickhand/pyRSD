@@ -9,6 +9,15 @@ from .. import logging, MPILoggerAdapter
 from ..parameters import ParameterSet, Parameter
 from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 import warnings
+import collections
+
+def flatten(l):
+    for el in l:
+        if isinstance(el, collections.Iterable):
+            for sub in flatten(el):
+                yield sub
+        else:
+            yield el
 
 logger = MPILoggerAdapter(logging.getLogger('rsdfit.data'))
 
@@ -681,6 +690,13 @@ class PowerData(PowerDataSchema):
                 args = (t.size, self.covariance_matrix.N)
                 raise ValueError(msg + "grid size =  %d, cov size = %d" %args)
 
+        # verify ells/mu_bounds
+        for attr in ['ells', 'mu_bounds']:
+            val = getattr(self, attr)
+            if val is not None and len(val) != self.size:
+                args = (attr, self.size ,len(val))
+                raise ValueError("data '%s' should be a list of length %d, not %d" % args)
+
     def read_grid(self):
         """
         If `grid_file` is present, initialize `PkmuGrid`, which
@@ -711,7 +727,6 @@ class PowerData(PowerDataSchema):
             else:
                 x = self.ells
                 cls = PolesTransfer; lab = 'ells'
-            kws = {'kmin':self.kmin, 'kmax':self.kmax}
 
             # verify and initialize
             if x is None:
@@ -720,7 +735,12 @@ class PowerData(PowerDataSchema):
                 raise ValueError("size mismatch between `%s` and number of measurements" %lab)
 
             # initialize the transfer function
-            self.binning_transfer = cls(self.grid, x, **kws)
+            self.binning_transfer = cls(self.grid)
+
+            # update the values
+            setattr(self.binning_transfer, lab, x)
+            self.binning_transfer.kmin = self.kmin
+            self.binning_transfer.kmax = self.kmax
         else:
             self.binning_transfer = None
 
@@ -728,21 +748,11 @@ class PowerData(PowerDataSchema):
             self.transfer = self.binning_transfer
         else:
             kws = {}
-
-            # determine max ell prime and which poles we need
-            if max(self.ells) < self.max_ellprime:
-                kws['ells_mask'] = [True if ell in self.ells else False for ell in range(0, self.max_ellprime+1, 2)]
-                x = list(range(0, self.max_ellprime+1, 2))
             kws['max_ellprime'] = self.max_ellprime
-
-
-            if self.grid_file is not None:
-                k_out = self.binning_transfer.coords[0]
-            else:
-                k_out = np.vstack([m.k for m in self.measurements]).T
+            kws['max_ell'] = max(self.max_ellprime, max(flatten(self.ells)))
 
             # evaluate at k_out of the binning grid
-            self.transfer = WindowTransfer(self.window, self.ells, k_out=k_out, **kws)
+            self.transfer = WindowTransfer(self.window,**kws)
 
     def set_all_measurements(self):
         """
@@ -883,7 +893,8 @@ class PowerData(PowerDataSchema):
             self.kmax = fit_range[1]
         else:
             if len(fit_range) != self.size:
-                raise ValueError("mismatch between supplied fitting ranges and data read")
+                args = (self.size, len(fit_range))
+                raise ValueError("data 'fitting_range' should be a list of length %d, not %d" % args)
             self.kmin, self.kmax = list(zip(*fit_range))
 
     def rescale_inverse_covar(self):

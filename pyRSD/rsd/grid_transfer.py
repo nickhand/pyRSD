@@ -41,9 +41,9 @@ def trim_zeros_indices(filt):
 #------------------------------------------------------------------------------
 class PkmuGrid(object):
     """
-    A class to represent a 2D grid of (``k``, ``mu``),
+    A class to represent a 2D grid of (``k``, ``mu``).
 
-    The ``k`` axis is 0 and the ``mu`` axis is 1
+    The ``k`` axis is 0 and the ``mu`` axis is 1.
 
     Parameters
     ----------
@@ -58,29 +58,17 @@ class PkmuGrid(object):
         the number of modes in each grid point
     """
     def __init__(self, coords, k, mu, modes):
-        """
-        Parameters
-        ----------
-        coords : list
-            list of (k_cen, mu_cen) representing the bin centers
-            of the grid coordinates
-        k : array_like, (Nk, Nmu)
-            the mean values of `k` at each grid point
-        mu : array_like, (Nk, Nmu)
-            the mean values of `mu` at each grid point
-        modes : array_like, (Nk, Nmu)
-            the number of modes in each grid point
-        """
         if np.shape(mu)[1] < 40:
-            warnings.warn("initializing PkmuGrid with fewer mu bins than recommended; should have >= 40")
+            warnings.warn(("initializing PkmuGrid with fewer mu bins than "
+                            "recommended; should have >= 40"))
         self.k_cen, self.mu_cen = coords
-        self.k     = k
-        self.mu    = mu
+        self.k = k
+        self.mu = mu
         self.modes = modes
 
     def to_plaintext(self, filename):
         """
-        Write out the grid to a plaintext file
+        Write out the grid to a plaintext file.
         """
         with open(filename, 'wb') as ff:
             header = "%d %d\n" %(self.Nk, self.Nmu)
@@ -94,7 +82,7 @@ class PkmuGrid(object):
     def from_pkmuresult(cls, pkmu):
         """
         Convienence method to return a ``PkmuGrid`` from a
-        ``nbodykit.PkmuResult`` instance
+        ``nbodykit.PkmuResult`` instance.
         """
         coords = [pkmu.coords['k'], pkmu.coords['mu']]
         return cls(coords, pkmu['k'], pkmu['mu'], pkmu['modes'])
@@ -103,7 +91,7 @@ class PkmuGrid(object):
     def from_structured(cls, coords, data):
         """
         Return a ``PkmuGrid`` from a list of coordinates and
-        a structured array
+        a structured array.
 
         Parameters
         ----------
@@ -118,7 +106,7 @@ class PkmuGrid(object):
     @classmethod
     def from_plaintext(cls, filename):
         """
-        Return a `PkmuGrid` instance, reading the data from a plaintext
+        Return a `PkmuGrid` instance, reading the data from a plaintext.
         """
         with open(filename, 'r') as ff:
             lines = ff.readlines()
@@ -148,7 +136,7 @@ class PkmuGrid(object):
 
     def __str__(self):
         """
-        Builtin string representation
+        Builtin string representation.
         """
         cls = self.__class__.__name__
         args = (cls, self.Nk, self.Nmu, (1.-1.*self.notnull.sum()/np.prod(self.shape))*100.)
@@ -160,53 +148,26 @@ class PkmuGrid(object):
 class PkmuTransfer(Cache):
     """
     Class to facilitate the manipulations of P(k,mu) measurements
-    on a (k, mu) grid
+    on a (k, mu) grid.
 
     Parameters
     ----------
     grid : :class:`~pyRSD.rsd.PkmuGrid`
         the grid instance defining the (k,mu) grid
-    mu_bounds : array_like
-        a list of tuples specifying (lower, upper) for each desired
-        mu bin, i.e., [(0., 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.0)]
-    kmin : float, array_like
-        the minimum allowed wavenumber
-    kmax : float, array_like
-        the maximum wavenumber
     power : array_like
         the power values defined on the grid -- can have shape
         (Nk,Nmu) or (N,), in which case it is interpreted
         as the values at all valid grid points
     """
-    def __init__(self, grid, mu_bounds, kmin=None, kmax=None, power=None):
-        """
-        Parameters
-        ----------
-        grid : PkmuGrid
-            the grid instance defining the (k,mu) grid
-        mu_bounds : array_like
-            a list of tuples specifying (lower, upper) for each desired
-            mu bin, i.e., [(0., 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.0)]
-        kmin : float, array_like
-            the minimum allowed wavenumber
-        kmax : float, array_like
-            the maximum wavenumber
-        power : array_like
-            the power values defined on the grid -- can have shape
-            (Nk,Nmu) or (N,), in which case it is interpreted
-            as the values at all valid grid points
-        """
+    def __init__(self, grid, power=None):
         self.grid      = grid
-        self.mu_bounds = mu_bounds
-        self.kmin      = kmin
-        self.kmax      = kmax
         self.power     = power
 
     @classmethod
     def from_structured(cls, coords, data, mu_bounds, **kwargs):
         """
         Convenience function to teturn a `PkmuTransfer` object
-        from the coords+data instead of a `PkmuGrid`
+        from the coords+data instead of a `PkmuGrid`.
         """
         grid = PkmuGrid.from_structured(coords, data)
         return cls(grid, mu_bounds, **kwargs)
@@ -217,8 +178,9 @@ class PkmuTransfer(Cache):
     @parameter
     def power(self, val):
         """
-        The power array holding P(k,mu) on the grid -- shape is
-        (grid.Nk, grid.Nmu), with NaNs for any null grid points
+        The power array holding P(k,mu) on the grid.
+
+        Shape is (grid.Nk, grid.Nmu), with NaNs for any null grid points.
         """
         toret = np.ones(self.grid.shape)*np.nan
         if val is None:
@@ -238,7 +200,7 @@ class PkmuTransfer(Cache):
     def mu_bounds(self, val):
         """
         A list of tuples specifying the lower and upper limits for each
-        desired `mu` bin
+        desired ``mu`` bin.
         """
         # if mu = 1.0 is upper bound of bin, increase by epsilon to include edge
         for i, (lo, hi) in enumerate(val):
@@ -249,8 +211,9 @@ class PkmuTransfer(Cache):
     @parameter
     def kmin(self, val):
         """
-        The minimum wavenumber to include -- can be either
-        a float or array of length ``N2``
+        The minimum wavenumber ``k`` to include.
+
+        Shape can be either a float or array of length ``N2``
         """
         if val is None: val = -np.inf
         toret = np.empty(self.N2)
@@ -260,8 +223,9 @@ class PkmuTransfer(Cache):
     @parameter
     def kmax(self, val):
         """
-        The maximum wavenumber to include -- can be either
-        a float or array of length ``N2``
+        The maximum wavenumber ``k`` to include.
+
+        Shape can be either a float or array of length ``N2``.
         """
         if val is None: val = np.inf
         toret = np.empty(self.N2)
@@ -274,7 +238,7 @@ class PkmuTransfer(Cache):
     @cached_property("mu_bounds")
     def mu_edges(self):
         """
-        The edges of the mu bins desired for output
+        The edges of the ``mu`` bins desired for output.
         """
         toret = np.asarray(self.mu_bounds).ravel()
         if not non_decreasing(toret):
@@ -285,7 +249,7 @@ class PkmuTransfer(Cache):
     def size(self):
         """
         The size of the flattened (valid) grid points, i.e., the number of
-        (k,mu) or (k,ell) data points
+        (k,mu) or (k,ell) data points.
         """
         return len(self.coords_flat[0])
 
@@ -293,21 +257,21 @@ class PkmuTransfer(Cache):
     def N1(self):
         return self.grid.Nk
 
-    @cached_property("mu_edges")
+    @cached_property("mu_bounds")
     def N2(self):
         return len(self.mu_bounds)
 
     @cached_property("coords")
     def coords_flat(self):
         """
-        List of the flattened coordinates, with NaNs removed
+        List of the flattened coordinates, with NaNs removed.
         """
         return [_flatten(x) for x in self.coords]
 
     @cached_property("mu_edges", "in_range_idx")
     def coords(self):
         """
-        The (k,mu) coordinates with shape (`N1`, `N2`)
+        The (``k``,``mu``) coordinates with shape (``N1``, ``N2``).
         """
         # broadcast (k_cen, mu_cen) to the shape (N1, N2)
         idx = self.in_range_idx
@@ -321,8 +285,9 @@ class PkmuTransfer(Cache):
     @cached_property("kmin", "kmax")
     def in_range_idx(self):
         """
-        A boolean array with elements set to `True` specifying the elements
-        on the underlying (k,mu) grid within the desired `kmin` and `kmax`
+        A boolean array with elements set to ``True`` specifying the
+        elements on the underlying (k,mu) grid within the desired
+        :attr:`kmin` and :attr:`kmax`.
         """
         k_cen = self.grid.k_cen
         return np.squeeze((k_cen[:,None] >= self.kmin)&(k_cen[:,None] <= self.kmax))
@@ -330,7 +295,7 @@ class PkmuTransfer(Cache):
     @cached_property("mu_edges")
     def ndims(self):
         """
-        Convenience attribute to store the dimensions of the bin counting arrays
+        Convenience attribute to store the dimensions of the bin counting arrays.
         """
         Nk = self.grid.Nk; Nmu = len(self.mu_edges)-1
         return (Nk+2, Nmu+2)
@@ -338,7 +303,7 @@ class PkmuTransfer(Cache):
     @cached_property("mu_edges")
     def mu_indices(self):
         """
-        Multi-index for re-binning the `mu` grid
+        Multi-index for re-binning the ``mu`` grid.
         """
         k_idx = np.arange(self.grid.Nk, dtype=int)[:,None]
         dig_k = np.repeat(k_idx, self.grid.Nmu, axis=1)[self.grid.notnull] + 1
@@ -354,7 +319,7 @@ class PkmuTransfer(Cache):
 
         Parameters
         ----------
-        d : array_like, (`grid.Nk`, `grid.Nmu`)
+        d : array_like, (``grid.Nk``, ``grid.Nmu``)
             the data array to sum over the grid
         """
         toret = np.zeros(self.ndims)
@@ -364,14 +329,15 @@ class PkmuTransfer(Cache):
 
     def average(self, d, w=None):
         """
-        Average the input data, with optional weights, as a function of `mu`
-        on the grid, using `mu_edges` to specify the edges of the new mu bins
+        Average the input data, with optional weights, as a function of ``mu``
+        on the grid, using :attr:`mu_edges` to specify the edges of the new
+        ``mu`` bins.
 
         Parameters
         ----------
-        d : array_like, (`grid.Nk`, `grid.Nmu`)
+        d : array_like, (``grid.Nk``, ``grid.Nmu``)
             the data array to average over the grid
-        w : array_like, (`grid.Nk`, `grid.Nmu`)
+        w : array_like, (``grid.Nk``, ``grid.Nmu``)
             optional weight array to apply before averaging
         """
         if w is None: w = np.ones(d.shape)
@@ -380,11 +346,12 @@ class PkmuTransfer(Cache):
 
     def restrict_k(self, arr):
         """
-        Restrict the k-range of `arr` to the specified `kmin` and `kmax`
+        Restrict the k-range of ``arr`` to the specified :attr:`kmin` and
+        :attr:`kmax`.
 
         Parameters
         ----------
-        arr : array_like (`grid.Nk`, `grid.Nmu`)
+        arr : array_like (``grid.Nk``, ``grid.Nmu``)
             trim the array defined on the grid to the desired k-range,
             filling with NaNs if not aligned properly
         """
@@ -395,9 +362,9 @@ class PkmuTransfer(Cache):
         toret[~self.in_range_idx] = np.nan
         return toret[first:last,...]
 
-    def __call__(self, flatten=False, full_grid_output=False):
+    def __call__(self, mu_bounds, kmin=-np.inf, kmax=np.inf, full_grid_output=False):
         """
-        Return the `power` attribute re-binned into the mu bins
+        Return the ``power`` attribute re-binned into the ``mu`` bins
         corresponding to `mu_edges`, optionally flattening the return array
 
         Notes
@@ -406,48 +373,32 @@ class PkmuTransfer(Cache):
 
         Parameters
         ----------
-        flatten : bool, optional (`False`)
-            whether to flatten the return array (column-wise)
+        mu_bounds : array_like
+            a list of tuples specifying (lower, upper) for each desired
+            mu bin, i.e., [(0., 0.2), (0.2, 0.4), (0.4, 0.6), (0.6, 0.8), (0.8, 1.0)]
+        kmin : float
+            the minimum wavenumber to include
+        kmax : float
+            the maximum wavenumber to include
+        full_grid_output : bool
+            if ``True``, do not restrict the ``k`` range
         """
+        if not isinstance(mu_bounds, list):
+            mu_bounds = [mu_bounds]
+
+        # set the state
+        self.mu_bounds = mu_bounds
+        self.kmin = kmin
+        self.kmax = kmax
+
         if not (~np.isnan(self.power)).sum():
             raise ValueError("please set ``power`` arrary; all NaN right now")
 
         toret = self.average(self.power, self.grid.modes)
         if not full_grid_output:
             toret = self.restrict_k(toret)
-        if flatten: toret = _flatten(toret)
-        return toret
 
-    def to_covariance(self, components=False):
-        """
-        Return the P(k,mu) covariance, which is diagonal and equal to
-
-        :math: C = 2 * P(k,mu)^2 / N(k, mu)
-
-        Parameters
-        ----------
-        components : bool, optional (`False`)
-            If `True`, the mean squared power and modes (with the the shape
-            of the covariance matrix), such that C = 2*Psq/modes
-        """
-        # the covariance per mu bin
-        Psq = self.average(self.power**2, self.grid.modes)
-        modes = self.sum(self.grid.modes)
-
-        # reshape squared power and modes
-        Psq = np.diag(Psq.ravel(order='F'))
-        modes = np.diag(modes.ravel(order='F'))
-        return self._return_covariance(Psq, modes, components)
-
-    def _return_covariance(self, Psq, modes, components):
-        """
-        Internal function to restrict the components of
-        the covariance matrix and return
-        """
-        idx = self.in_range_idx.ravel(order='F')
-        Psq = Psq[idx,:][:,idx]; modes = modes[idx,:][:,idx]
-        return (Psq**0.5, modes) if components else np.nan_to_num(2*Psq/modes)
-
+        return np.squeeze(toret)
 
 class PolesTransfer(PkmuTransfer):
     """
@@ -458,52 +409,20 @@ class PolesTransfer(PkmuTransfer):
     ----------
     grid : :class:`~pyRSD.rsd.PkmuGrid`
         the grid instance defining the (k,mu) grid
-    ells : array_like
-        the multipole numbers desired for the output
-    kmin : float, array_like
-        the minimum allowed wavenumber
-    kmax : float, array_like
-        the maximum wavenumber
     power : array_like
         the power values defined on the grid -- can have shape
         (Nk,Nmu) or (N,), in which case it is interpreted
         as the values at all valid grid points
-    ells_mask : list, None, optional
-        boolean mask specifying which ell values to return; this is needed in the
-        case that we are doing a window convolution and need more ell values
     """
-    def __init__(self, grid, ells, kmin=-np.inf, kmax=np.inf, power=None, ells_mask=None):
-        """
-        Parameters
-        ----------
-        grid : :class:`~pyRSD.rsd.PkmuGrid`
-            the grid instance defining the (k,mu) grid
-        ells : array_like
-            the multipole numbers desired for the output
-        kmin : float, array_like
-            the minimum allowed wavenumber
-        kmax : float, array_like
-            the maximum wavenumber
-        power : array_like
-            the power values defined on the grid -- can have shape
-            (Nk,Nmu) or (N,), in which case it is interpreted
-            as the values at all valid grid points
-        ells_mask : list, None, optional
-            boolean mask specifying which ell values to return; this is needed in the
-            case that we are doing a window convolution and need more ell values
-        """
-        self.ells = np.array(ells)
-        if ells_mask is None:
-            ells_mask = [True for ell in self.ells]
-        self.ells_mask = np.asarray(ells_mask)
-
-        super(PolesTransfer, self).__init__(grid, [(0., 1.)], kmin=kmin, kmax=kmax, power=power)
+    def __init__(self, grid, power=None):
+        super(PolesTransfer, self).__init__(grid, power=power)
+        self.mu_bounds = [(0., 1.)] # one single mu bin
 
     @classmethod
     def from_structured(cls, coords, data, ells, **kwargs):
         """
         Convenience function to teturn a `PolesTransfer` object
-        from the coords+data instead of a `PkmuGrid`
+        from the coords+data instead of a `PkmuGrid`.
         """
         grid = PkmuGrid.from_structured(coords, data)
         return cls(grid, ells, **kwargs)
@@ -512,41 +431,17 @@ class PolesTransfer(PkmuTransfer):
     # parameters
     #--------------------------------------------------------------------------
     @parameter
-    def kmin(self, val):
-        """
-        The minimum wavenumber to include -- can be either
-        a float or array of length ``N2``
-        """
-        N2 = self.ells_mask.sum()
-        if val is None: val = -np.inf
-        toret = np.empty(N2)
-        toret[:] = val
-        return toret
-
-    @parameter
-    def kmax(self, val):
-        """
-        The maximum wavenumber to include -- can be either
-        a float or array of length ``N2``
-        """
-        N2 = self.ells_mask.sum()
-        if val is None: val = np.inf
-        toret = np.empty(N2)
-        toret[:] = val
-        return toret
-
-    @parameter
     def ells(self, val):
         """
         The multipole numbers to compute -- this corresponds to the
-        second axis (columns)
+        second axis (columns).
         """
-        return val
+        return np.asarray(val)
 
     @cached_property()
     def k_mean(self):
         """
-        The `k` values averaged over the `mu` dimension
+        The ``k`` values averaged over the `mu` dimension
         """
         return self.average(self.grid.k, self.grid.modes)
 
@@ -557,7 +452,7 @@ class PolesTransfer(PkmuTransfer):
     @cached_property("ells")
     def legendre_weights(self):
         """
-        Legendre weighting for multipoless
+        Legendre weighting for multipoles.
         """
         return np.array([(2*ell+1)*legendre(ell)(self.grid.mu) for ell in self.ells])
 
@@ -577,15 +472,7 @@ class PolesTransfer(PkmuTransfer):
     #--------------------------------------------------------------------------
     # main functions
     #--------------------------------------------------------------------------
-    def restrict_k(self, arr):
-        """
-        Apply ``ells_mask`` and then restrict_k
-        """
-        # ells mask
-        arr = arr[:,self.ells_mask]
-        return super(PolesTransfer, self).restrict_k(arr)
-
-    def __call__(self, flatten=False, full_grid_output=False):
+    def __call__(self, ells, kmin=-np.inf, kmax=np.inf, full_grid_output=False):
         """
         Return the multipoles corresponding to `ells`, by weighting the
         `power` attribute by the appropriate Legendre weights and summing
@@ -597,11 +484,22 @@ class PolesTransfer(PkmuTransfer):
 
         Parameters
         ----------
-        flatten : bool, optional (`False`)
-            whether to flatten the return array (column-wise)
+        ells : array_like
+            a list of multipole numbers to return
+        kmin : float
+            the minimum wavenumber to include
+        kmax : float
+            the maximum wavenumber to include
+        full_grid_output : bool
+            if ``True``, do not restrict the ``k`` range
         """
         if not (~np.isnan(self.power)).sum():
             raise ValueError("please set ``power`` arrary; all NaN right now")
+
+        # set the state
+        self.ells = ells
+        self.kmin = kmin
+        self.kmax = kmax
 
         # average over grid
         tobin = self.legendre_weights*self.power
@@ -611,94 +509,5 @@ class PolesTransfer(PkmuTransfer):
         if not full_grid_output:
             toret = self.restrict_k(toret)
 
-        # flatten and return
-        if flatten: toret = _flatten(toret)
-        return toret
-
-    def to_covariance(self, components=False):
-        """
-        Return the P(k,mu) covariance, which is diagonal and equal to
-
-        :math: C_{l,l'} = 2 / N(k) * \sum_\mu L(\mu, l) L(\mu, l') P(k,mu)^2
-
-        Parameters
-        ----------
-        components : bool, optional (`False`)
-            If `True`, the mean squared power and modes (with the the shape
-            of the covariance matrix), such that C = 2*Psq/modes
-        """
-        # initialize the return array
-        Psq = np.zeros((self.N2, self.N1)*2)
-        modes = np.zeros((self.N2, self.N1)*2)
-
-        # legendre weights*power squared -- shape is (Nell, Nell, Nk, Nmu)
-        weights = self.legendre_weights[:,None]*self.legendre_weights[None,:]
-        tobin = weights*self.power**2
-
-        # fill the covariance for each ell, ell_prime
-        for i in range(self.N2):
-            for j in range(i, self.N2):
-                Psq[i,:,j,:] = np.diag(self.average(tobin[i,j,:], self.grid.modes))
-                modes[i,:,j,:] = np.diag(self.sum(self.grid.modes))
-                if i != j:
-                    Psq[j,:,i,:] = Psq[i,:,j,:]
-                    modes[j,:,i,:] = modes[i,:,j,:]
-
-        # reshape squared power and modes
-        Psq = Psq.reshape((self.N1*self.N2,)*2)
-        modes = modes.reshape((self.N1*self.N2,)*2)
-        return self._return_covariance(Psq, modes, components)
-
-
-    def to_cutsky_covariance(self, cosmo, zbins, nbar, P0, fsky, components=False):
-        """
-        Return the P(k,mu) covariance, which is diagonal and equal to
-
-        :math: C_{l,l'} = 2 / N(k) * \sum_\mu L(\mu, l) L(\mu, l') P(k,mu)^2
-
-        Parameters
-        ----------
-        components : bool, optional (`False`)
-            If `True`, the mean squared power and modes (with the the shape
-            of the covariance matrix), such that C = 2*Psq/modes
-        """
-        # volume of redshift shells
-        dV = cosmo.V(zbins[:-1], zbins[1:]) * cosmo.h()**3 * 1e9 * fsky # in (Mpc/h)^3
-
-        # number density
-        zcen = 0.5*(zbins[:-1] + zbins[1:])
-        nbar_ = nbar(zcen)
-        w = 1. / (1 + nbar_*P0) # FKP weights
-
-        # initialize the return array
-        Psq = np.zeros((self.N2, self.N1)*2)
-        modes = np.zeros((self.N2, self.N1)*2)
-
-        # legendre weights*power squared -- shape is (Nell, Nell, Nk, Nmu, Nz)
-        weights = self.legendre_weights[:,None]*self.legendre_weights[None,:]
-        power = (self.power[...,None] + 1./nbar_)**2
-        tobin = weights[...,None] * power[None,...]
-
-        # normalization for redshift integral
-        W = ((nbar_*w)**2 * dV).sum()
-
-        # k-shell volume
-        dk = np.diff(self.k_mean).mean()
-        Vk  = 4*np.pi*self.k_mean**2*dk
-
-        # fill the covariance for each ell, ell_prime
-        for i in range(self.N2):
-            for j in range(i, self.N2):
-
-                # do the sum over redshift first
-                x = ( (w*nbar_)**4 * dV * tobin ).sum(axis=-1) / W**2
-                Psq[i,:,j,:] = np.diag(self.average(x[i,j,:], self.grid.modes))
-                modes[i,:,j,:] = 2 * Vk / (2*np.pi)**3
-                if i != j:
-                    Psq[j,:,i,:] = Psq[i,:,j,:]
-                    modes[j,:,i,:] = modes[i,:,j,:]
-
-        # reshape squared power and modes
-        Psq = Psq.reshape((self.N1*self.N2,)*2)
-        modes = modes.reshape((self.N1*self.N2,)*2)
-        return self._return_covariance(Psq, modes, components)
+        # return
+        return np.squeeze(toret)

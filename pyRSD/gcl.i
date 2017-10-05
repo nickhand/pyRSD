@@ -36,6 +36,7 @@ using std::string;
 %include "_gcl/python/parray.i"
 %include "_gcl/python/Common.i"
 %include "_gcl/python/Spline.i"
+%include "_gcl/python/SpecialFunctions.i"
 
 %include "_gcl/python/DiscreteQuad.i"
 %include "_gcl/python/ClassEngine.i"

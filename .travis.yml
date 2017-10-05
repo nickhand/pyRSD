@@ -34,12 +34,16 @@ install:
     - conda config --append channels astropy
     - conda config --append channels conda-forge # for conda-build-all (will be moved to defaults soon)
 
-    - conda install --yes swig gsl fftw
+    - conda install --yes swig gsl fftw gcc libgcc
     - conda install --yes numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
     - conda install --yes --file requirements.txt
     - pip install -r requirements-tests.txt
     - pip install .[tests]
+
+    - echo $PATH
+    - echo $LDFLAGS
+    - echo $LD_LIBRARY_PATH
 
     # To ease debugging, list installed packages
     - conda info -a

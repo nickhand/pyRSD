@@ -40,7 +40,8 @@ install:
     - conda install --yes --file requirements.txt
 
     - which cc
-    - cc
+    - which gcc
+    - readlink -f cc
 
 
     # install

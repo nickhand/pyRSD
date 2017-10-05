@@ -23,6 +23,8 @@ def return_xarray(pkmu, k, mu, flatten=False):
         k = np.ravel(k, order='F')
         mu = np.ravel(mu, order='F')
 
+    # ensure pkmu is at least 1D
+    pkmu = np.atleast_1d(pkmu)
     if pkmu.ndim == 1:
         dims = ['i']
         coords = {'k': (dims, k), 'mu': (dims, mu)}

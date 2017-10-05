@@ -25,7 +25,7 @@ install:
   #  - conda config --set auto_update_conda False
 #    - echo "conda ==4.3.22" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
 
-    - conda install --quiet conda
+    - conda update --quiet conda
 
     # set the ordering of additional channels
     - conda config --prepend channels defaults
@@ -34,7 +34,7 @@ install:
     - conda config --append channels astropy
     - conda config --append channels conda-forge # for conda-build-all (will be moved to defaults soon)
 
-    - conda install --yes swig gcc gsl fftw libgcc
+    - conda install --yes swig gsl fftw
     - conda install --yes numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
     - conda install --yes --file requirements.txt

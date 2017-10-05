@@ -24,6 +24,7 @@ cache:
     - $HOME/.cache/pyRSD
 
 before_install:
+    - sudo apt-get install gsl-bin libgsl0-dev
     - CONDA_INSTALL_LOCN="${HOME}/miniconda"
     - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
     - chmod +x miniconda.sh
@@ -46,7 +47,7 @@ install:
 
     - conda create -n test python=$TRAVIS_PYTHON_VERSION
     - source activate test
-    - conda install gsl fftw
+    - conda install fftw
     - conda install numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
 

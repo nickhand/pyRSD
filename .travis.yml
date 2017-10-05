@@ -39,10 +39,8 @@ install:
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
     - conda install --yes --file requirements.txt
 
-    - which cc
-    - which gcc
-    - readlink -f cc
-
+    - export CC=gcc
+    - export CXX=g++
 
     # install
     - pip install -r requirements-tests.txt

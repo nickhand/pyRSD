@@ -38,7 +38,7 @@ install:
     - echo $PATH
     - echo $LDFLAGS
     - echo $LIBRARY_PATH
-    - ls /usr/lib
+    - export LIBRARY_PATH=/usr/lib:/usr/local/lib
 
     - conda install --yes swig gsl fftw gcc libgcc
     - conda install --yes numpy=$NUMPY_VERSION

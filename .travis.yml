@@ -3,6 +3,17 @@ python:
   - 2.7
   - 3.5
   - 3.6
+
+addons:
+  apt:
+    sources:
+        - ubuntu-toolchain-r-test
+    packages:
+        - gcc-4.8
+        - g++-4.8
+        - gfortran-4.8
+        - swig
+
 env:
   - NUMPY_VERSION=1.13
 
@@ -34,13 +45,14 @@ install:
     - conda config --append channels astropy
     - conda config --append channels conda-forge # for conda-build-all (will be moved to defaults soon)
 
-    - conda install --yes swig gsl fftw gcc libgcc
+    - conda install --yes swig gsl fftw 
     - conda install --yes numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
     - conda install --yes --file requirements.txt
 
-    - export CC=gcc
-    - export CXX=g++
+    - export CC=gcc-4.8
+    - export CXX=g++-4.8
+    - export F90=gfortran-4.8
 
     # install
     - pip install -r requirements-tests.txt

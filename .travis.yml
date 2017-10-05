@@ -3,17 +3,6 @@ python:
   - 2.7
   - 3.5
   - 3.6
-
-addons:
-  apt:
-    sources:
-        - ubuntu-toolchain-r-test
-    packages:
-        - gcc-4.8
-        - g++-4.8
-        - gfortran-4.8
-        - swig
-
 env:
   - NUMPY_VERSION=1.13
 
@@ -23,20 +12,19 @@ cache:
     - $HOME/.conda
     - $HOME/.cache/pyRSD
 
-before_install:
-    - sudo apt-get install gsl-bin libgsl0-dev
-    - CONDA_INSTALL_LOCN="${HOME}/miniconda"
-    - wget http://repo.continuum.io/miniconda/Miniconda-latest-Linux-x86_64.sh -O miniconda.sh
-    - chmod +x miniconda.sh
-    - ./miniconda.sh -b -p $HOME/miniconda
-    - export PATH=$HOME/miniconda/bin:$PATH
-    - conda config --set always_yes true
-    - conda update conda
-    - export CC=gcc-4.8
-    - export CXX=g++-4.8
-    - export F90=gfortran-4.8
-
 install:
+    # Install and set up miniconda.
+    - CONDA_INSTALL_LOCN="${HOME}/miniconda"
+    - wget http://repo.continuum.io/miniconda/Miniconda3-4.3.21-Linux-x86_64.sh -O miniconda.sh
+    - bash miniconda.sh -b -p $CONDA_INSTALL_LOCN
+    - export PATH=${CONDA_INSTALL_LOCN}/bin:$PATH
+    - conda config --set always_yes true
+
+    # pin conda verson to 4.3.22
+    - conda config --set auto_update_conda False
+    - echo "conda ==4.3.22" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
+
+    - conda install --quiet conda
 
     # set the ordering of additional channels
     - conda config --prepend channels defaults
@@ -45,17 +33,11 @@ install:
     - conda config --append channels astropy
     - conda config --append channels conda-forge # for conda-build-all (will be moved to defaults soon)
 
-    - conda create -n test python=$TRAVIS_PYTHON_VERSION
-    - source activate test
-    - conda install fftw
-    - conda install numpy=$NUMPY_VERSION
+    - conda install --yes swig gcc gsl fftw libgcc
+    - conda install --yes numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned
-
-    # the requirements
     - conda install --yes --file requirements.txt
     - pip install -r requirements-tests.txt
-
-    # the package itself
     - pip install .[tests]
 
     # To ease debugging, list installed packages

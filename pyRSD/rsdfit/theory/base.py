@@ -1,6 +1,7 @@
 from pyRSD.rsdfit.parameters import Parameter, ParameterSet
 from pyRSD.rsd._cache import Property
 from pyRSD.rsd import transfers
+from pyRSD.rsdfit.theory import decorators
 
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import numpy as np
@@ -554,6 +555,17 @@ class BasePowerTheory(object):
     def constrained(self):
         return self.fit_params.constrained
 
+    @property
+    def pkmu_gradient(self):
+        """
+        Return the P(k,mu) gradient class
+        """
+        try:
+            return self._pkmu_gradient
+        except AttributeError:
+            self._pkmu_gradient = self.model.get_gradient(self.fit_params)
+            return self._pkmu_gradient
+
     #---------------------------------------------------------------------------
     # main functions
     #---------------------------------------------------------------------------
@@ -575,6 +587,25 @@ class BasePowerTheory(object):
         """
         return self.fit_params.set_free_parameters(theta)
 
+    def evaluate_grad_lnlike(self, theta, data, pool=None, epsilon=1e-4,
+                            numerical=False, theory_decorator={}):
+        """
+        Evaluate the gradient.
+        """
+        # the flattened (k,mu) pairs for evaluating the model
+        # NOTE: this allows us to evaluate the model only ONCE
+        k, mu, slices = self.get_kmu_pairs(data)
+
+        # evaluate the P(k,mu) gradient
+        gradient = self.pkmu_gradient(k, mu, theta, pool=pool, epsilon=epsilon, numerical=numerical)
+
+        # apply to transfer for gradient of each parameter
+        grad_lnlike = []
+        for i in range(self.ndim):
+            grad_lnlike.append(apply_transfers(gradient[i], data, slices, theory_decorator))
+
+        return np.asarray(grad_lnlike)
+
     def model_callable(self, data, theory_decorator={}):
         """
         Return the flattened theory prediction corresponding to the statistics
@@ -590,8 +621,6 @@ class BasePowerTheory(object):
             dictionary of decorators to apply to the theory predictions for
             individual data statistics
         """
-        from pyRSD.rsdfit.theory import decorators
-
         # the flattened (k,mu) pairs for evaluating the model
         # NOTE: this allows us to evaluate the model only ONCE
         k, mu, slices = self.get_kmu_pairs(data)
@@ -610,70 +639,8 @@ class BasePowerTheory(object):
             # evaluate the P(k,mu) for the (k,mu) pairs we need
             P = self.model.power(k,mu)
 
-            # apply the transfer function to the correct slice of P(k,mu)
-            results = []
-            for i, t in enumerate(data.transfer):
-                results.append(t(P[slices[i]]))
-
-            # concatenate results into a single array if we had multiple transfers
-            if len(results) > 1:
-                result = xr.concat(results, dim=results[0].dims[-1])
-            else:
-                result = results[0]
-
-            # format the results
-            toret = []
-            for i, m in enumerate(data):
-
-                # this is either ell or mu_cen for this statistic
-                binval = binvals[i]
-
-                # make into a list if not
-                # NOTE: this allows us to support multiple bin values per statistic
-                if not isinstance(binval, list):
-                    binval = [binval]
-
-                # compute the final theory prediction for this data statistic
-                theory = []
-                for bb in binval:
-
-                    # select the proper binval from the DataArray
-                    r = result.sel(**{dim:bb})
-
-                    # remove out of range values from Gridded Transfer results
-                    if isinstance(data.transfer[0], transfers.gridded_transfers):
-                        theory.append(r.values[r.notnull()])
-
-                    # interpolate the window function results
-                    elif isinstance(data.transfer[0], transfers.WindowFunctionTransfer):
-                        spl = spline(r['k'], r)
-                        theory.append(spl(m.k))
-                    # result already has the proper k binning
-                    else:
-                        theory.append(r.values)
-
-                # apply any theory decorators for this statistic
-                stat = data.statistics[i]
-                dec = theory_decorator.get(stat, None)
-                if dec is not None:
-                    dec = getattr(decorators, dec)
-                    theory = dec(*theory)
-                else:
-                    assert len(theory) == 1
-                    theory = theory[0]
-
-                # final theory should be an array
-                if not isinstance(theory, np.ndarray):
-                    msg = "error computing theory prediction for '%s'; " %stat
-                    msg += "maybe a theory decorator issue?"
-                    raise RuntimeError(msg)
-
-                toret.append(theory)
-
-            toret = np.concatenate(toret)
-            if len(toret) != data.ndim:
-                raise ValueError("predicted theory of length %d, should be %d" % (len(toret), data.ndim))
-            return toret
+            # apply the transfers to the power
+            return apply_transfers(P, data, slices, theory_decorator)
 
         return evaluate
 
@@ -731,3 +698,78 @@ class BasePowerTheory(object):
             start += N
 
         return np.concatenate(k), np.concatenate(mu), slices
+
+def apply_transfers(P, data, slices, theory_decorator):
+
+    # determine which variables specify the second dimension of the basis
+    # based on the mode, pkmu or poles
+    if data.mode == 'poles':
+        binvals = data.ells
+        dim = 'ell'
+    else:
+        binvals = data.mu_cen
+        dim = 'mu'
+
+    # apply the transfer function to the correct slice of P(k,mu)
+    results = []
+    for i, t in enumerate(data.transfer):
+        results.append(t(P[slices[i]]))
+
+    # concatenate results into a single array if we had multiple transfers
+    if len(results) > 1:
+        result = xr.concat(results, dim=results[0].dims[-1])
+    else:
+        result = results[0]
+
+    # format the results
+    toret = []
+    for i, m in enumerate(data):
+
+        # this is either ell or mu_cen for this statistic
+        binval = binvals[i]
+
+        # make into a list if not
+        # NOTE: this allows us to support multiple bin values per statistic
+        if not isinstance(binval, list):
+            binval = [binval]
+
+        # compute the final theory prediction for this data statistic
+        theory = []
+        for bb in binval:
+
+            # select the proper binval from the DataArray
+            r = result.sel(**{dim:bb})
+
+            # interpolate the window function results
+            if isinstance(data.transfer[0], transfers.WindowFunctionTransfer):
+                spl = spline(r['k'], r)
+                theory.append(spl(m.k))
+            # remove out of range values from Gridded Transfer results
+            elif isinstance(data.transfer[0], transfers.gridded_transfers):
+                theory.append(r.values[r.notnull()])
+            # result already has the proper k binning
+            else:
+                theory.append(r.values)
+
+        # apply any theory decorators for this statistic
+        stat = data.statistics[i]
+        dec = theory_decorator.get(stat, None)
+        if dec is not None:
+            dec = getattr(decorators, dec)
+            theory = dec(*theory)
+        else:
+            assert len(theory) == 1
+            theory = theory[0]
+
+        # final theory should be an array
+        if not isinstance(theory, np.ndarray):
+            msg = "error computing theory prediction for '%s'; " %stat
+            msg += "maybe a theory decorator issue?"
+            raise RuntimeError(msg)
+
+        toret.append(theory)
+
+    toret = np.concatenate(toret)
+    if len(toret) != data.ndim:
+        raise ValueError("predicted theory of length %d, should be %d" % (len(toret), data.ndim))
+    return toret

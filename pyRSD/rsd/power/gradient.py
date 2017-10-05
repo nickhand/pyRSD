@@ -188,7 +188,7 @@ class PkmuGradient(object):
 
             # how to map
             if pool is None:
-                results = numpy.array([self._call_power(k, mu, t) for t in tasks])
+                results = numpy.asarray([self._call_power(k, mu, t) for t in tasks])
             else:
                 results = numpy.array(pool.map(self._call_power_mpi, tasks))
             results = results.reshape((2, -1, len(k)))
@@ -221,4 +221,4 @@ class PkmuGradient(object):
         """
         # update the parameters
         self._update(theta)
-        return self.model.power(k, mu)
+        return self.model.power(k, mu).values # return numpy array, not DataArray

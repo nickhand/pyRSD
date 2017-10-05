@@ -805,17 +805,6 @@ class FittingDriver(FittingDriverSchema):
     #---------------------------------------------------------------------------
     # gradient calculations
     #---------------------------------------------------------------------------
-    @property
-    def pkmu_gradient(self):
-        """
-        Return the P(k,mu) gradient class
-        """
-        try:
-            return self._pkmu_gradient
-        except AttributeError:
-            self._pkmu_gradient = self.model.get_gradient(self.theory.fit_params)
-            return self._pkmu_gradient
-
     def grad_minus_lnlike(self, theta=None, epsilon=1e-4, pool=None, use_priors=True,
                             numerical=False, numerical_from_lnlike=False):
         """
@@ -874,59 +863,16 @@ class FittingDriver(FittingDriverSchema):
 
             grad_minus_lnlike = (results[0] - results[1]) / (2.*epsilon)
 
+        # use as much analytic as possible
         else:
 
-            # evaluate gradient on the transfer grid
-            if self.data.transfer is not None:
-
-                transfer = self.data.transfer
-                grid = transfer.grid
-                k, mu = grid.k[grid.notnull], grid.mu[grid.notnull]
-
-            # evaluate over own k,mu grid
-            else:
-                k = self.data.combined_k
-                if self.mode == 'poles':
-                    mu = np.linspace(0., 1., NMU)
-
-                    # broadcast to the right shape
-                    k     = k[:, np.newaxis]
-                    mu    = mu[np.newaxis, :]
-                    k, mu = np.broadcast_arrays(k, mu)
-                    k     = k.ravel(order='F')
-                    mu    = mu.ravel(order='F')
-
-                else:
-                    mu = self.data.combined_mu
-
-            # get the gradient of Pgal wrt the parameters
-            gradient = self.pkmu_gradient(k, mu, theta, pool=pool, epsilon=epsilon, numerical=numerical)
-
-            # evaluate gradient via the transfer function
-            if self.data.transfer is not None:
-
-                grad_lnlike = []
-                for i in range(self.Np):
-                    self.data.transfer.power = gradient[i]
-                    grad_lnlike.append(self.data.transfer(flatten=True))
-                grad_lnlike = np.asarray(grad_lnlike)
-
-            # do pole calculation yourself
-            elif self.mode == 'poles':
-                from scipy.special import legendre
-                from scipy.integrate import simps
-
-                # reshape the arrays
-                k = k.reshape(-1, NMU, order='F')
-                mu = mu.reshape(-1, NMU, order='F')
-                gradient = gradient.reshape(self.Np, -1, NMU, order='F')
-
-                # do the integration over mu
-                kern     = np.asarray([(2*ell+1.)*legendre(ell)(mu[i]) for i, ell in enumerate(self.data.combined_ell)])
-                grad_lnlike = np.array([simps(t, x=mu[i]) for i,t in enumerate(kern*gradient)])
-
-            else:
-                grad_lnlike = gradient
+            # evaluate the gradient of lnlike
+            kws = {}
+            kws['pool'] = pool
+            kws['epsilon'] = epsilon
+            kws['numerical'] = numerical
+            kws['theory_decorator'] = self.theory_decorator
+            grad_lnlike = self.theory.evaluate_grad_lnlike(theta, self.data, **kws)
 
             # transform from model gradient to log likelihood gradient
             diff = self.data.combined_power - self.combined_model

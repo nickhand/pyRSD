@@ -25,8 +25,12 @@ class MultipoleTransfer(TransferBase):
         # the multipoles
         self.ells = np.array(ells, ndmin=1)
 
+        # use odd number of samples for simpson's rule
+        if Nmu % 2 == 0: Nmu += 1
+
         # make the grid
-        mu = np.linspace(0., 1., Nmu+1, endpoint=True)
+        # NOTE: use mu edges so we include full integration range, [0,2]
+        mu = np.linspace(0., 1., Nmu, endpoint=True)
         grid_k, grid_mu =  np.meshgrid(k, mu, indexing='ij')
         weights = np.ones_like(grid_k) # unity weights
         self.grid = PkmuGrid([k,mu], grid_k, grid_mu, weights)

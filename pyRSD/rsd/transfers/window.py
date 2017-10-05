@@ -1,11 +1,12 @@
-from pyRSD.rsd.transfers.poles import MultipoleTransfer
+from pyRSD.rsd.transfers import PkmuGrid
+from pyRSD.rsd.transfers.grid import GriddedMultipoleTransfer
 from pyRSD.rsd.window import WindowConvolution
 from pyRSD import pygcl, numpy as np
 
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import xarray as xr
 
-class WindowFunctionTransfer(MultipoleTransfer):
+class WindowFunctionTransfer(GriddedMultipoleTransfer):
     """
     A transfer function object to go from unconvolved to convolved multipoles.
 
@@ -30,8 +31,17 @@ class WindowFunctionTransfer(MultipoleTransfer):
     """
     def __init__(self, window, ells, kmin=1e-4, kmax=0.7, Nk=1024, Nmu=40, max_ellprime=4):
 
+        # make the grid
+        # NOTE: we want to use the centers of the mu bins here!
         k = np.logspace(np.log10(kmin), np.log10(kmax), Nk)
-        MultipoleTransfer.__init__(self, k, ells, Nmu=Nmu)
+        mu_edges = np.linspace(0., 1., Nmu+1)
+        mu = 0.5 * (mu_edges[1:] + mu_edges[:-1])
+        grid_k, grid_mu =  np.meshgrid(k, mu, indexing='ij')
+        weights = np.ones_like(grid_k)
+        grid = PkmuGrid([k,mu], grid_k, grid_mu, weights)
+
+        # init the base class
+        GriddedMultipoleTransfer.__init__(self, grid, ells, kmin=kmin, kmax=kmax)
 
         # the convolver object
         self.convolver = WindowConvolution(window[:,0], window[:,1:],
@@ -65,7 +75,7 @@ class WindowFunctionTransfer(MultipoleTransfer):
         no_convolution = kws.get('no_convolution', False)
 
         # get the unconvovled theory multipoles
-        Pell0 = MultipoleTransfer.__call__(self, power)
+        Pell0 = GriddedMultipoleTransfer.__call__(self, power)
 
         # create additional logspaced k values for zero-padding up to k=100 h/Mpc
         oldk = Pell0['k'].values

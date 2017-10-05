@@ -2,8 +2,7 @@ from __future__ import print_function
 
 from ... import numpy as np
 from ...rsd._cache import Cache, parameter, cached_property
-from ...rsd import PkmuTransfer, PolesTransfer, PkmuGrid, INTERP_KMAX
-from ...rsd.window import WindowTransfer
+from ...rsd import INTERP_KMAX, transfers
 
 from .. import logging, MPILoggerAdapter
 from ..parameters import ParameterSet, Parameter
@@ -424,21 +423,23 @@ class PowerDataSchema(Cache):
     @parameter
     def data_file(self, val):
         """
-        The string specifying the name of the file holding the data measurements
+        The string specifying the name of the file holding the data measurements.
         """
         return val
 
     @parameter(default=None)
     def grid_file(self, val):
         """
-        A string specifying the name of the file holding a :class:`pyRSD.rsd.transfer.PkmuGrid` to read
+        A string specifying the name of the file holding a
+        :class:`pyRSD.rsd.transfers.PkmuGrid` to read.
         """
         return val
 
     @parameter(default=None)
     def window_file(self, val):
         """
-        A string specifying the name of the file holding the correlation function multipoles of the window function
+        A string specifying the name of the file holding the correlation
+        function multipoles of the window function.
 
         The file should contain columns of data, with the first column
         specifying the separation array :math:`s`, and the other columns
@@ -449,14 +450,15 @@ class PowerDataSchema(Cache):
     @parameter
     def covariance(self, val):
         """
-        The string specifying the name of the file holding the covariance matrix
+        The string specifying the name of the file holding the covariance matrix.
         """
         return val
 
     @parameter(default=None)
     def usedata(self, val):
         """
-        A list of the statistic numbers that will be included in the final analysis.
+        A list of the statistic numbers that will be included in the final
+        analysis.
 
         This allows the user to exclude certain statistics read from file. By
         default (``None``), all statistics are included
@@ -466,14 +468,14 @@ class PowerDataSchema(Cache):
     @parameter(default=1.0)
     def covariance_rescaling(self, val):
         """
-        Rescale the covariance matrix read from file by this amount
+        Rescale the covariance matrix read from file by this amount.
         """
         return val
 
     @parameter(default=0.)
     def covariance_Nmocks(self, val):
         """
-        The number of mocks that was used to measure the covariance matrix
+        The number of mocks that was used to measure the covariance matrix.
 
         If this is non-zero, then the inverse covariance matrix will
         be rescaled to account for noise due to the finite number of mocks
@@ -483,7 +485,8 @@ class PowerDataSchema(Cache):
     @parameter(default=None)
     def ells(self, val):
         """
-        A list of integers specifying multipole numbers for each statistic in the final analysis
+        A list of integers specifying multipole numbers for each statistic
+        in the final analysis.
 
         This must be supplied when the :attr:`mode` is ``poles``
         """
@@ -492,7 +495,7 @@ class PowerDataSchema(Cache):
     @parameter(default=None)
     def mu_bounds(self, val):
         """
-        A list of tuples specifying the edges of the :math:`\mu` bins
+        A list of tuples specifying the edges of the :math:`\mu` bins.
 
         This should have (mu_min, mu_max), corresponding
         to the edges of the bins for each statistic in the final analysis
@@ -504,7 +507,8 @@ class PowerDataSchema(Cache):
     @parameter(default=4)
     def max_ellprime(self, val):
         """
-        When convolving a multipole of order ``ell``, include contributions up to and including this number
+        When convolving a multipole of order ``ell``, include contributions
+        up to and including this number.
         """
         return val
 
@@ -525,7 +529,8 @@ class PowerData(PowerDataSchema):
         needed to initialize the object
     """
     schema = PowerDataSchema
-    required_params = set([par for par in PowerDataSchema._param_names if not hasattr(getattr(PowerDataSchema, par), '_default')])
+    required_params = set([par for par in PowerDataSchema._param_names \
+                            if not hasattr(getattr(PowerDataSchema, par), '_default')])
 
     def __init__(self, param_file):
         """
@@ -619,15 +624,28 @@ class PowerData(PowerDataSchema):
         if self.window_file is not None:
             self.window = np.loadtxt(self.window_file)
 
-        # finally, read and setup an (optional) grid for binnning effects
-        self.read_grid()
+        # verify ells/mu_bounds
+        for attr in ['ells', 'mu_bounds']:
+            val = getattr(self, attr)
+            if val is None:
+                if attr == 'ells' and self.mode == 'poles':
+                    raise ValueError("'ells' must be defined if 'mode' is 'poles'")
+                if attr == 'mu_bounds' and self.mode == 'pkmu':
+                    raise ValueError("'mu_bounds' must be defined if 'mode' is 'pkmu'")
+            if val is not None and len(val) != self.size:
+                args = (attr, self.size ,len(val))
+                raise ValueError("data '%s' should be a list of length %d, not %d" % args)
+
+        # store the center of the mu wedges
+        if self.mode == 'pkmu':
+            self.mu_cen = [0.5*(lo+hi) for (lo,hi) in self.mu_bounds] # center mu
+
+        # finally, setup the transfer
+        self.initialize_transfer()
 
         # and verify
         self.verify()
 
-    #---------------------------------------------------------------------------
-    # additional parameters
-    #---------------------------------------------------------------------------
     @parameter
     def measurements(self, val):
         """
@@ -684,75 +702,69 @@ class PowerData(PowerDataSchema):
             raise ValueError(msg)
 
         # verify the grid
-        if self.transfer is not None and self.binning_transfer is not None:
-            if self.binning_transfer.size != self.covariance_matrix.N:
+        gridded_transfers = (transfers.GriddedWedgeTransfer, transfers.GriddedMultipoleTransfer)
+        if isinstance(self.transfer, gridded_transfers):
+            if self.transfer.size != self.covariance_matrix.N:
                 msg = "size mismatch between grid transfer function and covariance: "
-                args = (t.size, self.covariance_matrix.N)
+                args = (self.transfer.size, self.covariance_matrix.N)
                 raise ValueError(msg + "grid size =  %d, cov size = %d" %args)
 
-        # verify ells/mu_bounds
-        for attr in ['ells', 'mu_bounds']:
-            val = getattr(self, attr)
-            if val is not None and len(val) != self.size:
-                args = (attr, self.size ,len(val))
-                raise ValueError("data '%s' should be a list of length %d, not %d" % args)
-
-    def read_grid(self):
+    def initialize_transfer(self):
         """
-        If `grid_file` is present, initialize `PkmuGrid`, which
-        holds a finely-binned P(k,mu) grid to account for discrete
-        binning effects
-
-        Notes
-        -----
-        *   sets `grid` to be `None` or an instance of `PkmuGrid`
-        *   sets `transfer` to be `None` or an instance of `PkmuTransfer`
-            or `PolesTransfer`
+        Set up the transfer function required by the data.
         """
+        # initialize grid and transfer to None
         self.grid = None; self.transfer = None
 
-        if self.grid_file is not None:
+        # WINDOW FUNCTION TRANSFER
+        if self.window is not None:
 
-            # initialize the grid
-            self.grid = PkmuGrid.from_plaintext(self.grid_file)
+            # want to compute even multipoles up to at least max_ellprime
+            max_ell = max(self.max_ellprime, max(flatten(self.ells)))
+            ells = [i for i in range(0, max_ell+1, 2)]
 
-            # set modes to zero outside k-ranges to avoid model failing
-            self.grid.modes[self.grid.k < self.global_kmin] = np.nan
-            self.grid.modes[self.grid.k > self.global_kmax] = np.nan
+            #  initialize the window function transfer
+            self.transfer = [transfers.WindowFunctionTransfer(self.window, ells, max_ellprime=self.max_ellprime)]
+        else:
 
-            # initialize the transfer
-            if self.mode == 'pkmu':
-                x = self.mu_bounds
-                cls = PkmuTransfer; lab = 'mu_bounds'
+            # GRIDDED TRANSFER
+            if self.grid_file is not None:
+
+                # initialize the grid
+                self.grid = transfers.PkmuGrid.from_plaintext(self.grid_file)
+
+                # set modes to zero outside k-ranges to avoid model failing
+                self.grid.modes[self.grid.k < self.global_kmin] = np.nan
+                self.grid.modes[self.grid.k > self.global_kmax] = np.nan
+
+                # initialize the transfer
+                if self.mode == 'pkmu':
+                    x = self.mu_bounds
+                    cls = transfers.GriddedWedgeTransfer
+                else:
+                    x = self.ells
+                    cls = transfers.GriddedMultipoleTransfer
+
+                # initialize the transfer function
+                self.transfer = [cls(self.grid, x, kmin=self.kmin, kmax=self.kmax)]
+
+            # SMOOTH TRANSFER
             else:
-                x = self.ells
-                cls = PolesTransfer; lab = 'ells'
+                if self.mode == 'pkmu':
+                    x = self.mu_bounds
+                    cls = transfers.WedgeTransfer
+                else:
+                    x = self.ells
+                    cls = transfers.MultipoleTransfer
 
-            # verify and initialize
-            if x is None:
-                raise ValueError("`%s` parameter must be defined if `grid_file` is supplied" %lab)
-            if len(x) != self.size:
-                raise ValueError("size mismatch between `%s` and number of measurements" %lab)
+                # add a transfer for each ell or mu wedge
+                # NOTE: this accounts for different k values
+                t = []
+                for i, m in enumerate(self):
+                    t.append(cls(m.k, x[i]))
 
-            # initialize the transfer function
-            self.binning_transfer = cls(self.grid)
+                self.transfer = t
 
-            # update the values
-            setattr(self.binning_transfer, lab, x)
-            self.binning_transfer.kmin = self.kmin
-            self.binning_transfer.kmax = self.kmax
-        else:
-            self.binning_transfer = None
-
-        if self.window is None:
-            self.transfer = self.binning_transfer
-        else:
-            kws = {}
-            kws['max_ellprime'] = self.max_ellprime
-            kws['max_ell'] = max(self.max_ellprime, max(flatten(self.ells)))
-
-            # evaluate at k_out of the binning grid
-            self.transfer = WindowTransfer(self.window,**kws)
 
     def set_all_measurements(self):
         """
@@ -1061,7 +1073,7 @@ class PowerData(PowerDataSchema):
     @cached_property('measurements', 'kmin', 'kmax')
     def diagonal_covariance(self):
         """
-        Return `True` if the covariance matrix is diagonal
+        Return `True` if the covariance matrix is diagonal.
         """
         C = self.covariance_matrix.values
         return np.array_equal(np.nonzero(C), np.diag_indices_from(C))
@@ -1071,7 +1083,7 @@ class PowerData(PowerDataSchema):
         """
         Return a list of length `size` that holds the slices needed
         to extract the `i-th` measurement from the flattened list
-        of measurements
+        of measurements.
         """
         idx = [0] + list(np.cumsum([m.size for m in self]))
         return [slice(idx[i], idx[i+1]) for i in range(self.size)]

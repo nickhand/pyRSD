@@ -1,0 +1,121 @@
+from pyRSD.rsd.transfers.poles import MultipoleTransfer
+from pyRSD.rsd.window import WindowConvolution
+from pyRSD import pygcl, numpy as np
+
+from scipy.interpolate import InterpolatedUnivariateSpline as spline
+import xarray as xr
+
+class WindowFunctionTransfer(MultipoleTransfer):
+    """
+    A transfer function object to go from unconvolved to convolved multipoles.
+
+    Parameters
+    ----------
+    window : array_like
+        the window function multipoles in configuration space, as columns;
+        the first column should be the separation vector ``s``
+    ells : int, list of int
+        the multipole numbers to compute
+    kmin : float, optional
+        the minimum ``k`` value on the grid used when FFTing during the convolution
+    kmax : float, optional
+        the maximum ``k`` value on the grid used when FFTing during the convolution
+    Nk : int, optional
+        the number of grid points in the ``k`` direction
+    Nmu : int, optional
+        the number of grid points in the ``mu`` direction (from 0 to 1)
+    max_ellprime : int, optional
+        the maximum multipole number to include when determining the leakage
+        of higher-order multipoles into a multipole of order ``ell``
+    """
+    def __init__(self, window, ells, kmin=1e-4, kmax=0.7, Nk=1024, Nmu=40, max_ellprime=4):
+
+        k = np.logspace(np.log10(kmin), np.log10(kmax), Nk)
+        MultipoleTransfer.__init__(self, k, ells, Nmu=Nmu)
+
+        # the convolver object
+        self.convolver = WindowConvolution(window[:,0], window[:,1:],
+                                            max_ellprime=max_ellprime,
+                                            max_ell=max(ells))
+
+    def __call__(self, power, k_out=None, **kws):
+        """
+        Evaluate the convolved multipoles.
+
+        Parameters
+        ----------
+        power : xarray.DataArray
+            a DataArray holding the :math:`P(k,\mu)` values on a
+            coordinate grid with ``k`` and ``mu`` dimensions.
+        k_out : array_like, optional
+            if provided, evaluate the convolved multipoles at these
+            ``k`` values using a spline
+        **kws :
+            additional keywords for testing purposes
+
+        Returns
+        -------
+        Pell : xarray.DataArray
+            a DataArray holding the convolved :math:`P_\ell(k)` on a
+            coordinate grid with ``k`` and ``ell`` dimensions.
+        """
+        # get testing keywords
+        qbias = kws.get('qbias', 0.7)
+        dry_run = kws.get('dry_run', False)
+        no_convolution = kws.get('no_convolution', False)
+
+        # get the unconvovled theory multipoles
+        Pell0 = MultipoleTransfer.__call__(self, power)
+
+        # create additional logspaced k values for zero-padding up to k=100 h/Mpc
+        oldk = Pell0['k'].values
+        dk = np.diff(np.log10(oldk))[0]
+        newk = 10**(np.arange(np.log10(oldk.max()) + dk, 2 + 0.5*dk, dk))
+        newk = np.concatenate([oldk, newk])
+
+        # now copy over with zeros
+        Nk = len(newk); Nell = Pell0.shape[1]
+        Pell = xr.DataArray(np.zeros((Nk,Nell)), coords={'k':newk, 'ell':Pell0.ell}, dims=['k', 'ell'])
+        Pell.loc[dict(k=Pell0['k'])] = Pell0[:]
+
+        # do the convolution
+        if not no_convolution:
+
+            # FFT the input power multipoles
+            xi = np.empty((Nk, Nell), order='F') # column-continuous
+            rr = np.empty(Nk)
+            for i, ell in enumerate(self.ells):
+                pygcl.ComputeXiLM_fftlog(int(ell), 2, newk, Pell.sel(ell=ell).values, rr, xi[:,i], qbias)
+                xi[:,i] *= (-1)**(ell//2)
+
+            # the linear combination of multipoles
+            if dry_run:
+                xi_conv = xi.copy()
+            else:
+                xi_conv = self.convolver(self.ells, rr, xi, order='F')
+
+            # FFTLog back
+            Pell_conv = np.empty((Nk, Nell), order='F')
+            kk = np.empty(Nk)
+            for i, ell in enumerate(self.ells):
+                pygcl.ComputeXiLM_fftlog(int(ell), 2, rr, xi_conv[:,i], kk, Pell_conv[:,i], -qbias)
+                Pell_conv[:,i] *= (-1)**(ell//2) * (2*np.pi)**3
+        else:
+            Pell_conv = Pell
+
+        # interpolate to k_out
+        coords = coords={'ell':Pell0.ell}
+        if k_out is not None:
+
+            shape = (len(k_out), len(self.ells))
+            toret = np.ones(shape) * np.nan
+            for i, ell in enumerate(self.ells):
+                idx = np.isfinite(newk)
+                spl = spline(newk[idx], Pell_conv[idx,i])
+                toret[:,i] = spl(k_out)
+            coords['k'] = k_out
+        else:
+            toret = Pell_conv
+            coords['k'] = newk
+
+        return xr.DataArray(toret, coords=coords, dims=['k', 'ell'])

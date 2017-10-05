@@ -613,6 +613,18 @@ class FittingDriver(FittingDriverSchema):
         logger.info("...theoretical model successfully read", on=0)
 
     @property
+    def model_callable(self):
+        """
+        Return the theoretical model callable that will return the
+        flattened theory prediction corresponding to the data statistics.
+        """
+        try:
+            return self._model_callable
+        except AttributeError:
+            self._model_callable = self.theory.model_callable(self.data, theory_decorator=self.theory_decorator)
+            return self._model_callable
+
+    @property
     def combined_model(self):
         """
         The model values for each measurement, flattened column-wise
@@ -624,21 +636,7 @@ class FittingDriver(FittingDriverSchema):
         -----
         The model callable should already returned the flattened `combined` values
         """
-        out = []
-
-        # loop over each theory statistic
-        for i, theory in enumerate(self.theory.evaluate_model(self.data)):
-
-            stat = self.data.statistics[i]
-            dec = self.theory_decorator.get(stat, None)
-            if dec is not None:
-                dec = getattr(decorators, dec)
-                theory = dec(*theory)
-
-            assert np.ndim(theory) == 1
-            out.append(theory)
-
-        return np.concatenate(out, axis=0)
+        return self.model_callable()
 
     @property
     def null_lnlike(self):

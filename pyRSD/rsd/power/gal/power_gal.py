@@ -2,7 +2,6 @@ import contextlib
 from pyRSD import numpy as np
 from pyRSD.rsd._cache import parameter, cached_property
 from pyRSD.rsd import tools, BiasedSpectrum
-from pyRSD.rsd.window import WindowTransfer
 
 from .fog_kernels import FOGKernel
 from . import Pgal

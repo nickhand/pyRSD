@@ -977,10 +977,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         # the return array
         pkmu = self._power(k, mu)
-        if flatten: pkmu = np.ravel(pkmu, order='F')
+
+        if flatten:
+            pkmu = np.ravel(pkmu, order='F')
+
         return pkmu
 
-    def poles(self, k, ells, flatten=False, Nmu=41):
+    def poles(self, k, ells, Nmu=40):
         """
         The multipole moments of the redshift-space power spectrum
 
@@ -990,65 +993,43 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             The wavenumbers to evaluate the power spectrum at, in `h/Mpc`
         ells : int, array_like
             The `ell` values of the multipole moments
-        flatten : bool, optional
-            If `True`, flatten the return array, which will have a length of
-            `len(k) * len(poles)`
+        Nmu : int, optional
+            the number of ``mu`` bins to use when performing the multipole
+            integration
 
         Returns
         -------
         poles : array_like
             returns tuples of arrays for each ell value in ``poles``
         """
-        scalar = np.isscalar(ells)
-        if scalar: ells = [ells]
+        from pyRSD.rsd.transfers import MultipoleTransfer
 
-        if len(k) == Nmu: Nmu += 1
-        mus = np.linspace(0., 1., Nmu)
-        Pkmus = self.power(k, mus)
+        # the transfer
+        t = MultipoleTransfer(k, ells, Nmu=Nmu)
 
-        if len(ells) != len(k):
-            toret = ()
-            for ell in ells:
-                kern = (2*ell+1.)*legendre(ell)(mus)
-                val = np.array([simps(kern*d, x=mus) for d in Pkmus])
-                toret += (val,)
+        # evaluate the model on the grid
+        P = self.power(t.flatk, t.flatmu)
 
-            if scalar:
-                return toret[0]
-            else:
-                return toret if not flatten else np.ravel(toret, order='F')
-        else:
-            kern = np.asarray([(2*ell+1.)*legendre(ell)(mus) for ell in poles])
-            return np.array([simps(d, x=mus) for d in kern*Pkmus])
+        # return the transferred power
+        return t(P)
 
-    def from_transfer(self, transfer, binval, **kws):
+    def apply_transfer(self, transfer):
         """
-        Return the power accounting for discrete binning effects using the
-        input transfer function.
+        Return the power spectrum with the specified transfer functions
+        applied, e.g., grid binning, multipole integration, etc.
 
-        This calls :func:`power` to evaluate the model at discrete ``k``
-        and ``mu`` values
 
         Parameters
         ----------
-        transfer : :class:`~pyRSD.rsd.PkmuTransfer`, :class:`~pyRSD.rsd.PolesTransfer`, :class:`~pyRSD.rsd.window.WindowTransfer`
-            the transfer class which accounts for the discrete binning effects
-        binval : int, tuple
-            the bin value to compute, either the multipole number ``ell``, or
-            the ``mu`` bin bounds. This argument is passed directly to the
-            :func:`__call__` function of ``transfer``
-        **kws :
-            additional keyword arguments to the :func:`__call__` of the
-            ``transfer`` object
+        transfer : subclass of :class:`pyRSD.rsd.transfers.TransferBase`
+            the transfer class
         """
-        grid = transfer.grid
-
         # check some bounds for window convolution
-        from pyRSD.rsd.window import WindowTransfer
-        if isinstance(transfer, WindowTransfer):
+        from pyRSD.rsd.transfers import WindowFunctionTransfer
+        if isinstance(transfer, WindowFunctionTransfer):
 
-            kmin = transfer.get_kmin()
-            kmax = transfer.get_kmax()
+            kmin = transfer.kmin
+            kmax = transfer.kmax
             if (kmin < self.kmin):
                 warnings.warn("min k of window transfer (%s) is less than model's kmin (%.2e)" %(kmin, self.kmin))
             if (kmax > self.kmax):
@@ -1060,9 +1041,11 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             if self.kmax < 0.5:
                 warnings.warn("doing window convolution with dangerous model kmax (%.2e)" %self.kmax)
 
-        power = self.power(grid.k[grid.notnull], grid.mu[grid.notnull])
-        transfer.power = power
-        return transfer(binval, kmin=kmin, kmax=kmax, **kws)
+        # evaluate the model on the grid
+        P = self.power(transfer.flatk, transfer.flatmu)
+
+        # return power with transfer applied
+        return transfer(P)
 
     @tools.alcock_paczynski
     def _P_mu0(self, k, mu):
@@ -1176,6 +1159,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         The tetrahexadecapole (ell=6) moment of the power spectrum
         """
         return self.power(k, mu, **kwargs)
+
 
 class PowerTerm(object):
     """

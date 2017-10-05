@@ -15,6 +15,23 @@ import itertools
 import inspect
 import hashlib
 from six import PY3
+import xarray as xr
+
+def return_xarray(pkmu, k, mu, flatten=False):
+
+    if flatten:
+        k = np.ravel(k, order='F')
+        mu = np.ravel(mu, order='F')
+
+    if pkmu.ndim == 1:
+        dims = ['i']
+        coords = {'k': (dims, k), 'mu': (dims, mu)}
+    else:
+        dims = ['k', 'mu']
+        coords = {'k': k[:,0], 'mu':mu[0,:]}
+
+    # convert to xarray
+    return xr.DataArray(pkmu, coords=coords, dims=dims)
 
 def get_hash_key(*args):
 
@@ -232,13 +249,17 @@ def broadcast_kmu(f):
                 k = k[:, np.newaxis]
                 mu = mu[np.newaxis, :]
         else:
-            if k_dim > 1:
+            if k_dim > 1 and mu_dim < 2:
                 mu =  mu[np.newaxis, :]
-            else:
+            elif mu_dim > 1 and k_dim < 2:
                 k = k[:, np.newaxis]
 
         args[:2] = np.broadcast_arrays(k, mu)
-        return np.squeeze(f(self, *args, **kwargs))
+        if args[0].ndim > 2 or args[1].ndim > 2:
+            raise ValueError(("incompatible `k`, `mu` dimensions for broadcasted; "
+                              "arrays should have maximum dimension of 2"))
+        P = np.squeeze(f(self, *args, **kwargs))
+        return return_xarray(P, args[0], args[1], flatten=kwargs.get('flatten', False))
 
     return wrapper
 

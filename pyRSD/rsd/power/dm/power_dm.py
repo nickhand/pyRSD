@@ -363,7 +363,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Minimum observed wavenumber needed for results
         """
-        if val < INTERP_KMIN:
+        if val < INTERP_KMIN and getattr(self, '_need_pt_integrals', True):
             raise ValueError("kmin = %.2e h/Mpc below PT integrals interpolation lower bound" %val)
         return val
 
@@ -372,7 +372,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         """
         Maximum observed wavenumber needed for results
         """
-        if val > INTERP_KMAX:
+        if val > INTERP_KMAX and getattr(self, '_need_pt_integrals', True):
             raise ValueError("kmax = %.2e h/Mpc above PT integrals interpolation upper bound" %val)
         return val
 
@@ -511,9 +511,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         current values of the AP effect parameters, `alpha_perp` and `alpha_par`
         """
         kmin = min(0.005, 0.9*self.kmin)
-        if kmin < INTERP_KMIN: kmin = INTERP_KMIN
+        if kmin < INTERP_KMIN and getattr(self, '_need_pt_integrals', True):
+            kmin = INTERP_KMIN
+
         kmax = max(0.9, 1.1*self.kmax)
-        if kmax > INTERP_KMAX: kmax = INTERP_KMAX
+        if kmax > INTERP_KMAX and getattr(self, '_need_pt_integrals', True):
+            kmax = INTERP_KMAX
+
         return np.logspace(np.log10(kmin), np.log10(kmax), self.Nk)
 
     @cached_property("z", "cosmo")

@@ -105,7 +105,7 @@ class DefaultQuasarPowerTheory(object):
         """
         The Finger-of-God velocity disperion in Mpc/h
         """
-        return {'fiducial':4., 'prior':'uniform', 'lower':2., 'upper':8.}
+        return {'fiducial':4., 'prior':'uniform', 'lower':0., 'upper':20.}
 
     @free(model_param=True)
     def f_nl(self):

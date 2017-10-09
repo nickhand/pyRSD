@@ -10,7 +10,7 @@ from .util import rsd_io
 from .results import EmceeResults, LBFGSResults
 from ..rsd._cache import Cache, parameter
 from pyRSD.rsdfit.theory import decorators
-
+from pyRSD import __version__
 from six import string_types
 import warnings
 
@@ -72,6 +72,8 @@ class FittingDriverSchema(Cache):
                 if not isinstance(val[k], string_types) or val[k] not in valid:
                     args = (str(valid), val[k])
                     raise ValueError("theory_decorator values should be one of %s, not %s" %args)
+        else:
+            return {}
 
         return val
 
@@ -500,6 +502,7 @@ class FittingDriver(FittingDriverSchema):
         # store the model version in the results
         if self.results is not None:
             self.results.model_version = self.theory.model.__version__
+            self.results.pyrsd_version = __version__
 
         logger.info("...fitting complete")
         return exception

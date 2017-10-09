@@ -428,8 +428,12 @@ class BasePowerTheory(object):
 
         # model kwargs
         kwargs = {k:v() for k,v in self.model_params.items()}
-        if self.kmin is not None: kwargs['kmin'] = self.kmin
-        if self.kmax is not None: kwargs['kmax'] = self.kmax
+        if self.kmin is not None:
+            if self.kmin < kwargs.get('kmin', np.inf):
+                kwargs['kmin'] = self.kmin
+        if self.kmax is not None:
+            if self.kmax > kwargs.get('kmax', -np.inf):
+                kwargs['kmax'] = self.kmax
 
         if value is None:
             self._model = self._model_cls(**kwargs)

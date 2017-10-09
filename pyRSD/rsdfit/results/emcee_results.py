@@ -270,7 +270,8 @@ class EmceeResults(object):
 
         self.attrs.update(**meta)
         d = {k:getattr(self, k) for k in atts}
-        d['model_version'] = getattr(self, 'model_version', None)
+        for k in ['model_version', 'pyrsd_version']:
+            d[k] = getattr(self, k, None)
         np.savez(filename, **d)
 
     @classmethod

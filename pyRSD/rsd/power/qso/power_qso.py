@@ -1,4 +1,4 @@
-from pyRSD.rsd._cache import parameter, cached_property
+from pyRSD.rsd._cache import parameter, cached_property, interpolated_function
 from pyRSD.rsd import tools, HaloSpectrum
 from pyRSD import numpy as np, pygcl
 from ..gal.fog_kernels import FOGKernel
@@ -46,6 +46,8 @@ class QuasarSpectrum(HaloSpectrum):
     The quasar redshift space power spectrum, a subclass of
     :class:`~pyRSD.rsd.HaloSpectrum` for biased redshift space power spectra
     """
+    k_interp = np.logspace(np.log10(1e-7), np.log10(2.0), 300)
+
     def __init__(self, fog_model='gaussian', **kwargs):
         """
         Initialize the QuasarSpectrum
@@ -57,8 +59,6 @@ class QuasarSpectrum(HaloSpectrum):
             ['modified_lorentzian', 'lorentzian', 'gaussian'].
             Default is 'gaussian'
         """
-        self._need_pt_integrals = False
-
         # the base class
         super(QuasarSpectrum, self).__init__(**kwargs)
 
@@ -72,6 +72,29 @@ class QuasarSpectrum(HaloSpectrum):
         self.f_nl = 0
         self.p = 1.6 # good for quasars
 
+    @cached_property("Nk", "kmin", "kmax")
+    def k(self):
+        """
+        Return a range in wavenumbers, set by the minimum/maximum
+        allowed values, given the desired `kmin` and `kmax` and the
+        current values of the AP effect parameters, `alpha_perp` and `alpha_par`
+        """
+        return np.logspace(np.log10(self.kmin), np.log10(self.kmax), self.Nk)
+
+    @parameter
+    def kmin(self, val):
+        """
+        Minimum observed wavenumber needed for results
+        """
+        return val
+
+    @parameter
+    def kmax(self, val):
+        """
+        Maximum observed wavenumber needed for results
+        """
+        return val
+
     def default_params(self):
         """
         Return a QuasarPowerParameters instance holding the default
@@ -81,6 +104,13 @@ class QuasarSpectrum(HaloSpectrum):
         """
         from pyRSD.rsdfit.theory import QuasarPowerParameters
         return QuasarPowerParameters.from_defaults(model=self)
+
+    @parameter
+    def p(self, val):
+        """
+        The bias type for PNG; either 1.6 or 1 usually
+        """
+        return val
 
     @parameter
     def fog_model(self, val):
@@ -144,6 +174,7 @@ class QuasarSpectrum(HaloSpectrum):
         """
         return 1.686
 
+    @interpolated_function("k", "cosmo")
     def alpha_png(self, k):
         """
         The primordial non-Gaussianity alpha value
@@ -164,6 +195,7 @@ class QuasarSpectrum(HaloSpectrum):
 
         return 2*k**2 * Tk * self.D / (3*self.cosmo.Omega0_m()) * (c/H0)**2 * g_ratio
 
+    @interpolated_function("k", "b1", "f_nl", "p")
     def delta_bias(self, k):
         """
         The scale-dependent bias introduced by primordial non-Gaussianity
@@ -172,6 +204,7 @@ class QuasarSpectrum(HaloSpectrum):
 
         return 2*(self.b1-self.p)*self.f_nl*self.delta_crit/self.alpha_png(k)
 
+    @interpolated_function("k", "b1", "delta_bias")
     def btot(self, k):
         """
         The total bias, accounting for scale-dependent bias introduced by
@@ -182,33 +215,28 @@ class QuasarSpectrum(HaloSpectrum):
     #---------------------------------------------------------------------------
     # power as a function of mu
     #---------------------------------------------------------------------------
+    @interpolated_function("k", "sigma8_z", "_power_norm", "btot")
     def P_mu0(self, k):
         """
         The isotropic part of the Kaiser formula
         """
-        toret = np.zeros_like(k)
-        kflat = np.ravel(k)
-        toret.flat = self.btot(kflat)**2 * self.normed_power_lin(kflat)
-        return toret
+        return self.btot(k)**2 * self.normed_power_lin(k)
 
+    @interpolated_function("k", "sigma8_z", "f", "_power_norm", "btot")
     def P_mu2(self, k):
         """
         The mu^2 term of the Kaiser formula
         """
-        toret = np.zeros_like(k)
-        kflat = np.ravel(k)
-        toret.flat = 2*self.f*self.btot(kflat) * self.normed_power_lin(kflat)
-        return toret
+        return 2*self.f*self.btot(k) * self.normed_power_lin(k)
 
+    @interpolated_function("k", "sigma8_z", "f", "_power_norm")
     def P_mu4(self, k):
         """
         The mu^4 term of the Kaiser formula
         """
-        toret = np.zeros_like(k)
-        kflat = np.ravel(k)
-        toret.flat = self.f**2 * self.normed_power_lin(kflat)
-        return toret
-    
+        return self.f**2 * self.normed_power_lin(k)
+
+    @interpolated_function(interp="k")
     def P_mu6(self, k):
         """
         The mu^6 term is zero in the Kaiser formula

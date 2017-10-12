@@ -1219,6 +1219,15 @@ class FittingDriver(FittingDriverSchema):
         ax.set_ylabel("residuals (data - model)/error", fontsize=16)
         ax.legend(loc=0, ncol=2)
 
+    def iplot(self, colors=None):
+        """
+        Make an interactive plot of the best-fit theory and data points using
+        :mod:`plotly`.
+        """
+        from .plotly.fit import plot_fit_comparison
+        import plotly.offline as py
+        return py.iplot(plot_fit_comparison(self, colors=colors))
+
     def plot(self, usetex=False, ax=None, colors=None, use_labels=True, **kws):
         """
         Plot the best-fit theory and data points

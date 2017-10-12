@@ -31,6 +31,8 @@ tex_names['b1sigma8']   = r"$b_1 \sigma_8$"
 tex_names['F_AP']       = r"$F_\mathrm{AP}$"
 tex_names['alpha']      = r"$\alpha$"
 tex_names['epsilon']    = r"$\epsilon$"
+tex_names['f_nl']       = r"$f_\mathrm{NL}$"
+tex_names['sigma_fog']  = r"$\sigma_\mathrm{FOG}$"
 
 tex_names['b2_00__0'] = r"$b_{2}^{00}\mathrm{[0]}$"
 tex_names['b2_00__2'] = r"$b_{2}^{00}\mathrm{[2]}$"

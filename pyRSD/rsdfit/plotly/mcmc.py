@@ -27,8 +27,8 @@ def plot_traces(r, *names, burnin=None, max_walkers=10, opacity=0.4, rangeslider
     for i, name in enumerate(names):
         param = r[name]
 
-        iter_num = list(range(r.iterations))[burnin:]
-        trace = param.trace()[:, burnin:]
+        iter_num = np.arange(r.iterations, dtype='i4')[burnin:]
+        trace = np.around(param.trace()[:, burnin:], 5)
 
         # plot each walker
         for itrace, t in enumerate(trace):
@@ -89,9 +89,9 @@ def jointplot_2d(r, param1, param2,
 
     # data and layout
     data = go.Data([go.Contour(
-           z=Z,
-           x=x,
-           y=y,
+           z=np.around(Z, 5),
+           x=np.around(x, 5),
+           y=np.around(y, 5),
         showscale=False,
            colorscale=colors,
            opacity=0.9,
@@ -144,13 +144,13 @@ def hist_1d(r, name, thin=1, rename=None, color="#1f77b4"):
     bincenters = 0.5*(bins[1:] + bins[:-1])
 
     xlims = [r[name].median + x for x in par.three_sigma]
-    data = [go.Bar(x=bincenters, y=counts, width=dx, opacity=0.75, showlegend=False,
+    data = [go.Bar(x=np.around(bincenters, 5), y=np.around(counts, 5), width=dx, opacity=0.75, showlegend=False,
                     marker={'color':color})]
 
     mu = trace.mean(); sigma = trace.std()
     x = np.linspace(0.9*trace.min(), 1.1*trace.max(), 500)
     y = mlab.normpdf(x, mu, sigma)
-    data.append(go.Scatter(x=x, y=y, line={'color':'black'}, showlegend=False))
+    data.append(go.Scatter(x=np.around(x, 5), y=np.around(y, 5), line={'color':'black'}, showlegend=False))
 
     # setup shapes for vertical lines
     shapes_dict = {'type':'line', 'xref':'x', 'yref':'y', 'y0':0., 'y1':1.05*counts.max(), 'fillcolor':'black'}

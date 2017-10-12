@@ -1,8 +1,7 @@
 from . import py, go
 from pyRSD.rsdfit.util import plot
 import seaborn as sns
-
-
+import numpy as np
 
 def plot_fit_comparison(driver, colors=None, filename=None, labels=None):
     """
@@ -35,8 +34,8 @@ def plot_fit_comparison(driver, colors=None, filename=None, labels=None):
             color = 'rgb%s' %str(color)
 
         # save the data
-        yerr = {'type':'data', 'array':yerr, 'visible':True, 'color':color, 'width':0}
-        data.append(go.Scatter(x=x, y=y, error_y=yerr, line={'color':'transparent'}, showlegend=False))
+        yerr = {'type':'data', 'array':np.around(yerr, 5), 'visible':True, 'color':color, 'width':0}
+        data.append(go.Scatter(x=np.around(x, 5), y=np.around(y, 5), error_y=yerr, line={'color':'transparent'}, showlegend=False))
 
     # plot the theory
     c = colors[::2][:driver.data.size]
@@ -45,7 +44,7 @@ def plot_fit_comparison(driver, colors=None, filename=None, labels=None):
         color = meta['color']
         if isinstance(color, tuple):
             color = 'rgb%s' %str(color)
-        data.append(go.Scatter(x=x, y=y, line={'color':color}, name=labels_[i]))
+        data.append(go.Scatter(x=np.around(x, 5), y=np.around(y, 5), line={'color':color}, name=labels_[i]))
 
     xlabel = plot.get_xlabel(driver, with_latex=True)
     ylabel = plot.get_ylabel(driver, with_latex=True)

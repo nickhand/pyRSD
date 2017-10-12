@@ -49,14 +49,12 @@ def poles_normalization(driver):
 
     return lambda k: (1. + 2./3*beta + 1./5*beta**2) * b1**2 * power_norm*m.power_lin_nw(k)
 
-def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kwargs):
+def plot_normalized_data(driver, offset=0., use_labels=True, labels=None, norm=None, **kwargs):
     """
     Plot the normalized data from the input `FittingDriver`
 
     Parameters
     ----------
-    ax : Axes
-        the axes to plot to
     driver : FittingDriver
         the driver instances used to run the fitting procedure
     offset : float, optional
@@ -97,22 +95,24 @@ def plot_normalized_data(ax, driver, offset=0., use_labels=True, norm=None, **kw
 
         # plot the measurement
         if use_labels:
-            if driver.mode == 'pkmu':
-                label = r"$\mu = %.2g$" %(m.identifier)
+            if labels is not None:
+                label = labels[i]
             else:
-                label = m.label
+                if driver.mode == 'pkmu':
+                    label = r"$\mu = %.2g$" %(m.identifier)
+                else:
+                    label = r"$P_{%d}$" %(m.identifier)
         if colors is not None: kwargs['color'] = colors[i]
-        ax.errorbar(m.k, m.power/n + offset*i, m.error/n, label=label, **kwargs)
+        kwargs['label'] = label
+        yield m.k, m.power/n + offset*i, m.error/n, kwargs
 
 
-def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs):
+def plot_normalized_theory(driver, offset=0., norm=None, label="", **kwargs):
     """
     Plot the normalized theory from the input `FittingDriver`
 
     Parameters
     ----------
-    ax : Axes
-        the axes to plot to
     driver : FittingDriver
         the driver instances used to run the fitting procedure
     offset : float, optional
@@ -159,26 +159,49 @@ def plot_normalized_theory(ax, driver, offset=0., norm=None, label="", **kwargs)
         # plot the theory
         if colors is not None: kwargs['color'] = colors[i]
         kwargs['label'] = labels[i]
-        ax.plot(m.k, theory[slices[i]]/n + offset*i, **kwargs)
+        yield m.k, theory[slices[i]]/n + offset*i, kwargs
 
-def add_axis_labels(ax, driver):
+def get_xlabel(driver, with_latex=True):
     """
-    Format the axes by adding labels
+    Return the x axis label.
     """
-    ax.set_xlabel(r"$k$ $[h/\mathrm{Mpc}]$", fontsize=14)
-
-    if driver.mode == 'pkmu':
-        ax.set_ylabel(r"$P^{\ gg} / P^\mathrm{EH} (k, \mu)$", fontsize=16)
+    if with_latex:
+        return r"$k \ [h \ \mathrm{Mpc}^{-1}]$"
     else:
-        ell_str = ",".join([str(m.identifier) for m in driver.data])
-        ax.set_ylabel(r"$P^{\ gg}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" %(ell_str), fontsize=16)
+        return "k [h/Mpc]"
 
-def add_info_title(ax, driver):
+def get_ylabel(driver, with_latex=True):
+    """
+    Return the y-axis label.
+    """
+    if not with_latex:
+        if driver.mode == 'pkmu':
+            return "normalized %s P(k,mu)" % driver.tracer_type
+        else:
+            return "normalized %s multipoles" % driver.tracer_type
+    else:
+        lab = None
+        if driver.tracer_type == 'galaxy':
+            lab = 'gg'
+        elif driver.tracer_type == 'quasar':
+            lab = 'QSO'
+        assert lab is not None
+
+        if driver.mode == 'pkmu':
+            return r"$P^{\ %s} / P^\mathrm{EH} (k, \mu)$" % lab
+        else:
+            ell_str = ",".join([str(m.identifier) for m in driver.data])
+            return r"$P^{\ %s}_{\ell=%s} / P^\mathrm{EH}_{\ell=0} (k)$" % (lab,ell_str)
+
+def get_title(driver, with_latex=True):
     """
     Add a title to the axes with fit information
     """
     args = (driver.lnprob(), driver.Np, driver.Nb, driver.reduced_chi2())
-    ax.set_title(r'$\ln\mathcal{L} = %.2f$, $N_p = %d$, $N_b = %d$, $\chi^2_\mathrm{red} = %.2f$' %args, fontsize=12)
+    if with_latex:
+        return r'$\ln\mathcal{L} = %.2f, \ N_p = %d, \ N_b = %d, \ \chi^2_\mathrm{red} = %.2f$' %args
+    else:
+        return "log-likelihood = %.2f, # params = %d, # bins = %d, reduced chi sq = %.2f" %args
 
 def plot_fit_comparison(driver, ax=None, colors=None, use_labels=True, **kws):
     """
@@ -195,15 +218,23 @@ def plot_fit_comparison(driver, ax=None, colors=None, use_labels=True, **kws):
 
     # plot the theory
     c = colors[::2][:driver.data.size]
-    plot_normalized_theory(ax, driver, offset=offset, color=c, zorder=1, **kws)
+    for res in plot_normalized_theory(driver, offset=offset, color=c, zorder=1, **kws):
+        x, y, meta = res
+        ax.plot(x, y, **meta)
 
     # plot the data
     c = colors[1::2][:driver.data.size]
-    plot_normalized_data(ax, driver, offset=offset, use_labels=use_labels, zorder=10, color=c, **kws)
+    kws_ = {'offset':offset, 'use_labels':use_labels, 'zorder':10, 'color':c}
+    kws_.update(kws)
+    for res in plot_normalized_data(driver, **kws_):
+        x, y, yerr, meta = res
+        ax.errorbar(x, y, yerr, **meta)
 
     # format the axes
-    add_axis_labels(ax, driver)
-    add_info_title(ax, driver)
+    ax.set_xlabel(get_xlabel(driver), fontsize=14)
+    ax.set_ylabel(get_ylabel(driver), fontsize=16)
+    ax.set_title(get_title(driver), fontsize=12)
+
     ncol = 1 if driver.data.size < 4 else 2
     ax.legend(loc=0, ncol=ncol)
 

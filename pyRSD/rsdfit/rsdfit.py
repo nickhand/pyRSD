@@ -129,7 +129,7 @@ class RSDFitDriver(object):
                 if not init_model:
                     driver.model = self.model
                 else:
-                    if self.comm.rank == 0:
+                    if self.comm.rank == 0 and not self.no_save_model:
                         model_dir = driver.params.get('model_dir', self.folder)
                         driver.theory.model.to_npy(os.path.join(model_dir, model_filename))
 

@@ -107,6 +107,9 @@ def setup_mcmc_subparser(parent):
     h = 'whether to print more info about the mpi4py.Pool object'
     subparser.add_argument('--debug', help=h, action='store_true', default=False)
 
+    # dont save model
+    h = 'do not save the model instance'
+    subparser.add_argument('--no-save-model', help=h, action='store_true', default=False)
 
 def setup_nlopt_subparser(parent):
     """
@@ -141,6 +144,10 @@ def setup_nlopt_subparser(parent):
     # debug
     h = 'whether to print more info about the mpi4py.Pool object'
     subparser.add_argument('--debug', help=h, action='store_true', default=False)
+
+    # dont save model
+    h = 'do not save the model instance'
+    subparser.add_argument('--no-save-model', help=h, action='store_true', default=False)
 
 def setup_restart_subparser(parent):
     """

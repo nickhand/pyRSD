@@ -329,11 +329,14 @@ class InterpolatedFunction(object):
                 else:
                     return self.spline.derivative()(k)
         except InterpolationDomainError as e:
-            msg = "wavenumber range outside interpolation domain"
+            s = self.spline[0] if isinstance(self.spline, list) else self.spline
+            msg = "wavenumber range outside interpolation domain\n"
+            msg += "input k bounds: (%.4e, %.4e)\n" % (numpy.min(k), numpy.max(k))
+            msg += "spline domain bounds: (%.4e, %.4e)\n" % (s.x[0], s.x[-1])
             if e.above_bounds:
-                msg += "\ndesired wavenumbers greater than max of interpolation domain, try adusting ``kmax`` attribute"
+                msg += "desired wavenumbers greater than max of interpolation domain, try adusting ``kmax`` attribute\n"
             if e.below_bounds:
-                msg += "\ndesired wavenumbers less than min of interpolation domain, try adusting ``kmin`` attribute"
+                msg += "desired wavenumbers less than min of interpolation domain, try adusting ``kmin`` attribute"
             raise InterpolationDomainError(msg)
         except:
             raise

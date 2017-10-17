@@ -122,7 +122,7 @@ def jointplot_2d(r, param1, param2,
     # and plot
     return go.Figure(data=data, layout=layout)
 
-def hist_1d(r, name, thin=1, rename=None, color="#1f77b4"):
+def hist_1d(r, name, thin=1, rename=None, color="#1f77b4", hide_shapes=False):
     """
     Make a 1D histogram plot of the posterior distributions of the specified
     parameter using :mod:`plotly`.
@@ -153,20 +153,21 @@ def hist_1d(r, name, thin=1, rename=None, color="#1f77b4"):
     data.append(go.Scatter(x=np.around(x, 5), y=np.around(y, 5), line={'color':'black'}, showlegend=False))
 
     # setup shapes for vertical lines
-    shapes_dict = {'type':'line', 'xref':'x', 'yref':'y', 'y0':0., 'y1':1.05*counts.max(), 'fillcolor':'black'}
-    shapes = []
+    if not hide_shapes:
+        shapes_dict = {'type':'line', 'xref':'x', 'yref':'y', 'y0':0., 'y1':1.05*counts.max(), 'fillcolor':'black'}
+        shapes = []
 
-    # add the median value
-    s = shapes_dict.copy()
-    s['x0'] = s['x1'] = par.median
-    shapes.append(s)
-
-    # add the 1 sigma bounds
-    for val in par.one_sigma:
+        # add the median value
         s = shapes_dict.copy()
-        s['x0'] = s['x1'] = par.median + val
-        s['line'] = {'dash':'dash'}
+        s['x0'] = s['x1'] = par.median
         shapes.append(s)
+
+        # add the 1 sigma bounds
+        for val in par.one_sigma:
+            s = shapes_dict.copy()
+            s['x0'] = s['x1'] = par.median + val
+            s['line'] = {'dash':'dash'}
+            shapes.append(s)
 
     if rename is not None: name = rename
     if name in tex_names and rename is None:
@@ -187,14 +188,15 @@ def hist_1d(r, name, thin=1, rename=None, color="#1f77b4"):
         width=650,
         height=650,
         annotations=[title],
-        shapes=shapes,
         xaxis=dict(title=name, range=xlims),
         yaxis=dict(title=r"$N_\mathrm{samples}$"),
     )
+    if not hide_shapes:
+        layout['shapes'] = shapes
 
     return go.Figure(data=data, layout=layout)
 
-def plot_triangle(r, params=None, thin=1, width=1500, height=1500):
+def plot_triangle(r, params=None, thin=1, width=1500, height=1500, hide_shapes=False):
 
     if params is None:
         params = r.free_names + r.constrained_names
@@ -217,7 +219,7 @@ def plot_triangle(r, params=None, thin=1, width=1500, height=1500):
                 subfig = jointplot_2d(r, params[j-1], params[i-1], thin=thin)
                 sp = subfig['data']
             else:
-                subfig = hist_1d(r, params[j-1])
+                subfig = hist_1d(r, params[j-1], hide_shapes=hide_shapes)
                 sp = subfig['data']
 
                 # update axes for annotations
@@ -227,10 +229,11 @@ def plot_triangle(r, params=None, thin=1, width=1500, height=1500):
                 annotations += subfig['layout']['annotations']
 
                 # update axes for shapes
-                for t in subfig['layout']['shapes']:
-                    t['xref'] = 'x'+str(cnt)
-                    t['yref'] = 'y'+str(cnt)
-                shapes += subfig['layout']['shapes']
+                if not hide_shapes:
+                    for t in subfig['layout']['shapes']:
+                        t['xref'] = 'x'+str(cnt)
+                        t['yref'] = 'y'+str(cnt)
+                    shapes += subfig['layout']['shapes']
 
             xaxis = subfig['layout']['xaxis']
             yaxis = subfig['layout']['yaxis']
@@ -246,6 +249,8 @@ def plot_triangle(r, params=None, thin=1, width=1500, height=1500):
             data += sp
             cnt += 1
 
-    fig['layout'].update(height=height, width=width, annotations=annotations, shapes=shapes)
+    fig['layout'].update(height=height, width=width, annotations=annotations)
+    if not hide_shapes:
+        fig['layout'].update(shapes=shapes)
     fig['data'] += data
     return fig

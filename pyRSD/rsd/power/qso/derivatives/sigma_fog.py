@@ -1,5 +1,6 @@
 from . import PqsoDerivative
 from pyRSD.rsd.tools import k_AP, mu_AP
+import numpy as np
 
 class dPqso_dsigma_fog(PqsoDerivative):
     """
@@ -16,4 +17,8 @@ class dPqso_dsigma_fog(PqsoDerivative):
 
         G = m.FOG(kprime, muprime, m.sigma_fog)
         Gprime = m.FOG.derivative_sigma(kprime, muprime, m.sigma_fog)
-        return 2*Gprime * m.power(k, mu) / G
+        toret = np.zeros_like(G)
+
+        valid = G>0.
+        toret[valid] = 2*Gprime[valid] * m.power(k, mu)[valid] / G[valid]
+        return toret

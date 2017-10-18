@@ -112,7 +112,7 @@ class DefaultQuasarPowerTheory(object):
         """
         The primordial non-Gaussianity amplitude
         """
-        return {'fiducial':0., 'prior':'uniform', 'lower':-100., 'upper':100.}
+        return {'fiducial':0., 'prior':'uniform', 'lower':-500., 'upper':500.}
 
     @fixed(model_param=True)
     def N(self):
@@ -120,6 +120,13 @@ class DefaultQuasarPowerTheory(object):
         A constant shot noise offset to the model, in (Mpc/h)^3
         """
         return {'fiducial':0., 'prior':'uniform', 'lower':-500., 'upper':500.}
+
+    @fixed(model_param=True)
+    def p(self):
+        """
+        The bias type for PNG; either 1.6 or 1 usually
+        """
+        return {'fiducial':1.6}
 
     @fixed(model_param=False)
     def fsigma8(self):

@@ -447,6 +447,20 @@ class PowerDataSchema(Cache):
         """
         return val
 
+    @parameter(default=1e-4)
+    def window_kmin(self, val):
+        """
+        Default kmin value to use on the grid when convolving the model.
+        """
+        return val
+
+    @parameter(default=0.7)
+    def window_kmax(self, val):
+        """
+        Default kmax value to use on the grid when convolving the model.
+        """
+        return val
+
     @parameter
     def covariance(self, val):
         """
@@ -724,7 +738,11 @@ class PowerData(PowerDataSchema):
             ells = [i for i in range(0, max_ell+1, 2)]
 
             #  initialize the window function transfer
-            self.transfer = [transfers.WindowFunctionTransfer(self.window, ells, max_ellprime=self.max_ellprime)]
+            kws = {}
+            kws['max_ellprime'] = self.max_ellprime
+            kws['kmax'] = self.window_kmax
+            kws['kmin'] = self.window_kmin
+            self.transfer = [transfers.WindowFunctionTransfer(self.window, ells, **kws)]
         else:
 
             # GRIDDED TRANSFER

@@ -48,7 +48,7 @@ class WindowFunctionTransfer(GriddedMultipoleTransfer):
                                             max_ellprime=max_ellprime,
                                             max_ell=max(ells))
 
-    def __call__(self, power, k_out=None, **kws):
+    def __call__(self, power, k_out=None, extrap=False, mcfit_kwargs={}, **kws):
         """
         Evaluate the convolved multipoles.
 
@@ -69,8 +69,9 @@ class WindowFunctionTransfer(GriddedMultipoleTransfer):
             a DataArray holding the convolved :math:`P_\ell(k)` on a
             coordinate grid with ``k`` and ``ell`` dimensions.
         """
+        from pyRSD.extern import mcfit
+
         # get testing keywords
-        qbias = kws.get('qbias', 0.7)
         dry_run = kws.get('dry_run', False)
         no_convolution = kws.get('no_convolution', False)
 
@@ -93,10 +94,10 @@ class WindowFunctionTransfer(GriddedMultipoleTransfer):
 
             # FFT the input power multipoles
             xi = np.empty((Nk, Nell), order='F') # column-continuous
-            rr = np.empty(Nk)
             for i, ell in enumerate(self.ells):
-                pygcl.ComputeXiLM_fftlog(int(ell), 2, newk, Pell.sel(ell=ell).values, rr, xi[:,i], qbias)
-                xi[:,i] *= (-1)**(ell//2)
+                P2xi = mcfit.P2xi(newk, l=ell, **mcfit_kwargs)
+                rr, xi[:,i] = P2xi(Pell.sel(ell=ell).values, extrap=extrap)
+
 
             # the linear combination of multipoles
             if dry_run:
@@ -106,10 +107,10 @@ class WindowFunctionTransfer(GriddedMultipoleTransfer):
 
             # FFTLog back
             Pell_conv = np.empty((Nk, Nell), order='F')
-            kk = np.empty(Nk)
             for i, ell in enumerate(self.ells):
-                pygcl.ComputeXiLM_fftlog(int(ell), 2, rr, xi_conv[:,i], kk, Pell_conv[:,i], -qbias)
-                Pell_conv[:,i] *= (-1)**(ell//2) * (2*np.pi)**3
+                xi2P = mcfit.xi2P(rr, l=ell, **mcfit_kwargs)
+                kk, Pell_conv[:,i] = xi2P(xi_conv[:,i], extrap=extrap)
+
         else:
             Pell_conv = Pell
 

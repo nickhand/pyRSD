@@ -6,8 +6,8 @@ def kde_scipy(trace1, trace2, xlims, ylims, N=100):
     """
     Perform kernel density estimation on two MCMC traces.
     """
-    x = np.linspace(*xlims, N)
-    y = np.linspace(*ylims, N)
+    x = np.linspace(xlims[0], xlims[-1], N)
+    y = np.linspace(ylims[0], ylims[-1], N)
     X,Y = np.meshgrid(x, y)
     positions = np.vstack([Y.ravel(), X.ravel()])
 

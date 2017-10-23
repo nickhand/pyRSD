@@ -2,7 +2,7 @@ from __future__ import print_function
 
 from ... import numpy as np
 from ...rsd._cache import Cache, parameter, cached_property
-from ...rsd import INTERP_KMAX, transfers
+from ...rsd import INTERP_KMIN, INTERP_KMAX, transfers
 
 from .. import logging, MPILoggerAdapter
 from ..parameters import ParameterSet, Parameter
@@ -1014,7 +1014,7 @@ class PowerData(PowerDataSchema):
         if self.window is None:
             return self.kmin.min()
         else:
-            return min(1e-4, self.kmin.min())
+            return min(INTERP_KMIN, self.kmin.min())
 
     @cached_property('kmax')
     def global_kmax(self):

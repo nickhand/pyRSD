@@ -4,7 +4,7 @@ import numpy as np
 import matplotlib.mlab as mlab
 from pyRSD.rsdfit.analysis import tex_names
 
-def plot_traces(r, *names, burnin=None, max_walkers=10, opacity=0.4, rangeslider=False):
+def plot_traces(r, names, burnin=None, max_walkers=10, opacity=0.4, rangeslider=False):
     """
     Plot the traces of the specified parameters using :mod:`plotly`.
 

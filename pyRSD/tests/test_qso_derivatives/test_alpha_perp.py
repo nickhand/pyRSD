@@ -38,7 +38,7 @@ def test_total(driver):
         driver.theory.set_free_parameters(t)
         return driver.theory.model.power(k, mu)
 
-    g = numdifftools.Derivative(f, step=1e-3)
+    g = numdifftools.Derivative(f, step=1e-4)
     y = g(theta[index])
 
     # compare to 5% accuracy

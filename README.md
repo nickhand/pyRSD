@@ -1,5 +1,3 @@
-[![Build Status](https://travis-ci.org/nickhand/pyRSD.svg?branch=master)](https://travis-ci.org/nickhand/pyRSD)
-
 pyRSD
 =======
 
@@ -11,6 +9,11 @@ functionality for fitting data measurements and finding the optimal model
 parameters, using both MCMC and nonlinear optimization techniques.
 
 The software is compatible with Python versions 2.7, 3.5, and 3.6.
+
+Testing is performed via the continuous integration service for Python version 2.7, 3.5, and 3.6. The 
+build status of those tests is below.
+
+[![Build Status](https://travis-ci.org/nickhand/pyRSD.svg?branch=master)](https://travis-ci.org/nickhand/pyRSD)
 
 Installation
 ============

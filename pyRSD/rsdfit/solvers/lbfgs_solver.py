@@ -103,6 +103,12 @@ def run(params, theory, pool=None, init_values=None):
     grad_kws['numerical_from_lnlike'] = numerical_from_lnlike
     fprime = functools.partial(objectives.grad_minus_lnlike, **grad_kws)
 
+    if numerical_from_lnlike:
+        logger.info("computing gradient using numerical derivative of lnlike()")
+    elif numerical:
+        logger.info("computing gradient using numerical derivative of P(k,mu)")
+
+
     #--------------------------------------------------------------------------
     # run the algorithm, catching any errors
     #--------------------------------------------------------------------------

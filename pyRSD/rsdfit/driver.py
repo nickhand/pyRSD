@@ -148,6 +148,21 @@ class FittingDriverSchema(Cache):
         """
         return val
 
+    @parameter(default=False)
+    def lbfgs_numerical(self, val):
+        """
+        If `True`, evaluate gradients of P(k,mu) numerically using finite difference
+        """
+        return val
+
+    @parameter(default=False)
+    def lbfgs_numerical_from_lnlike(self, val):
+        """
+        If `True`, evaluate the gradient by taking the numerical derivative
+        of :func:`minus_lnlike`
+        """
+        return val
+
     @parameter(default=None)
     def start_from(self, val):
         """

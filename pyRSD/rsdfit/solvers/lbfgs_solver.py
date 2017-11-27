@@ -61,6 +61,8 @@ def run(params, theory, pool=None, init_values=None):
         raise ValueError("please specify how to initialize the maximum-likelihood solver")
 
     epsilon    = params.get('lbfgs_epsilon', 1e-4)
+    numerical  = params.get('lbfgs_numerical', False)
+    numerical_from_lnlike  = params.get('lbfgs_numerical_from_lnlike', False)
     use_priors = params.get('lbfgs_use_priors', True)
     options    = params.get('lbfgs_options', {})
     scaling    = params.get('lbfgs_rescale', True)
@@ -91,7 +93,15 @@ def run(params, theory, pool=None, init_values=None):
         f = functools.partial(objectives.minus_lnprob, scaling=scaling)
     else:
         f = functools.partial(objectives.minus_lnlike, scaling=scaling)
-    fprime = functools.partial(objectives.grad_minus_lnlike, epsilon=epsilon, pool=pool, use_priors=use_priors, scaling=scaling)
+    # the derivative
+    grad_kws = {}
+    grad_kws['epsilon'] = epsilon
+    grad_kws['pool'] = pool
+    grad_kws['use_priors'] = use_priors
+    grad_kws['scaling'] = scaling
+    grad_kws['numerical'] = numerical
+    grad_kws['numerical_from_lnlike'] = numerical_from_lnlike
+    fprime = functools.partial(objectives.grad_minus_lnlike, **grad_kws)
 
     #--------------------------------------------------------------------------
     # run the algorithm, catching any errors
@@ -121,7 +131,7 @@ def run(params, theory, pool=None, init_values=None):
         minimizer.data.update(restart_data)
         niter = minimizer.data['iteration']
         logger.warning("LBFGS: continuing from previous optimziation (starting at iteration {})".format(niter))
-        
+
     try:
         start = time.time()
         result = minimizer.run_nlopt(**options)

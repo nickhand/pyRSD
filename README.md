@@ -1,7 +1,7 @@
-[![Build Status](https://travis-ci.org/nickhand/pyRSD.svg?branch=master)](https://travis-ci.org/nickhand/pyRSD)
-
 pyRSD
 =======
+
+[![DOI](https://zenodo.org/badge/19336205.svg)](https://zenodo.org/badge/latestdoi/19336205)
 
 pyRSD is a Python package for computing the theoretical predictions of the
 redshift-space power spectrum of galaxies. The package also includes
@@ -9,6 +9,11 @@ functionality for fitting data measurements and finding the optimal model
 parameters, using both MCMC and nonlinear optimization techniques.
 
 The software is compatible with Python versions 2.7, 3.5, and 3.6.
+
+Testing is performed via the continuous integration service for Python version 2.7, 3.5, and 3.6. The 
+build status of those tests is below.
+
+[![Build Status](https://travis-ci.org/nickhand/pyRSD.svg?branch=master)](https://travis-ci.org/nickhand/pyRSD)
 
 Installation
 ============

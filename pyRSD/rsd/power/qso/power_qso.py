@@ -243,6 +243,7 @@ class QuasarSpectrum(HaloSpectrum):
         """
         return k*0.
 
+    @tools.broadcast_kmu
     @tools.alcock_paczynski
     def power(self, k, mu, flatten=False):
         """
@@ -278,6 +279,7 @@ class QuasarSpectrum(HaloSpectrum):
         if flatten: pkmu = np.ravel(pkmu, order='F')
         return pkmu
 
+    @tools.broadcast_kmu
     @tools.alcock_paczynski
     def derivative_k(self, k, mu):
         """
@@ -291,6 +293,7 @@ class QuasarSpectrum(HaloSpectrum):
 
         return G**2 * deriv + 2 * G*Gprime * power
 
+    @tools.broadcast_kmu
     @tools.alcock_paczynski
     def derivative_mu(self, k, mu):
         """

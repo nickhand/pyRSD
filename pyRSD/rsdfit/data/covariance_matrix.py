@@ -773,55 +773,6 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
         return cls(C, k_coord, mu_coord, verify=False)
 
-    @classmethod
-    def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
-        """
-        Return a PkmuCovarianceMatrix from a SpectraSet of P(k,mu) measurements
-
-        Parameters
-        ----------
-        data : lsskit.specksis.SpectraSet
-            the set of P(k, mu) measurements to compute the data covariance from
-        mean_pkmu : nbodykit.PkmuResult, optional
-            the mean P(k,mu) defined on a finely-binned grid to use to compute the
-            Gaussian theory covariance from
-        kmin : float or array_like, optional
-            minimum wavenumber to include in the covariance matrix; if an array is provided,
-            it is intepreted as the minimum value for each mu bin
-        kmax : float or array_like, optional
-            maximum wavenumber to include in the covariance matrix; if an array is provided,
-            it is intepreted as the minimum value for each mu bin
-        """
-        from lsskit.specksis import covariance
-
-        # data covariance
-        C, coords, extras = covariance.compute_pkmu_covariance(data, kmin=kmin, kmax=kmax, extras=True, **kwargs)
-        k_cen, mu_cen = coords
-
-        # construct
-        names = [['mu1', 'k1'], ['mu2', 'k2']]
-        coords = [[mu_cen, k_cen], [mu_cen, k_cen]]
-        toret = cls.__construct_direct__(C, coords=coords, names=names)
-
-        # compute the Gaussian theory covariance
-        if mean_pkmu is not None:
-
-            # the theory covariance, using the underlying finely-binned P(k,mu) grid
-            x = data[0].values
-            mu_bounds = zip(x.muedges[:-1], x.muedges[1:])
-            (mean_power, modes), coords = covariance.data_pkmu_gausscov(mean_pkmu, mu_bounds, kmin=kmin, kmax=kmax, components=True)
-
-            # store the mean power and modes
-            toret.attrs['mean_power'] = mean_power
-            toret.attrs['modes'] = modes/len(data)
-
-        else:
-            P = extras['mean_power']
-            toret.attrs['mean_power'] = np.diag(flat_and_nonnull(P))
-
-
-        return toret
-
     #--------------------------------------------------------------------------
     # main functions
     #--------------------------------------------------------------------------
@@ -1437,54 +1388,6 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         ell_coord = np.concatenate([np.ones(len(k), dtype=int)*ell for ell in ells])
 
         return cls(C, k_coord, ell_coord, verify=False)
-
-    @classmethod
-    def from_spectra_set(cls, data, mean_pkmu=None, kmin=None, kmax=None, **kwargs):
-        """
-        Return a PoleCovarianceMatrix from a SpectraSet of multipole measurements,
-        and a SpectraSet of P(k,mu), which are used to compute the mean power
-
-        Parameters
-        ----------
-        data : lsskit.specksis.SpectraSet
-            the set of multipole measurements to estimate the data covariance from
-        mean_pkmu : nbodykit.PkmuResult, optional
-            the mean P(k,mu) defined on a finely-binned grid to use to compute the
-            Gaussian theory covariance from
-        kmin : float or array_like, optional
-            minimum wavenumber to include in the covariance matrix; if an array is provided,
-            it is intepreted as the minimum value for each mu bin
-        kmax : float or array_like, optional
-            maximum wavenumber to include in the covariance matrix; if an array is provided,
-            it is intepreted as the minimum value for each mu bin
-        """
-        from lsskit.specksis import covariance
-
-        # data covariance
-        ells = kwargs.pop('ells', data['ell'].values)
-        C, coords, extras = covariance.compute_pole_covariance(data, ells, kmin=kmin, kmax=kmax, extras=True, **kwargs)
-        k_cen, ell_cen = coords
-
-        # construct
-        names = [['ell1', 'k1'], ['ell2', 'k2']]
-        coords = [[ell_cen, k_cen], [ell_cen, k_cen]]
-        toret = cls.__construct_direct__(C, coords=coords, names=names)
-
-        # add the Gaussian theory covariance
-        if mean_pkmu is not None:
-
-            # the theory covariance, using the underlying finely-binned P(k,mu) grid
-            (mean_power, modes), coords = covariance.data_pole_gausscov(mean_pkmu, ells, kmin=kmin, kmax=kmax, components=True)
-
-            # store the mean power and modes
-            toret.attrs['mean_power'] = mean_power
-            toret.attrs['modes'] = modes/len(data)
-
-        else:
-            P = extras['mean_power']
-            toret.attrs['mean_power'] = np.diag(flat_and_nonnull(P))
-
-        return toret
 
     #--------------------------------------------------------------------------
     # main functions

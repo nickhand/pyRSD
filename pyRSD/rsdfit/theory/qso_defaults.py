@@ -100,6 +100,13 @@ class DefaultQuasarPowerTheory(object):
         """
         return {'fiducial':2.0, 'prior':'uniform', 'lower':1.2, 'upper':6.0}
 
+    @fixed(model_param=True)
+    def b1_pivot(self):
+        """
+        The linear bias of the quasar at the pivot redshift.
+        """
+        return {'fiducial':2.0, 'prior':'uniform', 'lower':1.2, 'upper':6.0}
+
     @free(model_param=True)
     def sigma_fog(self):
         """

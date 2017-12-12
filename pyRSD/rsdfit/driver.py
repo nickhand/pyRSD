@@ -3,7 +3,7 @@ from . import MPILoggerAdapter, logging
 from . import params_filename, model_filename
 
 from .parameters import ParameterSet, Parameter
-from .theory import GalaxyPowerTheory, QuasarPowerTheory
+from .theory import GalaxyPowerTheory, QuasarPowerTheory, WeightedQuasarPowerTheory
 from .data import PowerData
 from .solvers import *
 from .util import rsd_io
@@ -51,8 +51,9 @@ class FittingDriverSchema(Cache):
         """
         The type of tracer, either 'galaxy' or 'quasar'
         """
-        if val not in ['galaxy', 'quasar']:
-            raise ValueError("``tracer_type`` should be 'quasar' or 'galaxy'")
+        valid = ['galaxy', 'quasar', 'weighted quasar']
+        if val not in valid:
+            raise ValueError("``tracer_type`` should be one of: %s" %str(valid))
         return val
 
     @parameter(default={})
@@ -225,8 +226,10 @@ class FittingDriver(FittingDriverSchema):
         kwargs['kmax'] = self.data.global_kmax
         if self.tracer_type == 'galaxy':
             self.theory = GalaxyPowerTheory(param_file, **kwargs)
-        else:
+        elif self.tracer_type == 'quasar':
             self.theory = QuasarPowerTheory(param_file, **kwargs)
+        else:
+            self.theory = WeightedQuasarPowerTheory(param_file, **kwargs)
 
         # log the DOF
         args = (self.Nb, self.Np, self.dof)

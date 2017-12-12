@@ -1,1 +1,1 @@
-from .power_qso import QuasarSpectrum
+from .power_qso import QuasarSpectrum, WeightedQuasarSpectrum

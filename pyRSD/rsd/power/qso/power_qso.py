@@ -8,6 +8,7 @@ from scipy.integrate import simps, quad
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import contextlib
 import warnings
+from astropy import units, constants
 
 def vectorize_if_needed(func, *x):
     """
@@ -323,3 +324,93 @@ class QuasarSpectrum(HaloSpectrum):
 
         registry = PqsoDerivative.registry()
         return PkmuGradient(self, registry, pars)
+
+
+class WeightedQuasarSpectrum(QuasarSpectrum):
+    """
+    A class to represent a redshift weighted quasar spectrum.
+
+    Parameters
+    ----------
+    zmin : float
+        the minimum redshift to integrate over
+    zmax : float
+        the maximum redshift to integrate over
+    Nz : int
+        the number of redshift shells
+    p : {1, 1.6}
+        the p value to use in the redshift weights
+    **kwargs :
+        additional model keyword arguments
+    """
+    def __init__(self, zmin=None, zmax=None, Nz=100, p=1.6, **kwargs):
+
+        if zmin is None:
+            raise ValueError("'zmin' cannot be None!")
+        if zmax is None:
+            raise ValueError("'zmax' cannot be None!")
+
+        self.z_edges = np.linspace(zmin, zmax, Nz+1)
+        self.z_cen = 0.5*(self.z_edges[:-1] + self.z_edges[1:])
+
+        # initialize
+        self.b1_zeff = 2.
+        QuasarSpectrum.__init__(self, **kwargs)
+        self.p = p
+
+    @staticmethod
+    def bias_model(z):
+        """
+        The Laurent et al. 2017 b(z) fit.
+        """
+        alpha = 0.278
+        beta = 2.393
+        return alpha * ( (1+z)**2 - 6.565 ) + beta
+
+    @property
+    def z_pivot(self):
+        """
+        The pivot redshift.
+        """
+        weights = self.weights
+        return (weights*self.z_cen).sum() / weights.sum()
+
+    @property
+    def weights(self):
+        """
+        The redshift weights.
+        """
+        w1 = (self.bias_model(self.z_cen)-self.p)
+        w2 = self.cosmo.D_z(self.z_cen)*(self.bias_model(self.z_cen) + self.cosmo.f_z(self.z_cen)/3.)
+        return w1*w2
+
+    @parameter
+    def b1_pivot(self, val):
+        """
+        The value of the bias at the pivot redshift :attr:`z_pivot`.
+        """
+        return val
+
+    def update_redshift(self, val):
+        """
+        Update the redshift of the model.
+        """
+        self.z = val
+        self.f = self.cosmo.f_z(val)
+        self.sigma8_z = self.cosmo.Sigma8_z(val)
+        self.b1 = self.b1_pivot + 0.29 * ((1+self.z)**2 - (1+self.z_pivot)**2)
+
+    def power(self, k, mu, flatten=False):
+        """
+        Compute the redshift weighted power.
+        """
+        Pkmu = []
+        for z in self.z_cen:
+            self.update_redshift(z)
+            Pkmu.append(QuasarSpectrum.power(self, k, mu, flatten=flatten).values)
+        Pkmu = np.asarray(Pkmu)
+        Pkmu = np.moveaxis(Pkmu,0,-1)
+
+        dz = np.diff(self.z_edges)
+        weights = self.weights
+        return (dz * weights * Pkmu).sum(axis=-1) / (dz*weights).sum()

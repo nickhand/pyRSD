@@ -2,7 +2,7 @@ from .gal_defaults import DefaultGalaxyPowerTheory
 from .qso_defaults import DefaultQuasarPowerTheory
 from .base import BasePowerParameters, BasePowerTheory
 
-from pyRSD.rsd import GalaxySpectrum, QuasarSpectrum
+from pyRSD.rsd import GalaxySpectrum, QuasarSpectrum, WeightedQuasarSpectrum
 
 class GalaxyPowerParameters(BasePowerParameters):
     """
@@ -46,6 +46,13 @@ class QuasarPowerParameters(BasePowerParameters):
     defaults = DefaultQuasarPowerTheory()
     _model_cls = QuasarSpectrum
 
+class WeightedQuasarPowerParameters(BasePowerParameters):
+    """
+    A ParameterSet for :class:`pyRSD.rsd.QuasarSpectrum`
+    """
+    defaults = DefaultQuasarPowerTheory()
+    _model_cls = WeightedQuasarSpectrum
+
 class QuasarPowerTheory(BasePowerTheory):
     """
     A class representing a theory for computing a redshift-space
@@ -73,3 +80,31 @@ class QuasarPowerTheory(BasePowerTheory):
         args = (QuasarSpectrum, QuasarPowerParameters, param_file)
         kws = {'extra_param_file':extra_param_file, 'kmin':kmin, 'kmax':kmax, 'model':model}
         super(QuasarPowerTheory, self).__init__(*args, **kws)
+
+class WeightedQuasarPowerTheory(BasePowerTheory):
+    """
+    A class representing a theory for computing a redshift-space
+    quasar power spectrum.
+
+    It handles the dependencies between model parameters and the
+    evaluation of the model itself.
+    """
+    def __init__(self, param_file, model=None, extra_param_file=None, kmin=None, kmax=None):
+        """
+        Parameters
+        ----------
+        param_file : str
+            name of the file holding the parameters for the theory
+        extra_param_file : str
+            name of the file holding the names of any extra parameter files
+        model : subclass of DarkMatterSpectrum, optional
+            the model instance; if not provided, a new model
+            will be initialized
+        kmin : float, optional
+            If not `None`, initalize the model with this `kmin` value
+        kmax : float, optional
+            If not `None`, initalize the model with this `kmax` value
+        """
+        args = (WeightedQuasarSpectrum, WeightedQuasarPowerParameters, param_file)
+        kws = {'extra_param_file':extra_param_file, 'kmin':kmin, 'kmax':kmax, 'model':model}
+        super(WeightedQuasarPowerTheory, self).__init__(*args, **kws)

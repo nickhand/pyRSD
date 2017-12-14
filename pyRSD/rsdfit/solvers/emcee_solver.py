@@ -20,7 +20,7 @@ class ChainManager(object):
     will handle exceptions (user-supplied or otherwise) and convergence
     criteria from multiple chains
     """
-    def __init__(self, sampler, niters, nwalkers, theory, comm):
+    def __init__(self, sampler, niters, nwalkers, free_names, comm):
         """
         Parameters
         ----------
@@ -30,15 +30,15 @@ class ChainManager(object):
             the number of iterations to run
         nwalkers : int
             the number of walkers we are using
-        theory : theory.GalaxyPowerParameters
-            the set of parameters for the theoretical model
+        free_names : list of str
+            the names of the free parameters
         comm : MPI.Communicator
             the communicator for the the multiple chains
         """
         self.sampler   = sampler
         self.niters    = niters
         self.nwalkers  = nwalkers
-        self.theory    = theory
+        self.free_names = free_names
         self.comm      = comm
         self.exception = None
 
@@ -57,7 +57,7 @@ class ChainManager(object):
     def update_progress(self, niter):
         conditions = [niter < 10, niter < 50 and niter % 2 == 0,  niter < 500 and niter % 10 == 0, niter % 100 == 0]
         if any(conditions):
-            update_progress(self.theory, self.sampler, self.niters, self.nwalkers)
+            update_progress(self.free_names, self.sampler, self.niters, self.nwalkers)
 
     def check_status(self):
         from mpi4py import MPI
@@ -156,7 +156,7 @@ class ExitingException(Exception):
 def initiate_exit(signum, stack):
     raise ExitingException
 
-def update_progress(theory, sampler, niters, nwalkers, last=10):
+def update_progress(free_names, sampler, niters, nwalkers, last=10):
     """
     Report the current status of the sampler.
     """
@@ -174,12 +174,12 @@ def update_progress(theory, sampler, niters, nwalkers, last=10):
     try: acc_frac = sampler.acceptance_fraction
     except: acc_frac = np.array([np.nan])
     try: acor = sampler.acor
-    except: acor = np.ones(len(theory.free))*np.nan
+    except: acor = np.ones(len(free_names))*np.nan
 
     text += ["      acceptance_fraction ({}->{} (median {}))".format(acc_frac.min(), acc_frac.max(), np.median(acc_frac))]
-    for i, par in enumerate(theory.free):
+    for i, name in enumerate(free_names):
         pos = chain[:,-last:,i].ravel()
-        msg = "  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g})".format(par.name,
+        msg = "  {:15s} = {:.6g} +/- {:<12.6g} (best={:.6g})".format(name,
                                             np.median(pos), np.std(pos), chain[best_walker, best_iter, i])
         if not np.isnan(acor[i]):
             msg += " (autocorr: {:.3g})".format(acor[i])
@@ -346,7 +346,7 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     #---------------------------------------------------------------------------
     # do the sampling
     #---------------------------------------------------------------------------
-    with ChainManager(sampler, niters, nwalkers, theory, chains_comm) as manager:
+    with ChainManager(sampler, niters, nwalkers, theory.free_names, chains_comm) as manager:
         for niter, result in manager.sample(p0, lnprob0):
 
             # check if we need to exit due to exception/convergence

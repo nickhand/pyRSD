@@ -35,10 +35,6 @@ package_basedir = os.path.abspath(os.path.dirname(__file__))
 # determine if swig will need to be called on GCL extension
 swig_needed = not all(os.path.isfile(f) for f in ['pyRSD/gcl.py', 'pyRSD/gcl_wrap.cpp'])
 
-# use GNU compilers by default
-os.environ.setdefault("CXX", "g++")
-os.environ.setdefault("F90", "gfortran")
-
 # the CLASS version to install
 CLASS_VERSION = "2.6.1"
 
@@ -182,19 +178,27 @@ def libgcl_config():
 
     # c++ GCL sources and fortran FFTLog sources
     gcl_sources = list(glob("pyRSD/_gcl/cpp/*cpp"))
-    fftlog_sources = list(glob("pyRSD/_gcl/extern/fftlog/*f"))
-
-    # FrankenEMU
-    emu_sources = list(glob("pyRSD/_gcl/extern/FrankenEmu/src/*.c"))
-    emu_inc = 'pyRSD/_gcl/extern/FrankenEmu/include'
 
     # GCL library extension
     gcl_info = {}
-    gcl_info['sources'] =  gcl_sources + fftlog_sources + emu_sources
-    gcl_info['include_dirs'] = ['pyRSD/_gcl/include', emu_inc]
+    gcl_info['sources'] =  gcl_sources
+    gcl_info['include_dirs'] = ['pyRSD/_gcl/include']
     gcl_info['language'] = 'c++'
     gcl_info['extra_compiler_args'] = ["-O2", '-std=c++11']
     return ('gcl', gcl_info)
+
+def libfftlog_config():
+    info = {}
+    info['sources'] =  list(glob("pyRSD/_gcl/extern/fftlog/*f"))
+    return ('fftlog', info)
+
+def libemu_config():
+    info = {}
+    info['sources'] =  list(glob("pyRSD/_gcl/extern/FrankenEmu/src/*.c"))
+    info['include_dirs'] = ['pyRSD/_gcl/extern/FrankenEmu/include']
+    info['extra_compiler_args'] = ["-O2"]
+    return ('emu', info)
+
 
 def gcl_extension_config():
 
@@ -203,7 +207,7 @@ def gcl_extension_config():
     config['name'] = 'pyRSD._gcl'
     config['extra_link_args'] = ['-g', '-fPIC']
     config['extra_compile_args'] = []
-    config['libraries'] = ['gcl', 'class', 'gsl', 'gfortran']
+    config['libraries'] = ['gcl', 'fftlog', 'emu', 'class', 'gsl', 'gfortran']
 
     # determine if swig needs to be called
     if not swig_needed:
@@ -250,7 +254,7 @@ if __name__ == '__main__':
           license='GPL3',
           zip_safe=False,
           ext_modules = [Extension(**gcl_extension_config())],
-          libraries=[libgcl_config()],
+          libraries=[libfftlog_config(), libemu_config(), libgcl_config()],
           cmdclass = {
               'sdist': custom_sdist,
               'build_clib': build_external_clib,

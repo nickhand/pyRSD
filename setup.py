@@ -196,7 +196,7 @@ def libemu_config():
     info = {}
     info['sources'] =  list(glob("pyRSD/_gcl/extern/FrankenEmu/src/*.c"))
     info['include_dirs'] = ['pyRSD/_gcl/extern/FrankenEmu/include']
-    info['extra_compiler_args'] = ["-O2"]
+    info['extra_compiler_args'] = ["-O2", "-Wno-missing-braces"]
     return ('emu', info)
 
 
@@ -215,7 +215,7 @@ def gcl_extension_config():
     else:
         config['sources'] = ['pyRSD/gcl.i']
         config['depends'] = ['pyRSD/_gcl/python/*.i']
-        config['swig_opts'] = ['-c++', '-Wall']
+        config['swig_opts'] = ['-c++']
 
     return config
 

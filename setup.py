@@ -207,7 +207,7 @@ def gcl_extension_config():
     config['name'] = 'pyRSD._gcl'
     config['extra_link_args'] = ['-g', '-fPIC']
     config['extra_compile_args'] = []
-    config['libraries'] = ['gcl', 'fftlog', 'emu', 'class', 'gsl', 'gfortran']
+    config['libraries'] = ['gcl', 'fftlog', 'emu', 'class', 'gsl', 'gslcblas', 'gfortran']
 
     # determine if swig needs to be called
     if not swig_needed:

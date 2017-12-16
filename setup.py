@@ -10,6 +10,7 @@ from numpy.distutils.command.sdist import sdist
 from numpy.distutils.command.build import build
 from distutils.command.clean import clean
 
+import subprocess
 from glob import glob
 import os
 import numpy
@@ -194,8 +195,16 @@ def libfftlog_config():
 
 def libemu_config():
     info = {}
+
+    # determine gsl path
+    try:
+        gsl_prefix = subprocess.check_output('gsl-config --prefix', shell=True).decode('utf-8').strip()
+    except:
+        raise ValueError("GSL is not installed!")
+
     info['sources'] =  list(glob("pyRSD/_gcl/extern/FrankenEmu/src/*.c"))
-    info['include_dirs'] = ['pyRSD/_gcl/extern/FrankenEmu/include']
+    info['include_dirs'] = ['pyRSD/_gcl/extern/FrankenEmu/include', os.path.join(gsl_prefix, 'include')]
+    info['library_dirs'] = [os.path.join(gsl_prefix, 'lib')]
     info['extra_compiler_args'] = ["-O2", "-Wno-missing-braces"]
     return ('emu', info)
 

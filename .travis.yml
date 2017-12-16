@@ -12,14 +12,16 @@ cache:
     - $HOME/.conda
     - $HOME/.cache/pyRSD
 
-install:
-    # Install and set up miniconda.
-    - CONDA_INSTALL_LOCN="${HOME}/miniconda"
+before_install:
     - wget http://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
-    - bash miniconda.sh -b -p $CONDA_INSTALL_LOCN
-    - export PATH=${CONDA_INSTALL_LOCN}/bin:$PATH
+    - chmod +x miniconda.sh
+    - ./miniconda.sh -b -p $HOME/miniconda
+    - export PATH=$HOME/miniconda/bin:$PATH
     - conda config --set always_yes true
 
+install:
+    - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
+    - source activate test
     - conda install --quiet conda
 
     # set the ordering of additional channels

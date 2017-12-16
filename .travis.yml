@@ -18,11 +18,11 @@ before_install:
     - ./miniconda.sh -b -p $HOME/miniconda
     - export PATH=$HOME/miniconda/bin:$PATH
     - conda config --set always_yes true
+    - conda update --yes conda
 
 install:
     - conda create --yes -n test python=$TRAVIS_PYTHON_VERSION
     - source activate test
-    - conda install --quiet conda
 
     # set the ordering of additional channels
     - conda config --prepend channels defaults

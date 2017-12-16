@@ -30,15 +30,16 @@ install:
     - conda config --append channels bccp
     - conda config --append channels astropy
 
-    - conda install swig gsl fftw
+    # install and activate compilers
     - conda install gcc_linux-64 gxx_linux-64 gfortran_linux-64
+    - source activate test
+
     - conda install --yes numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> $HOME/miniconda/conda-meta/pinned
     - conda install --yes --file requirements.txt
     - pip install -r requirements-tests.txt
+    - conda install swig gsl fftw
 
-    # activate compilers
-    - source activate test
 
     # To ease debugging, list installed packages
     - conda info -a

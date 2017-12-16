@@ -41,6 +41,9 @@ install:
     # To ease debugging, list installed packages
     - conda info -a
 
+    # activate compilers
+    - source activate test
+
 script:
     - python runtests.py --mpl
 

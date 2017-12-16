@@ -40,9 +40,12 @@ install:
     - pip install -r requirements-tests.txt
     - conda install swig gsl fftw
 
-
     # To ease debugging, list installed packages
     - conda info -a
+
+    # set conda env flags
+    - export CFLAGS=${CFLAGS} -I${CONDA_PREFIX}/include
+    - export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH}
 
     # install package
     - pip install .[tests]

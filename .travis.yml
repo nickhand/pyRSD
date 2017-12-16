@@ -36,13 +36,15 @@ install:
     - echo "numpy $NUMPY_VERSION.*" >> $HOME/miniconda/conda-meta/pinned
     - conda install --yes --file requirements.txt
     - pip install -r requirements-tests.txt
-    - pip install .[tests]
+
+    # activate compilers
+    - source activate test
 
     # To ease debugging, list installed packages
     - conda info -a
 
-    # activate compilers
-    - source activate test
+    # install package
+    - pip install .[tests]
 
 script:
     - python runtests.py --mpl

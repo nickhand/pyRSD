@@ -28,7 +28,7 @@ install:
     - conda config --append channels bccp
     - conda config --append channels astropy
 
-    - conda install swig gsl fftw gcc_
+    - conda install swig gsl fftw
     - conda install gcc_linux-64 gxx_linux-64 gfortran_linux-64
     - conda install --yes numpy=$NUMPY_VERSION
     - echo "numpy $NUMPY_VERSION.*" >> ${CONDA_INSTALL_LOCN}/conda-meta/pinned

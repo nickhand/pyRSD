@@ -44,7 +44,7 @@ install:
     - conda info -a
 
     # set conda env flags
-    - export CFLAGS=${CFLAGS} -I${CONDA_PREFIX}/include
+    - export CFLAGS="${CFLAGS} -I${CONDA_PREFIX}/include"
     - export LD_LIBRARY_PATH=${CONDA_PREFIX}/lib:${LD_LIBRARY_PATH}
 
     # install package

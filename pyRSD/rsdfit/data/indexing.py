@@ -201,9 +201,10 @@ class GridIndex(object):
         """
         index = pd.Index(self.to_pandas(dim).unique())
 
-        # due to change introduced to pandas in v0.17
+        # the value should be a list
         if np.isscalar(value):
             value = [value]
+
         ii = index.get_indexer(value, method='nearest')
         return ii, index[ii]
 

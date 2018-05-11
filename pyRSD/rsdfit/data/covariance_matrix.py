@@ -1232,7 +1232,6 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         for i in range(N2):
             for j in range(i, N2):
 
-                # do the sum over redshift first
                 Psq[i,:,j,:] = np.diag(np.nanmean(tobin[i,j,:], axis=-1))
                 modes[i,:,j,:] = N
                 if i != j:
@@ -1345,14 +1344,17 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         w = 1. / (1 + nbar_*FKP_P0) # FKP weights
 
         # properly calibrate fsky
-        W = ((nbar_*w)**2 * dV).sum()
         dV *= fsky
-        W *= fsky
+
+        # effective volume
+        W2 = ((nbar_*w)**2 * dV).sum()
+        W4 = ((nbar_*w)**4 * dV).sum()
+        Veff = W2**2 / W4
 
         # k-shell volume
         dk = np.diff(k).mean()
         Vk  = 4*np.pi*k**2*dk
-        modes = 2 * Vk / (2*np.pi)**3
+        N = Vk * Veff / (2*np.pi)**3
 
         # initialize the return array
         Psq = np.zeros((N2, N1)*2)
@@ -1371,9 +1373,9 @@ class PoleCovarianceMatrix(CovarianceMatrix):
             for j in range(i, N2):
 
                 # do the sum over redshift first
-                x = ( (w*nbar_)**4 * dV * tobin).sum(axis=-1) / W**2
+                x = ( (w*nbar_)**4 * dV * tobin).sum(axis=-1) / W4
                 Psq[i,:,j,:] = np.diag(np.nanmean(x[i,j,:], axis=-1))
-                modes[i,:,j,:] = 2 * Vk / (2*np.pi)**3
+                modes[i,:,j,:] = N
                 if i != j:
                     Psq[j,:,i,:] = Psq[i,:,j,:]
                     modes[j,:,i,:] = modes[i,:,j,:]

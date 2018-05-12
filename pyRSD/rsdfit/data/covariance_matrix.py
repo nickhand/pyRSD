@@ -4,7 +4,7 @@ import itertools
 from collections import OrderedDict
 from six import string_types
 import xarray as xr
-from . import indexing
+from . import indexing, tools
 
 def is_array_like(d, shape):
     return not np.isscalar(d) and np.shape(d) == shape
@@ -677,7 +677,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
 
     @classmethod
     def periodic_gaussian_covariance(cls, model, k, mu_edges, nbar, volume, Nmu=100):
-        """
+        r"""
         Return the Gaussian prediction for the covariance between
         :math:`P(k,\mu)` wedges for a periodic box simulation, where the number
         density is constant.
@@ -955,7 +955,7 @@ class PkmuCovarianceMatrix(CovarianceMatrix):
         return ax
 
     def plot_off_diagonals(self, kbar, ax=None, mu=None, mu_bar=None, **options):
-        """
+        r"""
         Plot the off diagonal elements, specifically:
 
         :math: \sqrt(Cov(k, kbar) / P(k, mu) / P(kbar, mu))
@@ -1156,7 +1156,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
 
     @classmethod
     def periodic_gaussian_covariance(cls, model, k, ells, nbar, volume, Nmu=100):
-        """
+        r"""
         Return the Gaussian prediction for the covariance between multipoles
         for a periodic box simulation, where the number density is constant.
 
@@ -1254,7 +1254,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
     @classmethod
     def cutsky_gaussian_covariance(cls, model, k, ells, nbar, fsky, zmin, zmax,
                                     FKP_P0=1e4, Nmu=100, Nz=50):
-        """
+        r"""
         Return the Gaussian prediction for the covariance between multipoles
         for a "cutsky" survey, i.e., a survey with a varying :math:`n(z)`
         distribution
@@ -1586,7 +1586,7 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         return ax
 
     def plot_off_diagonals(self, kbar, ax=None, ell=None, ell_bar=None, **options):
-        """
+        r"""
         Plot the off diagonal elements, specifically:
 
         :math: \sqrt(Cov(k, kbar) / P(k, ell) / P(kbar, ell_bar))

@@ -1,9 +1,12 @@
 import operator
 from ... import numpy as np
+from six import PY3
+
+divop = operator.truediv if PY3 else operator.div
 
 # Note: operator here gives the function needed to go from 
 # `absolute` to `relative` units
-variables = {"wavenumber" : {'operator': operator.div, 'power' : 1}, \
+variables = {"wavenumber" : {'operator': divop, 'power' : 1}, \
              "distance" : {'operator': operator.mul, 'power' : 1}, \
              "volume" : {'operator': operator.mul, 'power' : 3}, \
              "power" : {'operator': operator.mul, 'power' : 3} }

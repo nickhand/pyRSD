@@ -3,6 +3,7 @@ from pyRSD.rsd._cache import Cache, cached_property, parameter
 import itertools
 from collections import OrderedDict
 from six import string_types
+import xarray as xr
 from . import indexing
 
 def is_array_like(d, shape):
@@ -1325,6 +1326,8 @@ class PoleCovarianceMatrix(CovarianceMatrix):
         # the best-fit P(k,mu)
         mus = np.linspace(0, 1, Nmu+1)
         Pkmu = model.power(k, mus)
+        if isinstance(Pkmu, xr.DataArray):
+            Pkmu = Pkmu.values
         _, mus = np.meshgrid(k, mus, indexing='ij')
 
         N1 = Pkmu.shape[0]

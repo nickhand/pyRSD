@@ -230,7 +230,7 @@ def test_convergence(chains0, niter, epsilon):
 #------------------------------------------------------------------------------
 # the main function to runs
 #------------------------------------------------------------------------------
-def run(params, theory, pool=None, chains_comm=None, init_values=None):
+def run(params, fit_params, pool=None, chains_comm=None, init_values=None):
     """
     Perform MCMC sampling of the parameter space of a system using `emcee`
 
@@ -238,8 +238,8 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     ----------
     params : ParameterSet
         This holds the parameters needed to run the `emcee` fitter
-    theory : GalaxyPowerTheory
-        Theory object, which has the `fit_params` ParameterSet as an attribute
+    fit_params : ParameterSet
+        the theoretical parameters
     pool : emcee.MPIPool, optional
         Pool object if we are using MPI to run emcee
     init_values : array_like, `EmceeResults`
@@ -264,7 +264,7 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     nwalkers  = params.get('walkers', 20)
     niters    = params.get('iterations', 500)
     label     = params.get('label')
-    ndim      = theory.ndim
+    ndim      = len(fit_params.free_names)
     init_from = params.get('init_from', 'prior')
     epsilon   = params.get('epsilon', 0.02)
     test_conv = params.get('test_convergence', False)
@@ -276,7 +276,9 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     # now, if the number of walkers is smaller then twice the number of
     # parameters, adjust that number to the required minimum and raise a warning
     if 2*ndim > nwalkers:
-        logger.warning("EMCEE: number of walkers ({}) cannot be smaller than 2 x npars: set to {}".format(nwalkers, 2*ndim))
+        msg = "EMCEE: number of walkers ({}) cannot be smaller ".format(nwalkers)
+        msg += "than 2 x npars: set to {}".format(2*ndim)
+        logger.warning(msg)
         nwalkers = 2*ndim
 
     if nwalkers % 2 != 0:
@@ -326,11 +328,11 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
         # Initialize a set of parameters
         try:
             logger.warning("Attempting multivariate initialization from {}".format(init_from))
-            p0, drew_from = tools.multivariate_init(theory, nwalkers, draw_from=init_from, logger=logger)
+            p0, drew_from = tools.multivariate_init(fit_params, nwalkers, draw_from=init_from, logger=logger)
             logger.warning("Initialized walkers from {} with multivariate normals".format(drew_from))
         except ValueError:
             logger.warning("Attempting univariate initialization")
-            p0, drew_from = tools.univariate_init(theory, nwalkers, draw_from=init_from, logger=logger)
+            p0, drew_from = tools.univariate_init(fit_params, nwalkers, draw_from=init_from, logger=logger)
             logger.warning("Initialized walkers from {} with univariate distributions".format(drew_from))
 
     # initialize the sampler
@@ -346,7 +348,7 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
     #---------------------------------------------------------------------------
     # do the sampling
     #---------------------------------------------------------------------------
-    with ChainManager(sampler, niters, nwalkers, theory.free_names, chains_comm) as manager:
+    with ChainManager(sampler, niters, nwalkers, fit_params.free_names, chains_comm) as manager:
         for niter, result in manager.sample(p0, lnprob0):
 
             # check if we need to exit due to exception/convergence
@@ -358,7 +360,7 @@ def run(params, theory, pool=None, chains_comm=None, init_values=None):
                 manager.check_convergence(niter, epsilon, start_iter, start_chain)
 
     # make the results and return
-    new_results = EmceeResults(sampler, theory.fit_params, burnin)
+    new_results = EmceeResults(sampler, fit_params, burnin)
     if old_results is not None:
         new_results = old_results + new_results
 

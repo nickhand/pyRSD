@@ -307,6 +307,65 @@ class BasePowerParameters(ParameterSet):
 
         return True
 
+    def check(self, return_errors=False):
+        """
+        Check the values of all parameters. Here, `check` means that
+        each parameter is within its bounds and the prior is not infinity
+
+        If `return_errors = True`, return the error messages as well
+        """
+        error_messages = []
+        doing_okay = True
+
+        # loop over each parameter
+        for name in self.free_names:
+            par = self[name]
+
+            # check bounds
+            if par.bounded and not par.within_bounds():
+                doing_okay = False
+                args = par.name, par.value, par.min, par.max
+                msg = '{}={} is outside of reasonable limits [{}, {}]'.format(
+                    *args)
+                error_messages.append(msg)
+                continue
+
+            # check prior
+            if par.has_prior and np.isinf(par.lnprior):
+                doing_okay = False
+                msg = '{}={} is outside of prior {}'.format(
+                    par.name, par.value, par.prior)
+                error_messages.append(msg)
+                continue
+
+        if return_errors:
+            return doing_okay, error_messages
+        else:
+            return doing_okay
+
+    def scale(self, theta):
+        """
+        Scale the (unscaled) free parameters, using the priors to
+        define the scaling transformation
+        """
+        return (theta - self.locs) / self.scales
+
+    def inverse_scale(self, theta):
+        """
+        Inverse scale the free parameters, using the priors to
+        define the scaling transformation
+        """
+        return theta*self.scales + self.locs
+
+    def scale_gradient(self, grad):
+        """
+        Scale the gradient with respect to the unscaled free parameters,
+        using the priors to define the scaling transformation
+
+        This returns df / dxprime where xprime is the scaled param vector
+        """
+        return grad * self.scales
+
 class BasePowerTheory(object):
     """
     A base class representing a theory for computing a redshift-space power
@@ -372,29 +431,6 @@ class BasePowerTheory(object):
         for k in list(self.fit_params):
             if self.fit_params[k].value is None:
                 del self.fit_params[k]
-
-    def scale(self, theta):
-        """
-        Scale the (unscaled) free parameters, using the priors to
-        define the scaling transformation
-        """
-        return (theta - self.fit_params.locs) / self.fit_params.scales
-
-    def inverse_scale(self, theta):
-        """
-        Inverse scale the free parameters, using the priors to
-        define the scaling transformation
-        """
-        return theta*self.fit_params.scales + self.fit_params.locs
-
-    def scale_gradient(self, grad):
-        """
-        Scale the gradient with respect to the unscaled free parameters,
-        using the priors to define the scaling transformation
-
-        This returns df / dxprime where xprime is the scaled param vector
-        """
-        return grad * self.fit_params.scales
 
     @contextlib.contextmanager
     def preserve(self, theta):
@@ -647,41 +683,6 @@ class BasePowerTheory(object):
             return apply_transfers(P, data, slices, theory_decorator)
 
         return evaluate
-
-
-    def check(self, return_errors=False):
-        """
-        Check the values of all parameters. Here, `check` means that
-        each parameter is within its bounds and the prior is not infinity
-
-        If `return_errors = True`, return the error messages as well
-        """
-        error_messages = []
-        doing_okay = True
-
-        # loop over each parameter
-        for name in self.fit_params.free_names:
-            par = self.fit_params[name]
-
-            # check bounds
-            if par.bounded and not par.within_bounds():
-                doing_okay = False
-                args = par.name, par.value, par.min, par.max
-                msg = '{}={} is outside of reasonable limits [{}, {}]'.format(*args)
-                error_messages.append(msg)
-                continue
-
-            # check prior
-            if par.has_prior and np.isinf(par.lnprior):
-                doing_okay = False
-                msg = '{}={} is outside of prior {}'.format(par.name, par.value, par.prior)
-                error_messages.append(msg)
-                continue
-
-        if return_errors:
-            return doing_okay, error_messages
-        else:
-            return doing_okay
 
     def get_kmu_pairs(self, data):
         """

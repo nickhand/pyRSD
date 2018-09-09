@@ -514,7 +514,7 @@ class FittingDriver(FittingDriverSchema):
             logger.info("Restarting '{}' solver from a previous result".format(solver_type))
         else:
             logger.info("Calling the '{}' solve function".format(solver_type))
-        self.results, exception = solver(self.params, self.theory, **kwargs)
+        self.results, exception = solver(self.params, self.theory.fit_params, **kwargs)
 
         # store the model version in the results
         if self.results is not None:
@@ -555,7 +555,8 @@ class FittingDriver(FittingDriverSchema):
         init_values = self.theory.free_fiducial
 
         logger.info("using L-BFGS soler to find the maximum probability values to use as initialization")
-        results, exception = solver(self.params, self.theory, pool=pool, init_values=init_values)
+        results, exception = solver(self.params, self.theory.fit_params, 
+                                    pool=pool, init_values=init_values)
         logger.info("...done compute maximum probability")
 
         values = results.min_chi2_values

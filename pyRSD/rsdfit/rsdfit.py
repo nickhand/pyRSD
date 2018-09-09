@@ -44,21 +44,20 @@ def find_init_result(val):
 
 class RSDFitDriver(object):
     """
-    The main driver class to run `rsdfit`
+    The main driver class to run `rsdfit`.
+
+    Parameters
+    ----------
+    comm : MPI communicator
+        the global MPI communicator that will optionally
+        be split to distribute work in parallel
+    mode : str
+        the subparser name
+    kwargs:
+        the key/value pairs corresponding to the command-line
+        parser from rsd_parser()
     """
     def __init__(self, comm, mode, **kwargs):
-        """
-        Parameters
-        ----------
-        comm : MPI communicator
-            the global MPI communicator that will optionally
-            be split to distribute work in parallel
-        mode : str
-            the subparser name
-        kwargs:
-            the key/value pairs corresponding to the command-line
-            parser from rsd_parser()
-        """
         self.comm = comm
         self.mode = mode
         self.restart_file = None
@@ -74,8 +73,8 @@ class RSDFitDriver(object):
     @classmethod
     def create(cls, comm=None):
         """
-        Parse the command-line options and
-        return an initialized `RSDFitDriver`
+        Parse the command-line options and return an 
+        initialized `RSDFitDriver`.
         """
         if comm is None: comm = MPI.COMM_WORLD
 
@@ -104,7 +103,7 @@ class RSDFitDriver(object):
 
     def initialize_algorithm(self):
         """
-        Initialize the driver that runs the desired algorithm
+        Initialize the driver that runs the desired algorithm.
         """
         # ``analysis`` mode
         if self.mode == 'analyze':

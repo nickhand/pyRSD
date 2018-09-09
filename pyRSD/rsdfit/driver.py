@@ -183,7 +183,8 @@ class FittingDriverSchema(Cache):
 
 class FittingDriver(FittingDriverSchema):
     """
-    A driver to run the parameter fitting pipeline, merging together a model, theory, and fitting algorithm
+    A driver to run the parameter fitting pipeline, merging 
+    together a model, theory, and fitting algorithm.
 
     Parameters
     ----------
@@ -249,7 +250,8 @@ class FittingDriver(FittingDriverSchema):
     # class methods to start from directory
     #---------------------------------------------------------------------------
     @classmethod
-    def from_directory(cls, dirname, results_file=None, model_file=None, init_model=True, **kwargs):
+    def from_directory(cls, dirname, results_file=None, model_file=None, 
+                        init_model=True, **kwargs):
         """
         Load a :class:`FittingDriver` from a results directory
 
@@ -810,8 +812,6 @@ class FittingDriver(FittingDriverSchema):
 
                 with self.theory.preserve(theta):
                     return -self.null_lnlike - self.lnprior()
-        else:
-            theta = self.theory.free_values
 
         # value at theta
         prob = -self.lnlike()

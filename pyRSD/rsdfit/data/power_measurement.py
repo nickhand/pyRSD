@@ -541,17 +541,18 @@ class PowerData(PowerDataSchema):
     param_file : str
         the name of the parameter file holding the necessary parameters
         needed to initialize the object
+    model_specific_params : dict, optional
+        model parameters specific to individual statistics
     """
     schema = PowerDataSchema
     required_params = set([par for par in PowerDataSchema._param_names \
                             if not hasattr(getattr(PowerDataSchema, par), '_default')])
 
-    def __init__(self, param_file):
-        """
-        Initialize and setup up the measurements
-        """
+    def __init__(self, param_file, model_specific_params={}):
+
         # read the params from file
         self.params = ParameterSet.from_file(param_file, tags='data')
+        self.model_specific_params = model_specific_params
 
         # set all of the valid ones
         for name in PowerDataSchema._param_names:
@@ -653,12 +654,19 @@ class PowerData(PowerDataSchema):
         # store the center of the mu wedges
         if self.mode == 'pkmu':
             self.mu_cen = [0.5*(lo+hi) for (lo,hi) in self.mu_bounds] # center mu
+        
+        # log the kmin/kmax
+        lims = ", ".join("(%.2f, %.2f)" % (x, y)
+                         for x, y in zip(self.kmin, self.kmax))
+        logger.info(
+            "trimmed the read covariance matrix to: [%s] h/Mpc" % lims, on=0)
 
-        # finally, setup the transfer
-        self.initialize_transfer()
-
-        # and verify
-        self.verify()
+        # verify the covariance matrix
+        if self.ndim != self.covariance_matrix.N:
+            args = (self.ndim, self.covariance_matrix.N)
+            msg = "size mismatch: combined power size %d, covariance size %d" % args
+            logger.error(msg)
+            raise ValueError(msg)
 
     @parameter
     def measurements(self, val):
@@ -700,41 +708,42 @@ class PowerData(PowerDataSchema):
     #---------------------------------------------------------------------------
     # initialization and setup functions
     #---------------------------------------------------------------------------
-    def verify(self):
+    def calculate_transfer(self, statistics):
         """
-        Verify the data and covariance
-        """
-        # log the kmin/kmax
-        lims = ", ".join("(%.2f, %.2f)" %(x,y) for x,y in zip(self.kmin, self.kmax))
-        logger.info("trimmed the read covariance matrix to: [%s] h/Mpc" %lims, on=0)
+        Set up the transfer function required by the data which will be used
+        to compute the specified statistics.
 
-        # verify the covariance matrix
-        if self.ndim != self.covariance_matrix.N:
-            args = (self.ndim, self.covariance_matrix.N)
-            msg = "size mismatch: combined power size %d, covariance size %d" %args
-            logger.error(msg)
-            raise ValueError(msg)
+        Parameters
+        ----------
+        statistics : list of str
+            the name of the statistics for which the transfer function
+            will apply
 
-        # verify the grid
-        gridded_transfers = (transfers.GriddedWedgeTransfer, transfers.GriddedMultipoleTransfer)
-        if isinstance(self.transfer, gridded_transfers):
-            if self.transfer.size != self.covariance_matrix.N:
-                msg = "size mismatch between grid transfer function and covariance: "
-                args = (self.transfer.size, self.covariance_matrix.N)
-                raise ValueError(msg + "grid size =  %d, cov size = %d" %args)
+        Returns
+        -------
+        transfers : list of transfer function objects
+            the transfer function objects
+        """
+        # all the input statistic names must be valid
+        assert(all(stat in self.statistics for stat in statistics))
 
-    def initialize_transfer(self):
-        """
-        Set up the transfer function required by the data.
-        """
+        #  either ell or mu_cen
+        if self.mode == 'pkmu':
+            x = self.mu_bounds
+        else:
+            x = self.ells
+
+        # filter the list of all statistics
+        x = [xx for i, xx in enumerate(x) if self.statistics[i] in statistics]
+
         # initialize grid and transfer to None
-        self.grid = None; self.transfer = None
+        grid = None; transfer = None
 
         # WINDOW FUNCTION TRANSFER
         if self.window is not None:
 
             # want to compute even multipoles up to at least max_ellprime
-            max_ell = max(self.max_ellprime, max(flatten(self.ells)))
+            max_ell = max(self.max_ellprime, max(flatten(x)))
             ells = [i for i in range(0, max_ell+1, 2)]
 
             #  initialize the window function transfer
@@ -742,46 +751,47 @@ class PowerData(PowerDataSchema):
             kws['max_ellprime'] = self.max_ellprime
             kws['kmax'] = self.window_kmax
             kws['kmin'] = self.window_kmin
-            self.transfer = [transfers.WindowFunctionTransfer(self.window, ells, **kws)]
+            transfer = [transfers.WindowFunctionTransfer(self.window, ells, **kws)]
         else:
 
             # GRIDDED TRANSFER
             if self.grid_file is not None:
 
                 # initialize the grid
-                self.grid = transfers.PkmuGrid.from_plaintext(self.grid_file)
+                grid = transfers.PkmuGrid.from_plaintext(self.grid_file)
 
                 # set modes to zero outside k-ranges to avoid model failing
-                self.grid.modes[self.grid.k < self.global_kmin] = np.nan
-                self.grid.modes[self.grid.k > self.global_kmax] = np.nan
+                grid.modes[grid.k < self.global_kmin] = np.nan
+                grid.modes[grid.k > self.global_kmax] = np.nan
 
                 # initialize the transfer
                 if self.mode == 'pkmu':
-                    x = self.mu_bounds
                     cls = transfers.GriddedWedgeTransfer
                 else:
-                    x = self.ells
                     cls = transfers.GriddedMultipoleTransfer
 
                 # initialize the transfer function
-                self.transfer = [cls(self.grid, x, kmin=self.kmin, kmax=self.kmax)]
+                transfer = [cls(grid, x, kmin=self.kmin, kmax=self.kmax)]
 
             # SMOOTH TRANSFER
             else:
                 if self.mode == 'pkmu':
-                    x = self.mu_bounds
                     cls = transfers.WedgeTransfer
                 else:
-                    x = self.ells
                     cls = transfers.MultipoleTransfer
 
                 # add a transfer for each ell or mu wedge
                 # NOTE: this accounts for different k values
                 t = []
-                for i, m in enumerate(self):
+                for i, stat in enumerate(statistics):
+                    
+                    # the measurement for this statistic
+                    m = self.measurements[self.statistics.index(stat)]
                     t.append(cls(m.k, x[i]))
 
-                self.transfer = t
+                transfer = t
+
+        return transfer, dict(zip(statistics, x))
 
 
     def set_all_measurements(self):

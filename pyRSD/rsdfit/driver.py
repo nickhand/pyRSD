@@ -181,6 +181,14 @@ class FittingDriverSchema(Cache):
         """
         return val
 
+    @parameter(default={})
+    def stat_specific_params(self, val):
+        """
+        Model parameters to be updated for each statistic; keys of this
+        dict should be the names of a statistic
+        """
+        return val
+
 class FittingDriver(FittingDriverSchema):
     """
     A driver to run the parameter fitting pipeline, merging 
@@ -205,6 +213,7 @@ class FittingDriver(FittingDriverSchema):
 
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
+        stat_specific_params = self.params.get('stat_specific_params', {})
 
         # set all of the valid ones
         for name in FittingDriverSchema._param_names:
@@ -245,6 +254,10 @@ class FittingDriver(FittingDriverSchema):
                 msg = "keys of 'theory_decorator' should be one of "
                 msg += "'data.statistics' = %s" % str(self.data.statistics)
                 raise ValueError(msg)
+
+
+        # get the model callables
+        self.model_callable, self.grad_model_callable = self._get_theory_callables()
 
     #---------------------------------------------------------------------------
     # class methods to start from directory
@@ -339,6 +352,69 @@ class FittingDriver(FittingDriverSchema):
         toret.tag = 'driver'
 
         return toret
+
+    def _get_theory_callables(self):
+        """
+        Given the data, theory, and input parameters generate the 
+        callable function that returns the theory measurements. 
+
+        The hard part here is determining how many P(k,mu) calls 
+        we need to make.
+        """
+        stat_specific_params = self.params.get('stat_specific_params', {})
+
+        # determine the number of unique theory P(k,mu) calls
+        stat_grps = []
+        N1 = len(stat_specific_params)
+        if N1 > 0:
+            stat_grps += [[stat] for stat in stat_specific_params]
+        missing = set(self.data.statistics) - set(stat_specific_params)
+        if len(missing):
+            stat_grps.append(list(missing))
+
+        # determine the transfers
+        callables = []
+        grad_callables = []
+        for stat_grp in stat_grps:
+            
+            # get the transfers
+            transfers, ids = self.data.calculate_transfer(stat_grp)
+            
+            # get the model parameters
+            model_params = {k: v() for k, v in self.theory.model_params.items()}
+            if len(ids) == 1:
+                key = list(ids.keys())[0]
+                if key in stat_specific_params:
+                    model_params.update(stat_specific_params[key])
+            
+            # get the theory callable
+            c = self.theory.get_model_callable(self.data, transfers, ids, 
+                                                model_params=model_params,
+                                                theory_decorator=self.theory_decorator)
+            callables.append(c)
+
+            # get the grad theory callable
+            c = self.theory.get_grad_model_callable(self.data, transfers, ids, 
+                                                     model_params=model_params,
+                                                     theory_decorator=self.theory_decorator)
+            grad_callables.append(c)
+
+        def validate_size(toret):
+            if len(toret) != self.data.ndim:
+                args = (len(toret), self.data.ndim)
+                raise ValueError("predicted theory of length %d, should be %d" % args)
+            return toret
+
+        def final_model_callable():
+            toret = np.concatenate([c() for c in callables], axis=0)
+            return validate_size(toret)
+
+        def final_grad_callable(**kwargs):
+            toret = np.concatenate([c(**kwargs) for c in grad_callables], axis=0)
+            return validate_size(toret)
+
+        return final_model_callable, final_grad_callable
+
 
     def apply(self, func, pattern):
         """
@@ -634,18 +710,6 @@ class FittingDriver(FittingDriverSchema):
         logger.info("...theoretical model successfully read", on=0)
 
     @property
-    def model_callable(self):
-        """
-        Return the theoretical model callable that will return the
-        flattened theory prediction corresponding to the data statistics.
-        """
-        try:
-            return self._model_callable
-        except AttributeError:
-            self._model_callable = self.theory.model_callable(self.data, theory_decorator=self.theory_decorator)
-            return self._model_callable
-
-    @property
     def combined_model(self):
         """
         The model values for each measurement, flattened column-wise
@@ -890,8 +954,8 @@ class FittingDriver(FittingDriverSchema):
             kws['pool'] = pool
             kws['epsilon'] = epsilon
             kws['numerical'] = numerical
-            kws['theory_decorator'] = self.theory_decorator
-            grad_lnlike = self.theory.evaluate_grad_lnlike(theta, self.data, **kws)
+            kws['theta'] = theta
+            grad_lnlike = self.grad_model_callable(**kws)
 
             # transform from model gradient to log likelihood gradient
             diff = self.data.combined_power - self.combined_model

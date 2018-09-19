@@ -1,6 +1,6 @@
 from pyRSD.rsdfit.parameters import Parameter, ParameterSet
 from pyRSD.rsd._cache import Property
-from pyRSD.rsd import transfers
+from pyRSD.rsd.transfers import WindowFunctionTransfer, gridded_transfers
 from pyRSD.rsdfit.theory import decorators
 
 from scipy.interpolate import InterpolatedUnivariateSpline as spline
@@ -627,26 +627,33 @@ class BasePowerTheory(object):
         """
         return self.fit_params.set_free_parameters(theta)
 
-    def evaluate_grad_lnlike(self, theta, data, pool=None, epsilon=1e-4,
-                            numerical=False, theory_decorator={}):
+    def get_grad_model_callable(self, data, transfers, stat_ids, 
+                                 model_params=None, theory_decorator={}):
         """
-        Evaluate the gradient.
+        Get the callable to evaluate the gradient of the model.
         """
         # the flattened (k,mu) pairs for evaluating the model
         # NOTE: this allows us to evaluate the model only ONCE
-        k, mu, slices = self.get_kmu_pairs(data)
+        k, mu, slices = self.get_kmu_pairs(transfers)
 
-        # evaluate the P(k,mu) gradient
-        gradient = self.pkmu_gradient(k, mu, theta, pool=pool, epsilon=epsilon, numerical=numerical)
+        def evaluate(theta, pool=None, epsilon=1e-4, numerical=False):
 
-        # apply to transfer for gradient of each parameter
-        grad_lnlike = []
-        for i in range(self.ndim):
-            grad_lnlike.append(apply_transfers(gradient[i], data, slices, theory_decorator))
+            # evaluate the P(k,mu) gradient
+            gradient = self.pkmu_gradient(k, mu, theta, pool=pool, epsilon=epsilon, numerical=numerical)
 
-        return np.asarray(grad_lnlike)
+            # apply to transfer for gradient of each parameter
+            grad_lnlike = []
+            for i in range(self.ndim):
+                grad_lnlike.append(apply_transfers(gradient[i], data, transfers, 
+                                                    stat_ids, slices, theory_decorator))
 
-    def model_callable(self, data, theory_decorator={}):
+            return np.asarray(grad_lnlike)
+
+        return evaluate
+
+    def get_model_callable(self, data, transfers, stat_ids, 
+                            model_params=None,
+                            theory_decorator={}):
         """
         Return the flattened theory prediction corresponding to the statistics
         in the ``data`` object.
@@ -656,35 +663,37 @@ class BasePowerTheory(object):
         data : PowerData
             the data class, which tells the theory which statistics to compute
             and what basis to evaluate the theory in, e.g., multipoles, wedges,
-            window-convoled, etc
+            window-convolved, etc
+        transfers : list
+            the list of the transfer functions to apply
+        stat_ids : dict
+            dictionary with keys of the relevant statistics and values are
+            identitifers, e.g., ell or center mu values
+        model_params : dict, optional
+            a dictionary of model parameters to update
         theory_decorator : dict, optional
             dictionary of decorators to apply to the theory predictions for
             individual data statistics
         """
         # the flattened (k,mu) pairs for evaluating the model
         # NOTE: this allows us to evaluate the model only ONCE
-        k, mu, slices = self.get_kmu_pairs(data)
-
-        # determine which variables specify the second dimension of the basis
-        # based on the mode, pkmu or poles
-        if data.mode == 'poles':
-            binvals = data.ells
-            dim = 'ell'
-        else:
-            binvals = data.mu_cen
-            dim = 'mu'
+        k, mu, slices = self.get_kmu_pairs(transfers)
 
         def evaluate():
+
+            # update model parameters first?
+            if model_params is not None:
+                self.model.update(**model_params)
 
             # evaluate the P(k,mu) for the (k,mu) pairs we need
             P = self.model.power(k,mu)
 
             # apply the transfers to the power
-            return apply_transfers(P, data, slices, theory_decorator)
+            return apply_transfers(P, data, transfers, stat_ids, slices, theory_decorator)
 
         return evaluate
 
-    def get_kmu_pairs(self, data):
+    def get_kmu_pairs(self, transfers):
         """
         Compute the flattened ``k`` and ``mu`` values needed to evaluate the
         theory prediction, given the transfer functions defined by ``data``.
@@ -695,7 +704,7 @@ class BasePowerTheory(object):
         start = 0
         slices = []
         k = []; mu = []
-        for i, t in enumerate(data.transfer):
+        for i, t in enumerate(transfers):
             k.append(t.flatk)
             mu.append(t.flatmu)
             N = len(t.flatk)
@@ -704,20 +713,33 @@ class BasePowerTheory(object):
 
         return np.concatenate(k), np.concatenate(mu), slices
 
-def apply_transfers(P, data, slices, theory_decorator):
+def apply_transfers(P, data, transfers, stat_ids, slices, theory_decorator):
+    """
+    Apply one (or more) transfer functions to the input P(k,mu) values.
 
+    Parameters
+    ----------
+    P : xarray.DataArray
+        the power values calculated on the (k,mu) grid
+    data : PowerData
+        the data object
+    transfers : list
+        the list of transfer objects to apply
+    stat_ids : dict
+        dictionary with keys of the relevant statistics and values are
+        identifers, e.g., ell or center mu values
+    slices : list
+        the list of slices to slice the power result
+    theory_decorator : dict
+        decorator to run after the transfer function is applied
+    """
     # determine which variables specify the second dimension of the basis
     # based on the mode, pkmu or poles
-    if data.mode == 'poles':
-        binvals = data.ells
-        dim = 'ell'
-    else:
-        binvals = data.mu_cen
-        dim = 'mu'
+    dim = 'ell' if data.mode == 'poles' else 'mu'
 
     # apply the transfer function to the correct slice of P(k,mu)
     results = []
-    for i, t in enumerate(data.transfer):
+    for i, t in enumerate(transfers):
         results.append(t(P[slices[i]]))
 
     # concatenate results into a single array if we had multiple transfers
@@ -728,10 +750,11 @@ def apply_transfers(P, data, slices, theory_decorator):
 
     # format the results
     toret = []
-    for i, m in enumerate(data):
+    for stat_name in stat_ids:
 
         # this is either ell or mu_cen for this statistic
-        binval = binvals[i]
+        binval = stat_ids[stat_name]
+        m = data.measurements[data.statistics.index(stat_name)]
 
         # make into a list if not
         # NOTE: this allows us to support multiple bin values per statistic
@@ -746,19 +769,18 @@ def apply_transfers(P, data, slices, theory_decorator):
             r = result.sel(**{dim:bb})
 
             # interpolate the window function results
-            if isinstance(data.transfer[0], transfers.WindowFunctionTransfer):
+            if isinstance(transfers[0], WindowFunctionTransfer):
                 spl = spline(r['k'], r)
                 theory.append(spl(m.k))
             # remove out of range values from Gridded Transfer results
-            elif isinstance(data.transfer[0], transfers.gridded_transfers):
+            elif isinstance(transfers[0], gridded_transfers):
                 theory.append(r.values[r.notnull()])
             # result already has the proper k binning
             else:
                 theory.append(r.values)
 
         # apply any theory decorators for this statistic
-        stat = data.statistics[i]
-        dec = theory_decorator.get(stat, None)
+        dec = theory_decorator.get(stat_name, None)
         if dec is not None:
             dec = getattr(decorators, dec)
             theory = dec(*theory)
@@ -774,7 +796,4 @@ def apply_transfers(P, data, slices, theory_decorator):
 
         toret.append(theory)
 
-    toret = np.concatenate(toret)
-    if len(toret) != data.ndim:
-        raise ValueError("predicted theory of length %d, should be %d" % (len(toret), data.ndim))
-    return toret
+    return np.concatenate(toret)

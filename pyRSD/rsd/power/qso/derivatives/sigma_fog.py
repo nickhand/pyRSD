@@ -20,6 +20,6 @@ class dPqso_dsigma_fog(PqsoDerivative):
         Gprime = m.FOG.derivative_sigma(kprime, muprime, m.sigma_fog)
         toret = np.zeros_like(G)
 
-        valid = G > 0.
+        valid = np.nonzero(G)
         toret[valid] = 2*Gprime[valid] * m.power(k, mu)[valid] / G[valid]
         return toret

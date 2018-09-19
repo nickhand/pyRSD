@@ -129,6 +129,13 @@ class BiasedSpectrum(DarkMatterSpectrum, NonlinearBiasingMixin):
         models = ['P11_sim_model', 'Pdv_sim_model', 'bias_to_sigma_relation']
         self._update_models('z', models, val)
 
+        # update redshift params
+        if len(self.redshift_params):
+            if 'f' in self.redshift_params:
+                self.f = self.cosmo.f_z(val)
+            if 'sigma8_z' in self.redshift_params:
+                self.sigma8_z = self.cosmo.Sigma8_z(val)
+                
         return val
 
     @parameter

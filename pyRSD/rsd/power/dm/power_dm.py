@@ -35,6 +35,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
                        k0_low=5e-3,
                        linear_power_file=None,
                        Pdv_model_type='jennings',
+                       redshift_params=[],
                        **kwargs):
         """
         Parameters
@@ -78,6 +79,14 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
             string specifying the name of a file which gives the linear
             power spectrum, from which the transfer function in ``cosmo``
             will be initialized
+
+        Pdv_model_type : str, optional ('Jennings')
+            the type of model to use for the density-velocity cross-correlation 
+            term, `Pdv`; either `Jennings` or `sims`. The Jennnings model is 
+            from arxiv: 1207.1439
+
+        redshift_params : list of str, optional
+            the names of parameters to be updated when redshift changes
         """
         # overload cosmo with a cosmo_filename kwargs to handle deprecated syntax
         if 'cosmo_filename' in kwargs:
@@ -95,13 +104,17 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         self.params            = params
         self.max_mu            = max_mu
         self.include_2loop     = include_2loop
-        self.z                 = z
         self.kmin              = kmin
         self.kmax              = kmax
         self.Nk                = Nk
         self.k0_low            = k0_low
         self.linear_power_file = linear_power_file
         self.Pdv_model_type    = Pdv_model_type
+        
+        # set these last
+        self.redshift_params = redshift_params
+        self.z = z
+        
 
         # initialize the cosmology parameters and set defaults
         self.sigma8_z          = self.cosmo.Sigma8_z(self.z)
@@ -346,6 +359,13 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         # update the dependencies
         models = ['P11_sim_model', 'Pdv_sim_model']
         self._update_models('z', models, val)
+
+        # update redshift params
+        if len(self.redshift_params):
+            if 'f' in self.redshift_params:
+                self.f = self.cosmo.f_z(val)
+            if 'sigma8_z' in self.redshift_params:
+                self.sigma8_z = self.cosmo.Sigma8_z(val)
 
         return val
 
@@ -606,7 +626,7 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
     @parameter
     def use_Pvv_model(self, val):
         """
-        Whether to use Jenning model for Pvv or SPT
+        Whether to use Jennings model for Pvv or SPT
         """
         return val
 
@@ -618,6 +638,15 @@ class DarkMatterSpectrum(Cache, SimLoaderMixin, PTIntegralsMixin):
         allowed = ['jennings', 'sims']
         if val not in allowed:
             raise ValueError("`Pdv_model_type` must be one of %s" %str(allowed))
+        return val
+
+    @parameter
+    def redshift_params(self, val):
+        """
+        A list of parameter names to be scaled with redshift
+        """
+        if len(val) and any(par not in ['f', 'sigma8_z'] for par in val):
+            raise ValueError("valid parameters for redshift scaling: 'f' and 'sigma8_z'")
         return val
 
     @cached_property("cosmo")

@@ -399,19 +399,11 @@ class FittingDriver(FittingDriverSchema):
                                                      theory_decorator=self.theory_decorator)
             grad_callables.append(c)
 
-        def validate_size(toret):
-            if len(toret) != self.data.ndim:
-                args = (len(toret), self.data.ndim)
-                raise ValueError("predicted theory of length %d, should be %d" % args)
-            return toret
-
         def final_model_callable():
-            toret = np.concatenate([c() for c in callables], axis=0)
-            return validate_size(toret)
-
+            return np.concatenate([c() for c in callables], axis=0)
+            
         def final_grad_callable(**kwargs):
-            toret = np.concatenate([c(**kwargs) for c in grad_callables], axis=0)
-            return validate_size(toret)
+            return np.concatenate([c(**kwargs) for c in grad_callables], axis=-1)
 
         return final_model_callable, final_grad_callable
 

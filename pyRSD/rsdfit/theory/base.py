@@ -638,8 +638,15 @@ class BasePowerTheory(object):
 
         def evaluate(theta, pool=None, epsilon=1e-4, numerical=False):
 
+            # update model parameters first?
+            if model_params is not None:
+                self.model.update(**model_params)
+
             # evaluate the P(k,mu) gradient
-            gradient = self.pkmu_gradient(k, mu, theta, pool=pool, epsilon=epsilon, numerical=numerical)
+            gradient = self.pkmu_gradient(k, mu, theta, 
+                                          pool=pool, 
+                                          epsilon=epsilon, 
+                                          numerical=numerical)
 
             # apply to transfer for gradient of each parameter
             grad_lnlike = []

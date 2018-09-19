@@ -9,6 +9,7 @@ from scipy.interpolate import InterpolatedUnivariateSpline as spline
 import contextlib
 import warnings
 
+
 def vectorize_if_needed(func, *x):
     """
     Helper function to vectorize functions on array inputs;
@@ -18,6 +19,7 @@ def vectorize_if_needed(func, *x):
         return np.vectorize(func)(*x)
     else:
         return func(*x)
+
 
 def isiterable(obj):
     """
@@ -30,16 +32,20 @@ def isiterable(obj):
     except TypeError:
         return False
 
+
 def growth_function(cosmo, z):
 
     # compute E(z)
     Om0, Ode0, Ok0 = cosmo['Omega0_m'], cosmo['Omega0_lambda'], cosmo['Omega0_k']
-    efunc = lambda a: np.sqrt(a ** -3 * Om0 + Ok0 * a ** -2 + Ode0)
+
+    def efunc(a): return np.sqrt(a ** -3 * Om0 + Ok0 * a ** -2 + Ode0)
 
     # this is 1 / (E(a) * a)**3, with H(a) = H0 * E(a)
-    integrand = lambda a: 1.0 / (a * efunc(a))**3
-    f = lambda red: quad(integrand, 0., 1./(1+red))[0]
+    def integrand(a): return 1.0 / (a * efunc(a))**3
+
+    def f(red): return quad(integrand, 0., 1./(1+red))[0]
     return efunc(1./(1+z))*vectorize_if_needed(f, z)
+
 
 class QuasarSpectrum(HaloSpectrum):
     """
@@ -70,7 +76,7 @@ class QuasarSpectrum(HaloSpectrum):
 
         # fnl parameters
         self.f_nl = 0
-        self.p = 1.6 # good for quasars
+        self.p = 1.6  # good for quasars
 
     @cached_property("Nk", "kmin", "kmax")
     def k(self):
@@ -120,7 +126,7 @@ class QuasarSpectrum(HaloSpectrum):
         """
         allowable = ['modified_lorentzian', 'lorentzian', 'gaussian']
         if val not in allowable:
-            raise ValueError("`fog_model` must be one of %s" %allowable)
+            raise ValueError("`fog_model` must be one of %s" % allowable)
 
         return val
 
@@ -140,7 +146,8 @@ class QuasarSpectrum(HaloSpectrum):
         The scale-dependent bias is proportional to: ``b1 - p``
         """
         if not 1 <= val <= 1.6:
-            raise ValueError("f_nl ``p`` value should be between 1 and 1.6 (inclusive)")
+            raise ValueError(
+                "f_nl ``p`` value should be between 1 and 1.6 (inclusive)")
         return val
 
     @parameter
@@ -174,7 +181,7 @@ class QuasarSpectrum(HaloSpectrum):
         """
         return 1.686
 
-    @interpolated_function("k", "cosmo")
+    @interpolated_function("k", "cosmo", "D")
     def alpha_png(self, k):
         """
         The primordial non-Gaussianity alpha value
@@ -186,8 +193,8 @@ class QuasarSpectrum(HaloSpectrum):
         Tk /= Tk.max()
 
         # normalization
-        c = pygcl.Constants.c_light / pygcl.Constants.km # in km/s
-        H0 = 100 # in units of h km/s/Mpc
+        c = pygcl.Constants.c_light / pygcl.Constants.km  # in km/s
+        H0 = 100  # in units of h km/s/Mpc
 
         # normalizes growth function to unity in matter-dominated epoch
         g_ratio = growth_function(self.cosmo, 0.)
@@ -200,7 +207,8 @@ class QuasarSpectrum(HaloSpectrum):
         """
         The scale-dependent bias introduced by primordial non-Gaussianity
         """
-        if self.f_nl == 0: return k*0.
+        if self.f_nl == 0:
+            return k*0.
 
         return 2*(self.b1-self.p)*self.f_nl*self.delta_crit/self.alpha_png(k)
 
@@ -276,7 +284,8 @@ class QuasarSpectrum(HaloSpectrum):
         # add shot noise offset
         pkmu += self.N
 
-        if flatten: pkmu = np.ravel(pkmu, order='F')
+        if flatten:
+            pkmu = np.ravel(pkmu, order='F')
         return pkmu
 
     @tools.broadcast_kmu

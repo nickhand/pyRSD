@@ -6,6 +6,7 @@ from pyRSD.rsd import tools, BiasedSpectrum
 from .fog_kernels import FOGKernel
 from . import Pgal
 
+
 class GalaxySpectrum(BiasedSpectrum):
     """
     The model for the galaxy redshift space power spectrum
@@ -69,9 +70,10 @@ class GalaxySpectrum(BiasedSpectrum):
         accounting for extra structure around centrals due
         to SO halo finders; default is `False`
     """
+
     def __init__(self, fog_model='modified_lorentzian',
-                       use_so_correction=False,
-                       **kwargs):
+                 use_so_correction=False,
+                 **kwargs):
         """
         Initialize the GalaxySpectrum
 
@@ -98,27 +100,27 @@ class GalaxySpectrum(BiasedSpectrum):
         self._Pgal = Pgal(self)
 
         # set the defaults
-        self.fog_model     = fog_model
+        self.fog_model = fog_model
         self.include_2loop = False
-        self.fs            = 0.10
-        self.fcB           = 0.08
-        self.fsB           = 0.40
-        self.b1_cA         = 1.85
-        self.b1_cB         = 2.8
-        self.b1_sA         = 2.6
-        self.b1_sB         = 3.6
-        self.sigma_c       = 1.
-        self.sigma_s       = 5.
-        self.sigma_sA      = 4.2
-        self.sigma_sB      = 6.
-        self.NcBs          = 3e4
-        self.NsBsB         = 9e4
-        self.N             = 0.
+        self.fs = 0.10
+        self.fcB = 0.08
+        self.fsB = 0.40
+        self.b1_cA = 1.85
+        self.b1_cB = 2.8
+        self.b1_sA = 2.6
+        self.b1_sB = 3.6
+        self.sigma_c = 1.
+        self.sigma_s = 5.
+        self.sigma_sA = 4.2
+        self.sigma_sB = 6.
+        self.NcBs = 3e4
+        self.NsBsB = 9e4
+        self.N = 0.
 
         # SO corretion
         self.use_so_correction = use_so_correction
-        self.f_so              = 0.
-        self.sigma_so          = 0.
+        self.f_so = 0.
+        self.sigma_so = 0.
 
     def default_params(self):
         """
@@ -155,7 +157,7 @@ class GalaxySpectrum(BiasedSpectrum):
         """
         allowable = ['modified_lorentzian', 'lorentzian', 'gaussian']
         if val not in allowable:
-            raise ValueError("`fog_model` must be one of %s" %allowable)
+            raise ValueError("`fog_model` must be one of %s" % allowable)
 
         return val
 

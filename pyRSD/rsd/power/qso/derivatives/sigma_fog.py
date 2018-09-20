@@ -17,6 +17,8 @@ class dPqso_dsigma_fog(PqsoDerivative):
         muprime = mu_AP(mu, m.alpha_perp, m.alpha_par)
 
         G = m.FOG(kprime, muprime, m.sigma_fog)
+        if hasattr(G, 'values'):
+            G = G.values
         Gprime = m.FOG.derivative_sigma(kprime, muprime, m.sigma_fog)
         toret = np.zeros_like(G)
 

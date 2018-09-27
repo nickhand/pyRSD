@@ -187,6 +187,7 @@ class FittingDriverSchema(Cache):
         Model parameters to be updated for each statistic; keys of this
         dict should be the names of a statistic
         """
+        if val is None: return {}
         return val
 
 class FittingDriver(FittingDriverSchema):
@@ -214,6 +215,8 @@ class FittingDriver(FittingDriverSchema):
         # generic params
         self.params = ParameterSet.from_file(param_file, tags='driver')
         stat_specific_params = self.params.get('stat_specific_params', {})
+        if stat_specific_params is None:
+            self.params['stat_specific_params'].value = {}
 
         # set all of the valid ones
         for name in FittingDriverSchema._param_names:
@@ -372,6 +375,15 @@ class FittingDriver(FittingDriverSchema):
         if len(missing):
             stat_grps.append(list(missing))
 
+        multiple_grps = len(stat_grps) > 1
+        changed_params = []
+        for k in stat_specific_params:
+            changed_params += list(stat_specific_params[k])
+
+        default_params = {}
+        for par in set(changed_params):
+            default_params[par] = self.theory.model_params[par]()
+        
         # determine the transfers
         callables = []
         grad_callables = []
@@ -381,13 +393,18 @@ class FittingDriver(FittingDriverSchema):
             transfers, ids = self.data.calculate_transfer(stat_grp)
             
             # get the model parameters
-            model_params = {k: v() for k, v in self.theory.model_params.items()}
+            if len(default_params):
+                model_params = default_params
+            else:
+                model_params = {}
             if len(ids) == 1:
                 key = list(ids.keys())[0]
                 if key in stat_specific_params:
                     model_params.update(stat_specific_params[key])
             
             # get the theory callable
+            if not len(model_params):
+                model_params = None
             c = self.theory.get_model_callable(self.data, transfers, ids, 
                                                 model_params=model_params,
                                                 theory_decorator=self.theory_decorator)

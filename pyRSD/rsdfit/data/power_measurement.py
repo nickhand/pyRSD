@@ -614,7 +614,7 @@ class PowerData(PowerDataSchema):
         """
         Are we using a window function?
         """
-        return self.window_file is None
+        return self.window_file is not None
 
     def get_window(self, stat=None):
         """
@@ -758,10 +758,15 @@ class PowerData(PowerDataSchema):
             if isinstance(self.window_file, string_types):
                 window = self.get_window()
             else:
-                assert len(statistics) == 1
                 assert isinstance(self.window_file, dict)
-                print(statistics, self.window_file)
-                window = self.get_window(stat=statistics[0])
+                if len(statistics) > 1:
+                    windows = [self.get_window(stat=stat) for stat in statistics]
+                    if np.allclose(windows[0], windows[1:]):
+                        window = windows[0]
+                    else:
+                        raise ValueError("multiple window functions error")
+                else:
+                    window = self.get_window(stat=statistics[0])
 
             # want to compute even multipoles up to at least max_ellprime
             max_ell = max(self.max_ellprime, max(flatten(x)))

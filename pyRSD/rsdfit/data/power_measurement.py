@@ -760,6 +760,7 @@ class PowerData(PowerDataSchema):
             else:
                 assert len(statistics) == 1
                 assert isinstance(self.window_file, dict)
+                print(statistics, self.window_file)
                 window = self.get_window(stat=statistics[0])
 
             # want to compute even multipoles up to at least max_ellprime

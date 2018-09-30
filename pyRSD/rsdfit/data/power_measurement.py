@@ -9,6 +9,7 @@ from ..parameters import ParameterSet, Parameter
 from  . import PkmuCovarianceMatrix, PoleCovarianceMatrix
 import warnings
 import collections
+from six import string_types
 
 def flatten(l):
     for el in l:
@@ -609,6 +610,22 @@ class PowerData(PowerDataSchema):
 
         return toret
 
+    def using_window_function(self):
+        """
+        Are we using a window function?
+        """
+        return self.window_file is None
+
+    def get_window(self, stat=None):
+        """
+        Return the window function array
+        """
+        window = self.window_file
+        if stat is not None:
+            assert stat in self.window_file
+            window_file = self.window_file[stat]
+        return np.loadtxt(window_file)
+
     def initialize(self):
         """
         Do the initialization steps after reading the params
@@ -633,11 +650,6 @@ class PowerData(PowerDataSchema):
 
         # rescale inverse covar?
         self.rescale_inverse_covar()
-
-        # read a window function?
-        self.window = None
-        if self.window_file is not None:
-            self.window = np.loadtxt(self.window_file)
 
         # verify ells/mu_bounds
         for attr in ['ells', 'mu_bounds']:
@@ -740,7 +752,15 @@ class PowerData(PowerDataSchema):
         grid = None; transfer = None
 
         # WINDOW FUNCTION TRANSFER
-        if self.window is not None:
+        if self.using_window_function():
+
+            # get the window
+            if isinstance(self.window_file, string_types):
+                window = self.get_window()
+            else:
+                assert len(statistics) == 1
+                assert isinstance(self.window_file, dict)
+                window = self.get_window(stat=statistics[0])
 
             # want to compute even multipoles up to at least max_ellprime
             max_ell = max(self.max_ellprime, max(flatten(x)))
@@ -751,7 +771,7 @@ class PowerData(PowerDataSchema):
             kws['max_ellprime'] = self.max_ellprime
             kws['kmax'] = self.window_kmax
             kws['kmin'] = self.window_kmin
-            transfer = [transfers.WindowFunctionTransfer(self.window, ells, **kws)]
+            transfer = [transfers.WindowFunctionTransfer(window, ells, **kws)]
         else:
 
             # GRIDDED TRANSFER
@@ -1021,7 +1041,7 @@ class PowerData(PowerDataSchema):
         """
         The global mininum wavenumber
         """
-        if self.window is None:
+        if self.using_window_function():
             return self.kmin.min()
         else:
             return min(INTERP_KMIN, self.kmin.min())
@@ -1031,7 +1051,7 @@ class PowerData(PowerDataSchema):
         """
         The global maximum wavenumber
         """
-        if self.window is None:
+        if self.using_window_function():
             return self.kmax.max()
         else:
             return max(INTERP_KMAX, self.kmax.max())

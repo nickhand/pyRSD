@@ -6,7 +6,7 @@ scikit-learn>=0.17
 emcee
 mpi4py
 six
-lmfit>=0.9
+lmfit==0.9.7
 autograd
 astropy
 xarray

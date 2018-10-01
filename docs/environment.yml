@@ -6,35 +6,35 @@
 name: pyrsd-docs
 
 channels:
-- defaults
-- nickhand
-- astropy
-- conda-forge
+  - defaults
+  - nickhand
+  - astropy
+  - conda-forge
 
 dependencies:
-- python=3.6
-- gsl
-- fftw
-- numpy
-- pandas
-- scipy
-- george
-- scikit-learn >=0.17
-- emcee
-- mpi4py
-- matplotlib
-- seaborn
-- corner
-- six
-- lmfit >=0.9
-- autograd
-- xarray
-- IPython
-- sphinx_rtd_theme
-- numpydoc
-- sphinx
-- pip
-- pybind11
-- pip:
-    - sphinxcontrib-programoutput
-- pyrsd
+  - python=3.6
+  - gsl
+  - fftw
+  - numpy
+  - pandas
+  - scipy
+  - george
+  - scikit-learn >=0.17
+  - emcee
+  - mpi4py
+  - matplotlib
+  - seaborn
+  - corner
+  - six
+  - lmfit=0.9.7
+  - autograd
+  - xarray
+  - IPython
+  - sphinx_rtd_theme
+  - numpydoc
+  - sphinx
+  - pip
+  - pybind11
+  - pip:
+      - sphinxcontrib-programoutput
+  - pyrsd

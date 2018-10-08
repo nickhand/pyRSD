@@ -620,7 +620,7 @@ class PowerData(PowerDataSchema):
         """
         Return the window function array
         """
-        window = self.window_file
+        window_file = self.window_file
         if stat is not None:
             assert stat in self.window_file
             window_file = self.window_file[stat]

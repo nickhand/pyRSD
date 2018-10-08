@@ -394,7 +394,7 @@ class FittingDriver(FittingDriverSchema):
             
             # get the model parameters
             if len(default_params):
-                model_params = default_params
+                model_params = default_params.copy()
             else:
                 model_params = {}
             if len(ids) == 1:

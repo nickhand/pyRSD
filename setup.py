@@ -183,7 +183,7 @@ def libgcl_config():
     # GCL library extension
     gcl_info = {}
     gcl_info['sources'] =  gcl_sources
-    gcl_info['include_dirs'] = ['pyRSD/_gcl/include']
+    gcl_info['include_dirs'] = ['pyRSD/_gcl/include', '/usr/local/include']
     gcl_info['language'] = 'c++'
     gcl_info['extra_compiler_args'] = ["-O2", '-std=c++11']
     return ('gcl', gcl_info)
